@@ -4,15 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>C-Silan CRM</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<!-- ⚙️ CẤU HÌNH SUPABASE — Thay 2 giá trị này -->
+<!-- ⚙️ CẤU HÌNH SUPABASE -->
 <script>
   const SUPABASE_URL  = 'https://ajsakaddylbpppxlidfe.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqc2FrYWRkeWxicHBweGxpZGZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTA1MDUsImV4cCI6MjA5NDI2NjUwNX0.B_8YwhOD4MXMKFOc3T0lpuujAnhUnpSLGjo12hWsLdc';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqc2FrYWRkeWxicHBweGxpZGZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTA1MDUsImV4cCI6MjA5NDI2NjUwNX0.B_8YwhOD4MXMKFOc3T0lpuujAnhUnpSLGjo12hWsLdc';
 </script>
 
 <style>
@@ -21,14 +20,13 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   --brand:#6C5CE7;--brand2:#A29BFE;--brand-dark:#4834d4;
   --accent:#00CEC9;--accent2:#55EFC4;
   --warn:#FDCB6E;--danger:#FF7675;--success:#00B894;
-  --sidebar:linear-gradient(160deg,#1a1240 0%,#2d1b69 50%,#1a2a4a 100%);
   --main:#0f0c24;--surface:rgba(255,255,255,0.05);--surface2:rgba(255,255,255,0.08);
   --text:#F0EEFF;--text2:rgba(240,238,255,0.6);--text3:rgba(240,238,255,0.35);
   --border:rgba(255,255,255,0.1);
 }
 body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--text);font-size:13px}
 
-/* ---- AUTH SCREEN ---- */
+/* AUTH */
 #auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--main);position:relative;overflow:hidden}
 #auth-screen::before{content:'';position:absolute;top:-100px;left:-100px;width:400px;height:400px;background:radial-gradient(circle,rgba(108,92,231,0.3),transparent 70%);pointer-events:none}
 #auth-screen::after{content:'';position:absolute;bottom:-100px;right:-100px;width:300px;height:300px;background:radial-gradient(circle,rgba(0,206,201,0.2),transparent 70%);pointer-events:none}
@@ -44,10 +42,10 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .auth-btn:disabled{opacity:0.5;cursor:not-allowed}
 .auth-error{background:rgba(255,118,117,0.1);border:1px solid rgba(255,118,117,0.3);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--danger);margin-top:10px;display:none}
 
-/* ---- APP LAYOUT ---- */
+/* APP */
 #app-screen{display:none;height:100vh}
 .app{display:flex;height:100%;overflow:hidden}
-.sidebar{width:210px;min-width:210px;background:var(--sidebar);display:flex;flex-direction:column;padding:0;position:relative;overflow:hidden}
+.sidebar{width:215px;min-width:215px;background:linear-gradient(160deg,#1a1240 0%,#2d1b69 50%,#1a2a4a 100%);display:flex;flex-direction:column;position:relative;overflow:hidden}
 .sidebar::before{content:'';position:absolute;top:-60px;left:-60px;width:200px;height:200px;background:radial-gradient(circle,rgba(108,92,231,0.4),transparent 70%);pointer-events:none}
 .logo-wrap{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,0.08)}
 .logo-name{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;background:linear-gradient(90deg,#fff,var(--brand2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
@@ -63,10 +61,10 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .user-role{font-size:10px;color:var(--text3)}
 .logout-btn{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:4px;border-radius:6px;transition:color 0.2s}
 .logout-btn:hover{color:var(--danger)}
-.main{flex:1;overflow:hidden;display:flex;flex-direction:column;background:var(--main)}
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column}
 .topbar{padding:12px 22px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02)}
 .topbar-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;flex:1}
-.search-wrap{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:7px 12px;width:230px;transition:border-color 0.2s}
+.search-wrap{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:7px 12px;width:240px;transition:border-color 0.2s}
 .search-wrap:focus-within{border-color:var(--brand)}
 .search-wrap input{background:transparent;border:none;outline:none;font-size:12px;color:var(--text);font-family:'Be Vietnam Pro',sans-serif;width:100%}
 .search-wrap input::placeholder{color:var(--text3)}
@@ -77,10 +75,10 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .content{flex:1;overflow:auto;padding:18px 22px}
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
 .stat-card{border-radius:14px;padding:14px 16px;position:relative;overflow:hidden;border:1px solid var(--border)}
-.stat-card-0{background:linear-gradient(135deg,rgba(108,92,231,0.3),rgba(108,92,231,0.1))}
-.stat-card-1{background:linear-gradient(135deg,rgba(0,206,201,0.25),rgba(0,206,201,0.08))}
-.stat-card-2{background:linear-gradient(135deg,rgba(0,184,148,0.3),rgba(0,184,148,0.1))}
-.stat-card-3{background:linear-gradient(135deg,rgba(253,203,110,0.25),rgba(253,203,110,0.08))}
+.sc0{background:linear-gradient(135deg,rgba(108,92,231,0.3),rgba(108,92,231,0.1))}
+.sc1{background:linear-gradient(135deg,rgba(0,206,201,0.25),rgba(0,206,201,0.08))}
+.sc2{background:linear-gradient(135deg,rgba(0,184,148,0.3),rgba(0,184,148,0.1))}
+.sc3{background:linear-gradient(135deg,rgba(253,203,110,0.25),rgba(253,203,110,0.08))}
 .stat-glow{position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;opacity:0.3}
 .stat-label{font-size:10px;color:var(--text2);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px}
 .stat-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700}
@@ -92,18 +90,21 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .fsel option{background:#1a1240}
 table{width:100%;border-collapse:collapse;table-layout:fixed}
 th{padding:9px 12px;text-align:left;font-size:10px;color:var(--text3);font-weight:600;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02)}
-td{padding:9px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;transition:background 0.1s}
+td{padding:9px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
+
+/* BADGES */
 .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap}
 .b-new{background:rgba(162,155,254,0.15);color:var(--brand2);border:1px solid rgba(162,155,254,0.3)}
-.b-calling{background:rgba(0,206,201,0.15);color:var(--accent);border:1px solid rgba(0,206,201,0.3)}
-.b-quoted{background:rgba(253,203,110,0.15);color:var(--warn);border:1px solid rgba(253,203,110,0.3)}
-.b-won{background:rgba(0,184,148,0.2);color:var(--accent2);border:1px solid rgba(85,239,196,0.35)}
+.b-followup{background:rgba(253,203,110,0.15);color:var(--warn);border:1px solid rgba(253,203,110,0.3)}
+.b-completed{background:rgba(0,184,148,0.2);color:var(--accent2);border:1px solid rgba(85,239,196,0.35)}
+.b-closedeal{background:rgba(0,184,148,0.2);color:var(--accent2);border:1px solid rgba(85,239,196,0.35)}
 .b-lost{background:rgba(255,118,117,0.15);color:var(--danger);border:1px solid rgba(255,118,117,0.3)}
-.b-hot{background:rgba(255,118,117,0.15);color:#ff9f9f;border:1px solid rgba(255,118,117,0.25)}
-.b-warm{background:rgba(253,203,110,0.15);color:#ffeaa7;border:1px solid rgba(253,203,110,0.25)}
-.b-cold{background:rgba(116,185,255,0.15);color:#74b9ff;border:1px solid rgba(116,185,255,0.25)}
+.b-invalid{background:rgba(255,118,117,0.1);color:#ffb3b3;border:1px solid rgba(255,118,117,0.2)}
+.b-noresponse{background:rgba(116,185,255,0.15);color:#74b9ff;border:1px solid rgba(116,185,255,0.25)}
+.b-busy{background:rgba(253,203,110,0.15);color:var(--warn);border:1px solid rgba(253,203,110,0.3)}
+
 .avatar{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;border:1.5px solid rgba(255,255,255,0.15)}
 .av-0{background:linear-gradient(135deg,#6C5CE7,#a29bfe)}
 .av-1{background:linear-gradient(135deg,#00cec9,#55efc4)}
@@ -111,12 +112,15 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 .av-3{background:linear-gradient(135deg,#0984e3,#74b9ff)}
 .av-4{background:linear-gradient(135deg,#fdcb6e,#ffeaa7)}
 .av-5{background:linear-gradient(135deg,#00b894,#55efc4)}
+
+/* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
-.modal{background:#1a1240;border:1px solid var(--border);border-radius:18px;width:540px;max-height:88vh;overflow:auto;box-shadow:0 25px 60px rgba(0,0,0,0.6)}
+.modal{background:#1a1240;border:1px solid var(--border);border-radius:18px;width:580px;max-height:90vh;overflow:auto;box-shadow:0 25px 60px rgba(0,0,0,0.6)}
 .modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:rgba(108,92,231,0.1)}
 .modal-header h3{font-size:15px;font-weight:700;flex:1}
 .modal-body{padding:18px 20px}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.field-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
 .field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
 .field label{font-size:10px;color:var(--text3);letter-spacing:0.8px;text-transform:uppercase;font-weight:600}
 .field input,.field select,.field textarea{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);font-family:'Be Vietnam Pro',sans-serif;outline:none;transition:border-color 0.2s}
@@ -127,50 +131,44 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 .loading-overlay{position:fixed;inset:0;background:rgba(15,12,36,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:300;gap:12px}
 .spinner{width:36px;height:36px;border:3px solid rgba(108,92,231,0.2);border-top-color:var(--brand);border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:48px 20px;color:var(--text3)}
+.empty-state i{font-size:48px;margin-bottom:12px;display:block}
 .kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
 .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px}
 .kpi-bar-bg{background:rgba(255,255,255,0.07);border-radius:4px;height:5px;overflow:hidden;margin-top:8px}
 .kpi-bar-fill{height:5px;border-radius:4px;background:linear-gradient(90deg,var(--brand),var(--accent))}
-.empty-state{text-align:center;padding:48px 20px;color:var(--text3)}
-.empty-state i{font-size:48px;margin-bottom:12px;display:block}
-.pipe-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:16px}
+.pipe-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px}
 .pipe-col{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:10px}
 .pipe-col-hd{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
 .pipe-cnt{background:rgba(255,255,255,0.08);border-radius:20px;padding:2px 8px;font-size:10px}
 .pipe-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:7px;cursor:pointer;transition:all 0.2s}
 .pipe-card:hover{border-color:var(--brand);transform:translateY(-2px)}
-.pipe-card-name{font-size:12px;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
-.pipe-card-biz{font-size:10px;color:var(--text3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pipe-card-ft{display:flex;justify-content:space-between;align-items:center}
+.pipe-card-name{font-size:12px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.pipe-card-biz{font-size:10px;color:var(--text3);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pipe-card-ft{display:flex;justify-content:space-between;align-items:center;gap:4px;flex-wrap:wrap}
 </style>
 </head>
 <body>
 
-<!-- ===== AUTH SCREEN ===== -->
+<!-- AUTH -->
 <div id="auth-screen">
   <div class="auth-card">
     <div class="auth-logo">C-Silan CRM</div>
     <div class="auth-sub">Đăng nhập để vào hệ thống</div>
-    <div class="auth-field">
-      <label>Email</label>
-      <input type="email" id="login-email" placeholder="sale@csilan.com">
-    </div>
-    <div class="auth-field">
-      <label>Mật khẩu</label>
-      <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
+    <div class="auth-field"><label>Email</label><input type="email" id="login-email" placeholder="sale@csilan.com"></div>
+    <div class="auth-field"><label>Mật khẩu</label><input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <button class="auth-btn" id="login-btn" onclick="doLogin()">Đăng nhập</button>
     <div class="auth-error" id="auth-error"></div>
   </div>
 </div>
 
-<!-- ===== APP SCREEN ===== -->
+<!-- APP -->
 <div id="app-screen">
   <div class="app">
     <div class="sidebar">
       <div class="logo-wrap">
         <div class="logo-name">C-Silan CRM</div>
-        <div class="logo-tag">Sales Team · v2.0</div>
+        <div class="logo-tag">Sales Team · v3.0</div>
       </div>
       <div class="nav-sec">Workspace</div>
       <div class="nav-item active" onclick="setPage('customers')" id="nav-customers"><i class="ti ti-users"></i> Khách hàng</div>
@@ -186,7 +184,6 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
   </div>
 </div>
 
-<!-- Loading -->
 <div class="loading-overlay" id="loading" style="display:none">
   <div class="spinner"></div>
   <span style="font-size:13px;color:var(--text2)">Đang tải...</span>
@@ -194,133 +191,128 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 
 <script>
 // ============================================================
-// SUPABASE INIT
+// DROPDOWN DATA từ template
+// ============================================================
+const POTENTIAL_OPTS = ['Pedicure Spa & Package','Massage Chair','Furniture','Padset','Heaspa','Part & Accessories'];
+const STATUS_OPTS    = ['New','Follow Up','Completed'];
+const SUBSTATUS_OPTS = ['New Lead','No Answer','Contacting','Gatekeeper','Qualified','Appointment Set','Quotation Sent','Pending Decision','Follow Up'];
+const LEAD_OPTS      = ['Closedeal','Lost','Invalid Lead','No Response','Busy'];
+const BRAND_OPTS     = ['TSPA','T4','LEXOR','WHALE SPA','SNS','CONTEGO','NEWSTAR','JNA','AYC','SAM SUPPLY','GULFSTREAM','SNE','TREND NAILS','WHALE SPA','S3 SPA','MR3','OSAKI','ALFAFA','HÃNG KHÁC'];
+const TIMES_OPTS     = ['1 year','2 year','3 year','more than 5 year'];
+const REASON_OPTS    = ['R1 - Khách chưa có nhu cầu','R2 - Khách bận, không muốn trao đổi','R3 - Franchise không cho mua ngoài','R4 - Đổi nhu cầu / đổi kế hoạch','R5 - Có nhu cầu nhưng rất xa','R6 - Chỉ tham khảo thông tin','R7 - Không muốn tiếp tục nói chuyện','R8 - Giá chưa phù hợp ngân sách','R9 - Đang so sánh với đối thủ','R10 - Ngại mua hàng xa','R11 - Lo ngại lắp đặt / support','R12 - Mới thay nội thất xong','R13 - Chủ đã bán tiệm','R14 - Đang build/setup tiệm','R15 - Chỉ dùng thương hiệu khác','R16 - Sai số, sai thông tin','R17 - Không gặp đúng người quyết định','R18 - Chưa có ngân sách năm nay','R19 - Đang làm với vendor khác','R20 - Khó giao tiếp ngôn ngữ','R21 - Mất liên lạc'];
+const STATE_OPTS     = ['Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','Washington, D.C.','West Virginia','Wisconsin','Wyoming'];
+const AV_CLASSES     = ['av-0','av-1','av-2','av-3','av-4','av-5'];
+
+// ============================================================
+// SUPABASE
 // ============================================================
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// ============================================================
-// STATE
-// ============================================================
-let currentUser = null;
-let currentProfile = null;
-let CUSTOMERS = [];
-let PROFILES = [];
-let page = 'customers';
-let fStatus = 'all', fSale = 'all', fPot = 'all', search = '';
-let selId = null, addOpen = false;
-
-const STATUSES = ['Mới','Đang liên hệ','Đã báo giá','Chốt thành công','Thất bại'];
-const POTENTIALS = ['Hot','Warm','Cold'];
-const BRANDS = ['Silan Pro','Silan Eco','Silan Plus'];
-const SOURCES = ['Facebook','Zalo','Website','Referral','TikTok'];
-const CITIES = ['TP.HCM','Hà Nội','Đà Nẵng','Cần Thơ','Bình Dương','Đồng Nai'];
-const AV_CLASSES = ['av-0','av-1','av-2','av-3','av-4','av-5'];
-
-// ============================================================
-// AUTH
-// ============================================================
-async function doLogin() {
-  const email = document.getElementById('login-email').value.trim();
-  const pass  = document.getElementById('login-pass').value;
-  const btn   = document.getElementById('login-btn');
-  const errEl = document.getElementById('auth-error');
-  errEl.style.display = 'none';
-  if (!email || !pass) { showAuthError('Vui lòng nhập email và mật khẩu'); return; }
-  btn.disabled = true; btn.textContent = 'Đang đăng nhập...';
-  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if (error) { showAuthError(error.message); btn.disabled = false; btn.textContent = 'Đăng nhập'; return; }
-  await initApp(data.user);
-}
-
-function showAuthError(msg) {
-  const el = document.getElementById('auth-error');
-  el.textContent = msg; el.style.display = 'block';
-}
-
-async function doLogout() {
-  await sb.auth.signOut();
-  document.getElementById('app-screen').style.display = 'none';
-  document.getElementById('auth-screen').style.display = 'flex';
-  CUSTOMERS = []; PROFILES = [];
-}
-
-// ============================================================
-// INIT APP
-// ============================================================
-async function initApp(user) {
-  showLoading(true);
-  currentUser = user;
-  // Load profile
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
-  currentProfile = profile;
-  // Load customers (RLS tự lọc theo role)
-  await loadCustomers();
-  // Load profiles (danh sách sale) — chỉ manager/admin thấy tất cả
-  const { data: profs } = await sb.from('profiles').select('*').eq('is_active', true);
-  PROFILES = profs || [];
-  // Update UI
-  const initials = (profile?.full_name || user.email).split(' ').map(w=>w[0]).slice(-2).join('').toUpperCase();
-  document.getElementById('user-avatar').textContent = initials;
-  document.getElementById('user-name').textContent = profile?.full_name || user.email;
-  document.getElementById('user-role').textContent = profile?.role === 'manager' ? 'Manager' : 'Sale';
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('app-screen').style.display = 'block';
-  showLoading(false);
-  render();
-}
-
-async function loadCustomers() {
-  let query = sb.from('customers').select('*, assigned_profile:profiles!assigned_to(id,full_name,role)').order('created_at', { ascending: false });
-  const { data, error } = await query;
-  if (!error) CUSTOMERS = data || [];
-}
+let currentUser=null, currentProfile=null, CUSTOMERS=[], PROFILES=[];
+let page='customers', fStatus='all', fSale='all', fPotential='all', fBrand='all', search='', selId=null, addOpen=false;
 
 // ============================================================
 // HELPERS
 // ============================================================
-function showLoading(v) { document.getElementById('loading').style.display = v ? 'flex' : 'none'; }
+function showLoading(v){document.getElementById('loading').style.display=v?'flex':'none'}
 
-function sBadge(s) {
-  const m = {'Mới':'b-new','Đang liên hệ':'b-calling','Đã báo giá':'b-quoted','Chốt thành công':'b-won','Thất bại':'b-lost'};
-  return `<span class="badge ${m[s]||'b-new'}">${s}</span>`;
+function sBadge(s){
+  const m={'New':'b-new','Follow Up':'b-followup','Completed':'b-completed'};
+  return `<span class="badge ${m[s]||'b-new'}">${s||'—'}</span>`;
 }
-function pBadge(p) {
-  const m = {'Hot':'b-hot','Warm':'b-warm','Cold':'b-cold'};
-  return `<span class="badge ${m[p]||'b-cold'}">${p}</span>`;
+function lBadge(s){
+  const m={'Closedeal':'b-closedeal','Lost':'b-lost','Invalid Lead':'b-invalid','No Response':'b-noresponse','Busy':'b-busy'};
+  return `<span class="badge ${m[s]||'b-new'}">${s||'—'}</span>`;
 }
-function saleInitials(c) {
-  const n = c.assigned_profile?.full_name || '?';
+function saleInitials(c){
+  const n=c.assigned_profile?.full_name||'?';
   return n.split(' ').map(w=>w[0]).slice(-2).join('').toUpperCase();
 }
-function saleAvClass(profileId) {
-  const idx = PROFILES.findIndex(p=>p.id===profileId);
-  return AV_CLASSES[idx % AV_CLASSES.length] || 'av-0';
+function saleAvClass(profileId){
+  const idx=PROFILES.findIndex(p=>p.id===profileId);
+  return AV_CLASSES[Math.max(0,idx)%AV_CLASSES.length];
 }
-
-function setPage(p) {
-  page = p;
+function setPage(p){
+  page=p;
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('nav-'+p)?.classList.add('active');
   render();
+}
+function selOpts(arr,val='',empty='-- Chọn --'){
+  return `<option value="">${empty}</option>`+arr.map(o=>`<option ${val===o?'selected':''}>${o}</option>`).join('');
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pass=document.getElementById('login-pass').value;
+  const btn=document.getElementById('login-btn');
+  const errEl=document.getElementById('auth-error');
+  errEl.style.display='none';
+  if(!email||!pass){showErr('Vui lòng nhập email và mật khẩu');return;}
+  btn.disabled=true;btn.textContent='Đang đăng nhập...';
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){showErr(error.message);btn.disabled=false;btn.textContent='Đăng nhập';return;}
+  await initApp(data.user);
+}
+function showErr(msg){const el=document.getElementById('auth-error');el.textContent=msg;el.style.display='block';}
+async function doLogout(){
+  await sb.auth.signOut();
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('auth-screen').style.display='flex';
+  CUSTOMERS=[];PROFILES=[];
+}
+
+// ============================================================
+// INIT
+// ============================================================
+async function initApp(user){
+  showLoading(true);
+  currentUser=user;
+  const {data:profile}=await sb.from('profiles').select('*').eq('id',user.id).single();
+  currentProfile=profile;
+  await loadCustomers();
+  const {data:profs}=await sb.from('profiles').select('*').eq('is_active',true).order('full_name');
+  PROFILES=profs||[];
+  const initials=(profile?.full_name||user.email).split(' ').map(w=>w[0]).slice(-2).join('').toUpperCase();
+  document.getElementById('user-avatar').textContent=initials;
+  document.getElementById('user-name').textContent=profile?.full_name||user.email;
+  document.getElementById('user-role').textContent=profile?.role==='manager'?'Manager':profile?.role==='admin'?'Admin':'Sale';
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app-screen').style.display='block';
+  showLoading(false);
+  render();
+}
+
+async function loadCustomers(){
+  const {data,error}=await sb.from('customers')
+    .select('*, assigned_profile:profiles!assigned_to(id,full_name,role)')
+    .order('created_at',{ascending:false});
+  if(!error) CUSTOMERS=data||[];
 }
 
 // ============================================================
 // RENDER — CUSTOMERS
 // ============================================================
-function renderCustomers() {
-  let data = CUSTOMERS.filter(c => {
-    if (fStatus !== 'all' && c.status !== fStatus) return false;
-    if (fSale !== 'all' && c.assigned_to !== fSale) return false;
-    if (fPot !== 'all' && c.potential !== fPot) return false;
-    if (search && !c.customer_name?.toLowerCase().includes(search)
-               && !c.cellphone?.includes(search)
-               && !c.business_name?.toLowerCase().includes(search)) return false;
+function renderCustomers(){
+  const isManager=currentProfile?.role==='manager'||currentProfile?.role==='admin';
+  let data=CUSTOMERS.filter(c=>{
+    if(fStatus!=='all'&&c.status!==fStatus)return false;
+    if(fSale!=='all'&&c.assigned_to!==fSale)return false;
+    if(fPotential!=='all'&&c.potential!==fPotential)return false;
+    if(fBrand!=='all'&&c.brand!==fBrand)return false;
+    if(search&&!c.customer_name?.toLowerCase().includes(search)
+             &&!c.cellphone?.includes(search)
+             &&!c.business_phone?.includes(search)
+             &&!c.business_name?.toLowerCase().includes(search))return false;
     return true;
   });
-  const won = CUSTOMERS.filter(c=>c.status==='Chốt thành công').length;
-  const calling = CUSTOMERS.filter(c=>c.status==='Đang liên hệ').length;
-  const isManager = currentProfile?.role === 'manager' || currentProfile?.role === 'admin';
+  const completed=CUSTOMERS.filter(c=>c.status==='Completed').length;
+  const followup=CUSTOMERS.filter(c=>c.status==='Follow Up').length;
+  const closedeal=CUSTOMERS.filter(c=>c.lead_status==='Closedeal').length;
   return `
   <div class="topbar">
     <div class="topbar-title">Khách hàng</div>
@@ -329,73 +321,90 @@ function renderCustomers() {
   </div>
   <div class="content">
     <div class="stats-row">
-      <div class="stat-card stat-card-0"><div class="stat-glow" style="background:var(--brand);opacity:0.3"></div><div class="stat-label">Tổng data</div><div class="stat-val" style="color:var(--brand2)">${CUSTOMERS.length}</div><div class="stat-sub">được giao</div></div>
-      <div class="stat-card stat-card-1"><div class="stat-glow" style="background:var(--accent);opacity:0.3"></div><div class="stat-label">Đang liên hệ</div><div class="stat-val" style="color:var(--accent)">${calling}</div><div class="stat-sub">khách</div></div>
-      <div class="stat-card stat-card-2"><div class="stat-glow" style="background:var(--success);opacity:0.3"></div><div class="stat-label">Chốt thành công</div><div class="stat-val" style="color:var(--accent2)">${won}</div><div class="stat-sub">khách</div></div>
-      <div class="stat-card stat-card-3"><div class="stat-glow" style="background:var(--warn);opacity:0.3"></div><div class="stat-label">Tỉ lệ chốt</div><div class="stat-val" style="color:var(--warn)">${CUSTOMERS.length?Math.round(won/CUSTOMERS.length*100):0}%</div><div class="stat-sub">tháng này</div></div>
+      <div class="stat-card sc0"><div class="stat-glow" style="background:var(--brand);opacity:0.3"></div>
+        <div class="stat-label">Tổng data</div><div class="stat-val" style="color:var(--brand2)">${CUSTOMERS.length}</div><div class="stat-sub">được giao</div></div>
+      <div class="stat-card sc1"><div class="stat-glow" style="background:var(--accent);opacity:0.3"></div>
+        <div class="stat-label">Follow Up</div><div class="stat-val" style="color:var(--accent)">${followup}</div><div class="stat-sub">đang theo dõi</div></div>
+      <div class="stat-card sc2"><div class="stat-glow" style="background:var(--success);opacity:0.3"></div>
+        <div class="stat-label">Closedeal</div><div class="stat-val" style="color:var(--accent2)">${closedeal}</div><div class="stat-sub">đã chốt</div></div>
+      <div class="stat-card sc3"><div class="stat-glow" style="background:var(--warn);opacity:0.3"></div>
+        <div class="stat-label">Tỉ lệ chốt</div><div class="stat-val" style="color:var(--warn)">${CUSTOMERS.length?Math.round(closedeal/CUSTOMERS.length*100):0}%</div><div class="stat-sub">tháng này</div></div>
     </div>
     <div class="panel">
       <div class="panel-header">
         <h2>Danh sách <span style="color:var(--brand2)">${data.length}</span> khách</h2>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
           <select class="fsel" onchange="fStatus=this.value;render()">
-            <option value="all">Tất cả trạng thái</option>
-            ${STATUSES.map(s=>`<option value="${s}" ${fStatus===s?'selected':''}>${s}</option>`).join('')}
+            <option value="all">Tất cả Status</option>
+            ${STATUS_OPTS.map(s=>`<option value="${s}" ${fStatus===s?'selected':''}>${s}</option>`).join('')}
           </select>
-          ${isManager ? `<select class="fsel" onchange="fSale=this.value;render()">
-            <option value="all">Tất cả sale</option>
+          <select class="fsel" onchange="fPotential=this.value;render()">
+            <option value="all">Tất cả Potential</option>
+            ${POTENTIAL_OPTS.map(p=>`<option value="${p}" ${fPotential===p?'selected':''}>${p}</option>`).join('')}
+          </select>
+          <select class="fsel" onchange="fBrand=this.value;render()">
+            <option value="all">Tất cả Brand</option>
+            ${BRAND_OPTS.map(b=>`<option value="${b}" ${fBrand===b?'selected':''}>${b}</option>`).join('')}
+          </select>
+          ${isManager?`<select class="fsel" onchange="fSale=this.value;render()">
+            <option value="all">Tất cả Sale</option>
             ${PROFILES.filter(p=>p.role==='sale').map(p=>`<option value="${p.id}" ${fSale===p.id?'selected':''}>${p.full_name}</option>`).join('')}
-          </select>` : ''}
-          <select class="fsel" onchange="fPot=this.value;render()">
-            <option value="all">Tiềm năng</option>
-            ${POTENTIALS.map(p=>`<option value="${p}" ${fPot===p?'selected':''}>${p}</option>`).join('')}
-          </select>
+          </select>`:''}
         </div>
       </div>
-      ${data.length === 0 ? `<div class="empty-state"><i class="ti ti-inbox"></i>Không có khách hàng nào</div>` : `
+      ${data.length===0?`<div class="empty-state"><i class="ti ti-inbox"></i>Không có khách hàng nào</div>`:`
       <table>
-        <colgroup><col width="88"><col width="140"><col width="130"><col width="105"><col width="68"><col width="90"><col width="76"><col width="70"></colgroup>
-        <thead><tr><th>Mã KH</th><th>Công ty</th><th>Khách hàng</th><th>SĐT</th><th>Tiềm năng</th><th>Trạng thái</th><th>Brand</th><th>Sale</th></tr></thead>
+        <colgroup><col width="85"><col width="130"><col width="120"><col width="100"><col width="80"><col width="75"><col width="80"><col width="75"><col width="65"></colgroup>
+        <thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Status</th><th>Lead Status</th><th>Sale</th></tr></thead>
         <tbody>
         ${data.slice(0,20).map(c=>`
           <tr onclick="selId=${c.id};render()">
-            <td style="font-size:10px;color:var(--text3);font-family:monospace">${c.ma_kh}</td>
+            <td style="font-size:10px;color:var(--text3);font-family:monospace">${c.ma_kh||'—'}</td>
             <td title="${c.business_name||''}">${c.business_name||'—'}</td>
-            <td><div style="display:flex;align-items:center;gap:7px"><div class="avatar ${saleAvClass(c.assigned_to)}">${saleInitials(c)}</div><span style="color:var(--text)">${c.customer_name}</span></div></td>
+            <td><div style="display:flex;align-items:center;gap:6px"><div class="avatar ${saleAvClass(c.assigned_to)}" style="width:22px;height:22px;font-size:9px">${saleInitials(c)}</div><span style="color:var(--text)">${c.customer_name}</span></div></td>
             <td style="font-family:monospace;font-size:11px">${c.cellphone||c.business_phone||'—'}</td>
-            <td>${pBadge(c.potential||'Cold')}</td>
+            <td style="font-size:11px">${c.state||'—'}</td>
+            <td style="font-size:10px;color:var(--accent)">${c.potential||'—'}</td>
             <td>${sBadge(c.status)}</td>
-            <td style="font-size:11px;color:var(--text2)">${c.brand||'—'}</td>
+            <td>${lBadge(c.lead_status)}</td>
             <td style="font-size:11px;color:var(--text2)">${c.assigned_profile?.full_name?.split(' ').pop()||'—'}</td>
           </tr>`).join('')}
         </tbody>
       </table>
-      ${data.length>20?`<div style="padding:8px 14px;font-size:11px;color:var(--text3);border-top:1px solid rgba(255,255,255,0.05)">Hiển thị 20/${data.length} — dùng filter để thu hẹp</div>`:''}
-      `}
+      ${data.length>20?`<div style="padding:8px 14px;font-size:11px;color:var(--text3);border-top:1px solid rgba(255,255,255,0.05)">Hiển thị 20/${data.length} — dùng filter để thu hẹp</div>`:''}`}
     </div>
   </div>`;
 }
 
 // ============================================================
-// RENDER — PIPELINE
+// RENDER — PIPELINE (theo Status)
 // ============================================================
-function renderPipeline() {
-  const pipeColors = ['var(--brand2)','var(--accent)','var(--warn)','var(--accent2)','var(--danger)'];
+function renderPipeline(){
+  const pipeColors=['var(--brand2)','var(--warn)','var(--accent2)'];
   return `
-  <div class="topbar"><div class="topbar-title">Pipeline</div></div>
+  <div class="topbar"><div class="topbar-title">Pipeline</div>
+    ${currentProfile?.role!=='sale'?`<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()">
+      <option value="all">Tất cả sale</option>
+      ${PROFILES.filter(p=>p.role==='sale').map(p=>`<option value="${p.id}" ${fSale===p.id?'selected':''}>${p.full_name}</option>`).join('')}
+    </select>`:''}
+  </div>
   <div class="content" style="padding:0;overflow:auto">
     <div class="pipe-grid">
-      ${STATUSES.map((status, i) => {
-        const cards = CUSTOMERS.filter(c => c.status === status);
+      ${STATUS_OPTS.map((status,i)=>{
+        const cards=CUSTOMERS.filter(c=>c.status===status&&(fSale==='all'||c.assigned_to===fSale));
         return `<div class="pipe-col">
           <div class="pipe-col-hd" style="color:${pipeColors[i]}">${status}<span class="pipe-cnt">${cards.length}</span></div>
-          ${cards.slice(0,6).map(c=>`
+          ${cards.slice(0,8).map(c=>`
             <div class="pipe-card" onclick="selId=${c.id};setPage('customers')">
               <div class="pipe-card-name">${c.customer_name}</div>
-              <div class="pipe-card-biz">${c.business_name||'—'}</div>
-              <div class="pipe-card-ft">${pBadge(c.potential||'Cold')}<div class="avatar ${saleAvClass(c.assigned_to)}" style="width:22px;height:22px;font-size:9px">${saleInitials(c)}</div></div>
+              <div class="pipe-card-biz">${c.business_name||'—'} · ${c.state||'—'}</div>
+              <div class="pipe-card-ft">
+                <span style="font-size:10px;color:var(--accent)">${c.potential||'—'}</span>
+                ${lBadge(c.lead_status)}
+                <div class="avatar ${saleAvClass(c.assigned_to)}" style="width:20px;height:20px;font-size:9px">${saleInitials(c)}</div>
+              </div>
             </div>`).join('')}
-          ${cards.length>6?`<div style="font-size:10px;color:var(--text3);text-align:center;padding:6px">+${cards.length-6} khác</div>`:''}
+          ${cards.length>8?`<div style="font-size:10px;color:var(--text3);text-align:center;padding:6px">+${cards.length-8} khác</div>`:''}
         </div>`;
       }).join('')}
     </div>
@@ -405,31 +414,59 @@ function renderPipeline() {
 // ============================================================
 // RENDER — KPI
 // ============================================================
-function renderKPI() {
-  const salesToShow = PROFILES.filter(p => p.role === 'sale');
+function renderKPI(){
+  const salesToShow=PROFILES.filter(p=>p.role==='sale');
   return `
   <div class="topbar"><div class="topbar-title">Báo cáo KPI</div></div>
   <div class="content">
+    <div class="stats-row">
+      <div class="stat-card sc0"><div class="stat-label">Tổng data</div><div class="stat-val" style="color:var(--brand2)">${CUSTOMERS.length}</div></div>
+      <div class="stat-card sc2"><div class="stat-label">Closedeal</div><div class="stat-val" style="color:var(--accent2)">${CUSTOMERS.filter(c=>c.lead_status==='Closedeal').length}</div></div>
+      <div class="stat-card sc1"><div class="stat-label">Follow Up</div><div class="stat-val" style="color:var(--accent)">${CUSTOMERS.filter(c=>c.status==='Follow Up').length}</div></div>
+      <div class="stat-card sc3"><div class="stat-label">Lost</div><div class="stat-val" style="color:var(--danger)">${CUSTOMERS.filter(c=>c.lead_status==='Lost').length}</div></div>
+    </div>
     <div class="kpi-grid">
-      ${salesToShow.length === 0
-        ? `<div class="empty-state" style="grid-column:1/-1"><i class="ti ti-users"></i>Không có dữ liệu sale</div>`
-        : salesToShow.map((s, si) => {
-          const mc = CUSTOMERS.filter(c => c.assigned_to === s.id);
-          const won = mc.filter(c=>c.status==='Chốt thành công').length;
-          const pct = mc.length ? Math.round(won/mc.length*100) : 0;
+      ${salesToShow.length===0?`<div class="empty-state" style="grid-column:1/-1"><i class="ti ti-users"></i>Không có dữ liệu</div>`:
+        salesToShow.map((s,si)=>{
+          const mc=CUSTOMERS.filter(c=>c.assigned_to===s.id);
+          const deal=mc.filter(c=>c.lead_status==='Closedeal').length;
+          const pct=mc.length?Math.round(deal/mc.length*100):0;
           return `<div class="kpi-card">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
               <div class="avatar ${AV_CLASSES[si%AV_CLASSES.length]}" style="width:36px;height:36px;font-size:12px">${s.full_name.split(' ').map(w=>w[0]).slice(-2).join('').toUpperCase()}</div>
               <div><div style="font-size:13px;font-weight:600">${s.full_name}</div><div style="font-size:10px;color:var(--text3)">${mc.length} khách</div></div>
             </div>
-            <div style="display:flex;gap:14px;margin-bottom:8px">
-              ${[['Chốt',won,'var(--accent2)'],['Gọi',mc.filter(c=>c.status==='Đang liên hệ').length,'var(--accent)'],['BG',mc.filter(c=>c.status==='Đã báo giá').length,'var(--warn)'],['Thất bại',mc.filter(c=>c.status==='Thất bại').length,'var(--danger)']].map(([l,v,col])=>`
-              <div style="text-align:center"><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:${col}">${v}</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase">${l}</div></div>`).join('')}
+            <div style="display:flex;gap:12px;margin-bottom:8px">
+              ${[['Closedeal',deal,'var(--accent2)'],['Follow Up',mc.filter(c=>c.status==='Follow Up').length,'var(--accent)'],['Lost',mc.filter(c=>c.lead_status==='Lost').length,'var(--danger)'],['New',mc.filter(c=>c.status==='New').length,'var(--brand2)']].map(([l,v,col])=>
+                `<div style="text-align:center"><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:${col}">${v}</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase">${l}</div></div>`).join('')}
             </div>
             <div class="kpi-bar-bg"><div class="kpi-bar-fill" style="width:${pct}%"></div></div>
             <div style="font-size:10px;color:var(--text3);text-align:right;margin-top:4px">Tỉ lệ: <strong style="color:var(--brand2)">${pct}%</strong></div>
           </div>`;
         }).join('')}
+    </div>
+    <div class="panel">
+      <div class="panel-header"><h2>Chi tiết theo Sale</h2></div>
+      <table>
+        <thead><tr><th>Sale</th><th>Data giao</th><th>New</th><th>Follow Up</th><th>Completed</th><th>Closedeal</th><th>Lost</th><th>Tỉ lệ</th></tr></thead>
+        <tbody>
+        ${salesToShow.map((s,si)=>{
+          const mc=CUSTOMERS.filter(c=>c.assigned_to===s.id);
+          const deal=mc.filter(c=>c.lead_status==='Closedeal').length;
+          const pct=mc.length?Math.round(deal/mc.length*100):0;
+          return `<tr>
+            <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar ${AV_CLASSES[si%AV_CLASSES.length]}">${s.full_name.split(' ').map(w=>w[0]).slice(-2).join('').toUpperCase()}</div><span style="color:var(--text)">${s.full_name}</span></div></td>
+            <td>${mc.length}</td>
+            <td style="color:var(--brand2)">${mc.filter(c=>c.status==='New').length}</td>
+            <td style="color:var(--warn)">${mc.filter(c=>c.status==='Follow Up').length}</td>
+            <td style="color:var(--accent2)">${mc.filter(c=>c.status==='Completed').length}</td>
+            <td style="color:var(--accent2);font-weight:700">${deal}</td>
+            <td style="color:var(--danger)">${mc.filter(c=>c.lead_status==='Lost').length}</td>
+            <td><strong style="color:var(--brand2)">${pct}%</strong></td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table>
     </div>
   </div>`;
 }
@@ -437,56 +474,73 @@ function renderKPI() {
 // ============================================================
 // MODAL — DETAIL
 // ============================================================
-async function renderDetailModal(customerId) {
-  const c = CUSTOMERS.find(x => x.id === customerId);
-  if (!c) return;
-  // Load call logs
-  const { data: logs } = await sb.from('call_logs').select('*').eq('customer_id', customerId).order('called_at', { ascending: false }).limit(10);
-  const isManager = currentProfile?.role === 'manager' || currentProfile?.role === 'admin';
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay';
-  modal.id = 'detail-modal';
-  modal.onclick = (e) => { if(e.target===modal){ modal.remove(); selId=null; } };
-  modal.innerHTML = `
-    <div class="modal" onclick="event.stopPropagation()">
+async function renderDetailModal(customerId){
+  const c=CUSTOMERS.find(x=>x.id===customerId);
+  if(!c)return;
+  const {data:logs}=await sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId).order('called_at',{ascending:false}).limit(15);
+  const isManager=currentProfile?.role==='manager'||currentProfile?.role==='admin';
+  const modal=document.createElement('div');
+  modal.className='modal-overlay';modal.id='detail-modal';
+  modal.onclick=(e)=>{if(e.target===modal){modal.remove();selId=null;}};
+  modal.innerHTML=`
+    <div class="modal" onclick="event.stopPropagation()" style="width:640px">
       <div class="modal-header">
         <div class="avatar ${saleAvClass(c.assigned_to)}" style="width:38px;height:38px;font-size:13px">${saleInitials(c)}</div>
-        <div style="flex:1"><h3>${c.customer_name}</h3><div style="font-size:11px;color:var(--text3)">${c.business_name||'—'} · <span style="font-family:monospace">${c.ma_kh}</span></div></div>
+        <div style="flex:1"><h3>${c.customer_name}</h3><div style="font-size:11px;color:var(--text3)">${c.business_name||'—'} · <span style="font-family:monospace">${c.ma_kh||'—'}</span></div></div>
         <button class="btn" style="padding:5px 8px" onclick="document.getElementById('detail-modal').remove();selId=null"><i class="ti ti-x"></i></button>
       </div>
       <div class="modal-body">
-        <div class="field-row">
-          <div class="field"><label>Trạng thái</label>
-            <select id="d-status">${STATUSES.map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
-          <div class="field"><label>Tiềm năng</label>
-            <select id="d-pot">${POTENTIALS.map(p=>`<option ${c.potential===p?'selected':''}>${p}</option>`).join('')}</select></div>
+        <div class="field-row3">
+          <div class="field"><label>Status</label>
+            <select id="d-status">${selOpts(STATUS_OPTS,c.status)}</select></div>
+          <div class="field"><label>Sub-status</label>
+            <select id="d-substatus">${selOpts(SUBSTATUS_OPTS,c.sub_status)}</select></div>
+          <div class="field"><label>Lead Status</label>
+            <select id="d-leadstatus">${selOpts(LEAD_OPTS,c.lead_status)}</select></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>SĐT di động</label><input value="${c.cellphone||''}" readonly></div>
-          <div class="field"><label>SĐT công ty</label><input value="${c.business_phone||''}" readonly></div>
+          <div class="field"><label>Potential (Sản phẩm)</label>
+            <select id="d-potential">${selOpts(POTENTIAL_OPTS,c.potential)}</select></div>
+          <div class="field"><label>Brand</label>
+            <select id="d-brand">${selOpts(BRAND_OPTS,c.brand)}</select></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>Email</label><input value="${c.email||''}" readonly></div>
-          <div class="field"><label>Thành phố</label><input value="${c.city||''}" readonly></div>
+          <div class="field"><label>Business Name</label><input id="d-biz" value="${c.business_name||''}"></div>
+          <div class="field"><label>Customer Name</label><input id="d-name" value="${c.customer_name||''}"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>Brand</label><input value="${c.brand||''}" readonly></div>
-          <div class="field"><label>Nguồn</label><input value="${c.source||''}" readonly></div>
+          <div class="field"><label>Business Phone</label><input value="${c.business_phone||''}" readonly></div>
+          <div class="field"><label>Cellphone</label><input value="${c.cellphone||''}" readonly></div>
         </div>
-        ${isManager ? `<div class="field"><label>Sale phụ trách</label>
-          <select id="d-sale">${PROFILES.filter(p=>p.role==='sale').map(p=>`<option value="${p.id}" ${c.assigned_to===p.id?'selected':''}>${p.full_name}</option>`).join('')}</select></div>` : ''}
+        <div class="field-row">
+          <div class="field"><label>State</label><select id="d-state">${selOpts(STATE_OPTS,c.state)}</select></div>
+          <div class="field"><label>Zipcode</label><input id="d-zip" value="${c.zipcode||''}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Times of Use</label>
+            <select id="d-times">${selOpts(TIMES_OPTS,c.times_of_use)}</select></div>
+          <div class="field"><label>Reason</label>
+            <select id="d-reason">${selOpts(REASON_OPTS,c.reason)}</select></div>
+        </div>
+        <div class="field"><label>Description</label>
+          <textarea id="d-desc">${c.description||''}</textarea></div>
+        ${isManager?`<div class="field"><label>Sale Assigned</label>
+          <select id="d-sale">${PROFILES.filter(p=>p.role==='sale').map(p=>`<option value="${p.id}" ${c.assigned_to===p.id?'selected':''}>${p.full_name}</option>`).join('')}</select></div>`:''}
         <div style="border-top:1px solid rgba(255,255,255,0.08);margin:14px 0 10px;padding-top:12px">
           <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px">Lịch sử liên hệ</div>
-          ${(logs||[]).length === 0 ? '<div style="font-size:12px;color:var(--text3);padding:8px 0">Chưa có ghi chú nào</div>' :
+          ${(logs||[]).length===0?'<div style="font-size:12px;color:var(--text3)">Chưa có ghi chú</div>':
             (logs||[]).map(l=>`<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:10px">
-              <div style="width:8px;height:8px;border-radius:50%;background:var(--brand);box-shadow:0 0 8px var(--brand);flex-shrink:0;margin-top:5px"></div>
-              <div><div style="font-size:12px;color:var(--text2)">${l.note}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">${new Date(l.called_at).toLocaleString('vi-VN')}</div></div>
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--brand);flex-shrink:0;margin-top:5px"></div>
+              <div><div style="font-size:12px;color:var(--text2)">${l.note}</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:2px">${l.sale?.full_name||'—'} · ${new Date(l.called_at).toLocaleString('vi-VN')}</div></div>
             </div>`).join('')}
         </div>
-        <div class="field"><label>Kết quả cuộc gọi</label>
-          <select id="d-result"><option value="">-- Chọn kết quả --</option>${['Bắt máy','Không bắt máy','Hẹn gọi lại','Từ chối','Quan tâm','Chốt'].map(r=>`<option>${r}</option>`).join('')}</select></div>
-        <div class="field"><label>Ghi chú</label>
-          <textarea id="d-note" placeholder="Nhập nội dung cuộc gọi..."></textarea></div>
+        <div class="field-row">
+          <div class="field"><label>Kết quả cuộc gọi</label>
+            <select id="d-result"><option value="">-- Chọn --</option>${['Bắt máy','Không bắt máy','Hẹn gọi lại','Đã gặp','Quan tâm','Chốt'].map(r=>`<option>${r}</option>`).join('')}</select></div>
+          <div class="field"><label>Ghi chú cuộc gọi</label>
+            <textarea id="d-note" placeholder="Nội dung cuộc gọi..." style="min-height:40px"></textarea></div>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn" onclick="document.getElementById('detail-modal').remove();selId=null">Đóng</button>
@@ -496,63 +550,74 @@ async function renderDetailModal(customerId) {
   document.body.appendChild(modal);
 }
 
-async function saveDetail(customerId) {
+async function saveDetail(customerId){
   showLoading(true);
-  const status = document.getElementById('d-status')?.value;
-  const potential = document.getElementById('d-pot')?.value;
-  const note = document.getElementById('d-note')?.value?.trim();
-  const result = document.getElementById('d-result')?.value;
-  const saleEl = document.getElementById('d-sale');
-  // Update customer
-  const update = { status, potential };
-  if (saleEl) update.assigned_to = saleEl.value;
-  await sb.from('customers').update(update).eq('id', customerId);
-  // Insert call log
-  if (note) {
-    await sb.from('call_logs').insert({ customer_id: customerId, sale_id: currentUser.id, note, call_result: result||null });
-  }
+  const note=document.getElementById('d-note')?.value?.trim();
+  const result=document.getElementById('d-result')?.value;
+  const saleEl=document.getElementById('d-sale');
+  const update={
+    status:document.getElementById('d-status')?.value||null,
+    sub_status:document.getElementById('d-substatus')?.value||null,
+    lead_status:document.getElementById('d-leadstatus')?.value||null,
+    potential:document.getElementById('d-potential')?.value||null,
+    brand:document.getElementById('d-brand')?.value||null,
+    business_name:document.getElementById('d-biz')?.value||null,
+    customer_name:document.getElementById('d-name')?.value||null,
+    state:document.getElementById('d-state')?.value||null,
+    zipcode:document.getElementById('d-zip')?.value||null,
+    times_of_use:document.getElementById('d-times')?.value||null,
+    reason:document.getElementById('d-reason')?.value||null,
+    description:document.getElementById('d-desc')?.value||null,
+  };
+  if(saleEl) update.assigned_to=saleEl.value;
+  await sb.from('customers').update(update).eq('id',customerId);
+  if(note) await sb.from('call_logs').insert({customer_id:customerId,sale_id:currentUser.id,note,call_result:result||null});
   await loadCustomers();
   document.getElementById('detail-modal')?.remove();
-  selId = null;
-  showLoading(false);
-  render();
+  selId=null;showLoading(false);render();
 }
 
 // ============================================================
 // MODAL — ADD CUSTOMER
 // ============================================================
-function renderAddModal() {
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay';
-  modal.id = 'add-modal';
-  modal.onclick = (e) => { if(e.target===modal){ modal.remove(); addOpen=false; } };
-  modal.innerHTML = `
+function renderAddModal(){
+  const modal=document.createElement('div');
+  modal.className='modal-overlay';modal.id='add-modal';
+  modal.onclick=(e)=>{if(e.target===modal){modal.remove();addOpen=false;}};
+  const salePH=PROFILES.filter(p=>p.role==='sale');
+  modal.innerHTML=`
     <div class="modal" onclick="event.stopPropagation()">
       <div class="modal-header"><h3>Thêm khách hàng mới</h3>
         <button class="btn" style="padding:5px 8px" onclick="document.getElementById('add-modal').remove();addOpen=false"><i class="ti ti-x"></i></button>
       </div>
       <div class="modal-body">
         <div class="field-row">
-          <div class="field"><label>Tên khách hàng *</label><input id="a-name" placeholder="Nguyễn Văn A"></div>
-          <div class="field"><label>Tên công ty</label><input id="a-biz"></div>
+          <div class="field"><label>Business Name</label><input id="a-biz" placeholder="Tên công ty/tiệm"></div>
+          <div class="field"><label>Customer Name *</label><input id="a-name" placeholder="Tên khách hàng"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>SĐT di động *</label><input id="a-cell" placeholder="0901234567"></div>
-          <div class="field"><label>SĐT công ty</label><input id="a-bphone"></div>
+          <div class="field"><label>Business Phone</label><input id="a-bphone" placeholder="SĐT công ty"></div>
+          <div class="field"><label>Cellphone</label><input id="a-cell" placeholder="SĐT di động"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>Email</label><input id="a-email" type="email"></div>
-          <div class="field"><label>Thành phố</label><select id="a-city">${CITIES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+          <div class="field"><label>State *</label><select id="a-state"><option value="">-- Chọn State --</option>${STATE_OPTS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+          <div class="field"><label>Zipcode</label><input id="a-zip" placeholder="12345"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>Brand</label><select id="a-brand">${BRANDS.map(b=>`<option>${b}</option>`).join('')}</select></div>
-          <div class="field"><label>Tiềm năng</label><select id="a-pot">${POTENTIALS.map(p=>`<option>${p}</option>`).join('')}</select></div>
+          <div class="field"><label>Potential (Sản phẩm)</label><select id="a-pot">${selOpts(POTENTIAL_OPTS)}</select></div>
+          <div class="field"><label>Status</label><select id="a-status">${selOpts(STATUS_OPTS,'New')}</select></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>Nguồn</label><select id="a-src">${SOURCES.map(s=>`<option>${s}</option>`).join('')}</select></div>
-          <div class="field"><label>Sale phụ trách</label><select id="a-sale">${PROFILES.filter(p=>p.role==='sale').map(p=>`<option value="${p.id}">${p.full_name}</option>`).join('')}</select></div>
+          <div class="field"><label>Sub-status</label><select id="a-substatus">${selOpts(SUBSTATUS_OPTS)}</select></div>
+          <div class="field"><label>Brand</label><select id="a-brand">${selOpts(BRAND_OPTS)}</select></div>
         </div>
-        <div class="field"><label>Ghi chú</label><textarea id="a-note" placeholder="Thông tin thêm..."></textarea></div>
+        <div class="field"><label>Description</label><textarea id="a-desc" placeholder="Ghi chú..."></textarea></div>
+        <div class="field"><label>Sale Assigned</label>
+          <select id="a-sale">
+            <option value="${currentUser.id}">${currentProfile?.full_name||'Tôi'} (mặc định)</option>
+            ${salePH.filter(p=>p.id!==currentUser.id).map(p=>`<option value="${p.id}">${p.full_name}</option>`).join('')}
+          </select>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn" onclick="document.getElementById('add-modal').remove();addOpen=false">Hủy</button>
@@ -562,56 +627,51 @@ function renderAddModal() {
   document.body.appendChild(modal);
 }
 
-async function doAdd() {
-  const name = document.getElementById('a-name')?.value.trim();
-  const cell  = document.getElementById('a-cell')?.value.trim();
-  if (!name || !cell) { alert('Vui lòng nhập tên và SĐT'); return; }
+async function doAdd(){
+  const name=document.getElementById('a-name')?.value.trim();
+  if(!name){alert('Vui lòng nhập Customer Name');return;}
   showLoading(true);
-  const ts = Date.now().toString().slice(-5);
-  const ma_kh = 'KH' + ts;
+  const ts=Date.now().toString().slice(-6);
+  const ma_kh='KH'+ts;
+  const campaign=new Date().toLocaleDateString('vi-VN',{month:'2-digit',year:'numeric'});
   await sb.from('customers').insert({
-    ma_kh, customer_name: name,
-    business_name: document.getElementById('a-biz')?.value || null,
-    cellphone: cell,
-    business_phone: document.getElementById('a-bphone')?.value || null,
-    email: document.getElementById('a-email')?.value || null,
-    city: document.getElementById('a-city')?.value,
-    brand: document.getElementById('a-brand')?.value,
-    potential: document.getElementById('a-pot')?.value,
-    source: document.getElementById('a-src')?.value,
-    assigned_to: document.getElementById('a-sale')?.value || currentUser.id,
-    created_by: currentUser.id,
-    status: 'Mới',
-    campaign_month: new Date().toLocaleDateString('vi-VN', {month:'2-digit',year:'numeric'}).replace('/','/')
+    ma_kh,
+    business_name:document.getElementById('a-biz')?.value||null,
+    customer_name:name,
+    business_phone:document.getElementById('a-bphone')?.value||null,
+    cellphone:document.getElementById('a-cell')?.value||null,
+    state:document.getElementById('a-state')?.value||null,
+    zipcode:document.getElementById('a-zip')?.value||null,
+    potential:document.getElementById('a-pot')?.value||null,
+    status:document.getElementById('a-status')?.value||'New',
+    sub_status:document.getElementById('a-substatus')?.value||null,
+    brand:document.getElementById('a-brand')?.value||null,
+    description:document.getElementById('a-desc')?.value||null,
+    assigned_to:document.getElementById('a-sale')?.value||currentUser.id,
+    created_by:currentUser.id,
+    campaign_month:campaign,
   });
   await loadCustomers();
   document.getElementById('add-modal')?.remove();
-  addOpen = false;
-  showLoading(false);
-  render();
+  addOpen=false;showLoading(false);render();
 }
 
 // ============================================================
 // MAIN RENDER
 // ============================================================
-function render() {
-  const m = document.getElementById('main-area');
-  if (page === 'customers') m.innerHTML = renderCustomers();
-  else if (page === 'pipeline') m.innerHTML = renderPipeline();
-  else if (page === 'kpi') m.innerHTML = renderKPI();
-  // Open modals
-  if (selId && !document.getElementById('detail-modal')) renderDetailModal(selId);
-  if (addOpen && !document.getElementById('add-modal')) renderAddModal();
+function render(){
+  const m=document.getElementById('main-area');
+  if(page==='customers')m.innerHTML=renderCustomers();
+  else if(page==='pipeline')m.innerHTML=renderPipeline();
+  else if(page==='kpi')m.innerHTML=renderKPI();
+  if(selId&&!document.getElementById('detail-modal'))renderDetailModal(selId);
+  if(addOpen&&!document.getElementById('add-modal'))renderAddModal();
 }
 
-// ============================================================
-// BOOT — Kiểm tra session cũ
-// ============================================================
-(async () => {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session?.user) {
-    await initApp(session.user);
-  }
+// BOOT
+(async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(session?.user) await initApp(session.user);
 })();
 </script>
 </body>
