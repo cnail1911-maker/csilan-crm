@@ -761,10 +761,13 @@ async function doRecall(){
   if(!confirm('Thu hồi tất cả khách hết deadline và chưa có Potential?')) return;
   showLoading(true);
   // Direct update thay vì RPC để tránh permission issue
-  const today = new Date().toISOString().split('T')[0];
+  // Fix timezone - dùng local date thay vì UTC
+  const now = new Date();
+  const today = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  console.log('Today:', today);
   const {data:expired, error:fetchErr} = await sb.from('customers')
     .select('id,potential,lead_status,assigned_deadline')
-    .lt('assigned_deadline', today)
+    .lte('assigned_deadline', today)
     .neq('lead_status','Closedeal');
   
   if(fetchErr){showLoading(false);alert('Lỗi: '+fetchErr.message);return;}
