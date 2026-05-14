@@ -767,7 +767,7 @@ function renderPotential(){
     let rows='';
     pageData.forEach(function(c){
       const phone=(c.cellphone?'<div>'+c.cellphone+'</div>':'')+(c.business_phone?'<div style="color:var(--text3)">'+c.business_phone+'</div>':'')+((!c.cellphone&&!c.business_phone)?'—':'');
-      rows+='<tr onclick="selId='+c.id+';setPage('customers')">'
+      rows+='<tr onclick="selId='+c.id+';setPage(\"customers\")">';
         +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(c.ma_kh||'—')+'</td>'
         +'<td>'+(c.business_name||'—')+'</td>'
         +'<td style="color:var(--text)">'+c.customer_name+'</td>'
