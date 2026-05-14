@@ -760,17 +760,21 @@ function renderPotential(){
 async function doRecall(){
   if(!confirm('Thu hồi tất cả khách hết deadline và chưa có Potential?')) return;
   showLoading(true);
-  // Direct update thay vì RPC để tránh permission issue
-  // Fix timezone - dùng local date thay vì UTC
-  const now = new Date();
-  const today = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
-  console.log('Today:', today);
-  const {data:expired, error:fetchErr} = await sb.from('customers')
-    .select('id,potential,lead_status,assigned_deadline')
-    .lte('assigned_deadline', today)
-    .neq('lead_status','Closedeal');
-  
-  if(fetchErr){showLoading(false);alert('Lỗi: '+fetchErr.message);return;}
+  const now=new Date();
+  const today=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const {data:expired,error}=await sb.from('customers').select('id,potential,lead_status,assigned_deadline').lte('assigned_deadline',today);
+  if(error){showLoading(false);alert('Lỗi: '+error.message);return;}
+  const toRecall=(expired||[]).filter(c=>!c.potential||c.potential==='');
+  if(toRecall.length===0){showLoading(false);alert('Không có khách nào hết hạn cần thu hồi!');return;}
+  const ids=toRecall.map(c=>c.id);
+  await sb.from('customers').update({assigned_to:null,is_recalled:true,assigned_deadline:null}).in('id',ids);
+  const toKeep=(expired||[]).filter(c=>c.potential&&c.potential!='');
+  if(toKeep.length>0) await sb.from('customers').update({assigned_deadline:null}).in('id',toKeep.map(c=>c.id));
+  await loadCustomers();
+  showLoading(false);
+  render();
+  alert('Thu hồi hoàn tất! Đã thu hồi '+toRecall.length+' khách.');
+}
   
   // Lọc khách chưa có potential
   const toRecall = (expired||[]).filter(c=>!c.potential||c.potential==='');
