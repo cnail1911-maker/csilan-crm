@@ -146,6 +146,10 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 .pipe-card-name{font-size:12px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
 .pipe-card-biz{font-size:10px;color:var(--text3);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pipe-card-ft{display:flex;justify-content:space-between;align-items:center;gap:4px;flex-wrap:wrap}
+
+.deadline-urgent{color:var(--danger);font-weight:600}
+.deadline-warn{color:var(--warn);font-weight:600}
+.deadline-ok{color:var(--accent2)}
 </style>
 </head>
 <body>
@@ -172,6 +176,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
       </div>
       <div class="nav-sec">Workspace</div>
       <div class="nav-item active" onclick="setPage('customers')" id="nav-customers"><i class="ti ti-users"></i> Khách hàng</div>
+      <div class="nav-item" onclick="setPage('potential')" id="nav-potential"><i class="ti ti-star"></i> Tiềm năng</div>
       <div class="nav-item" onclick="setPage('pipeline')" id="nav-pipeline"><i class="ti ti-layout-kanban"></i> Pipeline</div>
       <div class="nav-item" onclick="setPage('kpi')" id="nav-kpi"><i class="ti ti-chart-bar"></i> Báo cáo KPI</div>
       <div class="user-area">
@@ -193,7 +198,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 // ============================================================
 // DROPDOWN DATA từ template
 // ============================================================
-const POTENTIAL_OPTS = ['Pedicure Spa & Package','Massage Chair','Furniture','Padset','HeadSpa Bed','Part & Accessories'];
+const POTENTIAL_OPTS = ['Pedicure Spa & Package','Massage Chair','Furniture','Padset','Heaspa','Part & Accessories'];
 const STATUS_OPTS    = ['New','Follow Up','Completed'];
 const SUBSTATUS_OPTS = ['New Lead','No Answer','Contacting','Gatekeeper','Qualified','Appointment Set','Quotation Sent','Pending Decision','Follow Up'];
 const LEAD_OPTS      = ['Closedeal','Lost','Invalid Lead','No Response','Busy'];
@@ -209,8 +214,18 @@ const AV_CLASSES     = ['av-0','av-1','av-2','av-3','av-4','av-5'];
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-let currentUser=null, currentProfile=null, CUSTOMERS=[], PROFILES=[];
-let page='customers', fStatus='all', fSale='all', fPotential='all', fBrand='all', search='', selId=null, addOpen=false;
+let currentUser=null, currentProfile=null, CUSTOMERS=[], PROFILES=[], POTENTIAL_LIST=[];
+let page='customers', fStatus='all', fSale='all', fPotential='all', fBrand='all', fRecalled='all', search='', selId=null, addOpen=false;
+
+function daysLeft(dl){if(!dl)return null;return Math.ceil((new Date(dl)-new Date())/(864e5));}
+function dlBadge(dl){
+  if(!dl)return '<span style="font-size:10px;color:var(--text3)">No deadline</span>';
+  const d=daysLeft(dl);
+  if(d<0)return '<span class="badge b-lost">Hết hạn '+Math.abs(d)+'d</span>';
+  if(d<=3)return '<span class="badge" style="background:rgba(255,118,117,0.2);color:#ff7675;border:1px solid rgba(255,118,117,0.3)">Còn '+d+'d ⚠</span>';
+  if(d<=7)return '<span class="badge b-followup">Còn '+d+'d</span>';
+  return '<span class="badge b-new">Còn '+d+'d</span>';
+}
 
 // ============================================================
 // HELPERS
@@ -318,6 +333,7 @@ function renderCustomers(){
     <div class="topbar-title">Khách hàng</div>
     <div class="search-wrap"><i class="ti ti-search"></i><input placeholder="Tìm tên, SĐT, công ty..." oninput="search=this.value.toLowerCase();render()" value="${search}"></div>
     <button class="btn btn-primary" onclick="addOpen=true;render()"><i class="ti ti-plus"></i> Thêm khách</button>
+    ${isManager?`<button class="btn" onclick="doRecall()" style="border-color:rgba(255,118,117,0.4);color:var(--danger)"><i class="ti ti-rotate-clockwise"></i> Thu hồi hết hạn</button>`:''}
   </div>
   <div class="content">
     <div class="stats-row">
@@ -354,8 +370,8 @@ function renderCustomers(){
       </div>
       ${data.length===0?`<div class="empty-state"><i class="ti ti-inbox"></i>Không có khách hàng nào</div>`:`
       <table>
-        <colgroup><col width="85"><col width="130"><col width="120"><col width="100"><col width="80"><col width="75"><col width="80"><col width="75"><col width="65"></colgroup>
-        <thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Status</th><th>Lead Status</th><th>Sale</th></tr></thead>
+        <colgroup><col width="80"><col width="120"><col width="110"><col width="95"><col width="70"><col width="70"><col width="75"><col width="75"><col width="75"><col width="60"></colgroup>
+        <thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Status</th><th>Lead Status</th><th>Deadline</th><th>Sale</th></tr></thead>
         <tbody>
         ${data.slice(0,20).map(c=>`
           <tr onclick="selId=${c.id};render()">
@@ -367,6 +383,7 @@ function renderCustomers(){
             <td style="font-size:10px;color:var(--accent)">${c.potential||'—'}</td>
             <td>${sBadge(c.status)}</td>
             <td>${lBadge(c.lead_status)}</td>
+            <td>${dlBadge(c.assigned_deadline)}</td>
             <td style="font-size:11px;color:var(--text2)">${c.assigned_profile?.full_name?.split(' ').pop()||'—'}</td>
           </tr>`).join('')}
         </tbody>
@@ -526,6 +543,15 @@ async function renderDetailModal(customerId){
           <textarea id="d-desc">${c.description||''}</textarea></div>
         ${isManager?`<div class="field"><label>Sale Assigned</label>
           <select id="d-sale">${PROFILES.filter(p=>p.role==='sale').map(p=>`<option value="${p.id}" ${c.assigned_to===p.id?'selected':''}>${p.full_name}</option>`).join('')}</select></div>`:''}
+        <div class="field-row">
+          <div class="field"><label>Deadline thu hồi</label>
+            <input type="date" id="d-deadline" value="${c.assigned_deadline||''}" onchange="setDeadline(${c.id},this.value)">
+            <span style="font-size:10px;color:var(--text3)">${dlBadge(c.assigned_deadline)}</span>
+          </div>
+          <div class="field"><label>Trạng thái data</label>
+            <div style="padding:8px;font-size:12px;color:${c.potential?'var(--accent2)':'var(--text3)'}">${c.potential?'Giữ lại (có Potential)':'Thu hồi khi hết deadline'}</div>
+          </div>
+        </div>
         <div style="border-top:1px solid rgba(255,255,255,0.08);margin:14px 0 10px;padding-top:12px">
           <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px">Lịch sử liên hệ</div>
           ${(logs||[]).length===0?'<div style="font-size:12px;color:var(--text3)">Chưa có ghi chú</div>':
@@ -659,9 +685,71 @@ async function doAdd(){
 // ============================================================
 // MAIN RENDER
 // ============================================================
+// ============================================================
+// RENDER — POTENTIAL CUSTOMERS
+// ============================================================
+function renderPotential(){
+  const potData=CUSTOMERS.filter(c=>c.potential&&c.potential!='');
+  return `
+  <div class="topbar">
+    <div class="topbar-title">Khách tiềm năng</div>
+    <div style="font-size:12px;color:var(--text2)">Khách đã chọn Potential — không bị thu hồi theo deadline</div>
+  </div>
+  <div class="content">
+    <div class="stats-row">
+      <div class="stat-card sc0"><div class="stat-label">Tổng tiềm năng</div><div class="stat-val" style="color:var(--brand2)">${potData.length}</div></div>
+      ${POTENTIAL_OPTS.map((p,i)=>{
+        const cnt=potData.filter(c=>c.potential===p).length;
+        return cnt>0?`<div class="stat-card sc${i%4}"><div class="stat-label">${p}</div><div class="stat-val" style="color:var(--accent)">${cnt}</div></div>`:'';
+      }).join('')}
+    </div>
+    <div class="panel">
+      <div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">${potData.length}</span> khách tiềm năng</h2></div>
+      ${potData.length===0?'<div class="empty-state"><i class="ti ti-star"></i>Chưa có khách tiềm năng</div>':`
+      <table>
+        <colgroup><col width="85"><col width="130"><col width="120"><col width="100"><col width="80"><col width="120"><col width="80"><col width="80"><col width="65"></colgroup>
+        <thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Lead Status</th><th>Brand</th><th>Sale</th></tr></thead>
+        <tbody>
+        ${potData.slice(0,50).map(c=>`
+          <tr onclick="selId=${c.id};setPage('customers')">
+            <td style="font-size:10px;color:var(--text3);font-family:monospace">${c.ma_kh||'—'}</td>
+            <td title="${c.business_name||''}">${c.business_name||'—'}</td>
+            <td style="color:var(--text)">${c.customer_name}</td>
+            <td style="font-family:monospace;font-size:11px">${c.cellphone||c.business_phone||'—'}</td>
+            <td style="font-size:11px">${c.state||'—'}</td>
+            <td style="font-size:11px;color:var(--accent);font-weight:500">${c.potential}</td>
+            <td>${lBadge(c.lead_status)}</td>
+            <td style="font-size:11px;color:var(--text2)">${c.brand||'—'}</td>
+            <td style="font-size:11px;color:var(--text2)">${c.assigned_profile?.full_name?.split(' ').pop()||'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`}
+    </div>
+  </div>`;
+}
+
+// Thu hoi data het han
+async function doRecall(){
+  if(!confirm('Thu hồi tất cả khách hết deadline và chưa có Potential?')) return;
+  showLoading(true);
+  await sb.rpc('recall_expired_customers');
+  await loadCustomers();
+  showLoading(false);
+  render();
+  alert('Thu hồi hoàn tất!');
+}
+
+// Cap nhat deadline trong detail modal
+async function setDeadline(customerId, deadline){
+  await sb.from('customers').update({assigned_deadline: deadline||null}).eq('id', customerId);
+  await loadCustomers();
+  render();
+}
+
 function render(){
   const m=document.getElementById('main-area');
   if(page==='customers')m.innerHTML=renderCustomers();
+  else if(page==='potential')m.innerHTML=renderPotential();
   else if(page==='pipeline')m.innerHTML=renderPipeline();
   else if(page==='kpi')m.innerHTML=renderKPI();
   if(selId&&!document.getElementById('detail-modal'))renderDetailModal(selId);
