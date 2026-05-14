@@ -385,7 +385,11 @@ function renderCustomers(){
             <td style="font-size:10px;color:var(--text3);font-family:monospace">${c.ma_kh||'—'}</td>
             <td title="${c.business_name||''}">${c.business_name||'—'}</td>
             <td><div style="display:flex;align-items:center;gap:6px"><div class="avatar ${saleAvClass(c.assigned_to)}" style="width:22px;height:22px;font-size:9px">${saleInitials(c)}</div><span style="color:var(--text)">${c.customer_name}</span></div></td>
-            <td style="font-family:monospace;font-size:11px">${c.cellphone||c.business_phone||'—'}</td>
+            <td style="font-family:monospace;font-size:10px">
+              ${c.cellphone?`<div>${c.cellphone}</div>`:''}
+              ${c.business_phone?`<div style="color:var(--text3)">${c.business_phone}</div>`:''}
+              ${!c.cellphone&&!c.business_phone?'—':''}
+            </td>
             <td style="font-size:11px">${c.state||'—'}</td>
             <td style="font-size:10px;color:var(--accent)">${c.potential||'—'}</td>
             <td>${sBadge(c.status)}</td>
@@ -695,16 +699,27 @@ async function doAdd(){
   const bphone=document.getElementById('a-bphone')?.value.trim();
   let isDup=false;
   if(cell||bphone){
-    const {data:dupCheck}=await sb.from('customers').select('id').or(
-      [cell?`cellphone.eq.${cell}`:'',bphone?`business_phone.eq.${bphone}`:''].filter(Boolean).join(',')
-    );
+    // Check tất cả 4 tổ hợp: cell vs cell, cell vs bphone, bphone vs cell, bphone vs bphone
+    const orParts=[];
+    if(cell){
+      orParts.push(`cellphone.eq.${cell}`);
+      orParts.push(`business_phone.eq.${cell}`);
+    }
+    if(bphone){
+      orParts.push(`cellphone.eq.${bphone}`);
+      orParts.push(`business_phone.eq.${bphone}`);
+    }
+    const {data:dupCheck}=await sb.from('customers').select('id,customer_name,cellphone,business_phone').or(orParts.join(','));
     isDup=(dupCheck||[]).length>0;
+    if(isDup){
+      const dupNames=(dupCheck||[]).map(d=>d.customer_name).join(', ');
+      const go=confirm(`Số điện thoại này đã tồn tại!\nKhách trùng: ${dupNames}\n\nVẫn thêm và gửi chờ manager duyệt?`);
+      showLoading(false);
+      if(!go) return;
+      showLoading(true);
+    }
   }
   const needApproval=isDup;
-  if(isDup){
-    const go=confirm('Số điện thoại này đã tồn tại trong hệ thống!\nVẫn thêm và gửi chờ manager duyệt?');
-    if(!go){showLoading(false);return;}
-  }
   await sb.from('customers').insert({
     ...(ma_kh?{ma_kh}:{}),
     business_name:document.getElementById('a-biz')?.value||null,
@@ -736,7 +751,7 @@ async function doAdd(){
 // RENDER — POTENTIAL CUSTOMERS
 // ============================================================
 function renderPotential(){
-  const potData=CUSTOMERS.filter(c=>c.potential&&c.potential!='');
+  const potData=CUSTOMERS.filter(c=>c.potential&&c.potential.trim()!=='');
   return `
   <div class="topbar">
     <div class="topbar-title">Khách tiềm năng</div>
@@ -765,7 +780,11 @@ function renderPotential(){
             <td style="font-size:10px;color:var(--text3);font-family:monospace">${c.ma_kh||'—'}</td>
             <td title="${c.business_name||''}">${c.business_name||'—'}</td>
             <td style="color:var(--text)">${c.customer_name}</td>
-            <td style="font-family:monospace;font-size:11px">${c.cellphone||c.business_phone||'—'}</td>
+            <td style="font-family:monospace;font-size:10px">
+              ${c.cellphone?`<div>${c.cellphone}</div>`:''}
+              ${c.business_phone?`<div style="color:var(--text3)">${c.business_phone}</div>`:''}
+              ${!c.cellphone&&!c.business_phone?'—':''}
+            </td>
             <td style="font-size:11px">${c.state||'—'}</td>
             <td style="font-size:11px;color:var(--accent);font-weight:500">${c.potential}</td>
             <td>${lBadge(c.lead_status)}</td>
