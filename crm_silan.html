@@ -685,17 +685,11 @@ async function doAdd(){
   const name=document.getElementById('a-name')?.value.trim();
   if(!name){alert('Vui lòng nhập Customer Name');return;}
   showLoading(true);
-  // Lấy mã KH lớn nhất theo format KH0000000
-  const {data:allKH}=await sb.from('customers').select('ma_kh').like('ma_kh','KH_______').order('ma_kh',{ascending:false}).limit(1);
-  let nextNum=1;
-  if(allKH&&allKH.length>0){
-    const m=allKH[0].ma_kh.match(/KH(\d{7})/);
-    if(m) nextNum=parseInt(m[1])+1;
-  }
-  const ma_kh='KH'+String(nextNum).padStart(7,'0');
+  // ma_kh tự động từ Supabase trigger
+  const ma_kh=null;
   const campaign=new Date().toLocaleDateString('vi-VN',{month:'2-digit',year:'numeric'});
   await sb.from('customers').insert({
-    ma_kh,
+    ...(ma_kh?{ma_kh}:{}),
     business_name:document.getElementById('a-biz')?.value||null,
     customer_name:name,
     business_phone:document.getElementById('a-bphone')?.value||null,
