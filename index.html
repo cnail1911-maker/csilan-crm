@@ -775,7 +775,7 @@ function renderPotential(){
         ${(()=>{
           const potPage=Math.max(1,parseInt(sessionStorage.getItem('potPage')||'1'));
           const potStart=(potPage-1)*PAGE_SIZE;
-          return potData.slice(potStart,potStart+PAGE_SIZE).map(c=>`
+          const potRows=potData.slice(potStart,potStart+PAGE_SIZE).map(c=>`
           <tr onclick="selId=${c.id};setPage('customers')">
             <td style="font-size:10px;color:var(--text3);font-family:monospace">${c.ma_kh||'—'}</td>
             <td title="${c.business_name||''}">${c.business_name||'—'}</td>
@@ -790,11 +790,9 @@ function renderPotential(){
             <td>${lBadge(c.lead_status)}</td>
             <td style="font-size:11px;color:var(--text2)">${c.brand||'—'}</td>
             <td style="font-size:11px;color:var(--text2)">${c.assigned_profile?.full_name?.split(' ').pop()||'—'}</td>
-          </tr>`).join('')
+          </tr>`).join('');
+          return potRows + '</tbody></table>' + paginationUI(potData.length, potPage, PAGE_SIZE, 'setPotPage');
         })()}
-        </tbody></table>
-        ${paginationUI(potData.length, potPage, PAGE_SIZE, 'setPotPage')}
-      `}
     </div>
   </div>`;
 }
