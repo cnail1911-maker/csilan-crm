@@ -769,7 +769,6 @@ async function doRecall(){
   const {data:expired, error:fetchErr} = await sb.from('customers')
     .select('id,potential,lead_status,assigned_deadline')
     .lte('assigned_deadline', today)
-    .neq('lead_status','Closedeal');
   
   if(fetchErr){showLoading(false);alert('Lỗi: '+fetchErr.message);return;}
   
