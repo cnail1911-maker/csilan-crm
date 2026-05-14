@@ -215,7 +215,8 @@ const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 let currentUser=null, currentProfile=null, CUSTOMERS=[], PROFILES=[], POTENTIAL_LIST=[];
-let page='customers', fStatus='all', fSale='all', fPotential='all', fBrand='all', fRecalled='all', search='', selId=null, addOpen=false;
+let page='customers', fStatus='all', fSale='all', fPotential='all', fBrand='all', fRecalled='all', search='', selId=null, addOpen=false, currentPage=1;
+const PAGE_SIZE=50;
 
 function daysLeft(dl){if(!dl)return null;return Math.ceil((new Date(dl)-new Date())/(864e5));}
 function dlBadge(dl){
@@ -331,7 +332,7 @@ function renderCustomers(){
   return `
   <div class="topbar">
     <div class="topbar-title">Khách hàng</div>
-    <div class="search-wrap"><i class="ti ti-search"></i><input placeholder="Tìm tên, SĐT, công ty..." oninput="search=this.value.toLowerCase();render()" value="${search}"></div>
+    <div class="search-wrap"><i class="ti ti-search"></i><input placeholder="Tìm tên, SĐT, công ty..." oninput="search=this.value.toLowerCase();currentPage=1;render()" value="${search}"></div>
     <button class="btn btn-primary" onclick="addOpen=true;render()"><i class="ti ti-plus"></i> Thêm khách</button>
     ${isManager?`<button class="btn" onclick="doRecall()" style="border-color:rgba(255,118,117,0.4);color:var(--danger)"><i class="ti ti-rotate-clockwise"></i> Thu hồi hết hạn</button>`:''}
   </div>
@@ -350,15 +351,15 @@ function renderCustomers(){
       <div class="panel-header">
         <h2>Danh sách <span style="color:var(--brand2)">${data.length}</span> khách</h2>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <select class="fsel" onchange="fStatus=this.value;render()">
+          <select class="fsel" onchange="fStatus=this.value;currentPage=1;render()">
             <option value="all">Tất cả Status</option>
             ${STATUS_OPTS.map(s=>`<option value="${s}" ${fStatus===s?'selected':''}>${s}</option>`).join('')}
           </select>
-          <select class="fsel" onchange="fPotential=this.value;render()">
+          <select class="fsel" onchange="fPotential=this.value;currentPage=1;render()">
             <option value="all">Tất cả Potential</option>
             ${POTENTIAL_OPTS.map(p=>`<option value="${p}" ${fPotential===p?'selected':''}>${p}</option>`).join('')}
           </select>
-          <select class="fsel" onchange="fBrand=this.value;render()">
+          <select class="fsel" onchange="fBrand=this.value;currentPage=1;render()">
             <option value="all">Tất cả Brand</option>
             ${BRAND_OPTS.map(b=>`<option value="${b}" ${fBrand===b?'selected':''}>${b}</option>`).join('')}
           </select>
@@ -373,7 +374,11 @@ function renderCustomers(){
         <colgroup><col width="80"><col width="120"><col width="110"><col width="95"><col width="70"><col width="70"><col width="75"><col width="75"><col width="75"><col width="60"></colgroup>
         <thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Status</th><th>Lead Status</th><th>Deadline</th><th>Sale</th></tr></thead>
         <tbody>
-        ${data.slice(0,20).map(c=>`
+        ${(()=>{
+          const start=(currentPage-1)*PAGE_SIZE;
+          const pageData=data.slice(start,start+PAGE_SIZE);
+          const totalPages=Math.ceil(data.length/PAGE_SIZE);
+          return pageData.map(c=>`
           <tr onclick="selId=${c.id};render()">
             <td style="font-size:10px;color:var(--text3);font-family:monospace">${c.ma_kh||'—'}</td>
             <td title="${c.business_name||''}">${c.business_name||'—'}</td>
@@ -385,10 +390,33 @@ function renderCustomers(){
             <td>${lBadge(c.lead_status)}</td>
             <td>${dlBadge(c.assigned_deadline)}</td>
             <td style="font-size:11px;color:var(--text2)">${c.assigned_profile?.full_name?.split(' ').pop()||'—'}</td>
-          </tr>`).join('')}
+          </tr>`).join('');
+        })()}
         </tbody>
       </table>
-      ${data.length>20?`<div style="padding:8px 14px;font-size:11px;color:var(--text3);border-top:1px solid rgba(255,255,255,0.05)">Hiển thị 20/${data.length} — dùng filter để thu hẹp</div>`:''}`}
+      ${(()=>{
+        const totalPages=Math.ceil(data.length/PAGE_SIZE);
+        if(totalPages<=1)return '';
+        const start=(currentPage-1)*PAGE_SIZE+1;
+        const end=Math.min(currentPage*PAGE_SIZE,data.length);
+        return `<div style="padding:10px 14px;border-top:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:8px;justify-content:space-between">
+          <span style="font-size:11px;color:var(--text3)">Hiển thị ${start}-${end} / ${data.length} khách</span>
+          <div style="display:flex;gap:4px;align-items:center">
+            <button class="btn" style="padding:4px 10px;font-size:11px" onclick="currentPage=Math.max(1,currentPage-1);render()" ${currentPage===1?'disabled':''}>‹ Trước</button>
+            ${Array.from({length:Math.min(totalPages,7)},(_,i)=>{
+              let p=i+1;
+              if(totalPages>7){
+                if(currentPage<=4) p=i+1;
+                else if(currentPage>=totalPages-3) p=totalPages-6+i;
+                else p=currentPage-3+i;
+              }
+              return `<button class="btn" style="padding:4px 10px;font-size:11px;${p===currentPage?'background:var(--brand);border-color:var(--brand);color:#fff':''}" onclick="currentPage=${p};render()">${p}</button>`;
+            }).join('')}
+            <button class="btn" style="padding:4px 10px;font-size:11px" onclick="currentPage=Math.min(totalPages,currentPage+1);render()" ${currentPage===totalPages?'disabled':''}>Sau ›</button>
+          </div>
+        </div>`;
+      })()}
+      `}
     </div>
   </div>`;
 }
@@ -657,8 +685,14 @@ async function doAdd(){
   const name=document.getElementById('a-name')?.value.trim();
   if(!name){alert('Vui lòng nhập Customer Name');return;}
   showLoading(true);
-  const ts=Date.now().toString().slice(-6);
-  const ma_kh='KH'+ts;
+  // Lấy số lớn nhất hiện có + 1
+  const {data:lastKH}=await sb.from('customers').select('ma_kh').like('ma_kh','KH%').order('ma_kh',{ascending:false}).limit(1);
+  let nextNum=641609;
+  if(lastKH&&lastKH.length>0){
+    const m=lastKH[0].ma_kh.match(/KH(\d+)/);
+    if(m) nextNum=parseInt(m[1])+1;
+  }
+  const ma_kh='KH'+String(nextNum).padStart(7,'0');
   const campaign=new Date().toLocaleDateString('vi-VN',{month:'2-digit',year:'numeric'});
   await sb.from('customers').insert({
     ma_kh,
