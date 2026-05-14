@@ -307,7 +307,7 @@ async function initApp(user){
 
 async function loadCustomers(){
   const {data,error}=await sb.from('customers')
-    .select('*, assigned_profile:profiles!assigned_to(id,full_name,role)')
+    .select('*, assigned_profile:profiles!assigned_to(id,full_name,role)').order('created_at',{ascending:false})
     .order('created_at',{ascending:false});
   if(!error) CUSTOMERS=data||[];
 }
@@ -373,8 +373,8 @@ function renderCustomers(){
       </div>
       ${data.length===0?`<div class="empty-state"><i class="ti ti-inbox"></i>Không có khách hàng nào</div>`:`
       <table>
-        <colgroup><col width="80"><col width="120"><col width="110"><col width="95"><col width="70"><col width="70"><col width="75"><col width="75"><col width="75"><col width="60"></colgroup>
-        <thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Status</th><th>Lead Status</th><th>Deadline</th><th>Sale</th></tr></thead>
+        <colgroup><col width="78"><col width="115"><col width="105"><col width="92"><col width="65"><col width="68"><col width="72"><col width="72"><col width="72"><col width="72"><col width="58"></colgroup>
+        <thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Status</th><th>Lead Status</th><th>Deadline</th><th>Ngày thêm</th><th>Sale</th></tr></thead>
         <tbody>
         ${(()=>{
           const start=(currentPage-1)*PAGE_SIZE;
@@ -391,6 +391,7 @@ function renderCustomers(){
             <td>${sBadge(c.status)}</td>
             <td>${lBadge(c.lead_status)}</td>
             <td>${dlBadge(c.assigned_deadline)}</td>
+            <td style="font-size:10px;color:var(--text3)">${c.created_at?new Date(c.created_at).toLocaleDateString('vi-VN'):'—'}</td>
             <td style="font-size:11px;color:var(--text2)">${c.assigned_profile?.full_name?.split(' ').pop()||'—'}</td>
           </tr>`).join('');
         })()}
@@ -758,10 +759,8 @@ function renderPotential(){
         <tbody>
         ${(()=>{
           const potPage=Math.max(1,parseInt(sessionStorage.getItem('potPage')||'1'));
-          const potTotal=Math.ceil(potData.length/PAGE_SIZE);
           const potStart=(potPage-1)*PAGE_SIZE;
-          const potEnd=potStart+PAGE_SIZE;
-          return potData.slice(potStart,potEnd).map(c=>`
+          return potData.slice(potStart,potStart+PAGE_SIZE).map(c=>`
           <tr onclick="selId=${c.id};setPage('customers')">
             <td style="font-size:10px;color:var(--text3);font-family:monospace">${c.ma_kh||'—'}</td>
             <td title="${c.business_name||''}">${c.business_name||'—'}</td>
@@ -772,17 +771,10 @@ function renderPotential(){
             <td>${lBadge(c.lead_status)}</td>
             <td style="font-size:11px;color:var(--text2)">${c.brand||'—'}</td>
             <td style="font-size:11px;color:var(--text2)">${c.assigned_profile?.full_name?.split(' ').pop()||'—'}</td>
-          </tr>`).join('')+
-          (potTotal>1?`</tbody></table>
-          <div style="padding:10px 14px;border-top:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:8px;justify-content:space-between">
-            <span style="font-size:11px;color:var(--text3)">Hiển thị ${potStart+1}-${Math.min(potEnd,potData.length)} / ${potData.length}</span>
-            <div style="display:flex;gap:4px">
-              <button class="btn" style="padding:4px 10px;font-size:11px" onclick="sessionStorage.setItem('potPage',${Math.max(1,potPage-1)});render()" ${potPage===1?'disabled':''}>‹ Trước</button>
-              ${Array.from({length:Math.min(potTotal,5)},(_,i)=>`<button class="btn" style="padding:4px 10px;font-size:11px;${i+1===potPage?'background:var(--brand);border-color:var(--brand);color:#fff':''}" onclick="sessionStorage.setItem('potPage',${i+1});render()">${i+1}</button>`).join('')}
-              <button class="btn" style="padding:4px 10px;font-size:11px" onclick="sessionStorage.setItem('potPage',${Math.min(potTotal,potPage+1)});render()" ${potPage===potTotal?'disabled':''}>Sau ›</button>
-            </div>
-          </div>`:'</tbody></table>')
+          </tr>`).join('')
         })()}
+        </tbody></table>
+        ${paginationUI(potData.length, potPage, PAGE_SIZE, 'setPotPage')}
       `}
     </div>
   </div>`;
@@ -839,13 +831,41 @@ async function setDeadline(customerId, deadline){
   render();
 }
 
+
+function paginationUI(total, page, pageSize, onClickFn){
+  if(total<=pageSize) return '';
+  const totalPages=Math.ceil(total/pageSize);
+  const start=(page-1)*pageSize+1;
+  const end=Math.min(page*pageSize,total);
+  let pages=[];
+  for(let i=1;i<=Math.min(totalPages,7);i++){
+    let p=i;
+    if(totalPages>7){
+      if(page<=4) p=i;
+      else if(page>=totalPages-3) p=totalPages-6+i;
+      else p=page-3+i;
+    }
+    pages.push(p);
+  }
+  return `<div style="padding:10px 14px;border-top:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:8px;justify-content:space-between">
+    <span style="font-size:11px;color:var(--text3)">Hiển thị ${start}-${end} / ${total}</span>
+    <div style="display:flex;gap:4px;align-items:center">
+      <button class="btn" style="padding:4px 10px;font-size:11px" onclick="${onClickFn}(${Math.max(1,page-1)})" ${page===1?'disabled':''}>‹</button>
+      ${pages.map(p=>`<button class="btn" style="padding:4px 10px;font-size:11px;${p===page?'background:var(--brand);border-color:var(--brand);color:#fff':''}" onclick="${onClickFn}(${p})">${p}</button>`).join('')}
+      <button class="btn" style="padding:4px 10px;font-size:11px" onclick="${onClickFn}(${Math.min(totalPages,page+1)})" ${page===totalPages?'disabled':''}>›</button>
+    </div>
+  </div>`;
+}
+function setPotPage(p){sessionStorage.setItem('potPage',p);render();}
+function setCdPage(p){sessionStorage.setItem('cdPage',p);render();}
+function setPdPage(p){sessionStorage.setItem('pdPage',p);render();}
+
 // ============================================================
 // RENDER — CLOSEDEAL
 // ============================================================
 function renderClosedeal(){
   const data=CUSTOMERS.filter(c=>c.lead_status==='Closedeal');
   const cdPage=Math.max(1,parseInt(sessionStorage.getItem('cdPage')||'1'));
-  const cdTotal=Math.ceil(data.length/PAGE_SIZE);
   const cdStart=(cdPage-1)*PAGE_SIZE;
   return `
   <div class="topbar"><div class="topbar-title">Closedeal</div>
@@ -874,17 +894,10 @@ function renderClosedeal(){
             <td style="font-size:11px">${c.brand||'—'}</td>
             <td>${dlBadge(c.assigned_deadline)}</td>
             <td style="font-size:11px">${c.assigned_profile?.full_name?.split(' ').pop()||'—'}</td>
-          </tr>`).join('')}
+          </tr>`).join('')})()}
         </tbody>
       </table>
-      ${cdTotal>1?`<div style="padding:10px 14px;border-top:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:8px;justify-content:space-between">
-        <span style="font-size:11px;color:var(--text3)">Hiển thị ${cdStart+1}-${Math.min(cdStart+PAGE_SIZE,data.length)} / ${data.length}</span>
-        <div style="display:flex;gap:4px">
-          <button class="btn" style="padding:4px 10px;font-size:11px" onclick="sessionStorage.setItem('cdPage',${Math.max(1,cdPage-1)});render()" ${cdPage===1?'disabled':''}>‹</button>
-          ${Array.from({length:Math.min(cdTotal,5)},(_,i)=>`<button class="btn" style="padding:4px 10px;font-size:11px;${i+1===cdPage?'background:var(--brand);border-color:var(--brand);color:#fff':''}" onclick="sessionStorage.setItem('cdPage',${i+1});render()">${i+1}</button>`).join('')}
-          <button class="btn" style="padding:4px 10px;font-size:11px" onclick="sessionStorage.setItem('cdPage',${Math.min(cdTotal,cdPage+1)});render()" ${cdPage===cdTotal?'disabled':''}>›</button>
-        </div>
-      </div>`:''}
+      ${paginationUI(data.length, cdPage, PAGE_SIZE, 'setCdPage')}
       `}
   </div>`;
 }
@@ -895,6 +908,7 @@ function renderClosedeal(){
 function renderPending(){
   const isManager=currentProfile?.role==='manager'||currentProfile?.role==='admin';
   const data=isManager?CUSTOMERS.filter(c=>c.approval_status==='pending'):CUSTOMERS.filter(c=>c.approval_status==='pending'&&c.assigned_to===currentUser.id);
+  const rejected=isManager?CUSTOMERS.filter(c=>c.approval_status==='rejected'):CUSTOMERS.filter(c=>c.approval_status==='rejected'&&c.assigned_to===currentUser.id);
   return `
   <div class="topbar"><div class="topbar-title">Chờ duyệt</div>
     <div style="font-size:12px;color:var(--warn)">${data.length} khách chờ manager duyệt</div>
@@ -909,7 +923,7 @@ function renderPending(){
         <colgroup><col width="85"><col width="130"><col width="120"><col width="100"><col width="80"><col width="80"><col width="100"><col width="120"></colgroup>
         <thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Duplicate</th><th>Sale thêm</th>${isManager?'<th>Thao tác</th>':''}</tr></thead>
         <tbody>
-        ${data.map(c=>`
+        ${(()=>{const pdPage=Math.max(1,parseInt(sessionStorage.getItem('pdPage')||'1'));const pdStart=(pdPage-1)*PAGE_SIZE;return data.slice(pdStart,pdStart+PAGE_SIZE).map(c=>`
           <tr>
             <td style="font-size:10px;color:var(--text3);font-family:monospace">${c.ma_kh||'—'}</td>
             <td>${c.business_name||'—'}</td>
@@ -922,10 +936,31 @@ function renderPending(){
               <button class="btn btn-primary" style="padding:3px 8px;font-size:11px" onclick="approveCustomer(${c.id},'approved')">✓ Duyệt</button>
               <button class="btn" style="padding:3px 8px;font-size:11px;border-color:var(--danger);color:var(--danger)" onclick="approveCustomer(${c.id},'rejected')">✗ Từ chối</button>
             </td>`:''}
-          </tr>`).join('')}
+          </tr>`).join('')})()}
         </tbody>
-      </table>`}
+      </table>
+      ${paginationUI(data.length, Math.max(1,parseInt(sessionStorage.getItem('pdPage')||'1')), PAGE_SIZE, 'setPdPage')}
+      `}
     </div>
+    ${rejected.length>0?`<div class="panel" style="margin-top:16px">
+      <div class="panel-header"><h2>Đã từ chối <span style="color:var(--danger)">${rejected.length}</span></h2>
+        <span style="font-size:11px;color:var(--text3)">Khách bị từ chối vẫn nằm trong data, sale có thể xem lại</span>
+      </div>
+      <table>
+        <thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>Sale thêm</th><th>Thao tác</th></tr></thead>
+        <tbody>
+        ${rejected.map(c=>`<tr>
+          <td style="font-size:10px;color:var(--text3);font-family:monospace">${c.ma_kh||'—'}</td>
+          <td>${c.business_name||'—'}</td>
+          <td style="color:var(--danger)">${c.customer_name}</td>
+          <td style="font-family:monospace;font-size:11px">${c.cellphone||c.business_phone||'—'}</td>
+          <td style="font-size:11px">${c.assigned_profile?.full_name?.split(' ').pop()||'—'}</td>
+          <td>${isManager?`<button class="btn btn-primary" style="padding:3px 8px;font-size:11px" onclick="approveCustomer(${c.id},'approved')">✓ Duyệt lại</button>`:'<span style="font-size:11px;color:var(--danger)">Đã từ chối</span>'}
+          </td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`:''}
   </div>`;
 }
 
