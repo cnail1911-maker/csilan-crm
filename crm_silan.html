@@ -685,11 +685,11 @@ async function doAdd(){
   const name=document.getElementById('a-name')?.value.trim();
   if(!name){alert('Vui lòng nhập Customer Name');return;}
   showLoading(true);
-  // Lấy số lớn nhất hiện có + 1
-  const {data:lastKH}=await sb.from('customers').select('ma_kh').like('ma_kh','KH%').order('ma_kh',{ascending:false}).limit(1);
-  let nextNum=641609;
-  if(lastKH&&lastKH.length>0){
-    const m=lastKH[0].ma_kh.match(/KH(\d+)/);
+  // Lấy mã KH lớn nhất theo format KH0000000
+  const {data:allKH}=await sb.from('customers').select('ma_kh').like('ma_kh','KH_______').order('ma_kh',{ascending:false}).limit(1);
+  let nextNum=1;
+  if(allKH&&allKH.length>0){
+    const m=allKH[0].ma_kh.match(/KH(\d{7})/);
     if(m) nextNum=parseInt(m[1])+1;
   }
   const ma_kh='KH'+String(nextNum).padStart(7,'0');
@@ -766,11 +766,42 @@ function renderPotential(){
 async function doRecall(){
   if(!confirm('Thu hồi tất cả khách hết deadline và chưa có Potential?')) return;
   showLoading(true);
-  await sb.rpc('recall_expired_customers');
+  // Direct update thay vì RPC để tránh permission issue
+  const today = new Date().toISOString().split('T')[0];
+  const {data:expired, error:fetchErr} = await sb.from('customers')
+    .select('id,potential,lead_status,assigned_deadline')
+    .lt('assigned_deadline', today)
+    .neq('lead_status','Closedeal');
+  
+  if(fetchErr){showLoading(false);alert('Lỗi: '+fetchErr.message);return;}
+  
+  // Lọc khách chưa có potential
+  const toRecall = (expired||[]).filter(c=>!c.potential||c.potential==='');
+  
+  if(toRecall.length===0){
+    showLoading(false);
+    alert('Không có khách nào hết hạn cần thu hồi!');
+    return;
+  }
+  
+  // Thu hồi từng batch
+  const ids = toRecall.map(c=>c.id);
+  await sb.from('customers').update({
+    assigned_to: null,
+    is_recalled: true,
+    assigned_deadline: null
+  }).in('id', ids);
+  
+  // Xóa deadline cho khách có potential
+  const toKeep = (expired||[]).filter(c=>c.potential&&c.potential!='');
+  if(toKeep.length>0){
+    await sb.from('customers').update({assigned_deadline:null}).in('id',toKeep.map(c=>c.id));
+  }
+  
   await loadCustomers();
   showLoading(false);
   render();
-  alert('Thu hồi hoàn tất!');
+  alert('Thu hồi hoàn tất! Đã thu hồi '+toRecall.length+' khách.');
 }
 
 // Cap nhat deadline trong detail modal
