@@ -752,49 +752,46 @@ async function doAdd(){
 // ============================================================
 function renderPotential(){
   const potData=CUSTOMERS.filter(c=>c.potential&&c.potential.trim()!=='');
-  return `
-  <div class="topbar">
-    <div class="topbar-title">Khách tiềm năng</div>
-    <div style="font-size:12px;color:var(--text2)">Khách đã chọn Potential — không bị thu hồi theo deadline</div>
-  </div>
-  <div class="content">
-    <div class="stats-row">
-      <div class="stat-card sc0"><div class="stat-label">Tổng tiềm năng</div><div class="stat-val" style="color:var(--brand2)">${potData.length}</div></div>
-      ${POTENTIAL_OPTS.map((p,i)=>{
-        const cnt=potData.filter(c=>c.potential===p).length;
-        return cnt>0?`<div class="stat-card sc${i%4}"><div class="stat-label">${p}</div><div class="stat-val" style="color:var(--accent)">${cnt}</div></div>`:'';
-      }).join('')}
-    </div>
-    <div class="panel">
-      <div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">${potData.length}</span> khách tiềm năng</h2></div>
-      ${potData.length===0?'<div class="empty-state"><i class="ti ti-star"></i>Chưa có khách tiềm năng</div>':`
-      <table>
-        <colgroup><col width="85"><col width="130"><col width="120"><col width="100"><col width="80"><col width="120"><col width="80"><col width="80"><col width="65"></colgroup>
-        <thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Lead Status</th><th>Brand</th><th>Sale</th></tr></thead>
-        <tbody>
-        ${(()=>{
-          const potPage=Math.max(1,parseInt(sessionStorage.getItem('potPage')||'1'));
-          const potStart=(potPage-1)*PAGE_SIZE;
-          const potRows=potData.slice(potStart,potStart+PAGE_SIZE).map(c=>`
-          <tr onclick="selId=${c.id};setPage('customers')">
-            <td style="font-size:10px;color:var(--text3);font-family:monospace">${c.ma_kh||'—'}</td>
-            <td title="${c.business_name||''}">${c.business_name||'—'}</td>
-            <td style="color:var(--text)">${c.customer_name}</td>
-            <td style="font-family:monospace;font-size:10px">
-              ${c.cellphone?`<div>${c.cellphone}</div>`:''}
-              ${c.business_phone?`<div style="color:var(--text3)">${c.business_phone}</div>`:''}
-              ${!c.cellphone&&!c.business_phone?'—':''}
-            </td>
-            <td style="font-size:11px">${c.state||'—'}</td>
-            <td style="font-size:11px;color:var(--accent);font-weight:500">${c.potential}</td>
-            <td>${lBadge(c.lead_status)}</td>
-            <td style="font-size:11px;color:var(--text2)">${c.brand||'—'}</td>
-            <td style="font-size:11px;color:var(--text2)">${c.assigned_profile?.full_name?.split(' ').pop()||'—'}</td>
-          </tr>`).join('');
-          return potRows + '</tbody></table>' + paginationUI(potData.length, potPage, PAGE_SIZE, 'setPotPage');
-        })()}
-    </div>
-  </div>`;
+  const potPage=Math.max(1,parseInt(sessionStorage.getItem('potPage')||'1'));
+  const potStart=(potPage-1)*PAGE_SIZE;
+  const pageData=potData.slice(potStart,potStart+PAGE_SIZE);
+  
+  let statsHtml='<div class="stat-card sc0"><div class="stat-label">Tổng tiềm năng</div><div class="stat-val" style="color:var(--brand2)">'+potData.length+'</div></div>';
+  POTENTIAL_OPTS.forEach(function(p,i){
+    const cnt=potData.filter(function(c){return c.potential===p;}).length;
+    if(cnt>0) statsHtml+='<div class="stat-card sc'+(i%4)+'"><div class="stat-label">'+p+'</div><div class="stat-val" style="color:var(--accent)">'+cnt+'</div></div>';
+  });
+
+  let tableHtml='<div class="empty-state"><i class="ti ti-star"></i>Chưa có khách tiềm năng</div>';
+  if(potData.length>0){
+    let rows='';
+    pageData.forEach(function(c){
+      const phone=(c.cellphone?'<div>'+c.cellphone+'</div>':'')+(c.business_phone?'<div style="color:var(--text3)">'+c.business_phone+'</div>':'')+((!c.cellphone&&!c.business_phone)?'—':'');
+      rows+='<tr onclick="selId='+c.id+';setPage('customers')">'
+        +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(c.ma_kh||'—')+'</td>'
+        +'<td>'+(c.business_name||'—')+'</td>'
+        +'<td style="color:var(--text)">'+c.customer_name+'</td>'
+        +'<td style="font-family:monospace;font-size:10px">'+phone+'</td>'
+        +'<td style="font-size:11px">'+(c.state||'—')+'</td>'
+        +'<td style="font-size:11px;color:var(--accent);font-weight:500">'+c.potential+'</td>'
+        +'<td>'+lBadge(c.lead_status)+'</td>'
+        +'<td style="font-size:11px;color:var(--text2)">'+(c.brand||'—')+'</td>'
+        +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
+        +'</tr>';
+    });
+    tableHtml='<table>'
+      +'<colgroup><col width="85"><col width="130"><col width="120"><col width="100"><col width="80"><col width="120"><col width="80"><col width="80"><col width="65"></colgroup>'
+      +'<thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Lead Status</th><th>Brand</th><th>Sale</th></tr></thead>'
+      +'<tbody>'+rows+'</tbody></table>'
+      +paginationUI(potData.length,potPage,PAGE_SIZE,'setPotPage');
+  }
+
+  return '<div class="topbar"><div class="topbar-title">Khách tiềm năng</div>'
+    +'<div style="font-size:12px;color:var(--text2)">Khách đã chọn Potential — không bị thu hồi theo deadline</div></div>'
+    +'<div class="content">'
+    +'<div class="stats-row">'+statsHtml+'</div>'
+    +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+potData.length+'</span> khách tiềm năng</h2></div>'
+    +tableHtml+'</div></div>';
 }
 
 // Thu hoi data het han
