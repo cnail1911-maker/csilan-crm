@@ -197,9 +197,7 @@ table.inv-table tr:last-child td{border-bottom:none}
       <!-- COMPANY -->
       <div class="section">
         <div class="section-label">Công ty</div>
-        <div class="company-cards" id="company-cards">
-          <!-- Company cards rendered by JS -->
-        </div>
+        <div id="company-cards" style="display:flex;gap:6px;margin-bottom:8px"></div>
       </div>
 
       <!-- ORDER INFO -->
@@ -252,12 +250,8 @@ table.inv-table tr:last-child td{border-bottom:none}
       <div class="section">
         <div class="section-label">Thanh toán</div>
         <div class="field-row">
-          <div class="field"><label>Tax (%)</label>
-            <select id="inv-tax" onchange="calcTotals()">
-              <option value="0">Không</option>
-              <option value="tax">Tax</option>
-              <option value="fee">Charge Fee</option>
-            </select>
+          <div class="field"><label>Tax ($) — tự nhập</label>
+            <input type="number" id="inv-tax" value="0" min="0" placeholder="0" oninput="calcTotals()">
           </div>
           <div class="field"><label>Deposit ($)</label><input type="number" id="inv-deposit" value="0" min="0" oninput="calcTotals()"></div>
         </div>
@@ -339,7 +333,8 @@ async function initApp(user){
   currentProfile=profile;
   const {data:companies}=await sb.from('companies').select('*').eq('is_active',true);
   COMPANIES=companies||[];
-  const {data:products}=await sb.from('products').select('*').eq('in_stock',true).order('name');
+  const {data:products,error:prodErr}=await sb.from('products').select('*').order('name').limit(500);
+  if(prodErr)console.error('Products error:',prodErr);
   PRODUCTS=products||[];
 
   document.getElementById('user-info').textContent=(profile&&profile.full_name)||user.email;
@@ -448,12 +443,13 @@ function clearCustomer(){
 // PRODUCT SEARCH
 function searchProduct(q){
   const res=document.getElementById('prod-results');
-  if(!q||q.length<2){res.style.display='none';return;}
+  if(!q||q.length<1){res.style.display='none';return;}
   const filtered=PRODUCTS.filter(function(p){
     return (p.name||'').toLowerCase().includes(q.toLowerCase())
       ||(p.sku||'').toLowerCase().includes(q.toLowerCase())
-      ||(p.brand||'').toLowerCase().includes(q.toLowerCase());
-  }).slice(0,8);
+      ||(p.brand||'').toLowerCase().includes(q.toLowerCase())
+      ||(p.variant||'').toLowerCase().includes(q.toLowerCase());
+  }).slice(0,10);
   if(filtered.length===0){res.style.display='none';return;}
   res.innerHTML='';
   filtered.forEach(function(p){
@@ -530,10 +526,7 @@ function renderItems(){
 // CALC
 function calcTotals(){
   const subtotal=items.reduce(function(s,i){return s+i.amount;},0);
-  const taxOpt=document.getElementById('inv-tax').value;
-  // Tax: 'tax' = 10%, 'fee' = charge fee (no tax), '0' = none
-  const taxPct=taxOpt==='tax'?10:0;
-  const tax=subtotal*taxPct/100;
+  const tax=parseFloat(document.getElementById('inv-tax').value)||0;
   const extraDisc=parseFloat(document.getElementById('inv-extra-disc').value)||0;
   const deposit=parseFloat(document.getElementById('inv-deposit').value)||0;
   const total=subtotal+tax-extraDisc;
@@ -590,9 +583,7 @@ function renderPreview(){
   const location=document.getElementById('inv-location')&&document.getElementById('inv-location').value||'-';
   const delivery=document.getElementById('inv-delivery')&&document.getElementById('inv-delivery').value||'';
   const subtotal=items.reduce(function(s,i){return s+i.amount;},0);
-  const taxOpt=document.getElementById('inv-tax')&&document.getElementById('inv-tax').value||'0';
-  const taxPct=taxOpt==='tax'?10:0;
-  const tax=subtotal*taxPct/100;
+  const tax=parseFloat(document.getElementById('inv-tax')&&document.getElementById('inv-tax').value)||0;
   const extraDisc=parseFloat(document.getElementById('inv-extra-disc')&&document.getElementById('inv-extra-disc').value)||0;
   const deposit=parseFloat(document.getElementById('inv-deposit')&&document.getElementById('inv-deposit').value)||0;
   const total=subtotal+tax-extraDisc;
@@ -662,7 +653,7 @@ function renderPreview(){
     +'</div>'
     +'<div class="inv-totals"><div class="inv-totals-box">'
     +'<div class="inv-total-row"><span class="inv-total-label">Subtotal</span><span class="inv-total-val">'+fmt(subtotal)+'</span></div>'
-    +(taxPct>0?'<div class="inv-total-row"><span class="inv-total-label">Tax ('+taxPct+'%)</span><span class="inv-total-val">'+fmt(tax)+'</span></div>':'')
+    +(tax>0?'<div class="inv-total-row"><span class="inv-total-label">Tax</span><span class="inv-total-val">'+fmt(tax)+'</span></div>':'')
     +(extraDisc>0?'<div class="inv-total-row" style="color:var(--red)"><span class="inv-total-label">Extra Discount</span><span class="inv-total-val">-'+fmt(extraDisc)+'</span></div>':'')
     +'<div class="inv-grand-total">'+fmt(total)+'</div>'
     +'<div class="inv-total-row"><span class="inv-total-label">Deposit</span><span class="inv-total-val">'+fmt(deposit)+'</span></div>'
@@ -706,7 +697,6 @@ async function saveAndDownload(action){
     location:document.getElementById('inv-location').value,
     requested_delivery:document.getElementById('inv-delivery').value,
     tax_pct:taxPct,
-    tax_type:taxOpt2,
     deposit:deposit,
     extra_discount:extraDisc,
     note:document.getElementById('inv-note').value,
