@@ -1066,6 +1066,7 @@ function renderProducts(){
   });
   const pageData=filtered.slice((pgProd-1)*PAGE_SIZE,pgProd*PAGE_SIZE);
 
+  const isManagerProd=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
   let rows='';
   pageData.forEach(function(p){
     rows+='<tr>'
@@ -1081,7 +1082,6 @@ function renderProducts(){
       +'</tr>';
   });
 
-  const isManagerProd=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
   return '<div class="topbar"><div class="topbar-title">'+(isManagerProd?'Quản lý sản phẩm':'Sản phẩm')+'</div>'
     +'<div class="search-wrap"><i class="ti ti-search"></i><input id="prod-mg-search" placeholder="Tìm SKU, tên sản phẩm..." oninput="clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){prodMgFilter(document.getElementById(&quot;prod-mg-search&quot;).value);},120)" value="'+prodSearch+'"></div>'
     +'<span style="font-size:12px;color:var(--text2)">'+filtered.length+' sản phẩm</span>'
