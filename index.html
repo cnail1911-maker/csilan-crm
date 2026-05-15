@@ -360,8 +360,9 @@ function renderCustomers(){
   // Sale only sees approved+assigned customers
   let data=CUSTOMERS.filter(function(c){
     if(!isManager){
-      if(c.approval_status!=='approved')return false;
-      if(c.assigned_to!==currentUser.id)return false; // Sale chỉ thấy khách của mình
+      // RLS đã filter đúng, chỉ cần ẩn pending của người khác
+      if(c.approval_status==='pending'&&c.created_by!==currentUser.id)return false;
+      if(c.assigned_to!==currentUser.id&&c.created_by!==currentUser.id)return false;
     }
     if(fStatus!=='all'&&c.status!==fStatus)return false;
     if(fSale!=='all'&&c.assigned_to!==fSale)return false;
