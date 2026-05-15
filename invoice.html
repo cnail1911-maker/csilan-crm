@@ -186,7 +186,7 @@ table.inv-table tr:last-child td{border-bottom:none}
           <div class="sidebar-title" id="form-title">Tạo Invoice mới</div>
           <div class="sidebar-sub" id="user-info">Đang tải...</div>
         </div>
-        <button onclick="syncProducts()" id="sync-btn" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:4px 8px;font-size:10px;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;white-space:nowrap">
+        <button onclick="syncProducts()" id="sync-btn" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:4px 8px;font-size:10px;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;white-space:nowrap;display:none">
           🔄 Sync SP
         </button>
       </div>
@@ -347,6 +347,11 @@ async function initApp(user){
   PRODUCTS=products||[];
 
   document.getElementById('user-info').textContent=(profile&&(profile.nickname||profile.full_name))||user.email;
+  // Show sync button only for manager/admin
+  if(profile&&(profile.role==='manager'||profile.role==='admin')){
+    const syncBtn=document.getElementById('sync-btn');
+    if(syncBtn)syncBtn.style.display='block';
+  }
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app-screen').style.display='flex';
 
