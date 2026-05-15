@@ -823,23 +823,23 @@ async function recallOver30(){
 // ============================================================
 function renderCampaign(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
-  // Group customers by campaign_name
+
+  // Group customers by campaign_name for stat cards
   const campaigns={};
   CUSTOMERS.forEach(function(c){
     const name=c.campaign_name||c.campaign_month||'Không có campaign';
-    if(!campaigns[name])campaigns[name]={name:name,total:0,new:0,followup:0,closedeal:0,customers:[]};
+    if(!campaigns[name])campaigns[name]={name:name,total:0,new:0,followup:0,closedeal:0};
     campaigns[name].total++;
     if(c.status==='New')campaigns[name].new++;
     if(c.status==='Follow Up')campaigns[name].followup++;
     if(c.lead_status==='Closedeal')campaigns[name].closedeal++;
-    campaigns[name].customers.push(c);
   });
-  const campList=Object.values(campaigns).sort(function(a,b){return b.total-a.total;});
+  const campList=Object.values(campaigns).filter(function(c){return c.name!=='Không có campaign';}).sort(function(a,b){return b.total-a.total;});
 
   let campCards='';
   campList.forEach(function(camp){
     const pct=camp.total?Math.round(camp.closedeal/camp.total*100):0;
-    campCards+='<div class="kpi-card" style="cursor:pointer" onclick="goToCampaign()">';
+    campCards+='<div class="kpi-card">'
       +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">'+camp.name+'</div>'
       +'<div style="display:flex;gap:12px;margin-bottom:8px">'
       +'<div style="text-align:center"><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:700;color:var(--brand2)">'+camp.total+'</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase">Total</div></div>'
@@ -854,9 +854,76 @@ function renderCampaign(){
   // Campaign assign form - manager only
   let assignForm='';
   if(isManager){
-    const salesOptions=PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" value="'+p.id+'" style="accent-color:var(--brand)"> '+p.full_name+'</label>';}).join('');
-    const unassignedCount=CUSTOMERS.filter(function(c){return !c.assigned_to||c.is_recalled===true;}).length;
-    assignForm='<div class="panel" style="margin-bottom:14px"><div class="panel-header"><h2>Tạo Campaign mới</h2></div>'      +'<div style="padding:14px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:12px;align-items:start">'      +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Tên Campaign</div>'      +'<input id="camp-name" placeholder="2026_Campaign_T06" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"></div>'      +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Nguồn data</div>'      +'<select id="camp-source" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'      +'<option value="unassigned">Data chưa phân công ('+unassignedCount+')</option>'      +'<option value="all">Toàn bộ data ('+CUSTOMERS.length+')</option>'      +'</select></div>'      +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Assign Sale (chọn nhiều)</div>'      +'<div id="camp-sales" style="display:flex;flex-direction:column;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;max-height:130px;overflow-y:auto">'      +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);cursor:pointer;border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:2px"><input type="checkbox" id="camp-sale-all" onchange="toggleAllSales(this)" style="accent-color:var(--brand)"> Tất cả sale (chia đều)</label>'      +salesOptions      +'</div></div>'      +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Deadline</div>'      +'<input type="date" id="camp-deadline" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"></div>'      +'<div style="padding-top:18px"><button class="btn btn-primary" onclick="createCampaign()" style="white-space:nowrap"><i class="ti ti-speakerphone"></i> Tạo Campaign</button></div>'      +'</div></div>';
+    const salesOptions=PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){
+      return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" value="'+p.id+'" style="accent-color:var(--brand)"> '+p.full_name+'</label>';
+    }).join('');
+
+    // Build unique values for filter dropdowns from CUSTOMERS
+    const states=[...new Set(CUSTOMERS.map(function(c){return c.state;}).filter(Boolean))].sort();
+    const brands=[...new Set(CUSTOMERS.map(function(c){return c.brand;}).filter(Boolean))].sort();
+    const campNames=[...new Set(CUSTOMERS.map(function(c){return c.campaign_name;}).filter(Boolean))].sort();
+
+    function fOpts(arr,id,label){
+      return '<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">'+label+'</div>'
+        +'<select id="'+id+'" onchange="campPreview()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'
+        +'<option value="all">Tất cả</option>'
+        +arr.map(function(v){return '<option value="'+v+'">'+v+'</option>';}).join('')
+        +'</select></div>';
+    }
+
+    assignForm='<div class="panel" style="margin-bottom:14px">'
+      +'<div class="panel-header"><h2>Tạo Campaign mới</h2></div>'
+      +'<div style="padding:14px">'
+
+      // Row 1: Tên + Deadline + Sales
+      +'<div style="display:grid;grid-template-columns:1.5fr 1fr 1fr auto;gap:12px;align-items:start;margin-bottom:14px">'
+        +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Tên Campaign</div>'
+        +'<input id="camp-name" placeholder="2026_Campaign_T06" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"></div>'
+
+        +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Deadline</div>'
+        +'<input type="date" id="camp-deadline" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"></div>'
+
+        +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Assign Sale (chọn nhiều)</div>'
+        +'<div id="camp-sales" style="display:flex;flex-direction:column;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;max-height:120px;overflow-y:auto">'
+        +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);cursor:pointer;border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:2px"><input type="checkbox" id="camp-sale-all" onchange="toggleAllSales(this)" style="accent-color:var(--brand)"> Tất cả sale (chia đều)</label>'
+        +salesOptions
+        +'</div></div>'
+
+        +'<div style="padding-top:18px">'
+        +'<button class="btn btn-primary" onclick="createCampaign()" style="white-space:nowrap;margin-bottom:6px;width:100%"><i class="ti ti-speakerphone"></i> Tạo Campaign</button>'
+        +'</div>'
+      +'</div>'
+
+      // Row 2: Bộ lọc data
+      +'<div style="background:var(--surface2,var(--surface));border:1px solid var(--border);border-radius:10px;padding:12px">'
+      +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">🔽 Bộ lọc data</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">'
+        +fOpts(states,'cf-state','State')
+        +fOpts(STATUS_OPTS,'cf-status','Status')
+        +fOpts(SUBSTATUS_OPTS,'cf-substatus','Sub Status')
+        +fOpts(LEAD_OPTS,'cf-leadstatus','Lead Status')
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">'
+        +fOpts(BRAND_OPTS,'cf-brand','Brand')
+        +fOpts(POTENTIAL_OPTS,'cf-potential','Potential')
+        +fOpts(TIMES_OPTS,'cf-timeuse','Time of Use')
+        +fOpts(REASON_OPTS,'cf-reason','Reason')
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">'
+        +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Thuộc chiến dịch</div>'
+        +'<select id="cf-campaign" onchange="campPreview()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'
+        +'<option value="all">Tất cả</option>'
+        +'<option value="none">Chưa thuộc chiến dịch nào</option>'
+        +campNames.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('')
+        +'</select></div>'
+        +'<div style="display:flex;align-items:end;padding-bottom:2px">'
+        +'<button class="btn" onclick="campResetFilters()" style="font-size:11px;width:100%"><i class="ti ti-refresh"></i> Reset bộ lọc</button>'
+        +'</div>'
+        +'<div id="camp-preview-count" style="display:flex;align-items:end;padding-bottom:2px;font-size:13px;color:var(--accent2);font-weight:700"></div>'
+      +'</div>'
+      +'</div>'
+
+      +'</div></div>';
   }
 
   return '<div class="topbar"><div class="topbar-title">Campaign</div></div>'
@@ -864,6 +931,46 @@ function renderCampaign(){
     +assignForm
     +'<div class="kpi-grid">'+campCards+'</div>'
     +'</div>';
+}
+
+function campGetFiltered(){
+  const state=document.getElementById('cf-state')&&document.getElementById('cf-state').value;
+  const status=document.getElementById('cf-status')&&document.getElementById('cf-status').value;
+  const substatus=document.getElementById('cf-substatus')&&document.getElementById('cf-substatus').value;
+  const lead=document.getElementById('cf-leadstatus')&&document.getElementById('cf-leadstatus').value;
+  const brand=document.getElementById('cf-brand')&&document.getElementById('cf-brand').value;
+  const potential=document.getElementById('cf-potential')&&document.getElementById('cf-potential').value;
+  const timeuse=document.getElementById('cf-timeuse')&&document.getElementById('cf-timeuse').value;
+  const reason=document.getElementById('cf-reason')&&document.getElementById('cf-reason').value;
+  const campaign=document.getElementById('cf-campaign')&&document.getElementById('cf-campaign').value;
+
+  return CUSTOMERS.filter(function(c){
+    if(state&&state!=='all'&&c.state!==state)return false;
+    if(status&&status!=='all'&&c.status!==status)return false;
+    if(substatus&&substatus!=='all'&&c.sub_status!==substatus)return false;
+    if(lead&&lead!=='all'&&c.lead_status!==lead)return false;
+    if(brand&&brand!=='all'&&c.brand!==brand)return false;
+    if(potential&&potential!=='all'&&c.potential!==potential)return false;
+    if(timeuse&&timeuse!=='all'&&c.time_of_use!==timeuse)return false;
+    if(reason&&reason!=='all'&&c.reason!==reason)return false;
+    if(campaign&&campaign==='none'&&c.campaign_name)return false;
+    if(campaign&&campaign!=='all'&&campaign!=='none'&&c.campaign_name!==campaign)return false;
+    return true;
+  });
+}
+
+function campPreview(){
+  const filtered=campGetFiltered();
+  const el=document.getElementById('camp-preview-count');
+  if(el)el.innerHTML='<span style="color:var(--text3);font-size:11px;margin-right:6px">Data đã lọc:</span>'+filtered.length+' khách';
+}
+
+function campResetFilters(){
+  ['cf-state','cf-status','cf-substatus','cf-leadstatus','cf-brand','cf-potential','cf-timeuse','cf-reason','cf-campaign'].forEach(function(id){
+    const el=document.getElementById(id);
+    if(el)el.value='all';
+  });
+  campPreview();
 }
 
 function goToCampaign(){fSale="all";search="";setPage("customers");}
@@ -875,8 +982,6 @@ function toggleAllSales(cb){
 async function createCampaign(){
   const name=document.getElementById('camp-name')&&document.getElementById('camp-name').value.trim();
   const deadline=document.getElementById('camp-deadline')&&document.getElementById('camp-deadline').value;
-  const sourceEl=document.getElementById('camp-source');
-  const source=sourceEl?sourceEl.value:'unassigned';
   if(!name){alert('Vui lòng nhập tên Campaign!');return;}
   if(!deadline){alert('Vui lòng chọn Deadline!');return;}
 
@@ -892,17 +997,12 @@ async function createCampaign(){
   }
   if(salesList.length===0){alert('Vui lòng chọn ít nhất 1 sale!');return;}
 
-  // Get data source
-  const dataPool=source==='unassigned'
-    ?CUSTOMERS.filter(function(c){return !c.assigned_to||c.is_recalled===true;})
-    :CUSTOMERS.slice();
-
-  if(dataPool.length===0){alert('Không có data để phân công!');return;}
+  // Get filtered data
+  const dataPool=campGetFiltered();
+  if(dataPool.length===0){alert('Không có data nào khớp với bộ lọc!');return;}
   if(!confirm('Phân công '+dataPool.length+' khách cho Campaign "'+name+'" cho '+salesList.length+' sale với deadline '+deadline+'?'))return;
 
   showLoading(true);
-
-  // Assign customers round-robin
   for(let i=0;i<dataPool.length;i++){
     const sale=salesList[i%salesList.length];
     await sb.from('customers').update({
