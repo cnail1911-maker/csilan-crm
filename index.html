@@ -370,7 +370,7 @@ function renderCustomers(){
       +'<td>'+dlBadge(c.assigned_deadline)+'</td>'
       +'<td style="font-size:10px;color:var(--text3)">'+fmtDate(c.created_at)+'</td>'
       +(function(){if(!c.potential||c.potential==='')return '';const lastC=c.last_contacted?new Date(c.last_contacted):new Date(c.created_at);const days=Math.floor((new Date()-lastC)/(1000*60*60*24));if(days<3)return '<td></td>';const col=days>30?'var(--danger)':days>=7?'var(--warn)':'var(--accent)';return '<td style="font-size:10px;color:'+col+';font-weight:600">'+(days>30?'30+':days)+'d ⚠</td>';})()
-      +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--text2)"><div>'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</div>'+(c.campaign_name?'<div style="font-size:9px;color:var(--text3)">'+c.campaign_name+'</div>':'')+'</td>'
       +'</tr>';
   });
 
@@ -734,7 +734,7 @@ function renderAlert(){
   let rows='';
   filtered.slice(0,100).forEach(function(c){
     const days=getDays(c);
-    rows+='<tr onclick="selId='+c.id+';setPage(\"customers\")">';
+    rows+='<tr onclick="selId='+c.id+';setPage(\"customers\")">'
       +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(c.ma_kh||'—')+'</td>'
       +'<td>'+(c.business_name||'—')+'</td>'
       +'<td style="color:var(--text)">'+(c.customer_name||'')+'</td>'
@@ -824,19 +824,9 @@ function renderCampaign(){
   // Campaign assign form - manager only
   let assignForm='';
   if(isManager){
-    assignForm='<div class="panel" style="margin-bottom:14px"><div class="panel-header"><h2>Tạo Campaign mới</h2></div>'
-      +'<div style="padding:14px;display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">'
-      +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Tên Campaign</div>'
-      +'<input id="camp-name" placeholder="2026_Campaign_T06" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"></div>'
-      +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Assign Sale</div>'
-      +'<select id="camp-sale" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'
-      +'<option value="all">Tất cả sale (chia đều)</option>'
-      +PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'">'+p.full_name+'</option>';}).join('')
-      +'</select></div>'
-      +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Deadline</div>'
-      +'<input type="date" id="camp-deadline" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"></div>'
-      +'<button class="btn btn-primary" onclick="createCampaign()" style="white-space:nowrap"><i class="ti ti-speakerphone"></i> Tạo Campaign</button>'
-      +'</div></div>';
+    const salesOptions=PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" value="'+p.id+'" style="accent-color:var(--brand)"> '+p.full_name+'</label>';}).join('');
+    const unassignedCount=CUSTOMERS.filter(function(c){return !c.assigned_to||c.is_recalled===true;}).length;
+    assignForm='<div class="panel" style="margin-bottom:14px"><div class="panel-header"><h2>Tạo Campaign mới</h2></div>'      +'<div style="padding:14px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:12px;align-items:start">'      +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Tên Campaign</div>'      +'<input id="camp-name" placeholder="2026_Campaign_T06" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"></div>'      +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Nguồn data</div>'      +'<select id="camp-source" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'      +'<option value="unassigned">Data chưa phân công ('+unassignedCount+')</option>'      +'<option value="all">Toàn bộ data ('+CUSTOMERS.length+')</option>'      +'</select></div>'      +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Assign Sale (chọn nhiều)</div>'      +'<div id="camp-sales" style="display:flex;flex-direction:column;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;max-height:130px;overflow-y:auto">'      +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);cursor:pointer;border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:2px"><input type="checkbox" id="camp-sale-all" onchange="toggleAllSales(this)" style="accent-color:var(--brand)"> Tất cả sale (chia đều)</label>'      +salesOptions      +'</div></div>'      +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Deadline</div>'      +'<input type="date" id="camp-deadline" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"></div>'      +'<div style="padding-top:18px"><button class="btn btn-primary" onclick="createCampaign()" style="white-space:nowrap"><i class="ti ti-speakerphone"></i> Tạo Campaign</button></div>'      +'</div></div>';
   }
 
   return '<div class="topbar"><div class="topbar-title">Campaign</div></div>'
@@ -847,53 +837,54 @@ function renderCampaign(){
 }
 
 function goToCampaign(){fSale="all";search="";setPage("customers");}
+function toggleAllSales(cb){
+  const boxes=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all)');
+  boxes.forEach(function(b){b.checked=false;});
+}
+
 async function createCampaign(){
   const name=document.getElementById('camp-name')&&document.getElementById('camp-name').value.trim();
-  const saleId=document.getElementById('camp-sale')&&document.getElementById('camp-sale').value;
   const deadline=document.getElementById('camp-deadline')&&document.getElementById('camp-deadline').value;
+  const sourceEl=document.getElementById('camp-source');
+  const source=sourceEl?sourceEl.value:'unassigned';
   if(!name){alert('Vui lòng nhập tên Campaign!');return;}
   if(!deadline){alert('Vui lòng chọn Deadline!');return;}
 
-  // Get unassigned customers
-  const unassigned=CUSTOMERS.filter(function(c){return !c.assigned_to||c.assigned_to===null||c.is_recalled===true;});
-  if(unassigned.length===0){alert('Không có data chưa phân công!');return;}
-  if(!confirm('Phân công '+unassigned.length+' khách cho Campaign "'+name+'" với deadline '+deadline+'?'))return;
+  // Get selected sales
+  const allSaleCb=document.getElementById('camp-sale-all');
+  let salesList=[];
+  if(allSaleCb&&allSaleCb.checked){
+    salesList=PROFILES.filter(function(p){return p.role==='sale';});
+  } else {
+    const checked=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all):checked');
+    const ids=Array.from(checked).map(function(cb){return cb.value;});
+    salesList=PROFILES.filter(function(p){return ids.includes(p.id);});
+  }
+  if(salesList.length===0){alert('Vui lòng chọn ít nhất 1 sale!');return;}
+
+  // Get data source
+  const dataPool=source==='unassigned'
+    ?CUSTOMERS.filter(function(c){return !c.assigned_to||c.is_recalled===true;})
+    :CUSTOMERS.slice();
+
+  if(dataPool.length===0){alert('Không có data để phân công!');return;}
+  if(!confirm('Phân công '+dataPool.length+' khách cho Campaign "'+name+'" cho '+salesList.length+' sale với deadline '+deadline+'?'))return;
 
   showLoading(true);
-  const salesList=saleId==='all'
-    ?PROFILES.filter(function(p){return p.role==='sale';})
-    :[PROFILES.find(function(p){return p.id===saleId;})].filter(Boolean);
 
-  if(salesList.length===0){showLoading(false);alert('Không có sale nào!');return;}
-
-  // Assign customers
-  const updates=[];
-  unassigned.forEach(function(c,i){
+  // Assign customers round-robin
+  for(let i=0;i<dataPool.length;i++){
     const sale=salesList[i%salesList.length];
-    updates.push({
-      id:c.id,
+    await sb.from('customers').update({
       assigned_to:sale.id,
       campaign_name:name,
       assigned_deadline:deadline,
       is_recalled:false
-    });
-  });
-
-  // Batch update
-  for(let i=0;i<updates.length;i+=50){
-    const batch=updates.slice(i,i+50);
-    for(const u of batch){
-      await sb.from('customers').update({
-        assigned_to:u.assigned_to,
-        campaign_name:u.campaign_name,
-        assigned_deadline:u.assigned_deadline,
-        is_recalled:false
-      }).eq('id',u.id);
-    }
+    }).eq('id',dataPool[i].id);
   }
 
   await loadCustomers();showLoading(false);
-  alert('Đã tạo Campaign "'+name+'" với '+unassigned.length+' khách!');
+  alert('Đã tạo Campaign "'+name+'" với '+dataPool.length+' khách cho '+salesList.length+' sale!');
   document.getElementById('camp-name').value='';
   render();
 }
