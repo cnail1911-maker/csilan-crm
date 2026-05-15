@@ -369,21 +369,25 @@ async function initApp(user){
 
 // COMPANY
 function renderCompanyCards(){
-  const wrap=document.getElementById('company-cards');
-  wrap.innerHTML='';
-  COMPANIES.forEach(function(co,i){
-    const card=document.createElement('div');
-    card.className='company-card'+(selectedCompany&&selectedCompany.id===co.id?' active':'');
-    card.onclick=function(){selectCompany(co.id);};
-    card.innerHTML='<img src="'+co.logo_url+'" onerror="this.style.display=\'none\'" alt="'+co.name+'" style="height:30px;object-fit:contain;margin-bottom:4px"><div class="company-card-name">'+co.name+'</div>';
-    wrap.appendChild(card);
+  const sel=document.getElementById('company-select');
+  if(!sel)return;
+  sel.innerHTML='<option value="">-- Chon cong ty --</option>';
+  COMPANIES.forEach(function(co){
+    const opt=document.createElement('option');
+    opt.value=co.id;
+    opt.textContent=co.name;
+    if(selectedCompany&&selectedCompany.id===co.id)opt.selected=true;
+    sel.appendChild(opt);
   });
 }
 
 function selectCompany(id){
   selectedCompany=COMPANIES.find(function(c){return c.id===id;})||null;
-  renderCompanyCards();
   renderPreview();
+}
+
+function selectCompanyById(id){
+  selectCompany(parseInt(id));
 }
 
 // TYPE
