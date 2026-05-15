@@ -1335,23 +1335,7 @@ async function doAdd(){
     }
   }
   const campaign=new Date().toLocaleDateString('vi-VN',{month:'2-digit',year:'numeric'});
-  // Generate unique ma_kh via SQL function
-  let nextNum=1;
-  const {data:maxVal,error:rpcErr}=await sb.rpc('get_max_ma_kh');
-  if(!rpcErr&&maxVal){
-    const m=String(maxVal).match(/KH0*(\d+)/);
-    if(m)nextNum=parseInt(m[1])+1;
-  } else {
-    // Fallback: lấy max từ DB trực tiếp
-    const {data:rows}=await sb.from('customers').select('ma_kh').like('ma_kh','KH%').order('ma_kh',{ascending:false}).limit(500);
-    if(rows&&rows.length>0){
-      const nums=rows.map(function(r){const m=r.ma_kh&&r.ma_kh.match(/KH0*(\d+)/);return m?parseInt(m[1]):0;});
-      nextNum=Math.max(...nums)+1;
-    }
-  }
-  const ma_kh='KH'+String(nextNum).padStart(7,'0');
   const newCust={
-    ma_kh:ma_kh,
     business_name:document.getElementById('a-biz')&&document.getElementById('a-biz').value||null,
     customer_name:name,
     business_phone:bphone||null,
@@ -1371,7 +1355,8 @@ async function doAdd(){
   };
   const {data:inserted,error}=await sb.from('customers').insert(newCust).select('*, assigned_profile:profiles!assigned_to(id,full_name,role)').single();
   if(error){showLoading(false);alert('Lỗi: '+error.message);return;}
-  await loadCustomers();
+  // Local insert - không reload 26k rows
+  if(inserted)CUSTOMERS.unshift(inserted);
   document.getElementById('add-modal')&&document.getElementById('add-modal').remove();
   addOpen=false;showLoading(false);render();
   if(isDup)alert('Khách đã được thêm vào danh sách chờ duyệt. Manager sẽ xem xét và phê duyệt.');
