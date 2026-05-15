@@ -321,9 +321,11 @@ async function loadCustomers(){
   
   // Alert badge - potential customers not contacted for 3+ days
   const today=new Date();
+  const isManagerForAlert=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
   const alertCount=CUSTOMERS.filter(function(c){
     if(!c.potential||c.potential==='')return false;
     if(c.lead_status==='Closedeal')return false;
+    if(!isManagerForAlert&&currentUser&&c.assigned_to!==currentUser.id)return false;
     const lastContact=c.last_contacted?new Date(c.last_contacted):new Date(c.created_at);
     const days=Math.floor((today-lastContact)/(1000*60*60*24));
     return days>=3;
@@ -369,7 +371,7 @@ function renderCustomers(){
       +'<td>'+lBadge(c.lead_status)+'</td>'
       +'<td>'+dlBadge(c.assigned_deadline)+'</td>'
       +'<td style="font-size:10px;color:var(--text3)">'+fmtDate(c.created_at)+'</td>'
-      +(function(){if(!c.potential||c.potential==='')return '';const lastC=c.last_contacted?new Date(c.last_contacted):new Date(c.created_at);const days=Math.floor((new Date()-lastC)/(1000*60*60*24));if(days<3)return '<td></td>';const col=days>30?'var(--danger)':days>=7?'var(--warn)':'var(--accent)';return '<td style="font-size:10px;color:'+col+';font-weight:600">'+(days>30?'30+':days)+'d ⚠</td>';})()
+      +(function(){const lastC=c.last_contacted?new Date(c.last_contacted):new Date(c.created_at);const days=Math.floor((new Date()-lastC)/(1000*60*60*24));if(!c.potential||c.potential===''||days<3)return '<td></td>';const col=days>30?'var(--danger)':days>=7?'var(--warn)':'var(--accent)';return '<td style="font-size:10px;color:'+col+';font-weight:600">'+(days>30?'30+':days)+'d ⚠</td>';})()
       +'<td style="font-size:11px;color:var(--text2)"><div>'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</div>'+(c.campaign_name?'<div style="font-size:9px;color:var(--text3)">'+c.campaign_name+'</div>':'')+'</td>'
       +'</tr>';
   });
@@ -388,7 +390,7 @@ function renderCustomers(){
     +'</div>'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+data.length+'</span> khách</h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+'</div></div>'
     +(data.length===0?'<div class="empty-state"><i class="ti ti-inbox"></i>Không có khách hàng nào</div>'
-      :'<table><colgroup><col width="78"><col width="115"><col width="110"><col width="95"><col width="68"><col width="70"><col width="72"><col width="72"><col width="72"><col width="70"><col width="40"><col width="58"></colgroup>'
+      :'<table><colgroup><col width="78"><col width="115"><col width="110"><col width="95"><col width="68"><col width="70"><col width="72"><col width="72"><col width="72"><col width="70"><col width="40"><col width="80"></colgroup>'
       +'<thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Status</th><th>Lead Status</th><th>Deadline</th><th>Ngày thêm</th><th></th><th>Sale</th></tr></thead>'
       +'<tbody>'+rows+'</tbody></table>'
       +pgBar(data.length,curPage,PAGE_SIZE,'setCurPage'))
@@ -728,7 +730,10 @@ function renderAlert(){
 
   let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
 
-  const filtered=alertData.filter(function(c){return fSale==='all'||c.assigned_to===fSale;});
+  const filtered=alertData.filter(function(c){
+    if(!isManager&&currentUser&&c.assigned_to!==currentUser.id)return false;
+    return fSale==='all'||c.assigned_to===fSale;
+  });
   const over30=filtered.filter(function(c){return getDays(c)>30;}).length;
 
   let rows='';
