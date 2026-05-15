@@ -1337,13 +1337,10 @@ async function doAdd(){
   const campaign=new Date().toLocaleDateString('vi-VN',{month:'2-digit',year:'numeric'});
   // Generate unique ma_kh via SQL function
   let nextNum=1;
-  try{
-    const {data:maxVal}=await sb.rpc('get_max_ma_kh');
-    if(maxVal){const m=String(maxVal).match(/KH0*(\d+)/);if(m)nextNum=parseInt(m[1])+1;}
-  }catch(e){
-    // Fallback nếu chưa tạo function
-    const {data:rows}=await sb.from('customers').select('ma_kh').like('ma_kh','KH%').order('ma_kh',{ascending:false}).limit(50);
-    if(rows&&rows.length>0){const nums=rows.map(function(r){const m=r.ma_kh&&r.ma_kh.match(/KH0*(\d+)/);return m?parseInt(m[1]):0;});nextNum=Math.max(...nums)+1;}
+  const {data:maxVal,error:rpcErr}=await sb.rpc('get_max_ma_kh');
+  if(!rpcErr&&maxVal){
+    const m=String(maxVal).match(/KH0*(\d+)/);
+    if(m)nextNum=parseInt(m[1])+1;
   }
   const ma_kh='KH'+String(nextNum).padStart(7,'0');
   const newCust={
