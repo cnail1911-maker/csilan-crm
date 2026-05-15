@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C-Silan Invoice</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+  const SUPABASE_URL  = 'https://ajsakaddylbpppxlidfe.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqc2FrYWRkeWxicHBweGxpZGZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTA1MDUsImV4cCI6MjA5NDI2NjUwNX0.B_8YwhOD4MXMKFOc3T0lpuujAnhUnpSLGjo12hWsLdc';
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#C0392B;--red2:#E74C3C;--dark:#1a0a08;--cream:#FDF8F3;
+  --gray:#6B6B6B;--light:#F5F0EB;--border:#E8E0D8;--gold:#C4A35A;
+}
+body{font-family:'Be Vietnam Pro',sans-serif;background:var(--cream);color:var(--dark);font-size:13px}
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:320px;min-width:320px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-header{padding:16px 18px;border-bottom:1px solid var(--border);background:var(--red);color:#fff}
+.sidebar-title{font-size:14px;font-weight:700;letter-spacing:0.5px}
+.sidebar-sub{font-size:11px;opacity:0.8;margin-top:2px}
+.sidebar-body{flex:1;overflow-y:auto;padding:14px}
+.section{margin-bottom:16px}
+.section-label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+.field label{font-size:10px;color:var(--gray);font-weight:600;letter-spacing:0.5px}
+.field input,.field select,.field textarea{border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--dark);font-family:'Be Vietnam Pro',sans-serif;outline:none;background:#fff;transition:border-color 0.2s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--red)}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* TYPE TOGGLE */
+.type-toggle{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:12px}
+.type-btn{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;background:#fff;border:none;font-family:'Be Vietnam Pro',sans-serif;transition:all 0.2s;color:var(--gray)}
+.type-btn.active{background:var(--red);color:#fff}
+
+/* COMPANY SELECT */
+.company-cards{display:flex;gap:6px;margin-bottom:8px}
+.company-card{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:8px;cursor:pointer;transition:all 0.2s;text-align:center;background:#fff}
+.company-card.active{border-color:var(--red);background:#FEF5F5}
+.company-card img{height:30px;object-fit:contain;margin-bottom:4px}
+.company-card-name{font-size:10px;font-weight:600;color:var(--dark)}
+
+/* CUSTOMER SEARCH */
+.cust-search{position:relative}
+.cust-results{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:6px;z-index:10;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.1)}
+.cust-item{padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12px}
+.cust-item:hover{background:var(--light)}
+.cust-item:last-child{border-bottom:none}
+.cust-name{font-weight:600;color:var(--dark)}
+.cust-info{font-size:10px;color:var(--gray);margin-top:1px}
+.cust-selected{background:var(--light);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:12px}
+.cust-selected-name{font-weight:600;color:var(--red)}
+.cust-selected-info{font-size:10px;color:var(--gray);margin-top:2px}
+
+/* PRODUCTS */
+.product-search-wrap{display:flex;gap:6px;margin-bottom:8px}
+.product-search-wrap input{flex:1;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--dark);font-family:'Be Vietnam Pro',sans-serif;outline:none}
+.product-search-wrap input:focus{border-color:var(--red)}
+.product-results{background:#fff;border:1px solid var(--border);border-radius:6px;max-height:180px;overflow-y:auto;margin-bottom:8px;display:none}
+.product-item{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--border)}
+.product-item:hover{background:var(--light)}
+.product-item:last-child{border-bottom:none}
+.product-img{width:36px;height:36px;object-fit:cover;border-radius:4px;background:var(--light);flex-shrink:0}
+.product-name{font-size:12px;font-weight:500;color:var(--dark)}
+.product-price{font-size:11px;color:var(--red);font-weight:600;margin-top:1px}
+.product-sku{font-size:10px;color:var(--gray)}
+
+/* ITEM LIST */
+.item-row{background:var(--light);border-radius:6px;padding:8px;margin-bottom:6px;position:relative}
+.item-row-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.item-img{width:40px;height:40px;object-fit:cover;border-radius:4px;background:#e0d8d0;flex-shrink:0}
+.item-name{font-size:12px;font-weight:600;flex:1;color:var(--dark)}
+.item-del{background:none;border:none;cursor:pointer;color:var(--gray);font-size:14px;padding:2px}
+.item-del:hover{color:var(--red)}
+.item-fields{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px}
+.item-field{display:flex;flex-direction:column;gap:2px}
+.item-field label{font-size:9px;color:var(--gray);text-transform:uppercase;letter-spacing:0.5px}
+.item-field input{border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:12px;font-family:'Be Vietnam Pro',sans-serif;outline:none;background:#fff;width:100%}
+.item-field input:focus{border-color:var(--red)}
+
+/* PAYMENT */
+.payment-summary{background:var(--light);border-radius:8px;padding:10px}
+.pay-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:12px}
+.pay-label{color:var(--gray)}
+.pay-val{font-weight:600}
+.pay-total{border-top:1px solid var(--border);margin-top:6px;padding-top:6px;font-size:14px;font-weight:700;color:var(--red)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:12px;color:var(--dark);font-family:'Be Vietnam Pro',sans-serif;font-weight:500;transition:all 0.2s}
+.btn:hover{background:var(--light)}
+.btn-red{background:var(--red);color:#fff;border-color:var(--red)}
+.btn-red:hover{background:#a93226;border-color:#a93226}
+.btn-outline{border-color:var(--red);color:var(--red)}
+.btn-outline:hover{background:#FEF5F5}
+.sidebar-footer{padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px}
+.sidebar-footer .btn{flex:1;justify-content:center}
+
+/* PREVIEW */
+.preview-wrap{flex:1;background:var(--light);overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:24px}
+.preview-toolbar{width:794px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.preview-toolbar h2{font-size:14px;font-weight:600;color:var(--gray)}
+
+/* INVOICE PREVIEW */
+#invoice-preview{width:794px;background:#fff;padding:40px 44px;box-shadow:0 2px 20px rgba(0,0,0,0.1);font-family:'Be Vietnam Pro',sans-serif;min-height:1000px}
+.inv-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.inv-company-name{font-size:20px;font-weight:800;color:var(--red);margin-bottom:4px}
+.inv-company-info{font-size:11px;color:var(--gray);line-height:1.6}
+.inv-logo{height:60px;object-fit:contain}
+.inv-logo-placeholder{width:80px;height:60px;background:var(--light);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--gray)}
+.inv-title{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--red);letter-spacing:2px;margin-bottom:16px;text-transform:uppercase}
+.inv-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.inv-meta-item{font-size:11px}
+.inv-meta-label{color:var(--red);font-weight:700;font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px}
+.inv-meta-val{color:var(--dark);font-weight:500}
+.inv-divider{height:2px;background:var(--red);margin-bottom:14px}
+.inv-bill-to{background:var(--red);color:#fff;padding:6px 12px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;border-radius:2px}
+.inv-customer{margin-bottom:16px;font-size:12px;line-height:1.8}
+.inv-customer-name{font-size:14px;font-weight:700;color:var(--red)}
+.inv-customer-info{color:var(--dark)}
+table.inv-table{width:100%;border-collapse:collapse;margin-bottom:16px}
+table.inv-table th{background:var(--red);color:#fff;padding:8px 10px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;text-align:left}
+table.inv-table th:last-child{text-align:right}
+table.inv-table td{padding:10px;font-size:12px;border-bottom:1px solid var(--border);vertical-align:middle}
+table.inv-table td:last-child{text-align:right;font-weight:600}
+table.inv-table tr:last-child td{border-bottom:none}
+.inv-product-img{width:50px;height:50px;object-fit:cover;border-radius:4px;background:var(--light)}
+.inv-notes{font-size:10px;color:var(--gray);line-height:1.7;margin-bottom:12px}
+.inv-totals{display:flex;justify-content:flex-end;margin-bottom:16px}
+.inv-totals-box{min-width:260px}
+.inv-total-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}
+.inv-total-label{color:var(--gray)}
+.inv-total-val{font-weight:600}
+.inv-grand-total{font-size:22px;font-weight:800;color:var(--red);text-align:center;padding:8px;border:2px solid var(--red);border-radius:4px;margin:8px 0}
+.inv-balance-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;font-weight:700}
+.inv-balance-label{color:var(--dark)}
+.inv-balance-val{color:var(--red)}
+.inv-thank{text-align:center;font-style:italic;font-size:12px;color:var(--red);font-weight:600;padding:10px 0;border-top:1px solid var(--border)}
+.inv-divider-bottom{height:1px;background:var(--red);margin-bottom:10px}
+
+/* LOADING */
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:300;gap:12px;display:none}
+.spinner{width:32px;height:32px;border:3px solid rgba(192,57,43,0.2);border-top-color:var(--red);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* AUTH */
+#auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--cream)}
+.auth-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:32px 36px;width:360px;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.auth-logo{font-size:20px;font-weight:800;color:var(--red);margin-bottom:4px}
+.auth-sub{font-size:12px;color:var(--gray);margin-bottom:24px}
+.auth-field{margin-bottom:12px}
+.auth-field label{display:block;font-size:10px;color:var(--gray);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
+.auth-field input{width:100%;border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13px;font-family:'Be Vietnam Pro',sans-serif;outline:none}
+.auth-field input:focus{border-color:var(--red)}
+.auth-btn{width:100%;padding:10px;background:var(--red);color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;font-family:'Be Vietnam Pro',sans-serif;cursor:pointer}
+.auth-error{color:var(--red);font-size:12px;margin-top:8px;display:none}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">C-Silan Invoice</div>
+    <div class="auth-sub">Tạo invoice & báo giá</div>
+    <div class="auth-field"><label>Email</label><input type="email" id="login-email" placeholder="sale@csilan.com"></div>
+    <div class="auth-field"><label>Mật khẩu</label><input type="password" id="login-pass" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="auth-btn" onclick="doLogin()">Đăng nhập</button>
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app-screen" style="display:none">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title" id="form-title">Tạo Invoice mới</div>
+      <div class="sidebar-sub" id="user-info">Đang tải...</div>
+    </div>
+    <div class="sidebar-body">
+
+      <!-- TYPE -->
+      <div class="section">
+        <div class="type-toggle">
+          <button class="type-btn active" id="btn-invoice" onclick="setType('invoice')">📄 Invoice</button>
+          <button class="type-btn" id="btn-quotation" onclick="setType('quotation')">💰 Báo giá</button>
+        </div>
+      </div>
+
+      <!-- COMPANY -->
+      <div class="section">
+        <div class="section-label">Công ty</div>
+        <div class="company-cards" id="company-cards">
+          <div class="company-card active" onclick="selectCompany(1)" id="co-1">
+            <img src="https://drive.google.com/thumbnail?id=1eqSOyuv7yogkd9A29h-iJ_eQ3KAdjXTf&sz=w200" onerror="this.style.display='none'" alt="BolsaBeauty">
+            <div class="company-card-name">BolsaBeauty LLC</div>
+          </div>
+          <div class="company-card" onclick="selectCompany(2)" id="co-2">
+            <img src="https://drive.google.com/thumbnail?id=1sQA9EzY0hIY6vZ3cQ4vjg_aejx9CkKOv&sz=w200" onerror="this.style.display='none'" alt="Kashant">
+            <div class="company-card-name">Kashant LLC</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ORDER INFO -->
+      <div class="section">
+        <div class="section-label">Thông tin đơn hàng</div>
+        <div class="field-row">
+          <div class="field"><label>Date</label><input type="date" id="inv-date"></div>
+          <div class="field"><label>PO Number</label><input type="text" id="inv-po" placeholder="Tự động"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Location</label><input type="text" id="inv-location" placeholder="MS, FL..."></div>
+          <div class="field"><label>Requested Delivery</label>
+            <select id="inv-delivery">
+              <option>CUSTOMER WILL CALL</option>
+              <option>DELIVERY</option>
+              <option>SHIP</option>
+              <option>PICK UP</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- CUSTOMER -->
+      <div class="section">
+        <div class="section-label">Khách hàng</div>
+        <div class="cust-search">
+          <div class="field">
+            <label>Tìm khách hàng (Mã KH, Tên, SĐT)</label>
+            <input type="text" id="cust-search-input" placeholder="Nhập để tìm..." oninput="searchCustomer(this.value)">
+          </div>
+          <div class="cust-results" id="cust-results"></div>
+        </div>
+        <div id="cust-selected" style="display:none"></div>
+      </div>
+
+      <!-- PRODUCTS -->
+      <div class="section">
+        <div class="section-label">Sản phẩm</div>
+        <div class="product-search-wrap">
+          <input type="text" id="prod-search" placeholder="Tìm sản phẩm theo tên, SKU..." oninput="searchProduct(this.value)">
+        </div>
+        <div class="product-results" id="prod-results"></div>
+        <div id="items-list"></div>
+        <button class="btn btn-outline" style="width:100%;justify-content:center;margin-top:4px;border-style:dashed" onclick="document.getElementById('prod-search').focus()">
+          <i class="ti ti-plus"></i> Thêm sản phẩm
+        </button>
+      </div>
+
+      <!-- PAYMENT -->
+      <div class="section">
+        <div class="section-label">Thanh toán</div>
+        <div class="field-row">
+          <div class="field"><label>Tax (%)</label>
+            <select id="inv-tax" onchange="calcTotals()">
+              <option value="0">-- Không --</option>
+              <option value="6">6%</option>
+              <option value="7">7%</option>
+              <option value="8">8%</option>
+              <option value="9">9%</option>
+              <option value="10">10%</option>
+            </select>
+          </div>
+          <div class="field"><label>Deposit ($)</label><input type="number" id="inv-deposit" value="0" min="0" oninput="calcTotals()"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Extra Discount ($)</label><input type="number" id="inv-extra-disc" value="0" min="0" oninput="calcTotals()"></div>
+          <div class="field"><label>Ghi chú</label><input type="text" id="inv-note" placeholder="Ghi chú..."></div>
+        </div>
+        <div class="payment-summary" id="payment-summary">
+          <div class="pay-row"><span class="pay-label">Subtotal</span><span class="pay-val" id="sum-subtotal">$0.00</span></div>
+          <div class="pay-row"><span class="pay-label">Tax</span><span class="pay-val" id="sum-tax">$0.00</span></div>
+          <div class="pay-row" style="color:var(--red)"><span class="pay-label">Extra Discount</span><span class="pay-val" id="sum-disc">-$0.00</span></div>
+          <div class="pay-row pay-total"><span>Total</span><span id="sum-total">$0.00</span></div>
+          <div class="pay-row"><span class="pay-label">Deposit</span><span class="pay-val" id="sum-deposit">$0.00</span></div>
+          <div class="pay-row" style="font-weight:700;color:var(--red)"><span>Balance Due</span><span id="sum-balance">$0.00</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="btn" onclick="resetForm()"><i class="ti ti-refresh"></i> Reset</button>
+      <button class="btn btn-outline" onclick="saveAndDownload('preview')"><i class="ti ti-eye"></i> Preview</button>
+      <button class="btn btn-red" onclick="saveAndDownload('pdf')"><i class="ti ti-download"></i> Tải PDF</button>
+    </div>
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="preview-wrap">
+    <div class="preview-toolbar">
+      <h2>Preview Invoice</h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="window.open('index.html','_self')"><i class="ti ti-arrow-left"></i> Về CRM</button>
+        <button class="btn btn-red" onclick="saveAndDownload('pdf')"><i class="ti ti-file-download"></i> Tải PDF</button>
+      </div>
+    </div>
+    <div id="invoice-preview">
+      <!-- Preview renders here -->
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <span style="font-size:13px;color:var(--gray)">Đang xử lý...</span>
+</div>
+
+<script>
+const {createClient}=supabase;
+const sb=createClient(SUPABASE_URL,SUPABASE_ANON);
+
+// STATE
+let currentUser=null,currentProfile=null;
+let COMPANIES=[],PRODUCTS=[],CUSTOMERS_CACHE=[];
+let selectedCompany=null,selectedCustomer=null;
+let items=[]; // [{id,name,sku,image_url,qty,unit_price,discount,amount}]
+let docType='invoice';
+let searchTimeout=null;
+
+const DELIVERY_OPTS=['CUSTOMER WILL CALL','DELIVERY','SHIP','PICK UP'];
+
+function showLoading(v){document.getElementById('loading').style.display=v?'flex':'none';}
+function fmt(n){return '$'+parseFloat(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+// AUTH
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pass=document.getElementById('login-pass').value;
+  const errEl=document.getElementById('auth-error');
+  errEl.style.display='none';
+  if(!email||!pass){errEl.textContent='Vui lòng nhập đầy đủ';errEl.style.display='block';return;}
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){errEl.textContent=error.message;errEl.style.display='block';return;}
+  await initApp(data.user);
+}
+
+async function initApp(user){
+  showLoading(true);
+  currentUser=user;
+  const {data:profile}=await sb.from('profiles').select('*').eq('id',user.id).single();
+  currentProfile=profile;
+  const {data:companies}=await sb.from('companies').select('*').eq('is_active',true);
+  COMPANIES=companies||[];
+  const {data:products}=await sb.from('products').select('*').eq('in_stock',true).order('name');
+  PRODUCTS=products||[];
+
+  document.getElementById('user-info').textContent=(profile&&profile.full_name)||user.email;
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app-screen').style.display='flex';
+
+  // Set today's date
+  document.getElementById('inv-date').value=new Date().toISOString().split('T')[0];
+
+  // Select first company
+  if(COMPANIES.length>0){
+    selectedCompany=COMPANIES[0];
+    renderCompanyCards();
+  }
+
+  renderPreview();
+  showLoading(false);
+}
+
+// COMPANY
+function renderCompanyCards(){
+  const wrap=document.getElementById('company-cards');
+  wrap.innerHTML='';
+  COMPANIES.forEach(function(co,i){
+    const card=document.createElement('div');
+    card.className='company-card'+(selectedCompany&&selectedCompany.id===co.id?' active':'');
+    card.onclick=function(){selectCompany(co.id);};
+    card.innerHTML='<img src="'+co.logo_url+'" onerror="this.style.display=\'none\'" alt="'+co.name+'" style="height:30px;object-fit:contain;margin-bottom:4px"><div class="company-card-name">'+co.name+'</div>';
+    wrap.appendChild(card);
+  });
+}
+
+function selectCompany(id){
+  selectedCompany=COMPANIES.find(function(c){return c.id===id;});
+  renderCompanyCards();
+  renderPreview();
+}
+
+// TYPE
+function setType(t){
+  docType=t;
+  document.getElementById('btn-invoice').className='type-btn'+(t==='invoice'?' active':'');
+  document.getElementById('btn-quotation').className='type-btn'+(t==='quotation'?' active':'');
+  document.getElementById('form-title').textContent=t==='invoice'?'Tạo Invoice mới':'Tạo Báo giá mới';
+  renderPreview();
+}
+
+// CUSTOMER SEARCH
+async function searchCustomer(q){
+  clearTimeout(searchTimeout);
+  const res=document.getElementById('cust-results');
+  if(!q||q.length<2){res.style.display='none';return;}
+  searchTimeout=setTimeout(async function(){
+    const {data}=await sb.from('customers')
+      .select('id,ma_kh,customer_name,business_name,cellphone,business_phone,address,city,state,zipcode')
+      .or('ma_kh.ilike.%'+q+'%,customer_name.ilike.%'+q+'%,cellphone.ilike.%'+q+'%,business_phone.ilike.%'+q+'%,business_name.ilike.%'+q+'%')
+      .limit(8);
+    if(!data||data.length===0){res.style.display='none';return;}
+    res.innerHTML='';
+    data.forEach(function(c){
+      const item=document.createElement('div');
+      item.className='cust-item';
+      item.innerHTML='<div class="cust-name">'+c.business_name+' — '+(c.customer_name||'')+'</div>'
+        +'<div class="cust-info">'+c.ma_kh+' | '+(c.cellphone||c.business_phone||'')+'</div>';
+      item.onclick=function(){selectCustomer(c);};
+      res.appendChild(item);
+    });
+    res.style.display='block';
+  },300);
+}
+
+function selectCustomer(c){
+  selectedCustomer=c;
+  document.getElementById('cust-results').style.display='none';
+  document.getElementById('cust-search-input').value='';
+  const sel=document.getElementById('cust-selected');
+  const addr=[c.address,c.city,c.state,c.zipcode].filter(Boolean).join(', ');
+  sel.innerHTML='<div class="cust-selected">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center">'
+    +'<div class="cust-selected-name">'+(c.business_name||c.customer_name)+'</div>'
+    +'<button style="background:none;border:none;cursor:pointer;color:var(--gray);font-size:12px" onclick="clearCustomer()">✕</button>'
+    +'</div>'
+    +'<div class="cust-selected-info">'+(c.customer_name||'')+(c.cellphone?' | '+c.cellphone:'')+(c.business_phone?' | '+c.business_phone:'')+'</div>'
+    +(addr?'<div class="cust-selected-info">'+addr+'</div>':'')
+    +'</div>';
+  sel.style.display='block';
+  // Auto fill location
+  if(c.state)document.getElementById('inv-location').value=c.state;
+  renderPreview();
+}
+
+function clearCustomer(){
+  selectedCustomer=null;
+  document.getElementById('cust-selected').style.display='none';
+  renderPreview();
+}
+
+// PRODUCT SEARCH
+function searchProduct(q){
+  const res=document.getElementById('prod-results');
+  if(!q||q.length<2){res.style.display='none';return;}
+  const filtered=PRODUCTS.filter(function(p){
+    return (p.name||'').toLowerCase().includes(q.toLowerCase())
+      ||(p.sku||'').toLowerCase().includes(q.toLowerCase())
+      ||(p.brand||'').toLowerCase().includes(q.toLowerCase());
+  }).slice(0,8);
+  if(filtered.length===0){res.style.display='none';return;}
+  res.innerHTML='';
+  filtered.forEach(function(p){
+    const item=document.createElement('div');
+    item.className='product-item';
+    const imgHtml=p.image_url
+      ?'<img class="product-img" src="'+p.image_url+'" onerror="this.src=\'\'" alt="">'
+      :'<div class="product-img" style="display:flex;align-items:center;justify-content:center;font-size:18px">📦</div>';
+    item.innerHTML=imgHtml
+      +'<div><div class="product-name">'+p.name+'</div>'
+      +'<div class="product-sku">'+(p.sku||'')+(p.variant?' · '+p.variant:'')+'</div>'
+      +'<div class="product-price">'+fmt(p.price)+'</div></div>';
+    item.onclick=function(){addItem(p);};
+    res.appendChild(item);
+  });
+  res.style.display='block';
+}
+
+function addItem(p){
+  const item={
+    _id:Date.now(),
+    product_id:p.id,
+    name:p.name,
+    sku:p.sku,
+    image_url:p.image_url,
+    qty:1,
+    unit_price:p.price||0,
+    discount:0,
+    amount:p.price||0
+  };
+  items.push(item);
+  document.getElementById('prod-search').value='';
+  document.getElementById('prod-results').style.display='none';
+  renderItems();
+  calcTotals();
+}
+
+function removeItem(id){
+  items=items.filter(function(i){return i._id!==id;});
+  renderItems();
+  calcTotals();
+}
+
+function updateItem(id,field,val){
+  const item=items.find(function(i){return i._id===id;});
+  if(!item)return;
+  item[field]=parseFloat(val)||0;
+  item.amount=Math.max(0,(item.qty||1)*(item.unit_price||0)-(item.discount||0));
+  renderItems();
+  calcTotals();
+}
+
+function renderItems(){
+  const wrap=document.getElementById('items-list');
+  if(items.length===0){wrap.innerHTML='';return;}
+  wrap.innerHTML=items.map(function(it){
+    const imgHtml=it.image_url
+      ?'<img class="item-img" src="'+it.image_url+'" onerror="this.style.display=\'none\'" alt="">'
+      :'<div class="item-img" style="display:flex;align-items:center;justify-content:center;font-size:20px;background:var(--light)">📦</div>';
+    return '<div class="item-row">'
+      +'<div class="item-row-top">'+imgHtml
+      +'<div class="item-name">'+it.name+'<div style="font-size:10px;color:var(--gray);font-weight:400">'+(it.sku||'')+'</div></div>'
+      +'<button class="item-del" onclick="removeItem('+it._id+')"><i class="ti ti-x"></i></button>'
+      +'</div>'
+      +'<div class="item-fields">'
+      +'<div class="item-field"><label>QTY</label><input type="number" value="'+it.qty+'" min="1" onchange="updateItem('+it._id+',\'qty\',this.value)"></div>'
+      +'<div class="item-field"><label>Unit Price</label><input type="number" value="'+it.unit_price+'" min="0" onchange="updateItem('+it._id+',\'unit_price\',this.value)"></div>'
+      +'<div class="item-field"><label>Discount ($)</label><input type="number" value="'+it.discount+'" min="0" onchange="updateItem('+it._id+',\'discount\',this.value)"></div>'
+      +'<div class="item-field"><label>Amount</label><input type="text" value="'+fmt(it.amount)+'" readonly style="background:var(--light);color:var(--red);font-weight:700"></div>'
+      +'</div></div>';
+  }).join('');
+}
+
+// CALC
+function calcTotals(){
+  const subtotal=items.reduce(function(s,i){return s+i.amount;},0);
+  const taxPct=parseFloat(document.getElementById('inv-tax').value)||0;
+  const tax=subtotal*taxPct/100;
+  const extraDisc=parseFloat(document.getElementById('inv-extra-disc').value)||0;
+  const deposit=parseFloat(document.getElementById('inv-deposit').value)||0;
+  const total=subtotal+tax-extraDisc;
+  const balance=total-deposit;
+
+  document.getElementById('sum-subtotal').textContent=fmt(subtotal);
+  document.getElementById('sum-tax').textContent=fmt(tax);
+  document.getElementById('sum-disc').textContent='-'+fmt(extraDisc);
+  document.getElementById('sum-total').textContent=fmt(total);
+  document.getElementById('sum-deposit').textContent=fmt(deposit);
+  document.getElementById('sum-balance').textContent=fmt(balance);
+
+  renderPreview();
+}
+
+// GENERATE INVOICE NO
+async function generateInvoiceNo(){
+  if(!currentProfile)return'INV000000-01';
+  // Get employee code from email pattern or use profile
+  const email=currentUser.email;
+  const match=email.match(/salecnail0*(\d+)@/)||email.match(/C0*(\d+)@/)||null;
+  let empCode=match?match[1].padStart(2,'0'):'00';
+  
+  // Special cases
+  if(email==='baonam120202@gmail.com')empCode='02';
+  else if(email==='cnail1911@gmail.com')empCode='01';
+  else if(email==='salecnail@gmail.com')empCode='03';
+  else if(email==='salecnail01@gmail.com')empCode='04';
+  else if(email==='salecnail02@gmail.com')empCode='05';
+  else if(email==='salecnail03@gmail.com')empCode='06';
+  else if(email==='salecnail04@gmail.com')empCode='07';
+
+  const today=new Date();
+  const dateStr=String(today.getFullYear()).slice(2)+String(today.getMonth()+1).padStart(2,'0')+String(today.getDate()).padStart(2,'0');
+  const prefix=docType==='invoice'?'INV':'BG';
+  
+  // Count today's invoices
+  const {count}=await sb.from('invoices')
+    .select('*',{count:'exact',head:true})
+    .eq('sale_id',currentUser.id)
+    .eq('type',docType)
+    .gte('created_at',new Date().toISOString().split('T')[0]);
+  
+  const seq=String((count||0)+1).padStart(2,'0');
+  return prefix+'C'+empCode+dateStr+'-'+seq;
+}
+
+// PREVIEW RENDER
+function renderPreview(){
+  const co=selectedCompany||{name:'Company Name',address:'Address',phone:'Phone',logo_url:''};
+  const cu=selectedCustomer;
+  const date=document.getElementById('inv-date')&&document.getElementById('inv-date').value;
+  const po=document.getElementById('inv-po')&&document.getElementById('inv-po').value||'(Auto)';
+  const location=document.getElementById('inv-location')&&document.getElementById('inv-location').value||'-';
+  const delivery=document.getElementById('inv-delivery')&&document.getElementById('inv-delivery').value||'';
+  const subtotal=items.reduce(function(s,i){return s+i.amount;},0);
+  const taxPct=parseFloat(document.getElementById('inv-tax')&&document.getElementById('inv-tax').value)||0;
+  const tax=subtotal*taxPct/100;
+  const extraDisc=parseFloat(document.getElementById('inv-extra-disc')&&document.getElementById('inv-extra-disc').value)||0;
+  const deposit=parseFloat(document.getElementById('inv-deposit')&&document.getElementById('inv-deposit').value)||0;
+  const total=subtotal+tax-extraDisc;
+  const balance=total-deposit;
+  const saleRep=currentProfile&&currentProfile.full_name||'Sale Rep';
+  const custId=cu?cu.ma_kh:'KH-------';
+  const docLabel=docType==='invoice'?'INVOICE':'QUOTATION';
+
+  let prodRows='';
+  if(items.length===0){
+    prodRows='<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:20px">Chưa có sản phẩm</td></tr>';
+  } else {
+    items.forEach(function(it){
+      const imgHtml=it.image_url
+        ?'<img class="inv-product-img" src="'+it.image_url+'" onerror="this.style.display=\'none\'" alt="">'
+        :'<div class="inv-product-img" style="display:flex;align-items:center;justify-content:center;font-size:24px">📦</div>';
+      prodRows+='<tr>'
+        +'<td>'+imgHtml+'</td>'
+        +'<td>'+it.name+'</td>'
+        +'<td style="text-align:center">'+it.qty+'</td>'
+        +'<td style="text-align:right">'+fmt(it.unit_price)+'</td>'
+        +'<td style="text-align:right">'+fmt(it.discount)+'</td>'
+        +'<td>'+fmt(it.amount)+'</td>'
+        +'</tr>';
+    });
+  }
+
+  const cuAddr=cu?[cu.address,cu.city,cu.state?(cu.state+(cu.zipcode?' '+cu.zipcode:'')):cu.zipcode].filter(Boolean).join(', '):'';
+
+  document.getElementById('invoice-preview').innerHTML=
+    '<div class="inv-header">'
+    +'<div>'
+    +'<div class="inv-company-name">'+co.name+'</div>'
+    +'<div class="inv-company-info">'+(co.address||'')+'<br>'+(co.phone||'')+'</div>'
+    +'</div>'
+    +(co.logo_url?'<img class="inv-logo" src="'+co.logo_url+'" onerror="this.style.display=\'none\'" alt="'+co.name+'">':'<div class="inv-logo-placeholder">LOGO</div>')
+    +'</div>'
+    +'<div class="inv-divider"></div>'
+    +'<div class="inv-title">'+docLabel+'</div>'
+    +'<div class="inv-meta">'
+    +'<div class="inv-meta-item"><div class="inv-meta-label">Date</div><div class="inv-meta-val">'+(date||'-')+'</div></div>'
+    +'<div class="inv-meta-item"><div class="inv-meta-label">PO Number</div><div class="inv-meta-val">'+po+'</div></div>'
+    +'<div class="inv-meta-item"><div class="inv-meta-label">Customer ID</div><div class="inv-meta-val">'+custId+'</div></div>'
+    +'<div class="inv-meta-item"><div class="inv-meta-label" style="color:var(--red)">Sale Rep</div><div class="inv-meta-val"><span style="color:var(--red)">📞</span> '+saleRep+'</div></div>'
+    +'<div class="inv-meta-item"><div class="inv-meta-label">Location</div><div class="inv-meta-val">'+location+'</div></div>'
+    +'<div class="inv-meta-item"><div class="inv-meta-label">Requested Delivery</div><div class="inv-meta-val">'+delivery+'</div></div>'
+    +'</div>'
+    +'<div class="inv-bill-to">Bill To</div>'
+    +'<div class="inv-customer">'
+    +(cu?'<div class="inv-customer-name">'+(cu.business_name||cu.customer_name||'')+'</div>'
+      +'<div class="inv-customer-info">Customer Name: '+(cu.customer_name||'')+'</div>'
+      +(cu.business_phone?'<div class="inv-customer-info">Business Phone: '+cu.business_phone+'</div>':'')
+      +(cu.cellphone?'<div class="inv-customer-info">Cellphone: '+cu.cellphone+'</div>':'')
+      +(cuAddr?'<div class="inv-customer-info">Address: '+cuAddr+'</div>':'')
+      :'<div style="color:var(--gray);font-style:italic">Chưa chọn khách hàng</div>')
+    +'</div>'
+    +'<table class="inv-table">'
+    +'<thead><tr><th style="width:70px">IMAGE</th><th>DESCRIPTION</th><th style="width:50px;text-align:center">QTY</th><th style="width:90px;text-align:right">UNIT PRICE</th><th style="width:90px;text-align:right">DISCOUNT</th><th style="width:90px;text-align:right">AMOUNT</th></tr></thead>'
+    +'<tbody>'+prodRows+'</tbody>'
+    +'</table>'
+    +'<div class="inv-notes">'
+    +'* Includes a 12-month warranty and lifetime technical support. Products are sourced directly from the manufacturer, ensuring quality, authenticity, and reliable after-sales service. Meets U.S quality and safety standards.<br>'
+    +'* Order must be in full before delivery or ship.<br>'
+    +'* All custom made items are non-refundable or cancel.<br>'
+    +'* Returned item will be refunded less original shipping and 30% restocking fee.<br>'
+    +'* If any balance (payment) has not been received, we have the right to pick up all the unpaid merechandise.'
+    +'</div>'
+    +'<div class="inv-totals"><div class="inv-totals-box">'
+    +'<div class="inv-total-row"><span class="inv-total-label">Subtotal</span><span class="inv-total-val">'+fmt(subtotal)+'</span></div>'
+    +(taxPct>0?'<div class="inv-total-row"><span class="inv-total-label">Tax ('+taxPct+'%)</span><span class="inv-total-val">'+fmt(tax)+'</span></div>':'')
+    +(extraDisc>0?'<div class="inv-total-row" style="color:var(--red)"><span class="inv-total-label">Extra Discount</span><span class="inv-total-val">-'+fmt(extraDisc)+'</span></div>':'')
+    +'<div class="inv-grand-total">'+fmt(total)+'</div>'
+    +'<div class="inv-total-row"><span class="inv-total-label">Deposit</span><span class="inv-total-val">'+fmt(deposit)+'</span></div>'
+    +'<div class="inv-balance-row"><span class="inv-balance-label">Balance Due</span><span class="inv-balance-val">'+fmt(balance)+'</span></div>'
+    +'</div></div>'
+    +'<div class="inv-divider-bottom"></div>'
+    +'<div class="inv-thank">\'Thank You for Your Business\'</div>';
+}
+
+// SAVE + DOWNLOAD
+async function saveAndDownload(action){
+  if(!selectedCustomer){alert('Vui lòng chọn khách hàng!');return;}
+  if(items.length===0){alert('Vui lòng thêm ít nhất 1 sản phẩm!');return;}
+
+  showLoading(true);
+
+  // Generate invoice number
+  const invNo=await generateInvoiceNo();
+
+  // Update PO number display
+  document.getElementById('inv-po').value=invNo;
+
+  // Recalculate
+  const subtotal=items.reduce(function(s,i){return s+i.amount;},0);
+  const taxPct=parseFloat(document.getElementById('inv-tax').value)||0;
+  const tax=subtotal*taxPct/100;
+  const extraDisc=parseFloat(document.getElementById('inv-extra-disc').value)||0;
+  const deposit=parseFloat(document.getElementById('inv-deposit').value)||0;
+  const total=subtotal+tax-extraDisc;
+  const balance=total-deposit;
+
+  // Save to Supabase
+  const {data:inv,error:invErr}=await sb.from('invoices').insert({
+    invoice_no:invNo,
+    type:docType,
+    company_id:selectedCompany?selectedCompany.id:null,
+    customer_id:selectedCustomer.id,
+    sale_id:currentUser.id,
+    date:document.getElementById('inv-date').value,
+    po_number:invNo,
+    location:document.getElementById('inv-location').value,
+    requested_delivery:document.getElementById('inv-delivery').value,
+    tax_pct:taxPct,
+    deposit:deposit,
+    extra_discount:extraDisc,
+    note:document.getElementById('inv-note').value,
+    subtotal:subtotal,
+    total:total,
+    balance_due:balance,
+    status:'sent'
+  }).select().single();
+
+  if(invErr){showLoading(false);alert('Lỗi lưu đơn: '+invErr.message);return;}
+
+  // Save items
+  const invItems=items.map(function(it){
+    return {
+      invoice_id:inv.id,
+      product_id:it.product_id||null,
+      product_name:it.name,
+      image_url:it.image_url||null,
+      qty:it.qty,
+      unit_price:it.unit_price,
+      discount:it.discount,
+      amount:it.amount
+    };
+  });
+  await sb.from('invoice_items').insert(invItems);
+
+  // Update customer latest invoice + total amount
+  if(docType==='invoice'){
+    await sb.from('customers').update({
+      latest_invoice_no:invNo,
+      total_amount:total,
+      lead_status:'Closedeal'
+    }).eq('id',selectedCustomer.id);
+  }
+
+  renderPreview();
+
+  if(action==='pdf'){
+    // Download PDF
+    setTimeout(async function(){
+      const element=document.getElementById('invoice-preview');
+      const opt={
+        margin:[10,10,10,10],
+        filename:invNo+'.pdf',
+        image:{type:'jpeg',quality:0.98},
+        html2canvas:{scale:2,useCORS:true,allowTaint:true},
+        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+      };
+      await html2pdf().set(opt).from(element).save();
+      showLoading(false);
+      alert('Đã lưu đơn '+invNo+' và tải PDF!');
+    },500);
+  } else {
+    showLoading(false);
+    alert('Đã lưu đơn '+invNo+'. Xem preview bên phải!');
+  }
+}
+
+function resetForm(){
+  items=[];selectedCustomer=null;
+  document.getElementById('cust-selected').style.display='none';
+  document.getElementById('cust-search-input').value='';
+  document.getElementById('inv-po').value='';
+  document.getElementById('inv-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('inv-tax').value='0';
+  document.getElementById('inv-deposit').value='0';
+  document.getElementById('inv-extra-disc').value='0';
+  document.getElementById('inv-note').value='';
+  document.getElementById('inv-location').value='';
+  renderItems();calcTotals();
+}
+
+// BOOT
+(async function(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(session&&session.user)await initApp(session.user);
+})();
+</script>
+</body>
+</html>
