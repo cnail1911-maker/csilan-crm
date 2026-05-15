@@ -1081,7 +1081,7 @@ function renderProducts(){
   });
 
   return '<div class="topbar"><div class="topbar-title">Quản lý sản phẩm</div>'
-    +'<div class="search-wrap"><i class="ti ti-search"></i><input id="prod-mg-search" placeholder="Tìm SKU, tên sản phẩm..." oninput="clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){prodMgFilter(document.getElementById('prod-mg-search').value);},120)" value="'+prodSearch+'"></div>'
+    +'<div class="search-wrap"><i class="ti ti-search"></i><input id="prod-mg-search" placeholder="Tìm SKU, tên sản phẩm..." oninput="clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){prodMgFilter(document.getElementById(&quot;prod-mg-search&quot;).value);},120)" value="'+prodSearch+'"></div>'
     +'<span style="font-size:12px;color:var(--text2)">'+filtered.length+' sản phẩm</span>'
     +'</div>'
     +'<div class="content">'
