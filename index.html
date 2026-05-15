@@ -152,7 +152,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     <div class="sidebar">
       <div class="logo-wrap">
         <div class="logo-name">C-Silan CRM</div>
-        <div class="logo-tag">Sales Team · v4.0</div>
+        <div class="logo-tag">Sales Team · v5.0</div>
       </div>
       <div class="nav-sec">Workspace</div>
       <div class="nav-item active" onclick="setPage('customers')" id="nav-customers"><i class="ti ti-users"></i> Khách hàng</div>
@@ -161,6 +161,9 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
       <div class="nav-item" onclick="setPage('pipeline')" id="nav-pipeline"><i class="ti ti-layout-kanban"></i> Pipeline</div>
       <div class="nav-item" onclick="setPage('pending')" id="nav-pending"><i class="ti ti-clock"></i> Chờ duyệt <span class="nav-badge" id="badge-pending" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('kpi')" id="nav-kpi"><i class="ti ti-chart-bar"></i> Báo cáo KPI</div>
+      <div class="nav-item" onclick="setPage('campaign')" id="nav-campaign"><i class="ti ti-speakerphone"></i> Campaign</div>
+      <div class="nav-item" onclick="setPage('alert')" id="nav-alert"><i class="ti ti-bell"></i> Cảnh báo <span class="nav-badge" id="badge-alert" style="display:none">0</span></div>
+      <div class="nav-item" onclick="setPage('products')" id="nav-products" style="display:none"><i class="ti ti-package"></i> Sản phẩm</div>
       <div class="user-area">
         <div class="avatar av-0" id="user-avatar">--</div>
         <div><div class="user-name" id="user-name">--</div><div class="user-role" id="user-role">Sale</div></div>
@@ -191,7 +194,7 @@ const AV_CLASSES=['av-0','av-1','av-2','av-3','av-4','av-5'];
 const PAGE_SIZE=50;
 
 // STATE
-let currentUser=null,currentProfile=null,CUSTOMERS=[],PROFILES=[];
+let currentUser=null,currentProfile=null,CUSTOMERS=[],PROFILES=[],PRODUCTS_ALL=[];
 let page='customers',fStatus='all',fSale='all',fPotential='all',fBrand='all',search='',selId=null,addOpen=false;
 let curPage=1,potPage=1,cdPage=1,pdPage=1,fPendingSale='all';
 let pipePage={};
@@ -264,18 +267,28 @@ async function initApp(user){
   await loadCustomers();
   const {data:profs}=await sb.from('profiles').select('*').eq('is_active',true).order('full_name');
   PROFILES=profs||[];
+  // Load products for manager
+  const isManagerLoad=profile&&(profile.role==='manager'||profile.role==='admin');
+  if(isManagerLoad){
+    const {data:allProds}=await sb.from('products').select('*').order('name').limit(500);
+    PRODUCTS_ALL=allProds||[];
+  }
   const initials=((profile&&profile.full_name)||user.email).split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
   document.getElementById('user-avatar').textContent=initials;
   document.getElementById('user-name').textContent=(profile&&profile.full_name)||user.email;
   document.getElementById('user-role').textContent=profile&&profile.role==='manager'?'Manager':profile&&profile.role==='admin'?'Admin':'Sale';
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app-screen').style.display='block';
+  // Show products & campaign nav for manager/admin
+  const isManagerInit=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const prodNav=document.getElementById('nav-products');
+  if(prodNav)prodNav.style.display=isManagerInit?'flex':'none';
   showLoading(false);render();
 }
 
 async function loadCustomers(){
   const {data,error}=await sb.from('customers')
-    .select('*, assigned_profile:profiles!assigned_to(id,full_name,role)')
+    .select('*, assigned_profile:profiles!assigned_to(id,full_name,role), last_contacted, campaign_name')
     .order('created_at',{ascending:false})
     .limit(3000);
   if(!error)CUSTOMERS=data||[];
@@ -286,6 +299,18 @@ async function loadCustomers(){
     :CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&c.created_by===currentUser.id;}).length;
   const badge=document.getElementById('badge-pending');
   if(badge){badge.textContent=pendingCount;badge.style.display=pendingCount>0?'inline':'none';}
+  
+  // Alert badge - potential customers not contacted for 3+ days
+  const today=new Date();
+  const alertCount=CUSTOMERS.filter(function(c){
+    if(!c.potential||c.potential==='')return false;
+    if(c.lead_status==='Closedeal')return false;
+    const lastContact=c.last_contacted?new Date(c.last_contacted):new Date(c.created_at);
+    const days=Math.floor((today-lastContact)/(1000*60*60*24));
+    return days>=3;
+  }).length;
+  const alertBadge=document.getElementById('badge-alert');
+  if(alertBadge){alertBadge.textContent=alertCount;alertBadge.style.display=alertCount>0?'inline':'none';}
 }
 
 // ============================================================
@@ -325,6 +350,7 @@ function renderCustomers(){
       +'<td>'+lBadge(c.lead_status)+'</td>'
       +'<td>'+dlBadge(c.assigned_deadline)+'</td>'
       +'<td style="font-size:10px;color:var(--text3)">'+fmtDate(c.created_at)+'</td>'
+      +(function(){if(!c.potential||c.potential==='')return '';const lastC=c.last_contacted?new Date(c.last_contacted):new Date(c.created_at);const days=Math.floor((new Date()-lastC)/(1000*60*60*24));if(days<3)return '<td></td>';const col=days>30?'var(--danger)':days>=7?'var(--warn)':'var(--accent)';return '<td style="font-size:10px;color:'+col+';font-weight:600">'+(days>30?'30+':days)+'d ⚠</td>';})()
       +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
       +'</tr>';
   });
@@ -542,6 +568,258 @@ function renderPending(){
 // ============================================================
 // RENDER KPI
 // ============================================================
+// ============================================================
+// RENDER ALERT - Potential chưa liên hệ 3+ ngày
+// ============================================================
+function renderAlert(){
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const today=new Date();
+  
+  function getDays(c){
+    const lastContact=c.last_contacted?new Date(c.last_contacted):new Date(c.created_at);
+    return Math.floor((today-lastContact)/(1000*60*60*24));
+  }
+  
+  // Khách có Potential, chưa Closedeal, chưa liên hệ 3+ ngày
+  const alertData=CUSTOMERS.filter(function(c){
+    if(!c.potential||c.potential==='')return false;
+    if(c.lead_status==='Closedeal')return false;
+    return getDays(c)>=3;
+  }).sort(function(a,b){return getDays(b)-getDays(a);});
+
+  function daysBadge(days){
+    if(days>30)return '<span class="badge b-lost">'+days+'+ ngày</span>';
+    if(days>=7)return '<span class="badge b-followup">'+days+' ngày</span>';
+    return '<span class="badge b-calling">'+days+' ngày</span>';
+  }
+
+  let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
+
+  const filtered=alertData.filter(function(c){return fSale==='all'||c.assigned_to===fSale;});
+  const over30=filtered.filter(function(c){return getDays(c)>30;}).length;
+
+  let rows='';
+  filtered.slice(0,100).forEach(function(c){
+    const days=getDays(c);
+    rows+='<tr onclick="selId='+c.id+';setPage(\"customers\")">';
+      +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(c.ma_kh||'—')+'</td>'
+      +'<td>'+(c.business_name||'—')+'</td>'
+      +'<td style="color:var(--text)">'+(c.customer_name||'')+'</td>'
+      +'<td style="font-size:10px">'+phoneTd(c)+'</td>'
+      +'<td style="font-size:11px;color:var(--accent);font-weight:500">'+(c.potential||'—')+'</td>'
+      +'<td>'+sBadge(c.status)+'</td>'
+      +'<td>'+daysBadge(days)+'</td>'
+      +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
+      +(isManager?'<td><button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="event.stopPropagation();recallOne('+c.id+')">Thu hồi</button></td>':'')
+      +'</tr>';
+  });
+
+  return '<div class="topbar"><div class="topbar-title">Cảnh báo Potential</div>'+saleFilter+'</div>'
+    +'<div class="content">'
+    +'<div class="stats-row">'
+    +'<div class="stat-card sc3"><div class="stat-label">Chưa liên hệ 3+ ngày</div><div class="stat-val" style="color:var(--warn)">'+filtered.length+'</div></div>'
+    +'<div class="stat-card sc0"><div class="stat-label">Quá 30 ngày</div><div class="stat-val" style="color:var(--danger)">'+over30+'</div></div>'
+    +'<div class="stat-card sc2"><div class="stat-label">Tổng Potential</div><div class="stat-val" style="color:var(--brand2)">'+CUSTOMERS.filter(function(c){return c.potential&&c.potential!=='';}).length+'</div></div>'
+    +'</div>'
+    +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--warn)">'+filtered.length+'</span> cần follow up</h2>'
+    +(isManager?'<button class="btn" style="border-color:rgba(255,118,117,0.4);color:var(--danger);font-size:11px" onclick="recallOver30()"><i class="ti ti-rotate-clockwise"></i> Thu hồi 30+ ngày</button>':'')
+    +'</div>'
+    +(filtered.length===0?'<div class="empty-state"><i class="ti ti-bell-off"></i>Không có cảnh báo nào!</div>'
+      :'<table><colgroup><col width="80"><col width="120"><col width="110"><col width="90"><col width="100"><col width="75"><col width="80"><col width="65">'+(isManager?'<col width="70">':'')+'</colgroup>'
+      +'<thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>Potential</th><th>Status</th><th>Chưa liên hệ</th><th>Sale</th>'+(isManager?'<th></th>':'')+'</tr></thead>'
+      +'<tbody>'+rows+'</tbody></table>')
+    +'</div></div>';
+}
+
+async function recallOne(id){
+  if(!confirm('Thu hồi khách này?'))return;
+  showLoading(true);
+  await sb.from('customers').update({assigned_to:null,is_recalled:true,assigned_deadline:null}).eq('id',id);
+  await loadCustomers();showLoading(false);render();
+}
+
+async function recallOver30(){
+  const today=new Date();
+  const ids=CUSTOMERS.filter(function(c){
+    if(!c.potential||c.potential==='')return false;
+    if(c.lead_status==='Closedeal')return false;
+    const lastContact=c.last_contacted?new Date(c.last_contacted):new Date(c.created_at);
+    const days=Math.floor((today-lastContact)/(1000*60*60*24));
+    return days>30&&(fSale==='all'||c.assigned_to===fSale);
+  }).map(function(c){return c.id;});
+  if(ids.length===0){alert('Không có khách nào quá 30 ngày!');return;}
+  if(!confirm('Thu hồi '+ids.length+' khách quá 30 ngày?'))return;
+  showLoading(true);
+  await sb.from('customers').update({assigned_to:null,is_recalled:true,assigned_deadline:null}).in('id',ids);
+  await loadCustomers();showLoading(false);render();
+  alert('Đã thu hồi '+ids.length+' khách!');
+}
+
+// ============================================================
+// RENDER CAMPAIGN
+// ============================================================
+function renderCampaign(){
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  // Group customers by campaign_name
+  const campaigns={};
+  CUSTOMERS.forEach(function(c){
+    const name=c.campaign_name||c.campaign_month||'Không có campaign';
+    if(!campaigns[name])campaigns[name]={name:name,total:0,new:0,followup:0,closedeal:0,customers:[]};
+    campaigns[name].total++;
+    if(c.status==='New')campaigns[name].new++;
+    if(c.status==='Follow Up')campaigns[name].followup++;
+    if(c.lead_status==='Closedeal')campaigns[name].closedeal++;
+    campaigns[name].customers.push(c);
+  });
+  const campList=Object.values(campaigns).sort(function(a,b){return b.total-a.total;});
+
+  let campCards='';
+  campList.forEach(function(camp){
+    const pct=camp.total?Math.round(camp.closedeal/camp.total*100):0;
+    campCards+='<div class="kpi-card" style="cursor:pointer" onclick="goToCampaign()">';
+      +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">'+camp.name+'</div>'
+      +'<div style="display:flex;gap:12px;margin-bottom:8px">'
+      +'<div style="text-align:center"><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:700;color:var(--brand2)">'+camp.total+'</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase">Total</div></div>'
+      +'<div style="text-align:center"><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:700;color:var(--accent)">'+camp.followup+'</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase">Follow</div></div>'
+      +'<div style="text-align:center"><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:700;color:var(--accent2)">'+camp.closedeal+'</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase">Closedeal</div></div>'
+      +'<div style="text-align:center"><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:700;color:var(--warn)">'+pct+'%</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase">Tỉ lệ</div></div>'
+      +'</div>'
+      +'<div class="kpi-bar-bg"><div class="kpi-bar-fill" style="width:'+pct+'%"></div></div>'
+      +'</div>';
+  });
+
+  // Campaign assign form - manager only
+  let assignForm='';
+  if(isManager){
+    assignForm='<div class="panel" style="margin-bottom:14px"><div class="panel-header"><h2>Tạo Campaign mới</h2></div>'
+      +'<div style="padding:14px;display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">'
+      +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Tên Campaign</div>'
+      +'<input id="camp-name" placeholder="2026_Campaign_T06" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"></div>'
+      +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Assign Sale</div>'
+      +'<select id="camp-sale" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'
+      +'<option value="all">Tất cả sale (chia đều)</option>'
+      +PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'">'+p.full_name+'</option>';}).join('')
+      +'</select></div>'
+      +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Deadline</div>'
+      +'<input type="date" id="camp-deadline" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"></div>'
+      +'<button class="btn btn-primary" onclick="createCampaign()" style="white-space:nowrap"><i class="ti ti-speakerphone"></i> Tạo Campaign</button>'
+      +'</div></div>';
+  }
+
+  return '<div class="topbar"><div class="topbar-title">Campaign</div></div>'
+    +'<div class="content">'
+    +assignForm
+    +'<div class="kpi-grid">'+campCards+'</div>'
+    +'</div>';
+}
+
+function goToCampaign(){fSale="all";search="";setPage("customers");}
+async function createCampaign(){
+  const name=document.getElementById('camp-name')&&document.getElementById('camp-name').value.trim();
+  const saleId=document.getElementById('camp-sale')&&document.getElementById('camp-sale').value;
+  const deadline=document.getElementById('camp-deadline')&&document.getElementById('camp-deadline').value;
+  if(!name){alert('Vui lòng nhập tên Campaign!');return;}
+  if(!deadline){alert('Vui lòng chọn Deadline!');return;}
+
+  // Get unassigned customers
+  const unassigned=CUSTOMERS.filter(function(c){return !c.assigned_to||c.is_recalled;});
+  if(unassigned.length===0){alert('Không có data chưa phân công!');return;}
+  if(!confirm('Phân công '+unassigned.length+' khách cho Campaign "'+name+'" với deadline '+deadline+'?'))return;
+
+  showLoading(true);
+  const salesList=saleId==='all'
+    ?PROFILES.filter(function(p){return p.role==='sale';})
+    :[PROFILES.find(function(p){return p.id===saleId;})].filter(Boolean);
+
+  if(salesList.length===0){showLoading(false);alert('Không có sale nào!');return;}
+
+  // Assign customers
+  const updates=[];
+  unassigned.forEach(function(c,i){
+    const sale=salesList[i%salesList.length];
+    updates.push({
+      id:c.id,
+      assigned_to:sale.id,
+      campaign_name:name,
+      assigned_deadline:deadline,
+      is_recalled:false
+    });
+  });
+
+  // Batch update
+  for(let i=0;i<updates.length;i+=50){
+    const batch=updates.slice(i,i+50);
+    for(const u of batch){
+      await sb.from('customers').update({
+        assigned_to:u.assigned_to,
+        campaign_name:u.campaign_name,
+        assigned_deadline:u.assigned_deadline,
+        is_recalled:false
+      }).eq('id',u.id);
+    }
+  }
+
+  await loadCustomers();showLoading(false);
+  alert('Đã tạo Campaign "'+name+'" với '+unassigned.length+' khách!');
+  document.getElementById('camp-name').value='';
+  render();
+}
+
+// ============================================================
+// RENDER PRODUCTS (Manager only)
+// ============================================================
+function renderProducts(){
+  const pgProd=Math.max(1,parseInt(sessionStorage.getItem('prodMgPage')||'1'));
+  let prodSearch=sessionStorage.getItem('prodMgSearch')||'';
+  const filtered=PRODUCTS_ALL.filter(function(p){
+    return !prodSearch||(p.name||'').toLowerCase().includes(prodSearch.toLowerCase())||(p.sku||'').toLowerCase().includes(prodSearch.toLowerCase());
+  });
+  const pageData=filtered.slice((pgProd-1)*PAGE_SIZE,pgProd*PAGE_SIZE);
+
+  let rows='';
+  pageData.forEach(function(p){
+    rows+='<tr>'
+      +'<td style="font-size:10px;font-family:monospace;color:var(--text3)">'+(p.sku||'—')+'</td>'
+      +'<td><div style="display:flex;align-items:center;gap:8px">'
+      +(p.image_url?'<img src="'+p.image_url+'" style="width:32px;height:32px;border-radius:4px;object-fit:cover;background:var(--surface2)" alt="">':'<div style="width:32px;height:32px;border-radius:4px;background:var(--surface2)"></div>')
+      +'<span style="color:var(--text)">'+(p.name||'—')+'</span></div></td>'
+      +'<td style="font-size:11px">'+(p.brand||'—')+'</td>'
+      +'<td style="font-size:11px">'+(p.variant||'—')+'</td>'
+      +'<td style="color:var(--accent2);font-weight:600">$'+(p.price||0)+'</td>'
+      +'<td>'+(p.in_stock?'<span class="badge b-won">In Stock</span>':'<span class="badge b-lost">Out</span>')+'</td>'
+      +'<td><div style="display:flex;gap:4px">'
+      +'<button class="btn" style="padding:3px 8px;font-size:10px" onclick="toggleStock('+p.id+','+(p.in_stock?'false':'true')+')">'+(p.in_stock?'Ẩn':'Hiện')+'</button>'
+      +'</div></td>'
+      +'</tr>';
+  });
+
+  return '<div class="topbar"><div class="topbar-title">Quản lý sản phẩm</div>'
+    +'<div class="search-wrap"><i class="ti ti-search"></i><input id="prod-mg-search" placeholder="Tìm SKU, tên sản phẩm..." oninput="prodMgFilter(this.value)" value="'+prodSearch+'"></div>'
+    +'<span style="font-size:12px;color:var(--text2)">'+filtered.length+' sản phẩm</span>'
+    +'</div>'
+    +'<div class="content">'
+    +'<div class="panel"><div class="panel-header"><h2>Danh sách sản phẩm</h2>'
+    +'<span style="font-size:11px;color:var(--text3)">Ẩn/Hiện để quản lý sản phẩm hoạt động</span>'
+    +'</div>'
+    +(filtered.length===0?'<div class="empty-state"><i class="ti ti-package"></i>Không tìm thấy sản phẩm</div>'
+      :'<table><colgroup><col width="80"><col width="200"><col width="80"><col width="80"><col width="70"><col width="70"><col width="80"></colgroup>'
+      +'<thead><tr><th>SKU</th><th>Sản phẩm</th><th>Brand</th><th>Variant</th><th>Giá</th><th>Trạng thái</th><th></th></tr></thead>'
+      +'<tbody>'+rows+'</tbody></table>'
+      +pgBar(filtered.length,pgProd,PAGE_SIZE,'setProdMgPage'))
+    +'</div></div>';
+}
+
+function setProdMgPage(p){sessionStorage.setItem('prodMgPage',p);render();}
+function prodMgFilter(v){sessionStorage.setItem('prodMgSearch',v);sessionStorage.setItem('prodMgPage',1);render();}
+
+async function toggleStock(id,val){
+  await sb.from('products').update({in_stock:val}).eq('id',id);
+  // Update local cache
+  const p=PRODUCTS_ALL.find(function(x){return x.id===id;});
+  if(p)p.in_stock=val;
+  render();
+}
+
 function renderKPI(){
   const salesToShow=PROFILES.filter(function(p){return p.role==='sale';});
   let statsHtml='';
