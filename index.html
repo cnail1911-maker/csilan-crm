@@ -281,11 +281,14 @@ async function initApp(user){
   PROFILES=profs||[];
   // Load invoices after auth is confirmed
   await loadInvoices();
-  // Load products for manager
+  // Load products for all users (only in_stock for sale)
   const isManagerLoad=profile&&(profile.role==='manager'||profile.role==='admin');
   if(isManagerLoad){
     const {data:allProds}=await sb.from('products').select('*').order('name').limit(500);
     PRODUCTS_ALL=allProds||[];
+  } else {
+    const {data:saleProds}=await sb.from('products').select('*').order('name').limit(500);
+    PRODUCTS_ALL=saleProds||[];
   }
   const initials=((profile&&profile.full_name)||user.email).split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
   document.getElementById('user-avatar').textContent=initials;
@@ -296,7 +299,7 @@ async function initApp(user){
   // Show products & campaign nav for manager/admin
   const isManagerInit=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
   const prodNav=document.getElementById('nav-products');
-  if(prodNav)prodNav.style.display=isManagerInit?'flex':'none';
+  if(prodNav)prodNav.style.display='flex';
   showLoading(false);render();
 }
 
@@ -1074,13 +1077,12 @@ function renderProducts(){
       +'<td style="font-size:11px">'+(p.variant||'—')+'</td>'
       +'<td style="color:var(--accent2);font-weight:600">$'+(p.price||0)+'</td>'
       +'<td>'+(p.in_stock?'<span class="badge b-won">In Stock</span>':'<span class="badge b-lost">Out</span>')+'</td>'
-      +'<td><div style="display:flex;gap:4px">'
-      +'<button class="btn" style="padding:3px 8px;font-size:10px" onclick="toggleStock('+p.id+','+(p.in_stock?'false':'true')+')">'+(p.in_stock?'Ẩn':'Hiện')+'</button>'
-      +'</div></td>'
+      +(isManagerProd?'<td><div style="display:flex;gap:4px"><button class="btn" style="padding:3px 8px;font-size:10px" onclick="toggleStock('+p.id+','+(p.in_stock?'false':'true')+')">'+(p.in_stock?'Ẩn':'Hiện')+'</button></div></td>':'<td></td>')
       +'</tr>';
   });
 
-  return '<div class="topbar"><div class="topbar-title">Quản lý sản phẩm</div>'
+  const isManagerProd=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  return '<div class="topbar"><div class="topbar-title">'+(isManagerProd?'Quản lý sản phẩm':'Sản phẩm')+'</div>'
     +'<div class="search-wrap"><i class="ti ti-search"></i><input id="prod-mg-search" placeholder="Tìm SKU, tên sản phẩm..." oninput="clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){prodMgFilter(document.getElementById(&quot;prod-mg-search&quot;).value);},120)" value="'+prodSearch+'"></div>'
     +'<span style="font-size:12px;color:var(--text2)">'+filtered.length+' sản phẩm</span>'
     +'</div>'
