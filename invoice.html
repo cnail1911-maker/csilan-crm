@@ -365,6 +365,14 @@ async function initApp(user){
     renderCompanyCards();
   }
 
+  // Auto load customer if coming from CRM
+  const preloadId=sessionStorage.getItem('invoice_customer_id');
+  if(preloadId){
+    sessionStorage.removeItem('invoice_customer_id');
+    const {data:c}=await sb.from('customers').select('*').eq('id',parseInt(preloadId)).single();
+    if(c)selectCustomer(c);
+  }
+
   renderPreview();
   showLoading(false);
 }
