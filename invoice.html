@@ -181,8 +181,15 @@ table.inv-table tr:last-child td{border-bottom:none}
   <!-- SIDEBAR -->
   <div class="sidebar">
     <div class="sidebar-header">
-      <div class="sidebar-title" id="form-title">Tạo Invoice mới</div>
-      <div class="sidebar-sub" id="user-info">Đang tải...</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="sidebar-title" id="form-title">Tạo Invoice mới</div>
+          <div class="sidebar-sub" id="user-info">Đang tải...</div>
+        </div>
+        <button onclick="syncProducts()" id="sync-btn" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:4px 8px;font-size:10px;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;white-space:nowrap">
+          🔄 Sync SP
+        </button>
+      </div>
     </div>
     <div class="sidebar-body">
 
@@ -777,6 +784,30 @@ function resetForm(){
   document.getElementById('inv-note').value='';
   document.getElementById('inv-location').value='';
   renderItems();calcTotals();
+}
+
+// SYNC PRODUCTS
+async function syncProducts(){
+  const btn=document.getElementById('sync-btn');
+  if(!btn)return;
+  btn.textContent='⏳ Đang sync...';
+  btn.disabled=true;
+  try{
+    const res=await fetch('https://script.google.com/macros/s/AKfycbyx9GeTXshYRbKTJ6V_zugeUYQQU8-KeaMKbBLtCfqMHLGCp1JFjpBfU0LIMYLN2Y-d/exec',{
+      method:'GET',
+      mode:'no-cors' // Apps Script cần no-cors
+    });
+    // Reload products from Supabase
+    const {data:products}=await sb.from('products').select('*').order('name').limit(500);
+    if(products)PRODUCTS=products;
+    btn.textContent='✅ Đã sync!';
+    setTimeout(function(){btn.textContent='🔄 Sync SP';btn.disabled=false;},3000);
+    alert('Sync sản phẩm thành công! Đã cập nhật '+PRODUCTS.length+' sản phẩm.');
+  }catch(e){
+    btn.textContent='❌ Lỗi';
+    btn.disabled=false;
+    alert('Lỗi sync: '+e.message);
+  }
 }
 
 // BOOT
