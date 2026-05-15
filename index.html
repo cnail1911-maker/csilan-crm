@@ -815,7 +815,9 @@ async function recallOne(id){
   if(!confirm('Thu hồi khách này?'))return;
   showLoading(true);
   await sb.from('customers').update({assigned_to:null,is_recalled:true,assigned_deadline:null}).eq('id',id);
-  await loadCustomers();showLoading(false);render();
+  const ridx=CUSTOMERS.findIndex(function(c){return c.id===id;});
+  if(ridx>=0)Object.assign(CUSTOMERS[ridx],{assigned_to:null,is_recalled:true,assigned_deadline:null,assigned_profile:null});
+  showLoading(false);render();
 }
 
 async function recallOver30(){
@@ -1244,7 +1246,15 @@ async function saveDetail(customerId){
   if(saleEl)update.assigned_to=saleEl.value;
   await sb.from('customers').update(update).eq('id',customerId);
   if(note)await sb.from('call_logs').insert({customer_id:customerId,sale_id:currentUser.id,note:note,call_result:result||null});
-  await loadCustomers();
+  // Update local CUSTOMERS array instead of reloading all 26k rows
+  const idx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
+  if(idx>=0){
+    Object.assign(CUSTOMERS[idx],update);
+    if(update.assigned_to!==undefined){
+      const prof=PROFILES.find(function(p){return p.id===update.assigned_to;});
+      CUSTOMERS[idx].assigned_profile=prof?{id:prof.id,full_name:prof.full_name,role:prof.role}:null;
+    }
+  }
   document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
   selId=null;showLoading(false);render();
 }
@@ -1260,7 +1270,7 @@ async function deleteCustomer(id){
   showLoading(true);
   await sb.from('call_logs').delete().eq('customer_id',id);
   await sb.from('customers').delete().eq('id',id);
-  await loadCustomers();
+  CUSTOMERS=CUSTOMERS.filter(function(c){return c.id!==id;});
   document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
   selId=null;showLoading(false);render();
 }
@@ -1322,7 +1332,16 @@ async function doAdd(){
     }
   }
   const campaign=new Date().toLocaleDateString('vi-VN',{month:'2-digit',year:'numeric'});
-  const {error}=await sb.from('customers').insert({
+  // Generate unique ma_kh - find max existing number
+  const existingNums=CUSTOMERS.map(function(c){
+    if(!c.ma_kh)return 0;
+    const m=c.ma_kh.match(/KH(\d+)/);
+    return m?parseInt(m[1]):0;
+  });
+  const nextNum=Math.max(0,...existingNums)+1;
+  const ma_kh='KH'+String(nextNum).padStart(7,'0');
+  const newCust={
+    ma_kh:ma_kh,
     business_name:document.getElementById('a-biz')&&document.getElementById('a-biz').value||null,
     customer_name:name,
     business_phone:bphone||null,
@@ -1339,9 +1358,11 @@ async function doAdd(){
     campaign_month:campaign,
     approval_status:isDup?'pending':'approved',
     is_duplicate:isDup,
-  });
+  };
+  const {data:inserted,error}=await sb.from('customers').insert(newCust).select('*, assigned_profile:profiles!assigned_to(id,full_name,role)').single();
   if(error){showLoading(false);alert('Lỗi: '+error.message);return;}
-  await loadCustomers();
+  // Add to local array instead of reloading
+  if(inserted)CUSTOMERS.unshift(inserted);
   document.getElementById('add-modal')&&document.getElementById('add-modal').remove();
   addOpen=false;showLoading(false);render();
   if(isDup)alert('Khách đã được thêm vào danh sách chờ duyệt. Manager sẽ xem xét và phê duyệt.');
@@ -1359,7 +1380,10 @@ async function approveCustomer(id,status){
     if(c&&c.created_by)update.assigned_to=c.created_by;
   }
   await sb.from('customers').update(update).eq('id',id);
-  await loadCustomers();showLoading(false);render();
+  // Local update
+  const aidx=CUSTOMERS.findIndex(function(c){return c.id===id;});
+  if(aidx>=0)Object.assign(CUSTOMERS[aidx],update);
+  showLoading(false);render();
 }
 
 async function doRecall(){
