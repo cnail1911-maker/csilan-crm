@@ -449,48 +449,153 @@ function renderPotential(){
 // ============================================================
 function renderClosedeal(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
-  const data=CUSTOMERS.filter(function(c){return c.lead_status==='Closedeal'&&(fSale==='all'||c.assigned_to===fSale);});
-  const pageData=data.slice((cdPage-1)*PAGE_SIZE,cdPage*PAGE_SIZE);
-
-  let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;cdPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
-
-  let statsHtml='<div class="stat-card sc2"><div class="stat-label">Tổng Closedeal</div><div class="stat-val" style="color:var(--accent2)">'+data.length+'</div></div>';
-  POTENTIAL_OPTS.forEach(function(p,i){
-    const cnt=data.filter(function(c){return c.potential===p;}).length;
-    if(cnt>0)statsHtml+='<div class="stat-card sc'+(i%4)+'"><div class="stat-label">'+p+'</div><div class="stat-val" style="color:var(--accent)">'+cnt+'</div></div>';
+  const pendingInvs=INVOICES.filter(function(i){return i.type==='invoice'&&i.approval_status==='pending';});
+  
+  let data=INVOICES.filter(function(inv){
+    if(inv.type!=='invoice')return false;
+    if(inv.approval_status!=='approved')return false;
+    if(cdFilterPayment!=='all'&&inv.payment_status!==cdFilterPayment)return false;
+    if(cdFilterOrder!=='all'&&inv.order_status!==cdFilterOrder)return false;
+    if(cdSearchInv&&!(inv.invoice_no||'').toLowerCase().includes(cdSearchInv.toLowerCase()))return false;
+    if(cdFilterMonth!=='all'){const m=new Date(inv.created_at).getMonth()+1;if(m!==parseInt(cdFilterMonth))return false;}
+    if(cdFilterYear!=='all'){const y=new Date(inv.created_at).getFullYear();if(y!==parseInt(cdFilterYear))return false;}
+    return true;
   });
 
+  const enriched=data.map(function(inv){
+    const cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;})||{};
+    return Object.assign({},inv,{business_name:cust.business_name,customer_name:cust.customer_name,state:cust.state,potential:cust.potential,brand:cust.brand,assigned_profile:cust.assigned_profile});
+  });
+  const pageData=enriched.slice((cdPage-1)*PAGE_SIZE,cdPage*PAGE_SIZE);
+  const totalRevenue=enriched.reduce(function(s,inv){return s+(inv.total||0);},0);
+  const years=[...new Set(INVOICES.map(function(inv){return new Date(inv.created_at).getFullYear();}))].sort(function(a,b){return b-a;});
+
+  let filterHtml='<input id="cd-search-inv" placeholder="Tìm mã đơn..." style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;color:var(--text);width:120px;outline:none" oninput="cdSearchInv=this.value;cdPage=1;render()" value="'+cdSearchInv+'">';
+  filterHtml+='<select class="fsel" onchange="cdFilterPayment=this.value;cdPage=1;render()"><option value="all">Payment</option>'+['Paid in Full','Deposit Paid','Partially Paid','Cancelled'].map(function(s){return '<option value="'+s+'"'+(cdFilterPayment===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
+  filterHtml+='<select class="fsel" onchange="cdFilterOrder=this.value;cdPage=1;render()"><option value="all">Order Status</option>'+['Đang sản xuất','Đang giao','Đã nhận hàng'].map(function(s){return '<option value="'+s+'"'+(cdFilterOrder===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
+  filterHtml+='<select class="fsel" onchange="cdFilterMonth=this.value;cdPage=1;render()"><option value="all">Tháng</option>'+['1','2','3','4','5','6','7','8','9','10','11','12'].map(function(m){return '<option value="'+m+'"'+(cdFilterMonth===m?' selected':'')+'>T'+m+'</option>';}).join('')+'</select>';
+  filterHtml+='<select class="fsel" onchange="cdFilterYear=this.value;cdPage=1;render()"><option value="all">Năm</option>'+years.map(function(y){return '<option value="'+y+'"'+(cdFilterYear===String(y)?' selected':'')+'>'+y+'</option>';}).join('')+'</select>';
+  if(isManager)filterHtml+='<select class="fsel" onchange="fSale=this.value;cdPage=1;render()"><option value="all">Sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
+
   let rows='';
-  pageData.forEach(function(c){
-    rows+='<tr onclick="selId='+c.id+';setPage(\'customers\')">'
-      +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(c.ma_kh||'—')+'</td>'
-      +'<td>'+(c.business_name||'—')+'</td>'
-      +'<td style="color:var(--text)">'+(c.customer_name||'')+'</td>'
-      +'<td style="font-family:monospace;font-size:10px">'+phoneTd(c)+'</td>'
-      +'<td style="font-size:11px">'+(c.state||'—')+'</td>'
-      +'<td style="font-size:11px;color:var(--accent);font-weight:500">'+(c.potential||'—')+'</td>'
-      +'<td style="font-size:11px">'+(c.brand||'—')+'</td>'
-      +'<td>'+dlBadge(c.assigned_deadline)+'</td>'
-      +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
+  pageData.forEach(function(inv){
+    const invDate=new Date(inv.created_at);
+    const payBadge={'Paid in Full':'b-won','Deposit Paid':'b-calling','Partially Paid':'b-followup','Cancelled':'b-lost'};
+    const ordBadge={'Đang sản xuất':'b-followup','Đang giao':'b-calling','Đã nhận hàng':'b-won'};
+    rows+='<tr>'
+      +'<td style="font-size:10px;font-family:monospace;color:var(--accent2);font-weight:600">'+(inv.invoice_no||'—')+'</td>'
+      +'<td>'+(inv.business_name||'—')+'</td>'
+      +'<td style="color:var(--text)">'+(inv.customer_name||'—')+'</td>'
+      +'<td style="text-align:center;font-size:11px">'+(invDate.getMonth()+1)+'</td>'
+      +'<td style="text-align:center;font-size:11px">'+invDate.getFullYear()+'</td>'
+      +'<td style="color:var(--accent2);font-weight:700">$'+(inv.total||0).toLocaleString()+'</td>'
+      +'<td>'+(inv.payment_status?'<span class="badge '+(payBadge[inv.payment_status]||'b-new')+'">'+inv.payment_status+'</span>':'—')+'</td>'
+      +'<td>'+(inv.order_status?'<span class="badge '+(ordBadge[inv.order_status]||'b-new')+'">'+inv.order_status+'</span>':'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--text3)">'+(inv.tracking_number||'—')+'</td>'
+      +(isManager?'<td><button class="btn" style="padding:2px 8px;font-size:10px" onclick="openInvEdit('+inv.id+')">✏️</button></td>':'')
       +'</tr>';
   });
 
-  return '<div class="topbar"><div class="topbar-title">Closedeal</div>'
-    +'<div style="font-size:12px;color:var(--accent2)">'+data.length+' khách đã chốt</div>'+saleFilter+'</div>'
+  // Pending approval rows
+  let pendingRows='';
+  pendingInvs.forEach(function(inv){
+    const cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;})||{};
+    pendingRows+='<tr>'
+      +'<td style="font-size:10px;font-family:monospace;color:var(--warn)">'+(inv.invoice_no||'—')+'</td>'
+      +'<td>'+(cust.business_name||'—')+'</td>'
+      +'<td style="color:var(--text)">'+(cust.customer_name||'—')+'</td>'
+      +'<td style="color:var(--accent2);font-weight:700">$'+(inv.total||0).toLocaleString()+'</td>'
+      +'<td style="font-size:10px;color:var(--text3)">'+fmtDate(inv.created_at)+'</td>'
+      +'<td><div style="display:flex;gap:4px">'
+      +'<button class="btn btn-primary" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\"approved\")">✓ Duyệt</button>'
+      +'<button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\"rejected\")">✗ Từ chối</button>'
+      +'</div></td>'
+      +'</tr>';
+  });
+
+  let html='<div class="topbar"><div class="topbar-title">Closedeal</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+'</div></div>'
     +'<div class="content">'
-    +'<div class="stats-row">'+statsHtml+'</div>'
-    +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--accent2)">'+data.length+'</span> Closedeal</h2></div>'
-    +(data.length===0?'<div class="empty-state"><i class="ti ti-trophy"></i>Chưa có Closedeal</div>'
-      :'<table><colgroup><col width="80"><col width="130"><col width="115"><col width="95"><col width="75"><col width="115"><col width="80"><col width="80"><col width="65"></colgroup>'
-      +'<thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Brand</th><th>Deadline</th><th>Sale</th></tr></thead>'
+    +'<div class="stats-row">'
+    +'<div class="stat-card sc2"><div class="stat-label">Đơn đã duyệt</div><div class="stat-val" style="color:var(--accent2)">'+enriched.length+'</div></div>'
+    +'<div class="stat-card sc0"><div class="stat-label">Doanh thu</div><div class="stat-val" style="color:var(--brand2);font-size:18px">$'+totalRevenue.toLocaleString()+'</div></div>'
+    +'<div class="stat-card sc3"><div class="stat-label">Chờ duyệt</div><div class="stat-val" style="color:var(--warn)">'+pendingInvs.length+'</div></div>'
+    +'<div class="stat-card sc1"><div class="stat-label">Đã nhận hàng</div><div class="stat-val" style="color:var(--accent2)">'+INVOICES.filter(function(i){return i.order_status==='Đã nhận hàng';}).length+'</div></div>'
+    +'</div>';
+
+  // Pending section - show first
+  if(isManager&&pendingInvs.length>0){
+    html+='<div class="panel" style="margin-bottom:14px;border-color:rgba(253,203,110,0.3)">'
+      +'<div class="panel-header" style="background:rgba(253,203,110,0.08)"><h2><span style="color:var(--warn)">⏳ Chờ Admin duyệt</span> <span style="color:var(--warn)">'+pendingInvs.length+'</span></h2></div>'
+      +'<table><thead><tr><th>Mã đơn</th><th>Business Name</th><th>Customer</th><th>Total</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>'
+      +'<tbody>'+pendingRows+'</tbody></table></div>';
+  }
+
+  // Main table
+  html+='<div class="panel"><div class="panel-header"><h2>Đơn hàng đã duyệt <span style="color:var(--accent2)">'+enriched.length+'</span></h2></div>'
+    +(enriched.length===0?'<div class="empty-state"><i class="ti ti-trophy"></i>Chưa có đơn hàng nào được duyệt</div>'
+      :'<table><colgroup><col width="100"><col width="120"><col width="110"><col width="40"><col width="50"><col width="85"><col width="100"><col width="90"><col width="85">'+(isManager?'<col width="40">':'')+'</colgroup>'
+      +'<thead><tr><th>Mã đơn</th><th>Business Name</th><th>Customer</th><th>T</th><th>Năm</th><th>Revenue</th><th>Payment Status</th><th>Order Status</th><th>Tracking</th>'+(isManager?'<th></th>':'')+'</tr></thead>'
       +'<tbody>'+rows+'</tbody></table>'
-      +pgBar(data.length,cdPage,PAGE_SIZE,'setCdPage'))
+      +pgBar(enriched.length,cdPage,PAGE_SIZE,'setCdPage'))
     +'</div></div>';
+  return html;
 }
 
-// ============================================================
-// RENDER PIPELINE
-// ============================================================
+async function approveInvoice(id,status){
+  showLoading(true);
+  const update={approval_status:status};
+  if(status==='approved'){
+    const inv=INVOICES.find(function(i){return i.id===id;});
+    if(inv){
+      await sb.from('customers').update({lead_status:'Closedeal',latest_invoice_no:inv.invoice_no,total_amount:inv.total}).eq('id',inv.customer_id);
+    }
+  }
+  await sb.from('invoices').update(update).eq('id',id);
+  await loadInvoices();
+  await loadCustomers();
+  showLoading(false);render();
+}
+
+async function openInvEdit(id){
+  const inv=INVOICES.find(function(i){return i.id===id;});
+  if(!inv)return;
+  const modal=document.createElement('div');
+  modal.className='modal-overlay';modal.id='inv-edit-modal';
+  modal.onclick=function(e){if(e.target===modal)modal.remove();};
+  modal.innerHTML='<div class="modal" onclick="event.stopPropagation()" style="width:480px">'
+    +'<div class="modal-header"><h3>Cập nhật đơn hàng</h3>'
+    +'<div style="font-size:11px;color:var(--text3);font-family:monospace">'+inv.invoice_no+'</div>'
+    +'<button class="btn" style="padding:4px 8px" onclick="document.getElementById(\"inv-edit-modal\").remove()"><i class="ti ti-x"></i></button></div>'
+    +'<div class="modal-body">'
+    +'<div class="field-row">'
+    +'<div class="field"><label>Payment Status</label><select id="ie-pay"><option value="">-- Chọn --</option>'+['Paid in Full','Deposit Paid','Partially Paid','Cancelled'].map(function(s){return '<option value="'+s+'"'+(inv.payment_status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></div>'
+    +'<div class="field"><label>Order Status</label><select id="ie-ord"><option value="">-- Chọn --</option>'+['Đang sản xuất','Đang giao','Đã nhận hàng'].map(function(s){return '<option value="'+s+'"'+(inv.order_status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></div>'
+    +'</div>'
+    +'<div class="field"><label>Tracking Number</label><input id="ie-track" value="'+(inv.tracking_number||'')+'" placeholder="Nhập tracking number..."></div>'
+    +'</div>'
+    +'<div class="modal-footer">'
+    +'<button class="btn" onclick="document.getElementById(\"inv-edit-modal\").remove()">Đóng</button>'
+    +'<button class="btn btn-primary" onclick="saveInvEdit('+id+')"><i class="ti ti-device-floppy"></i> Lưu</button>'
+    +'</div></div>';
+  document.body.appendChild(modal);
+}
+
+async function saveInvEdit(id){
+  showLoading(true);
+  await sb.from('invoices').update({
+    payment_status:document.getElementById('ie-pay').value||null,
+    order_status:document.getElementById('ie-ord').value||null,
+    tracking_number:document.getElementById('ie-track').value||null
+  }).eq('id',id);
+  await loadInvoices();
+  document.getElementById('inv-edit-modal')&&document.getElementById('inv-edit-modal').remove();
+  showLoading(false);render();
+}
+
+// Closedeal filters
+let cdFilterPayment='all',cdFilterOrder='all',cdFilterMonth='all',cdFilterYear='all',cdSearchInv='';
+
+
 function renderPipeline(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
   const pipeColors=['var(--brand2)','var(--warn)','var(--accent2)'];
