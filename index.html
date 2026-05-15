@@ -198,6 +198,16 @@ const PAGE_SIZE=50;
 // STATE
 let currentUser=null,currentProfile=null,CUSTOMERS=[],PROFILES=[],PRODUCTS_ALL=[],INVOICES=[];
 let page='customers',fStatus='all',fSale='all',fPotential='all',fBrand='all',search='',selId=null,addOpen=false;
+let _searchTimer=null;
+function doSearch(val){
+  clearTimeout(_searchTimer);
+  _searchTimer=setTimeout(function(){
+    search=val.toLowerCase();curPage=1;render();
+    // Restore focus and cursor position
+    const el=document.querySelector('.search-wrap input');
+    if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}
+  },120);
+}
 let curPage=1,potPage=1,cdPage=1,pdPage=1,fPendingSale='all';
 let pipePage={};
 
@@ -399,7 +409,7 @@ function renderCustomers(){
   });
 
   return '<div class="topbar"><div class="topbar-title">Khách hàng</div>'
-    +'<div class="search-wrap"><i class="ti ti-search"></i><input placeholder="Tìm tên, SĐT, công ty..." oninput="search=this.value.toLowerCase();curPage=1;render()" value="'+search+'"></div>'
+    +'<div class="search-wrap"><i class="ti ti-search"></i><input placeholder="Tìm tên, SĐT, công ty..." id="main-search" oninput="doSearch(this.value)" value="'+search+'"></div>'
     +(isManager?'<button class="btn" onclick="doRecall()" style="border-color:rgba(255,118,117,0.4);color:var(--danger)"><i class="ti ti-rotate-clockwise"></i> Thu hồi hết hạn</button>':'')
     +'<button class="btn btn-primary" onclick="addOpen=true;render()"><i class="ti ti-plus"></i> Thêm khách</button>'
     +'</div>'
