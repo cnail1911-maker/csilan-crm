@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>C-Silan Invoice</title>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<!-- Arial font - no import needed -->
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -18,7 +18,7 @@
   --red:#C0392B;--red2:#E74C3C;--dark:#1a0a08;--cream:#FDF8F3;
   --gray:#6B6B6B;--light:#F5F0EB;--border:#E8E0D8;--gold:#C4A35A;
 }
-body{font-family:'Be Vietnam Pro',sans-serif;background:var(--cream);color:var(--dark);font-size:13px}
+body{font-family:Arial,sans-serif;background:var(--cream);color:var(--dark);font-size:13px}
 .app{display:flex;height:100vh;overflow:hidden}
 
 /* SIDEBAR */
@@ -31,13 +31,13 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--cream);color:var(-
 .section-label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
 .field{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
 .field label{font-size:10px;color:var(--gray);font-weight:600;letter-spacing:0.5px}
-.field input,.field select,.field textarea{border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--dark);font-family:'Be Vietnam Pro',sans-serif;outline:none;background:#fff;transition:border-color 0.2s}
+.field input,.field select,.field textarea{border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--dark);font-family:Arial,sans-serif;outline:none;background:#fff;transition:border-color 0.2s}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--red)}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 
 /* TYPE TOGGLE */
 .type-toggle{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:12px}
-.type-btn{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;background:#fff;border:none;font-family:'Be Vietnam Pro',sans-serif;transition:all 0.2s;color:var(--gray)}
+.type-btn{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;background:#fff;border:none;font-family:Arial,sans-serif;transition:all 0.2s;color:var(--gray)}
 .type-btn.active{background:var(--red);color:#fff}
 
 /* COMPANY SELECT */
@@ -61,7 +61,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--cream);color:var(-
 
 /* PRODUCTS */
 .product-search-wrap{display:flex;gap:6px;margin-bottom:8px}
-.product-search-wrap input{flex:1;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--dark);font-family:'Be Vietnam Pro',sans-serif;outline:none}
+.product-search-wrap input{flex:1;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--dark);font-family:Arial,sans-serif;outline:none}
 .product-search-wrap input:focus{border-color:var(--red)}
 .product-results{background:#fff;border:1px solid var(--border);border-radius:6px;max-height:180px;overflow-y:auto;margin-bottom:8px;display:none}
 .product-item{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--border)}
@@ -82,7 +82,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--cream);color:var(-
 .item-fields{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px}
 .item-field{display:flex;flex-direction:column;gap:2px}
 .item-field label{font-size:9px;color:var(--gray);text-transform:uppercase;letter-spacing:0.5px}
-.item-field input{border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:12px;font-family:'Be Vietnam Pro',sans-serif;outline:none;background:#fff;width:100%}
+.item-field input{border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:12px;font-family:Arial,sans-serif;outline:none;background:#fff;width:100%}
 .item-field input:focus{border-color:var(--red)}
 
 /* PAYMENT */
@@ -93,7 +93,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--cream);color:var(-
 .pay-total{border-top:1px solid var(--border);margin-top:6px;padding-top:6px;font-size:14px;font-weight:700;color:var(--red)}
 
 /* BUTTONS */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:12px;color:var(--dark);font-family:'Be Vietnam Pro',sans-serif;font-weight:500;transition:all 0.2s}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:12px;color:var(--dark);font-family:Arial,sans-serif;font-weight:500;transition:all 0.2s}
 .btn:hover{background:var(--light)}
 .btn-red{background:var(--red);color:#fff;border-color:var(--red)}
 .btn-red:hover{background:#a93226;border-color:#a93226}
@@ -108,13 +108,13 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--cream);color:var(-
 .preview-toolbar h2{font-size:14px;font-weight:600;color:var(--gray)}
 
 /* INVOICE PREVIEW */
-#invoice-preview{width:760px;background:#fff;padding:30px 36px;box-shadow:0 2px 20px rgba(0,0,0,0.1);font-family:'Be Vietnam Pro',sans-serif}
+#invoice-preview{width:760px;background:#fff;padding:30px 36px;box-shadow:0 2px 20px rgba(0,0,0,0.1);font-family:Arial,sans-serif}
 .inv-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
 .inv-company-name{font-size:20px;font-weight:800;color:var(--red);margin-bottom:4px}
 .inv-company-info{font-size:11px;color:var(--gray);line-height:1.6}
 .inv-logo{height:60px;object-fit:contain}
 .inv-logo-placeholder{width:80px;height:60px;background:var(--light);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--gray)}
-.inv-title{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--red);letter-spacing:2px;margin-bottom:12px;text-transform:uppercase}
+.inv-title{font-family:Arial,sans-serif;font-size:24px;font-weight:700;color:var(--red);letter-spacing:2px;margin-bottom:12px;text-transform:uppercase}
 .inv-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
 .inv-meta-item{font-size:11px}
 .inv-meta-label{color:var(--red);font-weight:700;font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px}
@@ -156,9 +156,9 @@ table.inv-table tr:last-child td{border-bottom:none}
 .auth-sub{font-size:12px;color:var(--gray);margin-bottom:24px}
 .auth-field{margin-bottom:12px}
 .auth-field label{display:block;font-size:10px;color:var(--gray);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
-.auth-field input{width:100%;border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13px;font-family:'Be Vietnam Pro',sans-serif;outline:none}
+.auth-field input{width:100%;border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13px;font-family:Arial,sans-serif;outline:none}
 .auth-field input:focus{border-color:var(--red)}
-.auth-btn{width:100%;padding:10px;background:var(--red);color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;font-family:'Be Vietnam Pro',sans-serif;cursor:pointer}
+.auth-btn{width:100%;padding:10px;background:var(--red);color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;font-family:Arial,sans-serif;cursor:pointer}
 .auth-error{color:var(--red);font-size:12px;margin-top:8px;display:none}
 </style>
 </head>
@@ -186,7 +186,7 @@ table.inv-table tr:last-child td{border-bottom:none}
           <div class="sidebar-title" id="form-title">Tạo Invoice mới</div>
           <div class="sidebar-sub" id="user-info">Đang tải...</div>
         </div>
-        <button onclick="syncProducts()" id="sync-btn" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:4px 8px;font-size:10px;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;white-space:nowrap;display:none">
+        <button onclick="syncProducts()" id="sync-btn" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:4px 8px;font-size:10px;cursor:pointer;font-family:Arial,sans-serif;white-space:nowrap;display:none">
           🔄 Sync SP
         </button>
       </div>
@@ -204,7 +204,7 @@ table.inv-table tr:last-child td{border-bottom:none}
       <!-- COMPANY -->
       <div class="section">
         <div class="section-label">Công ty</div>
-        <select id="company-select" onchange="selectCompanyById(parseInt(this.value))" style="width:100%;border:1px solid #E8E0D8;border-radius:6px;padding:8px 10px;font-size:12px;font-family:'Be Vietnam Pro',sans-serif;outline:none;background:#fff">
+        <select id="company-select" onchange="selectCompanyById(parseInt(this.value))" style="width:100%;border:1px solid #E8E0D8;border-radius:6px;padding:8px 10px;font-size:12px;font-family:Arial,sans-serif;outline:none;background:#fff">
           <option value="">-- Chọn công ty --</option>
         </select>
       </div>
