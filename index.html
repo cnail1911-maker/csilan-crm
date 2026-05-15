@@ -194,7 +194,7 @@ const AV_CLASSES=['av-0','av-1','av-2','av-3','av-4','av-5'];
 const PAGE_SIZE=50;
 
 // STATE
-let currentUser=null,currentProfile=null,CUSTOMERS=[],PROFILES=[],PRODUCTS_ALL=[];
+let currentUser=null,currentProfile=null,CUSTOMERS=[],PROFILES=[],PRODUCTS_ALL=[],INVOICES=[];
 let page='customers',fStatus='all',fSale='all',fPotential='all',fBrand='all',search='',selId=null,addOpen=false;
 let curPage=1,potPage=1,cdPage=1,pdPage=1,fPendingSale='all';
 let pipePage={};
@@ -381,7 +381,7 @@ function renderCustomers(){
 // ============================================================
 function renderPotential(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
-  const potData=CUSTOMERS.filter(function(c){return c.potential&&c.potential.trim()!==''&&(fSale==='all'||c.assigned_to===fSale);});
+  const potData=CUSTOMERS.filter(function(c){return c.potential&&c.potential.trim()!==''&&(fSale==='all'||c.assigned_to===fSale)&&(fPotential==='all'||c.potential===fPotential);});
   const pageData=potData.slice((potPage-1)*PAGE_SIZE,potPage*PAGE_SIZE);
 
   let statsHtml='<div class="stat-card sc0"><div class="stat-label">Tổng tiềm năng</div><div class="stat-val" style="color:var(--brand2)">'+potData.length+'</div></div>';
@@ -391,6 +391,7 @@ function renderPotential(){
   });
 
   let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;potPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
+  const potFilterHtml='<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fPotential=this.value;potPage=1;render()"><option value="all">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'"'+(fPotential===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select>';
 
   let rows='';
   pageData.forEach(function(c){
@@ -401,8 +402,14 @@ function renderPotential(){
       +'<td style="font-family:monospace;font-size:10px">'+phoneTd(c)+'</td>'
       +'<td style="font-size:11px">'+(c.state||'—')+'</td>'
       +'<td style="font-size:11px;color:var(--accent);font-weight:500">'+c.potential+'</td>'
+      +(function(){
+        const since=c.potential_since?new Date(c.potential_since):new Date(c.created_at);
+        const days=Math.floor((new Date()-since)/(1000*60*60*24));
+        const col=days>30?'var(--danger)':days>=7?'var(--warn)':'var(--text3)';
+        return '<td style="font-size:11px;color:var(--text3)">'+fmtDate(c.potential_since||c.created_at)+'</td>'
+          +'<td style="font-size:11px;font-weight:600;color:'+col+'">'+(days>30?'30+ ngày':days+' ngày')+'</td>';
+      })()
       +'<td>'+lBadge(c.lead_status)+'</td>'
-      +'<td style="font-size:11px;color:var(--text2)">'+(c.brand||'—')+'</td>'
       +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
       +'</tr>';
   });
@@ -414,7 +421,7 @@ function renderPotential(){
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+potData.length+'</span> khách tiềm năng</h2></div>'
     +(potData.length===0?'<div class="empty-state"><i class="ti ti-star"></i>Chưa có khách tiềm năng</div>'
       :'<table><colgroup><col width="85"><col width="130"><col width="120"><col width="100"><col width="80"><col width="120"><col width="80"><col width="80"><col width="65"></colgroup>'
-      +'<thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Lead Status</th><th>Brand</th><th>Sale</th></tr></thead>'
+      +'<thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Từ ngày</th><th>Ngày quá hạn</th><th>Lead Status</th><th>Sale</th></tr></thead>'
       +'<tbody>'+rows+'</tbody></table>'
       +pgBar(potData.length,potPage,PAGE_SIZE,'setPotPage'))
     +'</div></div>';
@@ -722,7 +729,7 @@ async function createCampaign(){
   if(!deadline){alert('Vui lòng chọn Deadline!');return;}
 
   // Get unassigned customers
-  const unassigned=CUSTOMERS.filter(function(c){return !c.assigned_to||c.is_recalled;});
+  const unassigned=CUSTOMERS.filter(function(c){return !c.assigned_to||c.assigned_to===null||c.is_recalled===true;});
   if(unassigned.length===0){alert('Không có data chưa phân công!');return;}
   if(!confirm('Phân công '+unassigned.length+' khách cho Campaign "'+name+'" với deadline '+deadline+'?'))return;
 
