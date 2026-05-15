@@ -1359,7 +1359,11 @@ async function doAdd(){
   // Local insert - không reload 26k rows
   if(inserted)CUSTOMERS.unshift(inserted);
   document.getElementById('add-modal')&&document.getElementById('add-modal').remove();
-  addOpen=false;showLoading(false);render();
+  addOpen=false;
+  // Auto search tên khách vừa thêm để hiện ngay
+  search=name.toLowerCase();
+  curPage=1;
+  showLoading(false);render();
   if(isDup)alert('Khách đã được thêm vào danh sách chờ duyệt. Manager sẽ xem xét và phê duyệt.');
 }
 
