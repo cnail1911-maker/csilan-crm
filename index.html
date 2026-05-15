@@ -157,7 +157,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
       <div class="nav-sec">Workspace</div>
       <div class="nav-item active" onclick="setPage('customers')" id="nav-customers"><i class="ti ti-users"></i> Khách hàng</div>
       <div class="nav-item" onclick="setPage('potential')" id="nav-potential"><i class="ti ti-star"></i> Tiềm năng</div>
-      <div class="nav-item" onclick="setPage('closedeal')" id="nav-closedeal"><i class="ti ti-trophy"></i> Closedeal</div>
+      <div class="nav-item" onclick="setPage('closedeal')" id="nav-closedeal"><i class="ti ti-trophy"></i> Closedeal <span class="nav-badge" id="badge-cd" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('pipeline')" id="nav-pipeline"><i class="ti ti-layout-kanban"></i> Pipeline</div>
       <div class="nav-item" onclick="setPage('pending')" id="nav-pending"><i class="ti ti-clock"></i> Chờ duyệt <span class="nav-badge" id="badge-pending" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('kpi')" id="nav-kpi"><i class="ti ti-chart-bar"></i> Báo cáo KPI</div>
@@ -299,6 +299,10 @@ async function loadCustomers(){
     :CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&c.created_by===currentUser.id;}).length;
   const badge=document.getElementById('badge-pending');
   if(badge){badge.textContent=pendingCount;badge.style.display=pendingCount>0?'inline':'none';}
+  // Update closedeal badge for pending invoices
+  const pendingInvCount=INVOICES.filter(function(i){return i.approval_status==='pending';}).length;
+  const cdBadge=document.getElementById('badge-cd');
+  if(cdBadge){cdBadge.textContent=pendingInvCount;cdBadge.style.display=pendingInvCount>0?'inline':'none';}
   
   // Alert badge - potential customers not contacted for 3+ days
   const today=new Date();
