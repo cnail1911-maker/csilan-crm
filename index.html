@@ -267,6 +267,8 @@ async function initApp(user){
   await loadCustomers();
   const {data:profs}=await sb.from('profiles').select('*').eq('is_active',true).order('full_name');
   PROFILES=profs||[];
+  // Load invoices after auth is confirmed
+  await loadInvoices();
   // Load products for manager
   const isManagerLoad=profile&&(profile.role==='manager'||profile.role==='admin');
   if(isManagerLoad){
@@ -284,6 +286,17 @@ async function initApp(user){
   const prodNav=document.getElementById('nav-products');
   if(prodNav)prodNav.style.display=isManagerInit?'flex':'none';
   showLoading(false);render();
+}
+
+async function loadInvoices(){
+  const {data:invData,error}=await sb.from('invoices')
+    .select('*')
+    .order('created_at',{ascending:false})
+    .limit(2000);
+  if(error)console.error('Invoice load error:',error);
+  INVOICES=invData||[];
+  // Update pending badge
+
 }
 
 async function loadCustomers(){
