@@ -437,7 +437,7 @@ function renderPotential(){
     +'<div class="stats-row">'+statsHtml+'</div>'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+potData.length+'</span> khách tiềm năng</h2></div>'
     +(potData.length===0?'<div class="empty-state"><i class="ti ti-star"></i>Chưa có khách tiềm năng</div>'
-      :'<table><colgroup><col width="85"><col width="130"><col width="120"><col width="100"><col width="80"><col width="120"><col width="80"><col width="80"><col width="65"></colgroup>'
+      :'<table><colgroup><col width="85"><col width="130"><col width="120"><col width="100"><col width="80"><col width="120"><col width="80"><col width="80"><col width="65"><col width="65"></colgroup>'
       +'<thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Từ ngày</th><th>Ngày quá hạn</th><th>Lead Status</th><th>Sale</th></tr></thead>'
       +'<tbody>'+rows+'</tbody></table>'
       +pgBar(potData.length,potPage,PAGE_SIZE,'setPotPage'))
