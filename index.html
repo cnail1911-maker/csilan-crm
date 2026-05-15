@@ -507,8 +507,8 @@ function renderClosedeal(){
       +'<td style="color:var(--accent2);font-weight:700">$'+(inv.total||0).toLocaleString()+'</td>'
       +'<td style="font-size:10px;color:var(--text3)">'+fmtDate(inv.created_at)+'</td>'
       +'<td><div style="display:flex;gap:4px">'
-      +'<button class="btn btn-primary" style="padding:3px 8px;font-size:11px" data-invid="'+inv.id+'" data-action="approved" onclick="approveInvoice(parseInt(this.dataset.invid),this.dataset.action)">✓ Duyệt</button>'
-      +'<button class="btn btn-danger" style="padding:3px 8px;font-size:11px" data-invid="'+inv.id+'" data-action="rejected" onclick="approveInvoice(parseInt(this.dataset.invid),this.dataset.action)">✗ Từ chối</button>'
+      +'<button class="btn btn-primary" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'approved\')">✓ Duyệt</button>'
+      +'<button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'rejected\')">✗ Từ chối</button>'
       +'</div></td>'
       +'</tr>';
   });
