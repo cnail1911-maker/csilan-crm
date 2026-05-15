@@ -335,6 +335,7 @@ async function loadCustomers(){
   const todayBadge=new Date();todayBadge.setHours(0,0,0,0);
   const alertCount=CUSTOMERS.filter(function(c){
     if(c.lead_status==='Closedeal')return false;
+    if(!c.assigned_to)return false; // chưa assign → không cảnh báo
     if(!isManagerForAlert&&currentUser&&c.assigned_to!==currentUser.id)return false;
     if(c.potential&&c.potential!==''){
       const lastContact=c.last_contacted?new Date(c.last_contacted):new Date(c.created_at);
@@ -726,21 +727,23 @@ function renderPending(){
 function renderAlert(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
   const today=new Date();today.setHours(0,0,0,0);
+  if(typeof window.alertFPotential==='undefined')window.alertFPotential='all';
 
   function getDays(c){
     const lastContact=c.last_contacted?new Date(c.last_contacted):new Date(c.created_at);
     lastContact.setHours(0,0,0,0);
     return Math.floor((today-lastContact)/(1000*60*60*24));
   }
-
   function getDeadlineDays(c){
     if(!c.assigned_deadline)return null;
     const dl=new Date(c.assigned_deadline);dl.setHours(0,0,0,0);
     return Math.floor((dl-today)/(1000*60*60*24));
   }
 
+  // Chỉ cảnh báo khách ĐÃ assign cho sale
   const alertData=CUSTOMERS.filter(function(c){
     if(c.lead_status==='Closedeal')return false;
+    if(!c.assigned_to)return false;
     if(c.potential&&c.potential!==''&&getDays(c)>=3)return true;
     const dl=getDeadlineDays(c);
     if(dl!==null&&dl<=3)return true;
@@ -763,17 +766,20 @@ function renderAlert(){
     return '<span class="badge b-calling">'+days+' ngày</span>';
   }
 
-  let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
+  const potentialFilter='<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="window.alertFPotential=this.value;render()"><option value="all">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'"'+(window.alertFPotential===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select>';
+  const saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
 
   const filtered=alertData.filter(function(c){
     if(!isManager&&currentUser&&c.assigned_to!==currentUser.id)return false;
-    return fSale==='all'||c.assigned_to===fSale;
+    if(fSale!=='all'&&c.assigned_to!==fSale)return false;
+    if(window.alertFPotential!=='all'&&c.potential!==window.alertFPotential)return false;
+    return true;
   });
   const over30=filtered.filter(function(c){return getDays(c)>30;}).length;
+  const expiredDl=filtered.filter(function(c){const dl=getDeadlineDays(c);return dl!==null&&dl<=0;}).length;
 
   let rows='';
-  filtered.slice(0,100).forEach(function(c){
-    const days=getDays(c);
+  filtered.slice(0,200).forEach(function(c){
     rows+='<tr onclick="selId='+c.id+';setPage(\"customers\")">'
       +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(c.ma_kh||'—')+'</td>'
       +'<td>'+(c.business_name||'—')+'</td>'
@@ -787,11 +793,12 @@ function renderAlert(){
       +'</tr>';
   });
 
-  return '<div class="topbar"><div class="topbar-title">Cảnh báo Potential</div>'+saleFilter+'</div>'
+  return '<div class="topbar"><div class="topbar-title">Cảnh báo Potential</div>'+potentialFilter+saleFilter+'</div>'
     +'<div class="content">'
     +'<div class="stats-row">'
-    +'<div class="stat-card sc3"><div class="stat-label">Chưa liên hệ 3+ ngày</div><div class="stat-val" style="color:var(--warn)">'+filtered.length+'</div></div>'
+    +'<div class="stat-card sc3"><div class="stat-label">Cần follow up</div><div class="stat-val" style="color:var(--warn)">'+filtered.length+'</div></div>'
     +'<div class="stat-card sc0"><div class="stat-label">Quá 30 ngày</div><div class="stat-val" style="color:var(--danger)">'+over30+'</div></div>'
+    +'<div class="stat-card sc1"><div class="stat-label">Hết deadline</div><div class="stat-val" style="color:var(--danger)">'+expiredDl+'</div></div>'
     +'<div class="stat-card sc2"><div class="stat-label">Tổng Potential</div><div class="stat-val" style="color:var(--brand2)">'+CUSTOMERS.filter(function(c){return c.potential&&c.potential!=='';}).length+'</div></div>'
     +'</div>'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--warn)">'+filtered.length+'</span> cần follow up</h2>'
