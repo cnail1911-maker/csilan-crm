@@ -1335,12 +1335,19 @@ async function doAdd(){
     }
   }
   const campaign=new Date().toLocaleDateString('vi-VN',{month:'2-digit',year:'numeric'});
-  // Generate unique ma_kh - query DB for actual max
-  const {data:maxRow}=await sb.from('customers').select('ma_kh').order('ma_kh',{ascending:false}).limit(1);
+  // Generate unique ma_kh via SQL MAX on numeric part
+  const {data:maxRow}=await sb.rpc('get_max_ma_kh').single().catch(function(){return {data:null};});
   let nextNum=1;
-  if(maxRow&&maxRow[0]&&maxRow[0].ma_kh){
-    const m=maxRow[0].ma_kh.match(/KH(\d+)/);
+  if(maxRow&&maxRow){
+    const m=String(maxRow).match(/KH0*(\d+)/);
     if(m)nextNum=parseInt(m[1])+1;
+  } else {
+    // Fallback: query with length sort
+    const {data:rows}=await sb.from('customers').select('ma_kh').like('ma_kh','KH%').order('ma_kh',{ascending:false}).limit(200);
+    if(rows&&rows.length>0){
+      const nums=rows.map(function(r){const m=r.ma_kh&&r.ma_kh.match(/KH0*(\d+)/);return m?parseInt(m[1]):0;});
+      nextNum=Math.max(...nums)+1;
+    }
   }
   const ma_kh='KH'+String(nextNum).padStart(7,'0');
   const newCust={
