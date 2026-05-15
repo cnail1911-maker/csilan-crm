@@ -359,7 +359,10 @@ function renderCustomers(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
   // Sale only sees approved+assigned customers
   let data=CUSTOMERS.filter(function(c){
-    if(!isManager&&c.approval_status!=='approved')return false;
+    if(!isManager){
+      if(c.approval_status!=='approved')return false;
+      if(c.assigned_to!==currentUser.id)return false; // Sale chỉ thấy khách của mình
+    }
     if(fStatus!=='all'&&c.status!==fStatus)return false;
     if(fSale!=='all'&&c.assigned_to!==fSale)return false;
     if(fPotential!=='all'&&c.potential!==fPotential)return false;
@@ -1332,13 +1335,13 @@ async function doAdd(){
     }
   }
   const campaign=new Date().toLocaleDateString('vi-VN',{month:'2-digit',year:'numeric'});
-  // Generate unique ma_kh - find max existing number
-  const existingNums=CUSTOMERS.map(function(c){
-    if(!c.ma_kh)return 0;
-    const m=c.ma_kh.match(/KH(\d+)/);
-    return m?parseInt(m[1]):0;
-  });
-  const nextNum=Math.max(0,...existingNums)+1;
+  // Generate unique ma_kh - query DB for actual max
+  const {data:maxRow}=await sb.from('customers').select('ma_kh').order('ma_kh',{ascending:false}).limit(1);
+  let nextNum=1;
+  if(maxRow&&maxRow[0]&&maxRow[0].ma_kh){
+    const m=maxRow[0].ma_kh.match(/KH(\d+)/);
+    if(m)nextNum=parseInt(m[1])+1;
+  }
   const ma_kh='KH'+String(nextNum).padStart(7,'0');
   const newCust={
     ma_kh:ma_kh,
