@@ -322,13 +322,20 @@ async function loadCustomers(){
   // Alert badge - potential customers not contacted for 3+ days
   const today=new Date();
   const isManagerForAlert=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const todayBadge=new Date();todayBadge.setHours(0,0,0,0);
   const alertCount=CUSTOMERS.filter(function(c){
-    if(!c.potential||c.potential==='')return false;
     if(c.lead_status==='Closedeal')return false;
     if(!isManagerForAlert&&currentUser&&c.assigned_to!==currentUser.id)return false;
-    const lastContact=c.last_contacted?new Date(c.last_contacted):new Date(c.created_at);
-    const days=Math.floor((today-lastContact)/(1000*60*60*24));
-    return days>=3;
+    if(c.potential&&c.potential!==''){
+      const lastContact=c.last_contacted?new Date(c.last_contacted):new Date(c.created_at);
+      lastContact.setHours(0,0,0,0);
+      if(Math.floor((todayBadge-lastContact)/(1000*60*60*24))>=3)return true;
+    }
+    if(c.assigned_deadline){
+      const dl=new Date(c.assigned_deadline);dl.setHours(0,0,0,0);
+      if(Math.floor((dl-todayBadge)/(1000*60*60*24))<=3)return true;
+    }
+    return false;
   }).length;
   const alertBadge=document.getElementById('badge-alert');
   if(alertBadge){alertBadge.textContent=alertCount;alertBadge.style.display=alertCount>0?'inline':'none';}
@@ -708,21 +715,39 @@ function renderPending(){
 // ============================================================
 function renderAlert(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
-  const today=new Date();
-  
+  const today=new Date();today.setHours(0,0,0,0);
+
   function getDays(c){
     const lastContact=c.last_contacted?new Date(c.last_contacted):new Date(c.created_at);
+    lastContact.setHours(0,0,0,0);
     return Math.floor((today-lastContact)/(1000*60*60*24));
   }
-  
-  // Khách có Potential, chưa Closedeal, chưa liên hệ 3+ ngày
-  const alertData=CUSTOMERS.filter(function(c){
-    if(!c.potential||c.potential==='')return false;
-    if(c.lead_status==='Closedeal')return false;
-    return getDays(c)>=3;
-  }).sort(function(a,b){return getDays(b)-getDays(a);});
 
-  function daysBadge(days){
+  function getDeadlineDays(c){
+    if(!c.assigned_deadline)return null;
+    const dl=new Date(c.assigned_deadline);dl.setHours(0,0,0,0);
+    return Math.floor((dl-today)/(1000*60*60*24));
+  }
+
+  const alertData=CUSTOMERS.filter(function(c){
+    if(c.lead_status==='Closedeal')return false;
+    if(c.potential&&c.potential!==''&&getDays(c)>=3)return true;
+    const dl=getDeadlineDays(c);
+    if(dl!==null&&dl<=3)return true;
+    return false;
+  }).sort(function(a,b){
+    const dlA=getDeadlineDays(a);const dlB=getDeadlineDays(b);
+    if(dlA!==null&&dlA<=0&&!(dlB!==null&&dlB<=0))return -1;
+    if(dlB!==null&&dlB<=0&&!(dlA!==null&&dlA<=0))return 1;
+    return getDays(b)-getDays(a);
+  });
+
+  function daysBadge(c){
+    const dl=getDeadlineDays(c);
+    if(dl!==null&&dl<0)return '<span class="badge b-lost">Hết hạn '+Math.abs(dl)+'d</span>';
+    if(dl!==null&&dl===0)return '<span class="badge b-lost">Hết hạn hôm nay</span>';
+    if(dl!==null&&dl<=3)return '<span class="badge b-followup">Còn '+dl+'d deadline</span>';
+    const days=getDays(c);
     if(days>30)return '<span class="badge b-lost">'+days+'+ ngày</span>';
     if(days>=7)return '<span class="badge b-followup">'+days+' ngày</span>';
     return '<span class="badge b-calling">'+days+' ngày</span>';
@@ -746,7 +771,7 @@ function renderAlert(){
       +'<td style="font-size:10px">'+phoneTd(c)+'</td>'
       +'<td style="font-size:11px;color:var(--accent);font-weight:500">'+(c.potential||'—')+'</td>'
       +'<td>'+sBadge(c.status)+'</td>'
-      +'<td>'+daysBadge(days)+'</td>'
+      +'<td>'+daysBadge(c)+'</td>'
       +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
       +(isManager?'<td><button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="event.stopPropagation();recallOne('+c.id+')">Thu hồi</button></td>':'')
       +'</tr>';
