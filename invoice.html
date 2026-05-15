@@ -708,6 +708,9 @@ async function saveAndDownload(action){
   const balance=total-deposit;
 
   // Save to Supabase
+  // Invoice cần admin duyệt, báo giá thì không
+  const approvalStatus=docType==='invoice'?'pending':'approved';
+  
   const {data:inv,error:invErr}=await sb.from('invoices').insert({
     invoice_no:invNo,
     type:docType,
@@ -725,7 +728,10 @@ async function saveAndDownload(action){
     subtotal:subtotal,
     total:total,
     balance_due:balance,
-    status:'sent'
+    status:'sent',
+    approval_status:approvalStatus,
+    payment_status:'Deposit Paid',
+    order_status:'Đang sản xuất'
   }).select().single();
 
   if(invErr){showLoading(false);alert('Lỗi lưu đơn: '+invErr.message);return;}
@@ -745,16 +751,22 @@ async function saveAndDownload(action){
   });
   await sb.from('invoice_items').insert(invItems);
 
-  // Update customer latest invoice + total amount
+  // Quotation: không update customer status
+  // Invoice: update nhưng chờ admin duyệt mới Closedeal
   if(docType==='invoice'){
     await sb.from('customers').update({
       latest_invoice_no:invNo,
-      total_amount:total,
-      lead_status:'Closedeal'
+      total_amount:total
+      // lead_status sẽ được update khi admin duyệt
     }).eq('id',selectedCustomer.id);
   }
 
   renderPreview();
+
+  // Show appropriate message
+  const successMsg=docType==='invoice'
+    ?'Đã tạo đơn '+invNo+' — chờ Admin duyệt!'
+    :'Đã tạo báo giá '+invNo+'!';
 
   if(action==='pdf'){
     // Download PDF
@@ -770,11 +782,11 @@ async function saveAndDownload(action){
       };
       await html2pdf().set(opt).from(element).save();
       showLoading(false);
-      alert('Đã lưu đơn '+invNo+' và tải PDF!');
+      alert(successMsg+' PDF đã tải!');
     },500);
   } else {
     showLoading(false);
-    alert('Đã lưu đơn '+invNo+'. Xem preview bên phải!');
+    alert(successMsg);
   }
 }
 
