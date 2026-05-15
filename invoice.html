@@ -346,7 +346,7 @@ async function initApp(user){
   if(prodErr)console.error('Products error:',prodErr);
   PRODUCTS=products||[];
 
-  document.getElementById('user-info').textContent=(profile&&profile.full_name)||user.email;
+  document.getElementById('user-info').textContent=(profile&&(profile.nickname||profile.full_name))||user.email;
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app-screen').style.display='flex';
 
@@ -604,7 +604,7 @@ function renderPreview(){
   const deposit=parseFloat(document.getElementById('inv-deposit')&&document.getElementById('inv-deposit').value)||0;
   const total=subtotal+tax-extraDisc;
   const balance=total-deposit;
-  const saleRep=currentProfile&&currentProfile.full_name||'Sale Rep';
+  const saleRep=currentProfile&&(currentProfile.nickname||currentProfile.full_name)||'Sale Rep';
   const custId=cu?cu.ma_kh:'KH-------';
   const docLabel=docType==='invoice'?'INVOICE':'QUOTATION';
 
