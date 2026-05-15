@@ -660,6 +660,7 @@ function renderPreview(){
     +'<thead><tr><th style="width:60px">IMAGE</th><th>DESCRIPTION</th><th style="width:40px;text-align:center">QTY</th><th style="width:80px;text-align:right">UNIT PRICE</th><th style="width:80px;text-align:right">DISCOUNT</th><th style="width:80px;text-align:right">AMOUNT</th></tr></thead>'
     +'<tbody>'+prodRows+'</tbody>'
     +'</table>'
+    +'<div class="inv-divider" style="margin-bottom:10px"></div>'
     +'<div class="inv-notes">'
     +'* Includes a 12-month warranty and lifetime technical support. Products are sourced directly from the manufacturer, ensuring quality, authenticity, and reliable after-sales service. Meets U.S quality and safety standards.<br>'
     +'* Order must be in full before delivery or ship.<br>'
@@ -670,7 +671,7 @@ function renderPreview(){
     +'<div class="inv-totals"><div class="inv-totals-box">'
     +'<div class="inv-total-row"><span class="inv-total-label">Subtotal</span><span class="inv-total-val">'+fmt(subtotal)+'</span></div>'
     +(tax>0?'<div class="inv-total-row"><span class="inv-total-label">Tax</span><span class="inv-total-val">'+fmt(tax)+'</span></div>':'')
-    +(extraDisc>0?'<div class="inv-total-row" style="color:var(--red)"><span class="inv-total-label">Extra Discount</span><span class="inv-total-val">-'+fmt(extraDisc)+'</span></div>':'')
+    +(extraDisc>0?'<div class="inv-total-row" style="color:#27AE60"><span class="inv-total-label">Extra Discount</span><span class="inv-total-val">-'+fmt(extraDisc)+'</span></div>':'')
     +'<div class="inv-grand-total">'+fmt(total)+'</div>'
     +'<div class="inv-total-row"><span class="inv-total-label">Deposit</span><span class="inv-total-val">'+fmt(deposit)+'</span></div>'
     +'<div class="inv-balance-row"><span class="inv-balance-label">Balance Due</span><span class="inv-balance-val">'+fmt(balance)+'</span></div>'
