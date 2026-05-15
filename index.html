@@ -386,8 +386,8 @@ function renderCustomers(){
     +'</div>'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+data.length+'</span> khách</h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+'</div></div>'
     +(data.length===0?'<div class="empty-state"><i class="ti ti-inbox"></i>Không có khách hàng nào</div>'
-      :'<table><colgroup><col width="78"><col width="115"><col width="110"><col width="95"><col width="68"><col width="70"><col width="72"><col width="72"><col width="72"><col width="70"><col width="58"></colgroup>'
-      +'<thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Status</th><th>Lead Status</th><th>Deadline</th><th>Ngày thêm</th><th>Sale</th></tr></thead>'
+      :'<table><colgroup><col width="78"><col width="115"><col width="110"><col width="95"><col width="68"><col width="70"><col width="72"><col width="72"><col width="72"><col width="70"><col width="40"><col width="58"></colgroup>'
+      +'<thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Status</th><th>Lead Status</th><th>Deadline</th><th>Ngày thêm</th><th></th><th>Sale</th></tr></thead>'
       +'<tbody>'+rows+'</tbody></table>'
       +pgBar(data.length,curPage,PAGE_SIZE,'setCurPage'))
     +'</div></div>';
@@ -462,10 +462,11 @@ function renderClosedeal(){
     return true;
   });
 
-  const enriched=data.map(function(inv){
+  const enrichedAll=data.map(function(inv){
     const cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;})||{};
-    return Object.assign({},inv,{business_name:cust.business_name,customer_name:cust.customer_name,state:cust.state,potential:cust.potential,brand:cust.brand,assigned_profile:cust.assigned_profile});
+    return Object.assign({},inv,{business_name:cust.business_name,customer_name:cust.customer_name,state:cust.state,potential:cust.potential,brand:cust.brand,assigned_profile:cust.assigned_profile,assigned_to:cust.assigned_to});
   });
+  const enriched=enrichedAll.filter(function(inv){return fSale==='all'||inv.assigned_to===fSale;});
   const pageData=enriched.slice((cdPage-1)*PAGE_SIZE,cdPage*PAGE_SIZE);
   const totalRevenue=enriched.reduce(function(s,inv){return s+(inv.total||0);},0);
   const years=[...new Set(INVOICES.map(function(inv){return new Date(inv.created_at).getFullYear();}))].sort(function(a,b){return b-a;});
@@ -492,6 +493,7 @@ function renderClosedeal(){
       +'<td>'+(inv.payment_status?'<span class="badge '+(payBadge[inv.payment_status]||'b-new')+'">'+inv.payment_status+'</span>':'—')+'</td>'
       +'<td>'+(inv.order_status?'<span class="badge '+(ordBadge[inv.order_status]||'b-new')+'">'+inv.order_status+'</span>':'—')+'</td>'
       +'<td style="font-size:11px;color:var(--text3)">'+(inv.tracking_number||'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--text2)">'+((inv.assigned_profile&&inv.assigned_profile.full_name)?inv.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
       +(isManager?'<td><button class="btn" style="padding:2px 8px;font-size:10px" onclick="openInvEdit('+inv.id+')">✏️</button></td>':'')
       +'</tr>';
   });
@@ -533,8 +535,8 @@ function renderClosedeal(){
   // Main table
   html+='<div class="panel"><div class="panel-header"><h2>Đơn hàng đã duyệt <span style="color:var(--accent2)">'+enriched.length+'</span></h2></div>'
     +(enriched.length===0?'<div class="empty-state"><i class="ti ti-trophy"></i>Chưa có đơn hàng nào được duyệt</div>'
-      :'<table><colgroup><col width="100"><col width="120"><col width="110"><col width="40"><col width="50"><col width="85"><col width="100"><col width="90"><col width="85">'+(isManager?'<col width="40">':'')+'</colgroup>'
-      +'<thead><tr><th>Mã đơn</th><th>Business Name</th><th>Customer</th><th>T</th><th>Năm</th><th>Revenue</th><th>Payment Status</th><th>Order Status</th><th>Tracking</th>'+(isManager?'<th></th>':'')+'</tr></thead>'
+      :'<table><colgroup><col width="100"><col width="115"><col width="100"><col width="50"><col width="50"><col width="80"><col width="95"><col width="85"><col width="65"><col width="60">'+(isManager?'<col width="40">':'')+'</colgroup>'
+      +'<thead><tr><th>Mã đơn</th><th>Business Name</th><th>Customer</th><th>Month</th><th>Year</th><th>Revenue</th><th>Payment Status</th><th>Order Status</th><th>Tracking</th><th>Sale</th>'+(isManager?'<th></th>':'')+'</tr></thead>'
       +'<tbody>'+rows+'</tbody></table>'
       +pgBar(enriched.length,cdPage,PAGE_SIZE,'setCdPage'))
     +'</div></div>';
