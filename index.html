@@ -536,7 +536,7 @@ function renderClosedeal(){
   html+='<div class="panel"><div class="panel-header"><h2>Đơn hàng đã duyệt <span style="color:var(--accent2)">'+enriched.length+'</span></h2></div>'
     +(enriched.length===0?'<div class="empty-state"><i class="ti ti-trophy"></i>Chưa có đơn hàng nào được duyệt</div>'
       :'<table><colgroup><col width="100"><col width="115"><col width="100"><col width="50"><col width="50"><col width="80"><col width="95"><col width="85"><col width="65"><col width="60">'+(isManager?'<col width="40">':'')+'</colgroup>'
-      +'<thead><tr><th>Mã đơn</th><th>Business Name</th><th>Customer</th><th>Month</th><th>Year</th><th>Revenue</th><th>Payment Status</th><th>Order Status</th><th>Tracking</th><th>Sale</th>'+(isManager?'<th></th>':'')+'</tr></thead>'
+      +'<thead><tr><th>Mã đơn</th><th>Business Name</th><th>Customer</th><th style="text-align:center">Month</th><th style="text-align:center">Year</th><th>Revenue</th><th>Payment Status</th><th>Order Status</th><th>Tracking</th><th>Sale</th>'+(isManager?'<th></th>':'')+'</tr></thead>'
       +'<tbody>'+rows+'</tbody></table>'
       +pgBar(enriched.length,cdPage,PAGE_SIZE,'setCdPage'))
     +'</div></div>';
