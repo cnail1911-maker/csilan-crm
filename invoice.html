@@ -137,7 +137,7 @@ table.inv-table tr:last-child td{border-bottom:none}
 .inv-total-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}
 .inv-total-label{color:var(--gray)}
 .inv-total-val{font-weight:600}
-.inv-grand-total{font-size:22px;font-weight:800;color:var(--red);text-align:center;padding:8px;border:2px solid var(--red);border-radius:4px;margin:8px 0}
+.inv-grand-total{font-size:22px;font-weight:800;color:var(--red);text-align:right;padding:4px 0;margin:4px 0}
 .inv-balance-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;font-weight:700}
 .inv-balance-label{color:var(--dark)}
 .inv-balance-val{color:var(--red)}
@@ -198,14 +198,7 @@ table.inv-table tr:last-child td{border-bottom:none}
       <div class="section">
         <div class="section-label">Công ty</div>
         <div class="company-cards" id="company-cards">
-          <div class="company-card active" onclick="selectCompany(1)" id="co-1">
-            <img src="https://drive.google.com/thumbnail?id=1eqSOyuv7yogkd9A29h-iJ_eQ3KAdjXTf&sz=w200" onerror="this.style.display='none'" alt="BolsaBeauty">
-            <div class="company-card-name">BolsaBeauty LLC</div>
-          </div>
-          <div class="company-card" onclick="selectCompany(2)" id="co-2">
-            <img src="https://drive.google.com/thumbnail?id=1sQA9EzY0hIY6vZ3cQ4vjg_aejx9CkKOv&sz=w200" onerror="this.style.display='none'" alt="Kashant">
-            <div class="company-card-name">Kashant LLC</div>
-          </div>
+          <!-- Company cards rendered by JS -->
         </div>
       </div>
 
@@ -221,9 +214,9 @@ table.inv-table tr:last-child td{border-bottom:none}
           <div class="field"><label>Requested Delivery</label>
             <select id="inv-delivery">
               <option>CUSTOMER WILL CALL</option>
-              <option>DELIVERY</option>
-              <option>SHIP</option>
+              <option>ASAP</option>
               <option>PICK UP</option>
+              <option>PRE ORDER</option>
             </select>
           </div>
         </div>
@@ -261,12 +254,9 @@ table.inv-table tr:last-child td{border-bottom:none}
         <div class="field-row">
           <div class="field"><label>Tax (%)</label>
             <select id="inv-tax" onchange="calcTotals()">
-              <option value="0">-- Không --</option>
-              <option value="6">6%</option>
-              <option value="7">7%</option>
-              <option value="8">8%</option>
-              <option value="9">9%</option>
-              <option value="10">10%</option>
+              <option value="0">Không</option>
+              <option value="tax">Tax</option>
+              <option value="fee">Charge Fee</option>
             </select>
           </div>
           <div class="field"><label>Deposit ($)</label><input type="number" id="inv-deposit" value="0" min="0" oninput="calcTotals()"></div>
@@ -540,7 +530,9 @@ function renderItems(){
 // CALC
 function calcTotals(){
   const subtotal=items.reduce(function(s,i){return s+i.amount;},0);
-  const taxPct=parseFloat(document.getElementById('inv-tax').value)||0;
+  const taxOpt=document.getElementById('inv-tax').value;
+  // Tax: 'tax' = 10%, 'fee' = charge fee (no tax), '0' = none
+  const taxPct=taxOpt==='tax'?10:0;
   const tax=subtotal*taxPct/100;
   const extraDisc=parseFloat(document.getElementById('inv-extra-disc').value)||0;
   const deposit=parseFloat(document.getElementById('inv-deposit').value)||0;
@@ -598,7 +590,8 @@ function renderPreview(){
   const location=document.getElementById('inv-location')&&document.getElementById('inv-location').value||'-';
   const delivery=document.getElementById('inv-delivery')&&document.getElementById('inv-delivery').value||'';
   const subtotal=items.reduce(function(s,i){return s+i.amount;},0);
-  const taxPct=parseFloat(document.getElementById('inv-tax')&&document.getElementById('inv-tax').value)||0;
+  const taxOpt=document.getElementById('inv-tax')&&document.getElementById('inv-tax').value||'0';
+  const taxPct=taxOpt==='tax'?10:0;
   const tax=subtotal*taxPct/100;
   const extraDisc=parseFloat(document.getElementById('inv-extra-disc')&&document.getElementById('inv-extra-disc').value)||0;
   const deposit=parseFloat(document.getElementById('inv-deposit')&&document.getElementById('inv-deposit').value)||0;
@@ -627,7 +620,7 @@ function renderPreview(){
     });
   }
 
-  const cuAddr=cu?[cu.address,cu.city,cu.state?(cu.state+(cu.zipcode?' '+cu.zipcode:'')):cu.zipcode].filter(Boolean).join(', '):'';
+  const cuAddr=cu?[cu.address,cu.city,cu.zipcode,cu.state].filter(Boolean).join(' '):'';
 
   document.getElementById('invoice-preview').innerHTML=
     '<div class="inv-header">'
@@ -713,6 +706,7 @@ async function saveAndDownload(action){
     location:document.getElementById('inv-location').value,
     requested_delivery:document.getElementById('inv-delivery').value,
     tax_pct:taxPct,
+    tax_type:taxOpt2,
     deposit:deposit,
     extra_discount:extraDisc,
     note:document.getElementById('inv-note').value,
