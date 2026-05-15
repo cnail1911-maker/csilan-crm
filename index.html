@@ -1341,6 +1341,13 @@ async function doAdd(){
   if(!rpcErr&&maxVal){
     const m=String(maxVal).match(/KH0*(\d+)/);
     if(m)nextNum=parseInt(m[1])+1;
+  } else {
+    // Fallback: lấy max từ DB trực tiếp
+    const {data:rows}=await sb.from('customers').select('ma_kh').like('ma_kh','KH%').order('ma_kh',{ascending:false}).limit(500);
+    if(rows&&rows.length>0){
+      const nums=rows.map(function(r){const m=r.ma_kh&&r.ma_kh.match(/KH0*(\d+)/);return m?parseInt(m[1]):0;});
+      nextNum=Math.max(...nums)+1;
+    }
   }
   const ma_kh='KH'+String(nextNum).padStart(7,'0');
   const newCust={
@@ -1364,8 +1371,7 @@ async function doAdd(){
   };
   const {data:inserted,error}=await sb.from('customers').insert(newCust).select('*, assigned_profile:profiles!assigned_to(id,full_name,role)').single();
   if(error){showLoading(false);alert('Lỗi: '+error.message);return;}
-  // Add to local array instead of reloading
-  if(inserted)CUSTOMERS.unshift(inserted);
+  await loadCustomers();
   document.getElementById('add-modal')&&document.getElementById('add-modal').remove();
   addOpen=false;showLoading(false);render();
   if(isDup)alert('Khách đã được thêm vào danh sách chờ duyệt. Manager sẽ xem xét và phê duyệt.');
