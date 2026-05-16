@@ -654,12 +654,9 @@ function renderPipeline(){
     const totalPg=Math.ceil(cards.length/pgSize);
     html+='<div class="pipe-col"><div class="pipe-col-hd" style="color:'+pipeColors[i]+'">'+status+'<span class="pipe-cnt">'+cards.length+'</span></div>';
     pgCards.forEach(function(c){
-      html+='<div class="pipe-card" onclick="selId='+c.id+';setPage(\'customers\')">'
-        +'<div class="pipe-card-name">'+(c.customer_name||'')+'</div>'
-        +'<div class="pipe-card-biz">'+(c.business_name||'—')+' · '+(c.state||'—')+'</div>'
-        +'<div class="pipe-card-ft"><span style="font-size:10px;color:var(--accent)">'+(c.potential||'—')+'</span>'+lBadge(c.lead_status)
-        +'<div class="avatar '+saleAvClass(c.assigned_to)+'" style="width:20px;height:20px;font-size:9px">'+saleInitials(c)+'</div></div>'
-        +'</div>';
+      const desc=c.description||'';
+      const shortDesc=desc.length>80?desc.slice(0,80)+'…':desc;
+      html+='<div class="pipe-card" onclick="selId='+c.id+';setPage(\'customers\')">'        +'<div class="pipe-card-name">'+(c.customer_name||'')+'</div>'        +'<div class="pipe-card-biz">'+(c.business_name||'—')+' · '+(c.state||'—')+'</div>'        +(shortDesc?'<div style="font-size:10px;color:var(--text3);margin:4px 0;line-height:1.4" title="'+desc.replace(/"/g,\'&quot;\')+'">📝 '+shortDesc+'</div>':'')        +'<div class="pipe-card-ft"><span style="font-size:10px;color:var(--accent)">'+(c.potential||'—')+'</span>'+lBadge(c.lead_status)        +(isManager&&c.campaign_name?'<button class="btn" style="padding:1px 6px;font-size:9px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="event.stopPropagation();recallOne('+c.id+')">Thu hồi</button>':'')        +'<div class="avatar '+saleAvClass(c.assigned_to)+'" style="width:20px;height:20px;font-size:9px">'+saleInitials(c)+'</div></div>'        +'</div>';
     });
     if(totalPg>1){
       html+='<div style="display:flex;gap:3px;justify-content:center;padding:6px;flex-wrap:wrap">';
