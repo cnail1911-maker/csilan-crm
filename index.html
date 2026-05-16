@@ -203,6 +203,15 @@ function doSearch(val){
   clearTimeout(_searchTimer);
   _searchTimer=setTimeout(function(){
     search=val.toLowerCase();curPage=1;render();
+    const el=document.querySelector('.search-wrap input');
+    if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}
+  },120);
+}
+let _searchTimer=null;
+function doSearch(val){
+  clearTimeout(_searchTimer);
+  _searchTimer=setTimeout(function(){
+    search=val.toLowerCase();curPage=1;render();
     // Restore focus and cursor position
     const el=document.querySelector('.search-wrap input');
     if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}
@@ -656,7 +665,14 @@ function renderPipeline(){
     pgCards.forEach(function(c){
       const desc=c.description||'';
       const shortDesc=desc.length>80?desc.slice(0,80)+'…':desc;
-      html+='<div class="pipe-card" onclick="selId='+c.id+';setPage(\'customers\')">'        +'<div class="pipe-card-name">'+(c.customer_name||'')+'</div>'        +'<div class="pipe-card-biz">'+(c.business_name||'—')+' · '+(c.state||'—')+'</div>'        +(shortDesc?'<div style="font-size:10px;color:var(--text3);margin:4px 0;line-height:1.4" title="'+desc.replace(/"/g,\'&quot;\')+'">📝 '+shortDesc+'</div>':'')        +'<div class="pipe-card-ft"><span style="font-size:10px;color:var(--accent)">'+(c.potential||'—')+'</span>'+lBadge(c.lead_status)        +(isManager&&c.campaign_name?'<button class="btn" style="padding:1px 6px;font-size:9px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="event.stopPropagation();recallOne('+c.id+')">Thu hồi</button>':'')        +'<div class="avatar '+saleAvClass(c.assigned_to)+'" style="width:20px;height:20px;font-size:9px">'+saleInitials(c)+'</div></div>'        +'</div>';
+      html+='<div class="pipe-card" onclick="selId='+c.id+';setPage(\'customers\')">'
+        +'<div class="pipe-card-name">'+(c.customer_name||'')+'</div>'
+        +'<div class="pipe-card-biz">'+(c.business_name||'—')+' · '+(c.state||'—')+'</div>'
+        +(shortDesc?'<div style="font-size:10px;color:var(--text3);margin:4px 0;line-height:1.4">📝 '+shortDesc+'</div>':'')
+        +'<div class="pipe-card-ft"><span style="font-size:10px;color:var(--accent)">'+(c.potential||'—')+'</span>'+lBadge(c.lead_status)
+        +(isManager&&c.campaign_name?'<button class="btn" style="padding:1px 6px;font-size:9px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="event.stopPropagation();recallOne('+c.id+')">Thu hồi</button>':'')
+        +'<div class="avatar '+saleAvClass(c.assigned_to)+'" style="width:20px;height:20px;font-size:9px">'+saleInitials(c)+'</div></div>'
+        +'</div>';
     });
     if(totalPg>1){
       html+='<div style="display:flex;gap:3px;justify-content:center;padding:6px;flex-wrap:wrap">';
@@ -753,8 +769,6 @@ function renderAlert(){
     const dl=new Date(c.assigned_deadline);dl.setHours(0,0,0,0);
     return Math.floor((dl-today)/(1000*60*60*24));
   }
-
-  // Chỉ cảnh báo khách ĐÃ assign cho sale
   const alertData=CUSTOMERS.filter(function(c){
     if(c.lead_status==='Closedeal')return false;
     if(!c.assigned_to)return false;
@@ -768,7 +782,6 @@ function renderAlert(){
     if(dlB!==null&&dlB<=0&&!(dlA!==null&&dlA<=0))return 1;
     return getDays(b)-getDays(a);
   });
-
   function daysBadge(c){
     const dl=getDeadlineDays(c);
     if(dl!==null&&dl<0)return '<span class="badge b-lost">Hết hạn '+Math.abs(dl)+'d</span>';
@@ -779,10 +792,8 @@ function renderAlert(){
     if(days>=7)return '<span class="badge b-followup">'+days+' ngày</span>';
     return '<span class="badge b-calling">'+days+' ngày</span>';
   }
-
   const potentialFilter='<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="window.alertFPotential=this.value;render()"><option value="all">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'"'+(window.alertFPotential===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select>';
   const saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
-
   const filtered=alertData.filter(function(c){
     if(!isManager&&currentUser&&c.assigned_to!==currentUser.id)return false;
     if(fSale!=='all'&&c.assigned_to!==fSale)return false;
@@ -791,7 +802,6 @@ function renderAlert(){
   });
   const over30=filtered.filter(function(c){return getDays(c)>30;}).length;
   const expiredDl=filtered.filter(function(c){const dl=getDeadlineDays(c);return dl!==null&&dl<=0;}).length;
-
   let rows='';
   filtered.slice(0,200).forEach(function(c){
     rows+='<tr onclick="selId='+c.id+';setPage(\"customers\")">'
@@ -806,7 +816,6 @@ function renderAlert(){
       +(isManager?'<td><button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="event.stopPropagation();recallOne('+c.id+')">Thu hồi</button></td>':'')
       +'</tr>';
   });
-
   return '<div class="topbar"><div class="topbar-title">Cảnh báo Potential</div>'+potentialFilter+saleFilter+'</div>'
     +'<div class="content">'
     +'<div class="stats-row">'
@@ -856,19 +865,15 @@ async function recallOver30(){
 // ============================================================
 function renderCampaign(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
-
-  // Group customers by campaign_name for stat cards
   const campaigns={};
   CUSTOMERS.forEach(function(c){
-    const name=c.campaign_name||c.campaign_month||'Không có campaign';
-    if(!campaigns[name])campaigns[name]={name:name,total:0,new:0,followup:0,closedeal:0};
+    const name=c.campaign_name||'Không có campaign';
+    if(!campaigns[name])campaigns[name]={name:name,total:0,followup:0,closedeal:0};
     campaigns[name].total++;
-    if(c.status==='New')campaigns[name].new++;
     if(c.status==='Follow Up')campaigns[name].followup++;
     if(c.lead_status==='Closedeal')campaigns[name].closedeal++;
   });
   const campList=Object.values(campaigns).filter(function(c){return c.name!=='Không có campaign';}).sort(function(a,b){return b.total-a.total;});
-
   let campCards='';
   campList.forEach(function(camp){
     const pct=camp.total?Math.round(camp.closedeal/camp.total*100):0;
@@ -883,19 +888,13 @@ function renderCampaign(){
       +'<div class="kpi-bar-bg"><div class="kpi-bar-fill" style="width:'+pct+'%"></div></div>'
       +'</div>';
   });
-
-  // Campaign assign form - manager only
   let assignForm='';
   if(isManager){
     const salesOptions=PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){
       return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" value="'+p.id+'" style="accent-color:var(--brand)"> '+p.full_name+'</label>';
     }).join('');
-
-    // Build unique values for filter dropdowns from CUSTOMERS
     const states=[...new Set(CUSTOMERS.map(function(c){return c.state;}).filter(Boolean))].sort();
-    const brands=[...new Set(CUSTOMERS.map(function(c){return c.brand;}).filter(Boolean))].sort();
     const campNames=[...new Set(CUSTOMERS.map(function(c){return c.campaign_name;}).filter(Boolean))].sort();
-
     function fOpts(arr,id,label){
       return '<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">'+label+'</div>'
         +'<select id="'+id+'" onchange="campPreview()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'
@@ -903,31 +902,20 @@ function renderCampaign(){
         +arr.map(function(v){return '<option value="'+v+'">'+v+'</option>';}).join('')
         +'</select></div>';
     }
-
-    assignForm='<div class="panel" style="margin-bottom:14px">'
-      +'<div class="panel-header"><h2>Tạo Campaign mới</h2></div>'
+    assignForm='<div class="panel" style="margin-bottom:14px"><div class="panel-header"><h2>Tạo Campaign mới</h2></div>'
       +'<div style="padding:14px">'
-
-      // Row 1: Tên + Deadline + Sales
       +'<div style="display:grid;grid-template-columns:1.5fr 1fr 1fr auto;gap:12px;align-items:start;margin-bottom:14px">'
         +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Tên Campaign</div>'
         +'<input id="camp-name" placeholder="2026_Campaign_T06" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"></div>'
-
         +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Deadline</div>'
         +'<input type="date" id="camp-deadline" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"></div>'
-
         +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Assign Sale (chọn nhiều)</div>'
         +'<div id="camp-sales" style="display:flex;flex-direction:column;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;max-height:120px;overflow-y:auto">'
         +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);cursor:pointer;border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:2px"><input type="checkbox" id="camp-sale-all" onchange="toggleAllSales(this)" style="accent-color:var(--brand)"> Tất cả sale (chia đều)</label>'
         +salesOptions
         +'</div></div>'
-
-        +'<div style="padding-top:18px">'
-        +'<button class="btn btn-primary" onclick="createCampaign()" style="white-space:nowrap;margin-bottom:6px;width:100%"><i class="ti ti-speakerphone"></i> Tạo Campaign</button>'
-        +'</div>'
+        +'<div style="padding-top:18px"><button class="btn btn-primary" onclick="createCampaign()" style="white-space:nowrap;width:100%"><i class="ti ti-speakerphone"></i> Tạo Campaign</button></div>'
       +'</div>'
-
-      // Row 2: Bộ lọc data
       +'<div style="background:var(--surface2,var(--surface));border:1px solid var(--border);border-radius:10px;padding:12px">'
       +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">🔽 Bộ lọc data</div>'
       +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">'
@@ -942,7 +930,7 @@ function renderCampaign(){
         +fOpts(TIMES_OPTS,'cf-timeuse','Time of Use')
         +fOpts(REASON_OPTS,'cf-reason','Reason')
       +'</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">'
+      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">'
         +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Thuộc chiến dịch</div>'
         +'<select id="cf-campaign" onchange="campPreview()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'
         +'<option value="all">Tất cả</option>'
@@ -955,10 +943,8 @@ function renderCampaign(){
         +'<div id="camp-preview-count" style="display:flex;align-items:end;padding-bottom:2px;font-size:13px;color:var(--accent2);font-weight:700"></div>'
       +'</div>'
       +'</div>'
-
       +'</div></div>';
   }
-
   return '<div class="topbar"><div class="topbar-title">Campaign</div></div>'
     +'<div class="content">'
     +assignForm
@@ -976,7 +962,6 @@ function campGetFiltered(){
   const timeuse=document.getElementById('cf-timeuse')&&document.getElementById('cf-timeuse').value;
   const reason=document.getElementById('cf-reason')&&document.getElementById('cf-reason').value;
   const campaign=document.getElementById('cf-campaign')&&document.getElementById('cf-campaign').value;
-
   return CUSTOMERS.filter(function(c){
     if(state&&state!=='all'&&c.state!==state)return false;
     if(status&&status!=='all'&&c.status!==status)return false;
@@ -991,34 +976,26 @@ function campGetFiltered(){
     return true;
   });
 }
-
 function campPreview(){
   const filtered=campGetFiltered();
   const el=document.getElementById('camp-preview-count');
   if(el)el.innerHTML='<span style="color:var(--text3);font-size:11px;margin-right:6px">Data đã lọc:</span>'+filtered.length+' khách';
 }
-
 function campResetFilters(){
   ['cf-state','cf-status','cf-substatus','cf-leadstatus','cf-brand','cf-potential','cf-timeuse','cf-reason','cf-campaign'].forEach(function(id){
-    const el=document.getElementById(id);
-    if(el)el.value='all';
+    const el=document.getElementById(id);if(el)el.value='all';
   });
   campPreview();
 }
-
-function goToCampaign(){fSale="all";search="";setPage("customers");}
 function toggleAllSales(cb){
   const boxes=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all)');
   boxes.forEach(function(b){b.checked=false;});
 }
-
 async function createCampaign(){
   const name=document.getElementById('camp-name')&&document.getElementById('camp-name').value.trim();
   const deadline=document.getElementById('camp-deadline')&&document.getElementById('camp-deadline').value;
   if(!name){alert('Vui lòng nhập tên Campaign!');return;}
   if(!deadline){alert('Vui lòng chọn Deadline!');return;}
-
-  // Get selected sales
   const allSaleCb=document.getElementById('camp-sale-all');
   let salesList=[];
   if(allSaleCb&&allSaleCb.checked){
@@ -1029,23 +1006,14 @@ async function createCampaign(){
     salesList=PROFILES.filter(function(p){return ids.includes(p.id);});
   }
   if(salesList.length===0){alert('Vui lòng chọn ít nhất 1 sale!');return;}
-
-  // Get filtered data
   const dataPool=campGetFiltered();
   if(dataPool.length===0){alert('Không có data nào khớp với bộ lọc!');return;}
   if(!confirm('Phân công '+dataPool.length+' khách cho Campaign "'+name+'" cho '+salesList.length+' sale với deadline '+deadline+'?'))return;
-
   showLoading(true);
   for(let i=0;i<dataPool.length;i++){
     const sale=salesList[i%salesList.length];
-    await sb.from('customers').update({
-      assigned_to:sale.id,
-      campaign_name:name,
-      assigned_deadline:deadline,
-      is_recalled:false
-    }).eq('id',dataPool[i].id);
+    await sb.from('customers').update({assigned_to:sale.id,campaign_name:name,assigned_deadline:deadline,is_recalled:false}).eq('id',dataPool[i].id);
   }
-
   await loadCustomers();showLoading(false);
   alert('Đã tạo Campaign "'+name+'" với '+dataPool.length+' khách cho '+salesList.length+' sale!');
   document.getElementById('camp-name').value='';
@@ -1345,7 +1313,11 @@ async function doAdd(){
     }
   }
   const campaign=new Date().toLocaleDateString('vi-VN',{month:'2-digit',year:'numeric'});
-  const newCust={
+  let nextNum=1;
+  const {data:maxVal,error:rpcErr}=await sb.rpc('get_max_ma_kh');
+  if(!rpcErr&&maxVal){const m=String(maxVal).match(/KH0*(\d+)/);if(m)nextNum=parseInt(m[1])+1;}
+  const ma_kh='KH'+String(nextNum).padStart(7,'0');
+  const newCust={ma_kh:ma_kh,
     business_name:document.getElementById('a-biz')&&document.getElementById('a-biz').value||null,
     customer_name:name,
     business_phone:bphone||null,
