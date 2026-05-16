@@ -1063,7 +1063,13 @@ function renderProducts(){
 }
 
 function setProdMgPage(p){sessionStorage.setItem('prodMgPage',p);render();}
-function prodMgFilter(v){sessionStorage.setItem('prodMgSearch',v);sessionStorage.setItem('prodMgPage',1);render();}
+function prodMgFilter(v){
+  sessionStorage.setItem('prodMgSearch',v);
+  sessionStorage.setItem('prodMgPage',1);
+  render();
+  const el=document.getElementById('prod-mg-search');
+  if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}
+}
 
 async function toggleStock(id,val){
   await sb.from('products').update({in_stock:val}).eq('id',id);
