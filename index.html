@@ -207,7 +207,6 @@ function doSearch(val){
     if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}
   },120);
 }
-let _searchTimer=null;
 function doSearch(val){
   clearTimeout(_searchTimer);
   _searchTimer=setTimeout(function(){
