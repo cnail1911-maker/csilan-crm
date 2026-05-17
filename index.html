@@ -1041,7 +1041,7 @@ function renderCampaign(){
       +'<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Quá hạn ≥</div>'
       +'<input type="number" id="cf-overdue" value="'+(overdueDays||'')+'" min="0" placeholder="Số ngày" onchange="window._campPg=1;render()" style="width:80px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;color:var(--text);outline:none">'
       +'<div style="font-size:10px;color:var(--text3)">ngày</div>'
-      +'<button class="btn" style="font-size:11px;padding:4px 10px" onclick="window._campPg=1;document.getElementById('cf-overdue').value=0;render()">Reset</button>'
+      +'<button class="btn" style="font-size:11px;padding:4px 10px" onclick="window._campPg=1;document.getElementById(&apos;cf-overdue&apos;).value=0;render()">Reset</button>'
       +'<button class="btn btn-primary" style="font-size:11px;padding:4px 10px" onclick="campAssignSelected()"><i class="ti ti-user-check"></i> Assign đã chọn</button>'
       +'<button class="btn" style="font-size:11px;padding:4px 10px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="campRecallSelected()"><i class="ti ti-rotate-clockwise"></i> Thu hồi đã chọn</button>'
       +'</div></div>'
