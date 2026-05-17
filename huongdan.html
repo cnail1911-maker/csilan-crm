@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Định nghĩa hệ thống – C-Silan CRM</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap');
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --brand:#6C5CE7;--brand2:#A29BFE;--brand-dark:#4834d4;
+    --accent:#00CEC9;--accent2:#55EFC4;
+    --warn:#FDCB6E;--danger:#FF7675;--success:#00B894;
+    --bg:#0f0c24;--surface:rgba(255,255,255,0.05);--surface2:rgba(255,255,255,0.09);
+    --text:#F0EEFF;--text2:rgba(240,238,255,0.65);--text3:rgba(240,238,255,0.38);
+    --border:rgba(255,255,255,0.09);
+  }
+
+  body{
+    font-family:'Be Vietnam Pro',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:14px;
+    line-height:1.7;
+    print-color-adjust:exact;
+    -webkit-print-color-adjust:exact;
+  }
+
+  .page{max-width:900px;margin:0 auto;padding:40px 32px 80px}
+
+  /* ── HEADER ── */
+  .header{
+    background:linear-gradient(135deg,#1a1240 0%,#2d1b69 55%,#0f2a4a 100%);
+    border-radius:18px;padding:36px 40px;margin-bottom:40px;
+    border:1px solid rgba(162,155,254,0.2);
+    position:relative;overflow:hidden;
+  }
+  .header::before{
+    content:'';position:absolute;top:-80px;right:-80px;
+    width:300px;height:300px;
+    background:radial-gradient(circle,rgba(162,155,254,0.18),transparent 70%);
+    pointer-events:none;
+  }
+  .header-logo{
+    font-family:'Syne',sans-serif;font-size:28px;font-weight:800;
+    background:linear-gradient(90deg,#fff,#A29BFE);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    margin-bottom:6px;
+  }
+  .header-sub{font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:20px}
+  .header-tags{display:flex;flex-wrap:wrap;gap:8px}
+  .header-tag{
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:20px;padding:4px 14px;
+    font-size:12px;color:rgba(255,255,255,0.7);
+  }
+
+  /* ── TOC ── */
+  .toc{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:14px;padding:20px 24px;margin-bottom:36px;
+  }
+  .toc-title{font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px}
+  .toc-list{display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;list-style:none}
+  .toc-list a{
+    font-size:13px;color:var(--brand2);text-decoration:none;
+    display:flex;align-items:center;gap:6px;padding:3px 0;
+  }
+  .toc-list a:hover{color:#fff}
+  .toc-num{font-size:10px;color:var(--text3);font-weight:600;min-width:20px}
+
+  /* ── SECTION ── */
+  .section{margin-bottom:40px}
+  .section-header{
+    display:flex;align-items:center;gap:12px;
+    margin-bottom:18px;padding-bottom:12px;
+    border-bottom:1px solid var(--border);
+  }
+  .section-num{
+    width:32px;height:32px;border-radius:10px;
+    background:linear-gradient(135deg,var(--brand),var(--brand-dark));
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:700;color:#fff;flex-shrink:0;
+  }
+  .section-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--text)}
+  .section-en{font-size:11px;color:var(--text3);margin-left:2px;font-weight:400;font-family:'Be Vietnam Pro',sans-serif}
+
+  /* ── TABLE ── */
+  .def-table{width:100%;border-collapse:collapse;border-radius:12px;overflow:hidden}
+  .def-table thead tr{background:rgba(108,92,231,0.15)}
+  .def-table th{
+    padding:10px 16px;font-size:11px;font-weight:600;
+    color:var(--brand2);letter-spacing:0.8px;text-transform:uppercase;
+    text-align:left;border-bottom:1px solid rgba(108,92,231,0.2);
+  }
+  .def-table td{
+    padding:10px 16px;font-size:13px;
+    border-bottom:1px solid var(--border);
+    vertical-align:top;
+  }
+  .def-table tr:last-child td{border-bottom:none}
+  .def-table tr:hover td{background:rgba(255,255,255,0.03)}
+  .def-table .key{
+    font-weight:600;color:var(--text);white-space:nowrap;
+    font-family:monospace;font-size:12px;letter-spacing:0.3px;
+  }
+  .def-table .val{color:var(--text2)}
+
+  /* ── BADGE ── */
+  .badge{
+    display:inline-flex;align-items:center;padding:2px 10px;
+    border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;
+  }
+  .b-new{background:rgba(162,155,254,0.15);color:#A29BFE;border:1px solid rgba(162,155,254,0.3)}
+  .b-followup{background:rgba(253,203,110,0.15);color:#FDCB6E;border:1px solid rgba(253,203,110,0.3)}
+  .b-completed{background:rgba(0,184,148,0.2);color:#55EFC4;border:1px solid rgba(85,239,196,0.35)}
+  .b-closedeal{background:rgba(0,184,148,0.2);color:#55EFC4;border:1px solid rgba(85,239,196,0.35)}
+  .b-lost{background:rgba(255,118,117,0.15);color:#FF7675;border:1px solid rgba(255,118,117,0.3)}
+  .b-warn{background:rgba(253,203,110,0.15);color:#FDCB6E;border:1px solid rgba(253,203,110,0.3)}
+  .b-info{background:rgba(116,185,255,0.15);color:#74b9ff;border:1px solid rgba(116,185,255,0.3)}
+  .b-purple{background:rgba(108,92,231,0.2);color:#A29BFE;border:1px solid rgba(108,92,231,0.3)}
+  .b-teal{background:rgba(0,206,201,0.15);color:#00CEC9;border:1px solid rgba(0,206,201,0.3)}
+
+  /* ── RULE BOXES ── */
+  .rules{display:flex;flex-direction:column;gap:10px}
+  .rule{
+    display:flex;gap:14px;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:12px;padding:14px 16px;
+  }
+  .rule-icon{
+    width:30px;height:30px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:15px;flex-shrink:0;
+  }
+  .rule-icon.ok{background:rgba(0,184,148,0.2);color:#00B894}
+  .rule-icon.warn{background:rgba(253,203,110,0.15);color:#FDCB6E}
+  .rule-icon.no{background:rgba(255,118,117,0.15);color:#FF7675}
+  .rule-icon.info{background:rgba(108,92,231,0.2);color:#A29BFE}
+  .rule-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
+  .rule-desc{font-size:12px;color:var(--text2);line-height:1.5}
+
+  /* ── NOTE BOX ── */
+  .note{
+    background:rgba(108,92,231,0.08);
+    border-left:3px solid var(--brand);
+    border-radius:0 10px 10px 0;
+    padding:12px 16px;margin-top:14px;
+    font-size:12px;color:var(--text2);line-height:1.6;
+  }
+  .note strong{color:var(--brand2)}
+
+  /* ── FLOW ── */
+  .flow{display:flex;flex-wrap:wrap;gap:0;align-items:center;margin-top:4px}
+  .flow-step{
+    background:var(--surface2);border:1px solid var(--border);
+    border-radius:8px;padding:6px 14px;font-size:12px;font-weight:500;color:var(--text);
+  }
+  .flow-arrow{color:var(--text3);font-size:18px;padding:0 6px}
+
+  /* ── FOOTER ── */
+  .footer{
+    margin-top:60px;padding-top:20px;border-top:1px solid var(--border);
+    text-align:center;font-size:12px;color:var(--text3);
+  }
+
+  /* ── PRINT ── */
+  @media print{
+    body{background:#fff;color:#111}
+    :root{--bg:#fff;--surface:#f5f5f5;--surface2:#eee;--text:#111;--text2:#444;--text3:#888;--border:#ddd}
+    .header{background:#4834d4!important;-webkit-print-color-adjust:exact}
+    .page{padding:20px}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-logo">C-Silan CRM</div>
+    <div class="header-sub">Tài liệu định nghĩa & quy định sử dụng · Sales Team v5.0</div>
+    <div class="header-tags">
+      <div class="header-tag">📋 Dành cho nhân viên sales</div>
+      <div class="header-tag">🔄 Cập nhật 2026</div>
+      <div class="header-tag">✅ Bắt buộc áp dụng</div>
+    </div>
+    <div style="margin-top:20px">
+      <a href="https://cnail1911-maker.github.io/csilan-crm/" target="_blank"
+        style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#6C5CE7,#4834d4);border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:600;color:#fff;text-decoration:none;font-family:'Be Vietnam Pro',sans-serif">
+        🚀 Truy cập hệ thống C-Silan CRM
+      </a>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">Mục lục</div>
+    <ul class="toc-list">
+      <li><a href="#s1"><span class="toc-num">01</span> Status – Trạng thái data</a></li>
+      <li><a href="#s2"><span class="toc-num">02</span> Sub-Status – Tiến độ làm việc</a></li>
+      <li><a href="#s3"><span class="toc-num">03</span> Lead Status – Kết quả cuối</a></li>
+      <li><a href="#s4"><span class="toc-num">04</span> Potential – Nhóm sản phẩm</a></li>
+      <li><a href="#s5"><span class="toc-num">05</span> Time of Use – Thời gian dùng</a></li>
+      <li><a href="#s6"><span class="toc-num">06</span> Brand – Thương hiệu</a></li>
+      <li><a href="#s7"><span class="toc-num">07</span> Reason – Lý do đóng data</a></li>
+      <li><a href="#s8"><span class="toc-num">08</span> Quy trình xử lý data</a></li>
+      <li><a href="#s9"><span class="toc-num">09</span> Quy định cập nhật</a></li>
+      <li><a href="#s10"><span class="toc-num">10</span> Quy định kiểm tra</a></li>
+    </ul>
+  </div>
+
+  <!-- 1. STATUS -->
+  <div class="section" id="s1">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div>
+        <div class="section-title">STATUS <span class="section-en">— Trạng thái data</span></div>
+      </div>
+    </div>
+    <table class="def-table">
+      <thead><tr><th>Giá trị</th><th>Ý nghĩa</th><th>Khi nào dùng</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="badge b-new">New</span></td>
+          <td class="val">Chưa gọi / chưa xử lý</td>
+          <td class="val">Mặc định khi nhận data mới từ chiến dịch</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-followup">Follow Up</span></td>
+          <td class="val">Đã gọi, đang chăm sóc hoặc làm việc từ 1 lần trở lên</td>
+          <td class="val">Đã liên hệ ít nhất 1 lần, khách có phản hồi hoặc hẹn lại</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-completed">Completed</span></td>
+          <td class="val">Đã đóng data / hoàn tất xử lý</td>
+          <td class="val">Khi có kết quả cuối cùng (Closedeal / Lost / Invalid). Phải điền Lead Status trước khi Completed</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note">
+      <strong>Lưu ý:</strong> Status phản ánh tiến độ liên hệ, không phải kết quả. Một khách Follow Up lâu ngày mà chưa có kết quả vẫn giữ Follow Up — không tự ý chuyển Completed khi chưa có kết luận rõ ràng.
+    </div>
+  </div>
+
+  <!-- 2. SUB-STATUS -->
+  <div class="section" id="s2">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div>
+        <div class="section-title">SUB-STATUS <span class="section-en">— Tiến độ làm việc</span></div>
+      </div>
+    </div>
+    <table class="def-table">
+      <thead><tr><th>Giá trị</th><th>Ý nghĩa</th></tr></thead>
+      <tbody>
+        <tr><td class="key">New Lead</td><td class="val">Khách mới, chưa xử lý lần nào</td></tr>
+        <tr><td class="key">No Answer</td><td class="val">Gọi nhưng không có ai bắt máy</td></tr>
+        <tr><td class="key">Gatekeeper</td><td class="val">Gặp nhân viên, không gặp được chủ/người quyết định</td></tr>
+        <tr><td class="key">Contacting</td><td class="val">Đang trong quá trình trao đổi với khách</td></tr>
+        <tr><td class="key">Qualified</td><td class="val">Khách xác nhận có nhu cầu — nên chọn Potential ngay</td></tr>
+        <tr><td class="key">Follow Up</td><td class="val">Cần liên hệ lại theo lịch hẹn</td></tr>
+        <tr><td class="key">Appointment Set</td><td class="val">Đã lên lịch hẹn demo / gặp mặt cụ thể</td></tr>
+        <tr><td class="key">Quotation Sent</td><td class="val">Đã gửi báo giá cho khách</td></tr>
+        <tr><td class="key">Pending Decision</td><td class="val">Khách đang cân nhắc, chờ quyết định</td></tr>
+      </tbody>
+    </table>
+    <div class="note">
+      <strong>Tip:</strong> Sub-Status phải luôn khớp với tình trạng thực tế cuộc gọi gần nhất. Khi ghi chú cuộc gọi, chọn Sub-Status phù hợp để hệ thống theo dõi chính xác.
+    </div>
+  </div>
+
+  <!-- 3. LEAD STATUS -->
+  <div class="section" id="s3">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <div>
+        <div class="section-title">LEAD STATUS <span class="section-en">— Kết quả cuối cùng</span></div>
+      </div>
+    </div>
+    <table class="def-table">
+      <thead><tr><th>Giá trị</th><th>Ý nghĩa</th><th>Điều kiện</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="badge b-closedeal">Closedeal</span></td>
+          <td class="val">Chốt đơn thành công</td>
+          <td class="val">Tạo invoice và được Admin duyệt</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-lost">Lost</span></td>
+          <td class="val">Không thành công, khách không mua</td>
+          <td class="val">Đã tư vấn đầy đủ, khách từ chối rõ ràng</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-info">Invalid Lead</span></td>
+          <td class="val">Data lỗi, không tồn tại, sai thông tin</td>
+          <td class="val">Số điện thoại sai, tiệm đã đóng cửa...</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-warn">No Response</span></td>
+          <td class="val">Gọi nhiều lần nhưng không nhận được phản hồi</td>
+          <td class="val">Đã gọi tối thiểu 3-5 lần ở các thời điểm khác nhau</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-warn">Busy</span></td>
+          <td class="val">Khách liên tục báo bận, từ chối trao đổi</td>
+          <td class="val">Đã thử liên hệ nhiều lần, khách không có thời gian</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note">
+      <strong>Quan trọng:</strong> Lead Status chỉ điền khi chuyển Status sang <strong>Completed</strong>. Không điền Lead Status giữa chừng khi vẫn còn đang xử lý.
+    </div>
+  </div>
+
+  <!-- 4. POTENTIAL -->
+  <div class="section" id="s4">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <div>
+        <div class="section-title">POTENTIAL <span class="section-en">— Nhóm sản phẩm khách quan tâm</span></div>
+      </div>
+    </div>
+    <table class="def-table">
+      <thead><tr><th>Giá trị</th><th>Ý nghĩa</th><th>Sản phẩm điển hình</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="badge b-teal">Pedicure Spa &amp; Package</span></td>
+          <td class="val">Ghế Pedicure / combo trọn bộ</td>
+          <td class="val">Ghế pedicure, combo ghế + đồ nội thất</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-purple">Massage Chair</span></td>
+          <td class="val">Lưng ghế massage</td>
+          <td class="val">Lưng ghế massage cho ghế Pedicure</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-info">Furniture</span></td>
+          <td class="val">Nội thất tiệm nail / spa</td>
+          <td class="val">Bàn làm nail, ghế thợ–khách, quầy lễ tân, kệ…</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-warn">Padset</span></td>
+          <td class="val">Da ghế</td>
+          <td class="val">Da nệm thay thế cho ghế Pedicure</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-teal">HeadSpa Bed</span></td>
+          <td class="val">Giường / thiết bị Head Spa</td>
+          <td class="val">Giường gội đầu dưỡng sinh, thiết bị head spa cao cấp</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-info">Part &amp; Accessories</span></td>
+          <td class="val">Linh kiện &amp; phụ kiện thay thế</td>
+          <td class="val">Linh kiện sửa chữa, phụ kiện bảo trì thiết bị</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note">
+      <strong>Lưu ý:</strong> Chọn Potential ngay khi khách xác nhận quan tâm sản phẩm cụ thể (Sub-Status = Qualified trở lên). Khách đã chọn Potential sẽ <strong>không bị thu hồi tự động</strong> và hiển thị riêng ở tab Tiềm năng.
+    </div>
+  </div>
+
+  <!-- 5. TIME OF USE -->
+  <div class="section" id="s5">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <div>
+        <div class="section-title">TIME OF USE <span class="section-en">— Thời gian sử dụng thiết bị hiện tại</span></div>
+      </div>
+    </div>
+    <table class="def-table">
+      <thead><tr><th>Giá trị</th><th>Ý nghĩa</th><th>Gợi ý tiếp cận</th></tr></thead>
+      <tbody>
+        <tr><td class="key">1 year</td><td class="val">Đã sử dụng khoảng 1 năm</td><td class="val">Thiết bị còn mới, tập trung vào nâng cấp / mở rộng</td></tr>
+        <tr><td class="key">2 year</td><td class="val">Đã sử dụng khoảng 2 năm</td><td class="val">Có thể cần bảo dưỡng, bắt đầu tư vấn thay thế</td></tr>
+        <tr><td class="key">3 year</td><td class="val">Đã sử dụng khoảng 3 năm</td><td class="val">Đến chu kỳ cân nhắc thay mới, tư vấn tích cực hơn</td></tr>
+        <tr><td class="key">More than 5 year</td><td class="val">Đã sử dụng trên 5 năm</td><td class="val">Ưu tiên cao — thiết bị cũ, nhu cầu thay thế cao</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 6. BRAND -->
+  <div class="section" id="s6">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <div>
+        <div class="section-title">BRAND <span class="section-en">— Thương hiệu thiết bị đang dùng</span></div>
+      </div>
+    </div>
+    <table class="def-table">
+      <thead><tr><th style="width:220px">Thương hiệu</th><th>Đặc điểm nổi bật</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="key">TSPA<br><a href="https://tspallc.com/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://tspallc.com/</a></td>
+          <td class="val">Hãng ghế nổi tiếng ở Houston - TX, mẫu mã đa dạng, thiết kế đẹp bắt mắt</td>
+        </tr>
+        <tr>
+          <td class="key">T4<br><a href="https://t4spa.com/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://t4spa.com/</a></td>
+          <td class="val">Hãng có mặt trên thị trường lâu đời và được nhiều người biết đến, nhưng không có sự cập nhật mới</td>
+        </tr>
+        <tr>
+          <td class="key">LEXOR<br><a href="https://lexor.com/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://lexor.com/</a></td>
+          <td class="val">Xưởng sản xuất tại Long An, có độ phủ sóng rộng. Vừa ra mắt thêm công nghệ tạo khói cho Pedicure Spa</td>
+        </tr>
+        <tr>
+          <td class="key">WHALE SPA<br><a href="https://whalespa.com/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://whalespa.com/</a></td>
+          <td class="val">Hãng nổi tiếng ở CA, chỉ sử dụng chậu kiếng – không có chậu thay thế khi gặp sự cố bể vỡ</td>
+        </tr>
+        <tr>
+          <td class="key">SNS<br><a href="https://pedicurechairsns.com/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://pedicurechairsns.com/</a></td>
+          <td class="val">Hãng ghế được biết nhiều ở FL, vừa mở thêm showroom ở TX, GA</td>
+        </tr>
+        <tr>
+          <td class="key">CONTEGO<br><a href="https://contegospa.com/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://contegospa.com/</a></td>
+          <td class="val">Hãng ghế nổi tiếng với giá thành cao và các công nghệ độc quyền:<br>• <b>Overflow Protection System</b>: hệ thống chống tràn thông minh<br>• <b>Easy Drain</b>: xả nước với 1 lần gạt<br>• <b>Air Liner</b>: Liner tích hợp hệ thống đánh nước</td>
+        </tr>
+        <tr>
+          <td class="key">NEWSTAR<br><a href="https://newstarsspa.com/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://newstarsspa.com/</a></td>
+          <td class="val">Hãng có độ phủ sóng rộng bên phía Eastern, có tới 5 showroom ở GA, PA, IL, VA, TX</td>
+        </tr>
+        <tr>
+          <td class="key">JNA<br><a href="https://www.jausainc.com/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://www.jausainc.com/</a></td>
+          <td class="val">Hãng ghế Korea, rất mạnh ở thị trường NY</td>
+        </tr>
+        <tr>
+          <td class="key">AYC<br><a href="https://aycllc.com/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://aycllc.com/</a></td>
+          <td class="val">Chuyên cung cấp đồ Furniture ở TX, sản phẩm ghế Pedicure cũng đa dạng mẫu mã và màu sắc</td>
+        </tr>
+        <tr>
+          <td class="key">SAM SUPPLY<br><a href="https://www.samnailsupply.com/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://www.samnailsupply.com/</a></td>
+          <td class="val">Supply lớn ở TX, tự nhập thêm bàn ghế về bán</td>
+        </tr>
+        <tr>
+          <td class="key">GULFSTREAM<br><a href="https://gulfstreaminc.com/product/avela-spa/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://gulfstreaminc.com/product/avela-spa/</a></td>
+          <td class="val">Hãng ghế ở Canada, vừa ra mắt công nghệ One Jet – Jet sử dụng 1 lần</td>
+        </tr>
+        <tr>
+          <td class="key">SNE<br><a href="https://www.spanailequipment.com/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://www.spanailequipment.com/</a></td>
+          <td class="val">Hãng ghế giá rẻ, thời gian sử dụng ngắn → phù hợp với thay mới để bán lại tiệm có lời</td>
+        </tr>
+        <tr>
+          <td class="key">TREND NAILS<br><a href="https://trendnailsequipment.com/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://trendnailsequipment.com/</a></td>
+          <td class="val">Hãng ghế giá rẻ, thời gian sử dụng ngắn → phù hợp với thay mới để bán lại tiệm có lời</td>
+        </tr>
+        <tr>
+          <td class="key">S3 SPA<br><a href="https://s3spa.com/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://s3spa.com/</a></td>
+          <td class="val">Hãng ghế Taiwan ở GA, thiết kế độc đáo riêng biệt</td>
+        </tr>
+        <tr>
+          <td class="key">MRSPA<br><a href="https://mrspainc.com/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://mrspainc.com/</a></td>
+          <td class="val">Em họ của S3 SPA</td>
+        </tr>
+        <tr>
+          <td class="key">OSAKI<br><a href="https://osakispa.com/" target="_blank" style="font-size:10px;color:var(--brand2);font-weight:400;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:0;text-decoration:none;opacity:0.8">https://osakispa.com/</a></td>
+          <td class="val">Chuyên về ghế Massage cho gia đình, nhập thêm bàn ghế về bán</td>
+        </tr>
+        <tr>
+          <td class="key">ALFAFA</td>
+          <td class="val">Hãng ghế của Charle Tôn Quý – Chủ hệ thống Regal Nail</td>
+        </tr>
+        <tr>
+          <td class="key">HÃNG KHÁC</td>
+          <td class="val">Thương hiệu không có trong danh sách — ghi chú tên cụ thể vào Description</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note">
+      <strong>Lưu ý:</strong> Thông tin Brand giúp định hướng tư vấn thay thế / nâng cấp phù hợp. Nếu khách đang dùng hãng khác, chọn <strong>HÃNG KHÁC</strong> và ghi tên thương hiệu vào phần mô tả (Description).
+    </div>
+  </div>
+
+  <!-- 7. REASON -->
+  <div class="section" id="s7">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <div>
+        <div class="section-title">REASON <span class="section-en">— Lý do đóng data</span></div>
+      </div>
+    </div>
+    <table class="def-table">
+      <thead><tr><th>Mã</th><th>Lý do</th><th>Mô tả</th></tr></thead>
+      <tbody>
+        <tr><td class="key">R1</td><td class="val">Khách chưa có nhu cầu</td><td class="val">Không có kế hoạch mua trong thời gian này</td></tr>
+        <tr><td class="key">R2</td><td class="val">Khách bận</td><td class="val">Không muốn trao đổi, luôn từ chối nghe</td></tr>
+        <tr><td class="key">R3</td><td class="val">Franchise không cho mua ngoài</td><td class="val">Chuỗi tiệm bắt buộc mua qua nhà cung cấp riêng</td></tr>
+        <tr><td class="key">R4</td><td class="val">Đổi nhu cầu / đổi kế hoạch</td><td class="val">Khách thay đổi định hướng kinh doanh</td></tr>
+        <tr><td class="key">R5</td><td class="val">Có nhu cầu nhưng rất xa</td><td class="val">Địa lý quá xa, lo ngại giao hàng & lắp đặt</td></tr>
+        <tr><td class="key">R6</td><td class="val">Chỉ tham khảo thông tin</td><td class="val">Không có ý định mua, chỉ hỏi giá tham khảo</td></tr>
+        <tr><td class="key">R7</td><td class="val">Không muốn tiếp tục nói chuyện</td><td class="val">Khách yêu cầu ngừng liên hệ</td></tr>
+        <tr><td class="key">R8</td><td class="val">Giá chưa phù hợp ngân sách</td><td class="val">Sản phẩm vượt budget hiện tại của khách</td></tr>
+        <tr><td class="key">R9</td><td class="val">Đang so sánh với đối thủ</td><td class="val">Khách đang cân nhắc các nhà cung cấp khác</td></tr>
+        <tr><td class="key">R10</td><td class="val">Ngại mua hàng xa</td><td class="val">Lo ngại về dịch vụ sau bán hàng từ xa</td></tr>
+        <tr><td class="key">R11</td><td class="val">Lo ngại lắp đặt / support</td><td class="val">Không tự lắp được, lo không có kỹ thuật viên hỗ trợ</td></tr>
+        <tr><td class="key">R12</td><td class="val">Mới thay nội thất xong</td><td class="val">Vừa đầu tư, chưa có nhu cầu thêm</td></tr>
+        <tr><td class="key">R13</td><td class="val">Chủ đã bán tiệm</td><td class="val">Tiệm đổi chủ, thông tin không còn chính xác</td></tr>
+        <tr><td class="key">R14</td><td class="val">Đang build / setup tiệm</td><td class="val">Chưa khai trương, đang trong giai đoạn chuẩn bị</td></tr>
+        <tr><td class="key">R15</td><td class="val">Chỉ dùng thương hiệu khác</td><td class="val">Trung thành với nhà cung cấp hoặc thương hiệu cụ thể</td></tr>
+        <tr><td class="key">R16</td><td class="val">Sai số / sai thông tin</td><td class="val">Thông tin data không chính xác (số điện thoại, tên...)</td></tr>
+        <tr><td class="key">R17</td><td class="val">Không gặp người quyết định</td><td class="val">Liên hệ được nhân viên nhưng không đến được chủ</td></tr>
+        <tr><td class="key">R18</td><td class="val">Chưa có ngân sách năm nay</td><td class="val">Có nhu cầu nhưng tài chính chưa sẵn sàng</td></tr>
+        <tr><td class="key">R19</td><td class="val">Đang làm với vendor khác</td><td class="val">Đã ký hợp đồng hoặc cam kết với nhà cung cấp khác</td></tr>
+        <tr><td class="key">R20</td><td class="val">Khó giao tiếp ngôn ngữ</td><td class="val">Rào cản ngôn ngữ, không thể trao đổi hiệu quả</td></tr>
+        <tr><td class="key">R21</td><td class="val">Mất liên lạc</td><td class="val">Số không liên lạc được, email bounce, không phản hồi sau nhiều lần thử</td></tr>
+      </tbody>
+    </table>
+    <div class="note">
+      <strong>Lưu ý:</strong> Reason phải điền khi chuyển Lead Status sang Lost / Invalid / No Response / Busy. Chọn lý do sát nhất với tình huống thực tế — thông tin này giúp team phân tích và cải thiện chiến lược.
+    </div>
+  </div>
+
+  <!-- 8. QUY TRÌNH -->
+  <div class="section" id="s8">
+    <div class="section-header">
+      <div class="section-num">8</div>
+      <div>
+        <div class="section-title">Quy trình xử lý data <span class="section-en">— Data workflow</span></div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Luồng xử lý chuẩn</div>
+      <div class="flow">
+        <div class="flow-step">📥 Nhận data</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">📞 Liên hệ</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">🔄 Cập nhật Status</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">⭐ Chọn Potential</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">📄 Tạo Invoice</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">✅ Closedeal</div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Luồng đóng data không thành công</div>
+      <div class="flow">
+        <div class="flow-step">📞 Đã liên hệ</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">❌ Không có kết quả</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">📝 Chọn Lead Status</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">📋 Chọn Reason</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">🔒 Completed</div>
+      </div>
+    </div>
+    <div class="rules">
+      <div class="rule">
+        <div class="rule-icon info">1</div>
+        <div><div class="rule-title">Nhận data từ chiến dịch</div><div class="rule-desc">Admin phân công data kèm deadline. Vào tab Khách hàng xem danh sách. Kiểm tra cột Deadline để biết thời hạn xử lý.</div></div>
+      </div>
+      <div class="rule">
+        <div class="rule-icon info">2</div>
+        <div><div class="rule-title">Liên hệ và ghi nhận kết quả</div><div class="rule-desc">Sau mỗi cuộc gọi, cập nhật ngay: Status → Sub-Status → ghi chú nội dung ngắn gọn vào phần Note. Không để qua ngày hôm sau mới cập nhật.</div></div>
+      </div>
+      <div class="rule">
+        <div class="rule-icon info">3</div>
+        <div><div class="rule-title">Đánh dấu Potential khi khách quan tâm</div><div class="rule-desc">Sub-Status đạt Qualified trở lên → chọn Potential phù hợp. Khách Potential không bị thu hồi tự động và được theo dõi riêng.</div></div>
+      </div>
+      <div class="rule">
+        <div class="rule-icon info">4</div>
+        <div><div class="rule-title">Tạo invoice khi chốt đơn</div><div class="rule-desc">Vào tab Closedeal → tạo invoice với đầy đủ thông tin. Invoice cần Admin duyệt. Sau khi duyệt, Lead Status tự động cập nhật Closedeal.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. QUY ĐỊNH CẬP NHẬT -->
+  <div class="section" id="s9">
+    <div class="section-header">
+      <div class="section-num">9</div>
+      <div>
+        <div class="section-title">Quy định cập nhật data</div>
+      </div>
+    </div>
+    <div class="rules">
+      <div class="rule">
+        <div class="rule-icon ok">✓</div>
+        <div><div class="rule-title">Cập nhật ngay sau khi làm việc với khách</div><div class="rule-desc">Không để cuối ngày mới cập nhật hàng loạt. Thông tin phải phản ánh đúng thời điểm liên hệ gần nhất.</div></div>
+      </div>
+      <div class="rule">
+        <div class="rule-icon ok">✓</div>
+        <div><div class="rule-title">Luôn điền đầy đủ Status và Sub-Status</div><div class="rule-desc">Không được để trống hai trường này. Đây là cơ sở để Manager kiểm tra và đánh giá tiến độ.</div></div>
+      </div>
+      <div class="rule">
+        <div class="rule-icon ok">✓</div>
+        <div><div class="rule-title">Ghi chú ngắn gọn, rõ ràng sau mỗi cuộc gọi</div><div class="rule-desc">Tối thiểu: kết quả cuộc gọi, phản ứng của khách, bước tiếp theo. Không cần quá dài nhưng phải đủ thông tin để đồng nghiệp hiểu nếu cần tiếp nhận.</div></div>
+      </div>
+      <div class="rule">
+        <div class="rule-icon ok">✓</div>
+        <div><div class="rule-title">Đóng data đúng hạn — Completed trước khi quá deadline</div><div class="rule-desc">Theo dõi cột Deadline. Data quá hạn sẽ bị Admin thu hồi. Nếu chưa xử lý xong, thông báo Manager sớm.</div></div>
+      </div>
+      <div class="rule">
+        <div class="rule-icon warn">!</div>
+        <div><div class="rule-title">Data Potential phải follow-up liên tục</div><div class="rule-desc">Khách đã chọn Potential nhưng chưa liên hệ 3+ ngày sẽ xuất hiện trong tab Cảnh báo. Ưu tiên xử lý nhóm này hằng ngày.</div></div>
+      </div>
+      <div class="rule">
+        <div class="rule-icon no">✗</div>
+        <div><div class="rule-title">Không tự ý xóa hoặc bỏ data</div><div class="rule-desc">Mọi thay đổi quan trọng (xóa, chuyển chủ...) phải được Manager phê duyệt. Không tự ý chuyển sang Completed khi chưa có kết quả rõ ràng.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. QUY ĐỊNH KIỂM TRA -->
+  <div class="section" id="s10">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <div>
+        <div class="section-title">Quy định kiểm tra <span class="section-en">— KPIs theo dõi</span></div>
+      </div>
+    </div>
+    <table class="def-table">
+      <thead><tr><th>Chỉ tiêu</th><th>Mô tả</th><th>Tần suất kiểm tra</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="key">Số lượng data xử lý</td>
+          <td class="val">Tổng số khách được liên hệ và cập nhật trong ngày / tuần</td>
+          <td class="val">Hằng ngày</td>
+        </tr>
+        <tr>
+          <td class="key">Tình trạng cập nhật CRM</td>
+          <td class="val">Phần trăm data đã cập nhật Status / Sub-Status / Note sau liên hệ</td>
+          <td class="val">Hằng ngày</td>
+        </tr>
+        <tr>
+          <td class="key">Tỷ lệ Follow-Up</td>
+          <td class="val">Số khách chuyển từ New sang Follow Up / Tổng data được giao</td>
+          <td class="val">Hằng tuần</td>
+        </tr>
+        <tr>
+          <td class="key">Tỷ lệ chuyển đổi</td>
+          <td class="val">Số Closedeal / Tổng data xử lý trong kỳ</td>
+          <td class="val">Hằng tháng</td>
+        </tr>
+        <tr>
+          <td class="key">Chất lượng ghi chú</td>
+          <td class="val">Ghi chú có đầy đủ thông tin, không để trống hoặc ghi chú mơ hồ</td>
+          <td class="val">Hằng tuần</td>
+        </tr>
+        <tr>
+          <td class="key">Cảnh báo tồn đọng</td>
+          <td class="val">Số khách Potential chưa liên hệ 3+ ngày — cần về 0 mỗi ngày</td>
+          <td class="val">Hằng ngày</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+
+
+  <!-- FAQ SECTION -->
+  <div class="section" style="margin-top:48px" id="faq">
+    <div class="section-header">
+      <div class="section-num" style="background:linear-gradient(135deg,#00CEC9,#0984e3)">?</div>
+      <div><div class="section-title">FAQ — Câu hỏi thường gặp</div></div>
+    </div>
+    <div id="faq-list" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+
+  <script>
+  const FAQS=[
+    {
+      cat:"Quy trình",icon:"🔄",
+      q:"Tôi vừa gọi cho khách nhưng không có ai bắt máy. Cập nhật như thế nào?",
+      a:"Cập nhật Sub-Status = <b>No Answer</b>, giữ Status = <b>Follow Up</b> (không để New). Ghi ngắn vào Note: ngày giờ gọi. Thử lại vào khung giờ khác (sáng sớm hoặc chiều tối)."
+    },
+    {
+      cat:"Quy trình",icon:"🔄",
+      q:"Khách nói 'để anh hỏi lại' — cập nhật ra sao?",
+      a:"Status = <b>Follow Up</b>, Sub-Status = <b>Pending Decision</b>. Ghi chú ngày hẹn lại cụ thể vào Note. Nếu khách có nhu cầu rõ ràng, chọn thêm <b>Potential</b> phù hợp."
+    },
+    {
+      cat:"Quy trình",icon:"🔄",
+      q:"Khách đồng ý mua nhưng chưa chốt giá. Có tạo invoice ngay không?",
+      a:"Chưa. Cập nhật Sub-Status = <b>Quotation Sent</b> hoặc <b>Appointment Set</b>. Chỉ tạo invoice khi khách <b>xác nhận đặt cọc hoặc thanh toán</b>."
+    },
+    {
+      cat:"Quy trình",icon:"🔄",
+      q:"Khi nào mới chuyển Status sang Completed?",
+      a:"Chỉ khi có kết quả rõ ràng: Closedeal (đã tạo invoice), Lost (khách từ chối), Invalid Lead (data lỗi), No Response (đã gọi 3–5 lần không được). Không Completed khi vẫn còn đang trao đổi."
+    },
+    {
+      cat:"Quy trình",icon:"🔄",
+      q:"Tôi muốn gặp lại khách này tháng sau. Cần làm gì?",
+      a:"Cập nhật Sub-Status = <b>Follow Up</b>, ghi chú ngày hẹn vào Note. Nếu khách đã chọn Potential, hệ thống sẽ tự cảnh báo nếu quá 3 ngày không liên hệ."
+    },
+    {
+      cat:"Data",icon:"📊",
+      q:"Tôi không thấy khách hàng nào trong tab Khách hàng?",
+      a:"Có 2 nguyên nhân phổ biến: (1) Chưa được Admin phân data — liên hệ Manager để kiểm tra. (2) Đang bật bộ lọc Status/Potential/Brand — nhấn reset bộ lọc để xem toàn bộ."
+    },
+    {
+      cat:"Data",icon:"📊",
+      q:"Tôi vừa thêm khách nhưng không thấy trong danh sách?",
+      a:"Sau khi thêm, hệ thống tự search tên khách vừa thêm. Nếu không thấy, xóa nội dung ô tìm kiếm và kiểm tra lại. Nếu khách bị trùng số điện thoại, sẽ vào hàng <b>Chờ duyệt</b> — Manager cần phê duyệt."
+    },
+    {
+      cat:"Data",icon:"📊",
+      q:"Khách của tôi đột nhiên biến mất?",
+      a:"Có thể khách bị Manager <b>thu hồi</b> do hết deadline chiến dịch hoặc quá 30 ngày không liên hệ. Liên hệ Manager để xác nhận."
+    },
+    {
+      cat:"Data",icon:"📊",
+      q:"Tôi có thể xem data của đồng nghiệp không?",
+      a:"Không. Mỗi Sale chỉ thấy khách được giao cho mình. Manager mới có quyền xem toàn bộ và lọc theo từng Sale."
+    },
+    {
+      cat:"Data",icon:"📊",
+      q:"Tôi thấy badge số đỏ trên Cảnh báo nhưng vào không thấy ai?",
+      a:"Kiểm tra bộ lọc Potential — có thể đang lọc theo một nhóm sản phẩm cụ thể. Chọn <b>Tất cả Potential</b> để xem toàn bộ cảnh báo."
+    },
+    {
+      cat:"Lỗi thường gặp",icon:"⚠️",
+      q:"Bấm Lưu nhưng không thấy thay đổi gì?",
+      a:"Thử <b>refresh trang (F5)</b> và kiểm tra lại. Nếu vẫn không thay đổi, có thể mất kết nối internet trong lúc lưu — thực hiện lại thao tác."
+    },
+    {
+      cat:"Lỗi thường gặp",icon:"⚠️",
+      q:"Trang load rất chậm khi mới đăng nhập?",
+      a:"Bình thường — hệ thống đang tải toàn bộ data (có thể lên đến 26.000+ khách). Chờ khoảng 5–15 giây lần đầu. Các thao tác tiếp theo sẽ nhanh hơn vì data đã được cache."
+    },
+    {
+      cat:"Lỗi thường gặp",icon:"⚠️",
+      q:"Lỗi 'duplicate key' khi thêm khách mới?",
+      a:"Số điện thoại hoặc mã KH đã tồn tại trong hệ thống. Hệ thống sẽ tự chuyển sang hàng <b>Chờ duyệt</b> để Manager xét duyệt. Nếu vẫn báo lỗi, liên hệ Admin."
+    },
+    {
+      cat:"Lỗi thường gặp",icon:"⚠️",
+      q:"Invoice tôi tạo không thấy trong Closedeal?",
+      a:"Invoice mới tạo sẽ vào hàng <b>Chờ duyệt</b> của Manager, chưa xuất hiện trong bảng Đã duyệt. Sau khi Manager duyệt mới hiển thị chính thức."
+    },
+    {
+      cat:"Lỗi thường gặp",icon:"⚠️",
+      q:"Ô tìm kiếm chỉ nhập được 1 ký tự rồi mất focus?",
+      a:"Thử <b>refresh trang (F5)</b>. Nếu vẫn xảy ra, dùng Chrome hoặc Edge phiên bản mới nhất. Đây là lỗi tương thích trình duyệt cũ."
+    },
+    {
+      cat:"Lỗi thường gặp",icon:"⚠️",
+      q:"Đăng nhập không được, báo sai mật khẩu?",
+      a:"Kiểm tra lại email và mật khẩu (phân biệt chữ hoa/thường). Nếu quên mật khẩu, liên hệ Admin để reset. Tài khoản không tự đăng ký được."
+    },
+  ];
+
+  const cats=["Quy trình","Data","Lỗi thường gặp"];
+  const catColors={"Quy trình":"var(--brand2)","Data":"var(--accent)","Lỗi thường gặp":"var(--warn)"};
+  const catBg={"Quy trình":"rgba(162,155,254,0.12)","Data":"rgba(0,206,201,0.1)","Lỗi thường gặp":"rgba(253,203,110,0.1)"};
+
+  let openIdx=null;
+  function renderFAQ(){
+    const list=document.getElementById('faq-list');
+    if(!list)return;
+    let html='';
+    cats.forEach(function(cat){
+      const items=FAQS.filter(function(f){return f.cat===cat;});
+      html+=`<div style="font-size:11px;font-weight:600;color:${catColors[cat]};text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px 2px">${items[0].icon} ${cat}</div>`;
+      items.forEach(function(f,i){
+        const idx=FAQS.indexOf(f);
+        const isOpen=openIdx===idx;
+        html+=`<div style="background:${isOpen?catBg[cat]:'var(--surface)'};border:1px solid ${isOpen?catColors[cat].replace('var','rgba').replace(')',',0.3)'):'var(--border)'};border-radius:12px;overflow:hidden;transition:all 0.2s">
+          <div onclick="toggleFAQ(${idx})" style="padding:14px 16px;cursor:pointer;display:flex;align-items:flex-start;gap:12px;justify-content:space-between">
+            <div style="font-size:13px;font-weight:500;color:var(--text);line-height:1.5">${f.q}</div>
+            <div style="color:${catColors[cat]};font-size:18px;flex-shrink:0;margin-top:1px;transition:transform 0.2s;transform:rotate(${isOpen?'45':'0'}deg)">+</div>
+          </div>
+          ${isOpen?`<div style="padding:0 16px 14px;font-size:13px;color:var(--text2);line-height:1.7;border-top:1px solid var(--border)">${f.a}</div>`:''}
+        </div>`;
+      });
+    });
+    list.innerHTML=html;
+  }
+  function toggleFAQ(idx){openIdx=openIdx===idx?null:idx;renderFAQ();}
+  renderFAQ();
+  </script>
+
+  <!-- MANAGER SECTION -->
+  <div id="mgr-lock" style="margin-top:48px">
+    <div style="background:linear-gradient(135deg,rgba(108,92,231,0.12),rgba(162,155,254,0.06));border:1px solid rgba(108,92,231,0.25);border-radius:16px;padding:28px 32px;text-align:center">
+      <div style="font-size:28px;margin-bottom:12px">🔒</div>
+      <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--text);margin-bottom:6px">Hướng dẫn dành cho Quản lý</div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:20px">Nhập mật khẩu để xem nội dung này</div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <input id="mgr-pw" type="password" placeholder="Nhập mật khẩu..." onkeydown="if(event.key==='Enter')checkMgrPw()"
+          style="background:rgba(255,255,255,0.07);border:1px solid rgba(108,92,231,0.35);border-radius:10px;padding:10px 16px;font-size:13px;color:var(--text);outline:none;width:240px;font-family:inherit">
+        <button onclick="checkMgrPw()"
+          style="background:linear-gradient(135deg,#6C5CE7,#4834d4);border:none;border-radius:10px;padding:10px 24px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit">
+          Xác nhận
+        </button>
+      </div>
+      <div id="mgr-err" style="color:var(--danger);font-size:12px;margin-top:10px;display:none">Mật khẩu không đúng. Vui lòng thử lại.</div>
+    </div>
+  </div>
+
+  <div id="mgr-content" style="display:none;margin-top:48px">
+
+    <!-- MGR HEADER -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#6C5CE7,#4834d4);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">👑</div>
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--text)">Hướng dẫn Quản lý</div>
+        <div style="font-size:12px;color:var(--text3)">Dành riêng cho Manager & Admin — C-Silan CRM v5.0</div>
+      </div>
+    </div>
+
+    <!-- MGR TOC -->
+    <div class="toc" style="margin-bottom:32px">
+      <div class="toc-title">Nội dung quản lý</div>
+      <ul class="toc-list">
+        <li><a href="#m1"><span class="toc-num">M1</span> Tổng quan quyền Manager</a></li>
+        <li><a href="#m2"><span class="toc-num">M2</span> Quản lý Campaign & phân data</a></li>
+        <li><a href="#m3"><span class="toc-num">M3</span> Thu hồi & tái phân data</a></li>
+        <li><a href="#m4"><span class="toc-num">M4</span> Duyệt Invoice</a></li>
+        <li><a href="#m5"><span class="toc-num">M5</span> Theo dõi Cảnh báo</a></li>
+        <li><a href="#m6"><span class="toc-num">M6</span> Báo cáo KPI</a></li>
+        <li><a href="#m7"><span class="toc-num">M7</span> Quản lý sản phẩm</a></li>
+        <li><a href="#m8"><span class="toc-num">M8</span> Chờ duyệt khách mới</a></li>
+      </ul>
+    </div>
+
+    <!-- M1: TỔNG QUAN QUYỀN -->
+    <div class="section" id="m1">
+      <div class="section-header">
+        <div class="section-num" style="background:linear-gradient(135deg,#FDCB6E,#e17055)">M1</div>
+        <div><div class="section-title">Tổng quan quyền Manager</div></div>
+      </div>
+      <table class="def-table">
+        <thead><tr><th>Tính năng</th><th>Manager/Admin</th><th>Sale</th></tr></thead>
+        <tbody>
+          <tr><td class="val">Xem toàn bộ khách hàng</td><td style="color:var(--success);font-weight:600">✓ Tất cả</td><td class="val">Chỉ khách được giao</td></tr>
+          <tr><td class="val">Tạo Campaign & phân data</td><td style="color:var(--success);font-weight:600">✓</td><td style="color:var(--danger)">✗</td></tr>
+          <tr><td class="val">Thu hồi data</td><td style="color:var(--success);font-weight:600">✓</td><td style="color:var(--danger)">✗</td></tr>
+          <tr><td class="val">Duyệt / từ chối Invoice</td><td style="color:var(--success);font-weight:600">✓</td><td style="color:var(--danger)">✗</td></tr>
+          <tr><td class="val">Xem báo cáo KPI toàn team</td><td style="color:var(--success);font-weight:600">✓</td><td class="val">Chỉ KPI cá nhân</td></tr>
+          <tr><td class="val">Lọc theo Sale ở mọi tab</td><td style="color:var(--success);font-weight:600">✓</td><td style="color:var(--danger)">✗</td></tr>
+          <tr><td class="val">Quản lý sản phẩm (Ẩn/Hiện)</td><td style="color:var(--success);font-weight:600">✓</td><td style="color:var(--danger)">✗</td></tr>
+          <tr><td class="val">Duyệt khách mới do Sale thêm</td><td style="color:var(--success);font-weight:600">✓</td><td style="color:var(--danger)">✗</td></tr>
+          <tr><td class="val">Xóa khách hàng</td><td style="color:var(--success);font-weight:600">✓</td><td style="color:var(--danger)">✗</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- M2: CAMPAIGN -->
+    <div class="section" id="m2">
+      <div class="section-header">
+        <div class="section-num" style="background:linear-gradient(135deg,#FDCB6E,#e17055)">M2</div>
+        <div><div class="section-title">Quản lý Campaign & phân data</div></div>
+      </div>
+      <div class="rules" style="margin-bottom:16px">
+        <div class="rule">
+          <div class="rule-icon info">1</div>
+          <div><div class="rule-title">Vào tab Campaign</div><div class="rule-desc">Click "Campaign" trên menu trái. Phần trên là form tạo chiến dịch mới, phần dưới là danh sách các campaign đã tạo kèm thống kê Follow Up, Closedeal, tỉ lệ chuyển đổi.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon info">2</div>
+          <div><div class="rule-title">Đặt bộ lọc data trước</div><div class="rule-desc">Sử dụng 8 bộ lọc: <b>State, Status, Sub Status, Lead Status, Brand, Potential, Time of Use, Reason</b> và lọc theo chiến dịch (chưa thuộc chiến dịch nào / thuộc chiến dịch cụ thể). Số khách khớp hiển thị ngay sau khi chọn.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon info">3</div>
+          <div><div class="rule-title">Chọn Sale và tạo Campaign</div><div class="rule-desc">Tick chọn 1 hoặc nhiều Sale. Có thể tick "Tất cả sale (chia đều)" để chia round-robin. Điền tên Campaign, chọn Deadline rồi bấm <b>Tạo Campaign</b>.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon ok">✓</div>
+          <div><div class="rule-title">Hệ thống tự chia đều theo round-robin</div><div class="rule-desc">Nếu chọn nhiều Sale, data được phân lần lượt: Sale 1 → Sale 2 → Sale 3 → Sale 1... Mỗi Sale nhận số lượng xấp xỉ nhau.</div></div>
+        </div>
+      </div>
+      <div class="note"><b>Lưu ý:</b> Campaign có thể được tạo nhiều lần trong tháng với các bộ lọc khác nhau. Ví dụ: tháng 6 tạo campaign riêng cho State Texas, riêng cho HeadSpa Bed...</div>
+    </div>
+
+    <!-- M3: THU HỒI -->
+    <div class="section" id="m3">
+      <div class="section-header">
+        <div class="section-num" style="background:linear-gradient(135deg,#FDCB6E,#e17055)">M3</div>
+        <div><div class="section-title">Thu hồi & tái phân data</div></div>
+      </div>
+      <div class="rules">
+        <div class="rule">
+          <div class="rule-icon warn">!</div>
+          <div><div class="rule-title">Thu hồi từng khách</div><div class="rule-desc">Trong tab Khách hàng hoặc Pipeline, bấm nút <b>Thu hồi</b> trên từng row. Khách sẽ bị xóa khỏi danh sách của Sale và có thể phân lại trong Campaign tiếp theo.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon warn">!</div>
+          <div><div class="rule-title">Thu hồi hàng loạt (hết hạn 30+ ngày)</div><div class="rule-desc">Vào tab <b>Cảnh báo</b> → bấm nút <b>"Thu hồi 30+ ngày"</b> góc phải. Hệ thống tự thu hồi toàn bộ khách Potential chưa liên hệ quá 30 ngày.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon warn">!</div>
+          <div><div class="rule-title">Thu hồi hết hạn (toàn bộ)</div><div class="rule-desc">Bấm nút <b>"Thu hồi hết hạn"</b> trên trang Khách hàng để thu hồi tất cả data đã quá deadline của chiến dịch. Thao tác này thu hồi toàn bộ — cân nhắc trước khi thực hiện.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon info">→</div>
+          <div><div class="rule-title">Sau thu hồi, tái phân bằng Campaign mới</div><div class="rule-desc">Data thu hồi trở về pool "Chưa thuộc chiến dịch nào". Tạo Campaign mới, lọc nguồn data = <b>"Chưa thuộc chiến dịch"</b> để phân lại cho Sale tháng tiếp theo.</div></div>
+        </div>
+      </div>
+      <div class="note"><b>Quy tắc:</b> Khách đã chọn <b>Potential</b> không bị thu hồi tự động theo deadline. Chỉ bị thu hồi khi Manager thao tác thủ công hoặc dùng nút "Thu hồi 30+ ngày".</div>
+    </div>
+
+    <!-- M4: DUYỆT INVOICE -->
+    <div class="section" id="m4">
+      <div class="section-header">
+        <div class="section-num" style="background:linear-gradient(135deg,#FDCB6E,#e17055)">M4</div>
+        <div><div class="section-title">Duyệt Invoice</div></div>
+      </div>
+      <div class="rules" style="margin-bottom:16px">
+        <div class="rule">
+          <div class="rule-icon info">1</div>
+          <div><div class="rule-title">Vào tab Chờ duyệt</div><div class="rule-desc">Badge số đỏ trên menu "Chờ duyệt" hiển thị số invoice đang chờ. Click vào tab để xem danh sách.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon info">2</div>
+          <div><div class="rule-title">Kiểm tra thông tin invoice</div><div class="rule-desc">Xem mã đơn, khách hàng, tổng tiền, Payment Status, Order Status. Dùng bộ lọc Payment / Order Status / Tháng / Năm / Sale để tìm nhanh.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon ok">✓</div>
+          <div><div class="rule-title">Duyệt invoice</div><div class="rule-desc">Bấm nút <b>✓ Duyệt</b> (xanh). Invoice chuyển sang "Đơn hàng đã duyệt", Lead Status của khách tự động cập nhật <b>Closedeal</b>, doanh thu được tính vào báo cáo.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon no">✗</div>
+          <div><div class="rule-title">Từ chối invoice</div><div class="rule-desc">Bấm nút <b>✗ Từ chối</b> (đỏ). Invoice bị hủy, Sale cần tạo lại nếu muốn submit lại.</div></div>
+        </div>
+      </div>
+      <div class="note"><b>Lưu ý:</b> Chỉ invoice đã duyệt mới được tính vào doanh thu và KPI của Sale. Invoice bị từ chối không ảnh hưởng đến Lead Status của khách.</div>
+    </div>
+
+    <!-- M5: CẢNH BÁO -->
+    <div class="section" id="m5">
+      <div class="section-header">
+        <div class="section-num" style="background:linear-gradient(135deg,#FDCB6E,#e17055)">M5</div>
+        <div><div class="section-title">Theo dõi Cảnh báo</div></div>
+      </div>
+      <div class="rules">
+        <div class="rule">
+          <div class="rule-icon warn">!</div>
+          <div><div class="rule-title">Xem cảnh báo toàn team</div><div class="rule-desc">Tab Cảnh báo hiển thị tất cả khách Potential của toàn team chưa liên hệ 3+ ngày hoặc sắp/đã hết deadline. Manager thấy tất cả, Sale chỉ thấy của mình.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon info">→</div>
+          <div><div class="rule-title">Lọc theo Sale và Potential</div><div class="rule-desc">Dùng dropdown <b>Tất cả sale</b> để xem cảnh báo của từng nhân viên. Dùng dropdown <b>Tất cả Potential</b> để lọc theo nhóm sản phẩm cụ thể.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon info">→</div>
+          <div><div class="rule-title">3 chỉ số thống kê đầu trang</div><div class="rule-desc"><b>Cần follow up</b>: tổng khách cần xử lý ngay. <b>Quá 30 ngày</b>: ưu tiên thu hồi. <b>Hết deadline</b>: đã quá hạn chiến dịch.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- M6: KPI -->
+    <div class="section" id="m6">
+      <div class="section-header">
+        <div class="section-num" style="background:linear-gradient(135deg,#FDCB6E,#e17055)">M6</div>
+        <div><div class="section-title">Báo cáo KPI</div></div>
+      </div>
+      <div class="rules">
+        <div class="rule">
+          <div class="rule-icon info">→</div>
+          <div><div class="rule-title">Tab Báo cáo KPI</div><div class="rule-desc">Xem hiệu suất từng Sale: số data được giao, Follow Up, Closedeal, tỉ lệ chuyển đổi. Lọc theo tháng/năm để so sánh kỳ.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon info">→</div>
+          <div><div class="rule-title">Tab Closedeal</div><div class="rule-desc">Xem toàn bộ đơn hàng đã duyệt. Lọc theo Sale, tháng, năm, Payment Status, Order Status. Cột Sale hiển thị tên nhân viên phụ trách từng đơn.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon info">→</div>
+          <div><div class="rule-title">Tab Campaign</div><div class="rule-desc">Mỗi campaign hiển thị card thống kê: tổng khách, Follow Up, Closedeal, tỉ lệ %. Dùng để đánh giá hiệu quả từng chiến dịch.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- M7: SẢN PHẨM -->
+    <div class="section" id="m7">
+      <div class="section-header">
+        <div class="section-num" style="background:linear-gradient(135deg,#FDCB6E,#e17055)">M7</div>
+        <div><div class="section-title">Quản lý sản phẩm</div></div>
+      </div>
+      <div class="rules">
+        <div class="rule">
+          <div class="rule-icon ok">✓</div>
+          <div><div class="rule-title">Ẩn / Hiện sản phẩm</div><div class="rule-desc">Tab Sản phẩm → nút <b>Ẩn</b> hoặc <b>Hiện</b> ở cột cuối mỗi dòng. Sản phẩm bị ẩn Sale vẫn thấy nhưng được đánh dấu "Hết hàng". Chỉ Manager thấy nút này.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon info">→</div>
+          <div><div class="rule-title">Tìm kiếm sản phẩm</div><div class="rule-desc">Dùng ô tìm kiếm theo SKU hoặc tên sản phẩm. Lọc thêm theo Brand hoặc trạng thái In Stock / Out of Stock.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- M8: DUYỆT KHÁCH MỚI -->
+    <div class="section" id="m8">
+      <div class="section-header">
+        <div class="section-num" style="background:linear-gradient(135deg,#FDCB6E,#e17055)">M8</div>
+        <div><div class="section-title">Chờ duyệt khách mới</div></div>
+      </div>
+      <div class="rules">
+        <div class="rule">
+          <div class="rule-icon info">→</div>
+          <div><div class="rule-title">Sale thêm khách trùng → vào hàng chờ duyệt</div><div class="rule-desc">Khi Sale thêm khách mà hệ thống phát hiện trùng số điện thoại, khách đó sẽ vào "Chờ duyệt" thay vì được thêm thẳng. Badge số đỏ xuất hiện trên menu.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon ok">✓</div>
+          <div><div class="rule-title">Duyệt khách mới</div><div class="rule-desc">Tab Chờ duyệt → xem thông tin → bấm <b>Duyệt</b> để thêm vào hệ thống chính thức. Khách được assign cho Sale đã thêm.</div></div>
+        </div>
+        <div class="rule">
+          <div class="rule-icon no">✗</div>
+          <div><div class="rule-title">Từ chối khách trùng</div><div class="rule-desc">Bấm <b>Từ chối</b> nếu khách thực sự trùng và không cần thêm. Khách bị xóa khỏi hàng chờ, Sale được thông báo.</div></div>
+        </div>
+      </div>
+      <div class="note"><b>Lưu ý:</b> Khách trong hàng chờ duyệt <b>không hiển thị</b> trong tab Khách hàng cho đến khi được Manager phê duyệt.</div>
+    </div>
+
+  </div><!-- end mgr-content -->
+
+  <script>
+  function checkMgrPw(){
+    const pw=document.getElementById('mgr-pw').value;
+    const err=document.getElementById('mgr-err');
+    if(pw==='manager@cslian'){
+      document.getElementById('mgr-lock').style.display='none';
+      document.getElementById('mgr-content').style.display='block';
+    } else {
+      err.style.display='block';
+      document.getElementById('mgr-pw').value='';
+      document.getElementById('mgr-pw').focus();
+    }
+  }
+  </script>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    C-Silan CRM · Sales Team v5.0 · Tài liệu nội bộ — không phát tán ra ngoài<br>
+    Mọi thắc mắc liên hệ Manager hoặc Admin hệ thống
+  </div>
+
+</div>
+</body>
+</html>
