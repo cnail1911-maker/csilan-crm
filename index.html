@@ -1714,7 +1714,7 @@ function renderSchedule(){
         :daysLeft===0?'<span class="badge b-won">Hôm nay</span>'
         :daysLeft===1?'<span class="badge b-followup">Ngày mai</span>'
         :'<span class="badge b-calling">Còn '+daysLeft+'d</span>';
-      return '<tr onclick="selId='+c.id+';setPage('customers')" style="cursor:pointer">'
+      return '<tr onclick="selId='+c.id+';setPage(&apos;customers&apos;)" style="cursor:pointer">'
         +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(c.ma_kh||'—')+'</td>'
         +'<td style="color:var(--text)">'+(c.business_name||'—')+'</td>'
         +'<td>'+(c.customer_name||'—')+'</td>'
