@@ -131,9 +131,11 @@ table.inv-table td{padding:10px;font-size:12px;border-bottom:1px solid var(--bor
 table.inv-table td:last-child{text-align:right;font-weight:600}
 table.inv-table tr:last-child td{border-bottom:none}
 .inv-product-img{width:50px;height:50px;object-fit:cover;border-radius:4px;background:#f5f0eb;display:block}
-.inv-notes{font-size:10px;color:var(--gray);line-height:1.7;margin-bottom:12px}
-.inv-totals{display:flex;justify-content:flex-end;margin-bottom:16px}
-.inv-totals-box{min-width:260px}
+.inv-notes-totals{display:flex;gap:20px;align-items:flex-start;margin-bottom:16px}
+.inv-notes{font-size:10px;color:var(--gray);line-height:1.9;flex:1}
+.inv-notes p{margin-bottom:2px}
+.inv-totals{flex-shrink:0;width:260px}
+.inv-totals-box{width:100%}
 .inv-total-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}
 .inv-total-label{color:var(--gray)}
 .inv-total-val{font-weight:600}
@@ -666,21 +668,7 @@ function renderPreview(){
     +'<tbody>'+prodRows+'</tbody>'
     +'</table>'
     +'<div class="inv-divider" style="margin-bottom:10px"></div>'
-    +'<div class="inv-notes">'
-    +'* Includes a 12-month warranty and lifetime technical support. Products are sourced directly from the manufacturer, ensuring quality, authenticity, and reliable after-sales service. Meets U.S quality and safety standards.<br>'
-    +'* Order must be in full before delivery or ship.<br>'
-    +'* All custom made items are non-refundable or cancel.<br>'
-    +'* Returned item will be refunded less original shipping and 30% restocking fee.<br>'
-    +'* If any balance (payment) has not been received, we have the right to pick up all the unpaid merechandise.'
-    +'</div>'
-    +'<div class="inv-totals"><div class="inv-totals-box">'
-    +'<div class="inv-total-row"><span class="inv-total-label">Subtotal</span><span class="inv-total-val">'+fmt(subtotal)+'</span></div>'
-    +(tax>0?'<div class="inv-total-row"><span class="inv-total-label">Tax</span><span class="inv-total-val">'+fmt(tax)+'</span></div>':'')
-    +(extraDisc>0?'<div class="inv-total-row" style="color:#27AE60"><span class="inv-total-label">Extra Discount</span><span class="inv-total-val">-'+fmt(extraDisc)+'</span></div>':'')
-    +'<div class="inv-grand-total">'+fmt(total)+'</div>'
-    +'<div class="inv-total-row"><span class="inv-total-label">Deposit</span><span class="inv-total-val">'+fmt(deposit)+'</span></div>'
-    +'<div class="inv-balance-row"><span class="inv-balance-label">Balance Due</span><span class="inv-balance-val">'+fmt(balance)+'</span></div>'
-    +'</div></div>'
+    +'<div class="inv-notes-totals">'    +'<div class="inv-notes">'    +'<p>* Includes a 12-month warranty and lifetime technical support. Products are sourced directly from the manufacturer, ensuring quality, authenticity, and reliable after-sales service. Meets U.S quality and safety standards.</p>'    +'<p>* Order must be in full before delivery or ship.</p>'    +'<p>* All custom made items are non-refundable or cancel.</p>'    +'<p>* Returned item will be refunded less original shipping and 30% restocking fee.</p>'    +'<p>* If any balance (payment) has not been received, we have the right to pick up all the unpaid merechandise.</p>'    +'</div>'    +'<div class="inv-totals"><div class="inv-totals-box">'    +'<div class="inv-total-row"><span class="inv-total-label">Subtotal</span><span class="inv-total-val">'+fmt(subtotal)+'</span></div>'    +(tax>0?'<div class="inv-total-row"><span class="inv-total-label">Tax</span><span class="inv-total-val">'+fmt(tax)+'</span></div>':'')    +(extraDisc>0?'<div class="inv-total-row" style="color:#27AE60"><span class="inv-total-label">Extra Discount</span><span class="inv-total-val">-'+fmt(extraDisc)+'</span></div>':'')    +'<div class="inv-grand-total">'+fmt(total)+'</div>'    +'<div class="inv-total-row"><span class="inv-total-label">Deposit</span><span class="inv-total-val">'+fmt(deposit)+'</span></div>'    +'<div class="inv-balance-row"><span class="inv-balance-label">Balance Due</span><span class="inv-balance-val">'+fmt(balance)+'</span></div>'    +'</div></div>'    +'</div>'
     +'<div class="inv-divider-bottom"></div>'
     +'<div class="inv-thank">\'Thank You for Your Business\'</div>';
 }
