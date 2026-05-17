@@ -210,6 +210,8 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
       <div class="nav-item" onclick="setPage('campaign')" id="nav-campaign"><i class="ti ti-speakerphone"></i> Campaign</div>
       <div class="nav-item" onclick="setPage('alert')" id="nav-alert"><i class="ti ti-bell"></i> Cảnh báo <span class="nav-badge" id="badge-alert" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('products')" id="nav-products" style="display:none"><i class="ti ti-package"></i> Sản phẩm</div>
+      <div class="nav-item" onclick="setPage('daily')" id="nav-daily"><i class="ti ti-calendar-stats"></i> Daily</div>
+      <div class="nav-item" onclick="setPage('schedule')" id="nav-schedule"><i class="ti ti-calendar-event"></i> Lịch hẹn</div>
       <div class="nav-item" onclick="setPage('guide')" id="nav-guide"><i class="ti ti-book"></i> Hướng dẫn</div>
       <div class="user-area">
         <div class="avatar av-0" id="user-avatar">--</div>
@@ -233,7 +235,7 @@ const POTENTIAL_OPTS=['Pedicure Spa & Package','Massage Chair','Furniture','Pads
 const STATUS_OPTS=['New','Follow Up','Completed'];
 const SUBSTATUS_OPTS=['New Lead','No Answer','Contacting','Gatekeeper','Qualified','Appointment Set','Quotation Sent','Pending Decision','Follow Up'];
 const LEAD_OPTS=['Closedeal','Lost','Invalid Lead','No Response','Busy'];
-const BRAND_OPTS=['TSPA','T4','LEXOR','WHALE SPA','SNS','CONTEGO','NEWSTAR','JNA','AYC','SAM SUPPLY','GULFSTREAM','SNE','TREND NAILS','S3 SPA','MR3','OSAKI','ALFAFA','HÃNG KHÁC'];
+const BRAND_OPTS=['TSPA','T4','LEXOR','WHALE SPA','SNS','CONTEGO','NEWSTAR','JNA','AYC','SAM SUPPLY','GULFSTREAM','SNE','TREND NAILS','S3 SPA','MrSpa','OSAKI','ALFAFA','HÃNG KHÁC'];
 const TIMES_OPTS=['1 year','2 year','3 year','more than 5 year'];
 const REASON_OPTS=['R1 - Khách chưa có nhu cầu','R2 - Khách bận','R3 - Franchise không cho mua ngoài','R4 - Đổi nhu cầu','R5 - Có nhu cầu nhưng rất xa','R6 - Chỉ tham khảo','R7 - Không muốn tiếp tục','R8 - Giá chưa phù hợp','R9 - Đang so sánh','R10 - Ngại mua hàng xa','R11 - Lo ngại lắp đặt','R12 - Mới thay nội thất','R13 - Chủ đã bán tiệm','R14 - Đang build tiệm','R15 - Chỉ dùng thương hiệu khác','R16 - Sai số','R17 - Không gặp người quyết định','R18 - Chưa có ngân sách','R19 - Đang làm với vendor khác','R20 - Khó giao tiếp','R21 - Mất liên lạc'];
 const STATE_OPTS=['Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','Washington, D.C.','West Virginia','Wisconsin','Wyoming'];
@@ -989,9 +991,72 @@ function renderCampaign(){
       +'</div>'
       +'</div></div>';
   }
+  // Build customer list panel (manager only)
+  let campListPanel='';
+  if(isManager){
+    const fData=campGetFiltered();
+    const selectedIds=window._campSelected||new Set();
+    const overdueDays=parseInt(document.getElementById&&document.getElementById('cf-overdue')&&document.getElementById('cf-overdue').value||'0')||0;
+    const today=new Date();today.setHours(0,0,0,0);
+    let displayData=fData;
+    if(overdueDays>0){
+      displayData=fData.filter(function(c){
+        if(!c.assigned_deadline)return false;
+        const dl=new Date(c.assigned_deadline);dl.setHours(0,0,0,0);
+        return Math.floor((today-dl)/(86400000))>=overdueDays;
+      });
+    }
+    const PAGE_CAMP=20;
+    const campPg=window._campPg||1;
+    const paginated=displayData.slice((campPg-1)*PAGE_CAMP,campPg*PAGE_CAMP);
+    let custRows='';
+    paginated.forEach(function(c){
+      const checked=selectedIds.has(c.id);
+      const dl=c.assigned_deadline?new Date(c.assigned_deadline):null;
+      const daysLeft=dl?Math.floor((dl-today)/86400000):null;
+      const dlBadge=daysLeft===null?'—':daysLeft<0?'<span class="badge b-lost">Hết '+Math.abs(daysLeft)+'d</span>':daysLeft===0?'<span class="badge b-lost">Hôm nay</span>':'<span class="badge b-followup">'+daysLeft+'d</span>';
+      custRows+='<tr>'
+        +'<td><input type="checkbox" '+(checked?'checked':'')+'  onchange="window._campToggle('+c.id+',this.checked)" style="accent-color:var(--brand)"></td>'
+        +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(c.ma_kh||'—')+'</td>'
+        +'<td style="color:var(--text)">'+(c.business_name||'—')+'</td>'
+        +'<td>'+(c.customer_name||'—')+'</td>'
+        +'<td style="font-size:11px">'+(c.potential||'—')+'</td>'
+        +'<td style="font-size:11px">'+(c.campaign_name||'—')+'</td>'
+        +'<td>'+dlBadge+'</td>'
+        +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
+        +'<td><button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="campRecallOne('+c.id+')">Thu hồi</button></td>'
+        +'</tr>';
+    });
+    const totalPages=Math.ceil(displayData.length/PAGE_CAMP);
+    let pgHtml='';
+    if(totalPages>1){
+      pgHtml='<div style="display:flex;gap:6px;justify-content:center;padding:10px">';
+      for(let i=1;i<=Math.min(totalPages,10);i++){
+        pgHtml+='<button class="btn" style="padding:3px 8px;font-size:11px'+(i===campPg?';background:var(--brand);color:#fff':'')+'" onclick="window._campPg='+i+';render()">'+i+'</button>';
+      }
+      pgHtml+='</div>';
+    }
+    campListPanel='<div class="panel" style="margin-top:14px"><div class="panel-header"><h2>Danh sách khách theo bộ lọc <span style="color:var(--accent2)">'+displayData.length+'</span></h2>'
+      +'<div style="display:flex;gap:8px;align-items:center">'
+      +'<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Quá hạn ≥</div>'
+      +'<input type="number" id="cf-overdue" value="'+(overdueDays||'')+'" min="0" placeholder="Số ngày" onchange="window._campPg=1;render()" style="width:80px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;color:var(--text);outline:none">'
+      +'<div style="font-size:10px;color:var(--text3)">ngày</div>'
+      +'<button class="btn" style="font-size:11px;padding:4px 10px" onclick="window._campPg=1;document.getElementById('cf-overdue').value='';render()">Reset</button>'
+      +'<button class="btn btn-primary" style="font-size:11px;padding:4px 10px" onclick="campAssignSelected()"><i class="ti ti-user-check"></i> Assign đã chọn</button>'
+      +'<button class="btn" style="font-size:11px;padding:4px 10px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="campRecallSelected()"><i class="ti ti-rotate-clockwise"></i> Thu hồi đã chọn</button>'
+      +'</div></div>'
+      +(displayData.length===0?'<div class="empty-state"><i class="ti ti-users"></i>Không có khách nào khớp</div>'
+        :'<table><colgroup><col width="30"><col width="90"><col width="130"><col width="110"><col width="90"><col width="100"><col width="80"><col width="70"><col width="80"></colgroup>'
+        +'<thead><tr><th><input type="checkbox" onchange="window._campSelectAll(this.checked)" style="accent-color:var(--brand)"></th>'
+        +'<th>Mã KH</th><th>Business</th><th>Customer</th><th>Potential</th><th>Campaign</th><th>Deadline</th><th>Sale</th><th></th></tr></thead>'
+        +'<tbody>'+custRows+'</tbody></table>'+pgHtml)
+      +'</div>';
+  }
+
   return '<div class="topbar"><div class="topbar-title">Campaign</div></div>'
     +'<div class="content">'
     +assignForm
+    +campListPanel
     +'<div class="kpi-grid">'+campCards+'</div>'
     +'</div>';
 }
@@ -1460,6 +1525,231 @@ function renderGuide(){
   return out;
 }
 
+// ── CAMPAIGN HELPERS ──
+window._campSelected=new Set();
+window._campPg=1;
+window._campToggle=function(id,checked){if(checked)window._campSelected.add(id);else window._campSelected.delete(id);};
+window._campSelectAll=function(checked){
+  const data=campGetFiltered();
+  if(checked)data.forEach(function(c){window._campSelected.add(c.id);});
+  else window._campSelected.clear();
+  render();
+};
+async function campRecallOne(id){
+  if(!confirm('Thu hồi khách này khỏi chiến dịch?'))return;
+  showLoading(true);
+  await sb.from('customers').update({assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true}).eq('id',id);
+  const idx=CUSTOMERS.findIndex(function(c){return c.id===id;});
+  if(idx>=0)Object.assign(CUSTOMERS[idx],{assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,assigned_profile:null});
+  window._campSelected.delete(id);
+  showLoading(false);render();
+}
+async function campRecallSelected(){
+  const ids=[...window._campSelected];
+  if(ids.length===0){alert('Chưa chọn khách nào!');return;}
+  if(!confirm('Thu hồi '+ids.length+' khách đã chọn?'))return;
+  showLoading(true);
+  for(const id of ids){
+    await sb.from('customers').update({assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true}).eq('id',id);
+    const idx=CUSTOMERS.findIndex(function(c){return c.id===id;});
+    if(idx>=0)Object.assign(CUSTOMERS[idx],{assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,assigned_profile:null});
+  }
+  window._campSelected.clear();
+  showLoading(false);render();
+}
+async function campAssignSelected(){
+  const ids=[...window._campSelected];
+  if(ids.length===0){alert('Chưa chọn khách nào!');return;}
+  const name=document.getElementById('camp-name')&&document.getElementById('camp-name').value.trim();
+  const deadline=document.getElementById('camp-deadline')&&document.getElementById('camp-deadline').value;
+  if(!name){alert('Vui lòng nhập tên Campaign!');return;}
+  if(!deadline){alert('Vui lòng chọn Deadline!');return;}
+  const allSaleCb=document.getElementById('camp-sale-all');
+  let salesList=[];
+  if(allSaleCb&&allSaleCb.checked){salesList=PROFILES.filter(function(p){return p.role==='sale';});}
+  else{const checked=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all):checked');const sIds=Array.from(checked).map(function(cb){return cb.value;});salesList=PROFILES.filter(function(p){return sIds.includes(p.id);});}
+  if(salesList.length===0){alert('Vui lòng chọn ít nhất 1 sale!');return;}
+  if(!confirm('Assign '+ids.length+' khách đã chọn vào Campaign "'+name+'"?'))return;
+  showLoading(true);
+  for(let i=0;i<ids.length;i++){
+    const sale=salesList[i%salesList.length];
+    await sb.from('customers').update({assigned_to:sale.id,campaign_name:name,assigned_deadline:deadline,is_recalled:false}).eq('id',ids[i]);
+    const idx=CUSTOMERS.findIndex(function(c){return c.id===ids[i];});
+    if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:sale.id,campaign_name:name,assigned_deadline:deadline,is_recalled:false});CUSTOMERS[idx].assigned_profile={id:sale.id,full_name:sale.full_name,role:sale.role};}
+  }
+  window._campSelected.clear();
+  showLoading(false);alert('Đã assign '+ids.length+' khách!');render();
+}
+
+// ── FIX 3+4: DAILY TAB ──
+async function renderDaily(){
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const m=document.getElementById('main');
+  if(!m)return;
+  const today=new Date();
+  const defFrom=new Date(today);defFrom.setDate(today.getDate()-6);
+  const fFrom=document.getElementById('daily-from')&&document.getElementById('daily-from').value||defFrom.toISOString().slice(0,10);
+  const fTo=document.getElementById('daily-to')&&document.getElementById('daily-to').value||today.toISOString().slice(0,10);
+  const fSaleDaily=document.getElementById('daily-sale')&&document.getElementById('daily-sale').value||'all';
+
+  m.innerHTML='<div class="topbar"><div class="topbar-title">Daily Report</div></div>'
+    +'<div class="content"><div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">'
+    +'<div style="font-size:11px;color:var(--text3)">Từ ngày</div>'
+    +'<input type="date" id="daily-from" value="'+fFrom+'" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">'
+    +'<div style="font-size:11px;color:var(--text3)">đến</div>'
+    +'<input type="date" id="daily-to" value="'+fTo+'" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">'
+    +(isManager?'<select id="daily-sale" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none" class="fsel"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==="sale";}).map(function(p){return '<option value="'+p.id+'"'+(fSaleDaily===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>':'')
+    +'<button class="btn btn-primary" style="font-size:12px;padding:6px 14px" onclick="renderDaily()"><i class="ti ti-search"></i> Lọc</button>'
+    +'</div><div id="daily-content" style="color:var(--text2);font-size:13px">Đang tải...</div></div>';
+
+  // Load call_logs in date range
+  const fromDt=fFrom+'T00:00:00';
+  const toDt=fTo+'T23:59:59';
+  let logsQ=sb.from('call_logs').select('*').gte('called_at',fromDt).lte('called_at',toDt);
+  const {data:logs}=await logsQ;
+
+  // Load invoices in date range
+  const {data:invs}=await sb.from('invoices').select('*').gte('created_at',fromDt).lte('created_at',toDt);
+
+  // Group logs by sale + date: count unique customer_id per sale per day
+  const salesToShow=isManager
+    ?(fSaleDaily==='all'?PROFILES.filter(function(p){return p.role==='sale';}):PROFILES.filter(function(p){return p.id===fSaleDaily;}))
+    :[currentProfile];
+
+  // Get all dates in range
+  const dates=[];
+  const d=new Date(fFrom);const dEnd=new Date(fTo);
+  while(d<=dEnd){dates.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1);}
+
+  let tableRows='';
+  const summary=[];
+
+  salesToShow.forEach(function(sale){
+    const saleLogs=(logs||[]).filter(function(l){return l.sale_id===sale.id;});
+    const saleInvs=(invs||[]).filter(function(inv){return inv.submitted_by===sale.id||inv.sale_id===sale.id;});
+
+    // Count unique customers touched per day
+    const byDate={};
+    saleLogs.forEach(function(l){
+      const day=l.called_at?l.called_at.slice(0,10):'';
+      if(!day)return;
+      if(!byDate[day])byDate[day]=new Set();
+      byDate[day].add(l.customer_id);
+    });
+
+    // Total unique customers in range
+    const allUnique=new Set(saleLogs.map(function(l){return l.customer_id;}));
+
+    // Potential customers worked on
+    const potentialIds=new Set();
+    saleLogs.forEach(function(l){
+      const cust=CUSTOMERS.find(function(c){return c.id===l.customer_id;});
+      if(cust&&cust.potential)potentialIds.add(l.customer_id);
+    });
+
+    // Potential breakdown
+    const potentialBreakdown={};
+    POTENTIAL_OPTS.forEach(function(opt){potentialBreakdown[opt]=0;});
+    potentialIds.forEach(function(cid){
+      const cust=CUSTOMERS.find(function(c){return c.id===cid;});
+      if(cust&&cust.potential&&potentialBreakdown[cust.potential]!==undefined)potentialBreakdown[cust.potential]++;
+    });
+
+    const invCount=saleInvs.length;
+    const init=sale.full_name.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
+
+    summary.push({sale:sale,total:allUnique.size,potential:potentialIds.size,invs:invCount,byDate:byDate,potentialBreakdown:potentialBreakdown});
+
+    // Daily breakdown rows
+    let dayRows='';
+    dates.forEach(function(dt){
+      const cnt=(byDate[dt]&&byDate[dt].size)||0;
+      const dtInvs=(invs||[]).filter(function(inv){return (inv.submitted_by===sale.id||inv.sale_id===sale.id)&&inv.created_at&&inv.created_at.slice(0,10)===dt;}).length;
+      dayRows+='<tr style="font-size:11px;color:var(--text3)">'
+        +'<td style="padding-left:32px">'+dt+'</td>'
+        +'<td style="color:'+(cnt>0?'var(--accent2)':'var(--text3)')+'">'+cnt+'</td>'
+        +'<td></td><td></td><td>'+dtInvs+'</td></tr>';
+    });
+
+    const potBreakStr=Object.entries(potentialBreakdown).filter(function(e){return e[1]>0;}).map(function(e){return e[0]+': '+e[1];}).join(' | ')||'—';
+
+    tableRows+='<tr style="border-top:2px solid var(--border)">'
+      +'<td><strong style="color:var(--text)">'+sale.full_name+'</strong></td>'
+      +'<td style="font-weight:700;color:var(--accent2)">'+allUnique.size+'</td>'
+      +'<td style="color:var(--warn)">'+potentialIds.size+'</td>'
+      +'<td style="font-size:10px;color:var(--text3)">'+potBreakStr+'</td>'
+      +'<td style="font-weight:600;color:var(--brand2)">'+invCount+'</td>'
+      +'</tr>'+dayRows;
+  });
+
+  const dc=document.getElementById('daily-content');
+  if(dc){
+    dc.innerHTML='<div class="panel"><div class="panel-header"><h2>Daily Report <span style="font-size:11px;color:var(--text3);font-weight:400">'+fFrom+' → '+fTo+'</span></h2></div>'
+      +'<table><colgroup><col width="160"><col width="120"><col width="80"><col><col width="80"></colgroup>'
+      +'<thead><tr><th>Sale / Ngày</th><th>Data thao tác (unique)</th><th>Potential</th><th>Potential chi tiết</th><th>Invoice</th></tr></thead>'
+      +'<tbody>'+tableRows+'</tbody></table></div>';
+  }
+}
+
+// ── FIX 5: SCHEDULE TAB ──
+function renderSchedule(){
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const today=new Date();today.setHours(0,0,0,0);
+
+  // Customers with Appointment Set sub_status
+  let scheduled=CUSTOMERS.filter(function(c){
+    return c.sub_status==='Appointment Set'&&c.timeline_follow;
+  });
+  if(!isManager)scheduled=scheduled.filter(function(c){return c.assigned_to===currentUser.id;});
+  scheduled.sort(function(a,b){return new Date(a.timeline_follow)-new Date(b.timeline_follow);});
+
+  const past=scheduled.filter(function(c){return new Date(c.timeline_follow)<today;});
+  const upcoming=scheduled.filter(function(c){return new Date(c.timeline_follow)>=today;});
+
+  function makeRows(list){
+    return list.map(function(c){
+      const dt=new Date(c.timeline_follow);
+      const daysLeft=Math.floor((dt-today)/86400000);
+      const badge=daysLeft<0?'<span class="badge b-lost">Đã qua '+Math.abs(daysLeft)+'d</span>'
+        :daysLeft===0?'<span class="badge b-won">Hôm nay</span>'
+        :daysLeft===1?'<span class="badge b-followup">Ngày mai</span>'
+        :'<span class="badge b-calling">Còn '+daysLeft+'d</span>';
+      return '<tr onclick="selId='+c.id+';setPage('customers')" style="cursor:pointer">'
+        +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(c.ma_kh||'—')+'</td>'
+        +'<td style="color:var(--text)">'+(c.business_name||'—')+'</td>'
+        +'<td>'+(c.customer_name||'—')+'</td>'
+        +'<td style="font-size:11px">'+(c.cellphone||c.business_phone||'—')+'</td>'
+        +'<td style="font-size:11px;color:var(--accent)">'+(c.potential||'—')+'</td>'
+        +'<td>'+badge+'</td>'
+        +'<td style="font-size:11px">'+dt.toLocaleDateString('vi-VN')+'</td>'
+        +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
+        +'</tr>';
+    }).join('');
+  }
+
+  const saleFilter=isManager?'<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==="sale";}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>':'';
+
+  return '<div class="topbar"><div class="topbar-title">Lịch hẹn</div>'+saleFilter+'</div>'
+    +'<div class="content">'
+    +'<div class="stats-row">'
+    +'<div class="stat-card sc2"><div class="stat-label">Sắp tới</div><div class="stat-val" style="color:var(--accent2)">'+upcoming.length+'</div></div>'
+    +'<div class="stat-card sc3"><div class="stat-label">Đã qua</div><div class="stat-val" style="color:var(--danger)">'+past.length+'</div></div>'
+    +'<div class="stat-card sc0"><div class="stat-label">Tổng lịch hẹn</div><div class="stat-val" style="color:var(--brand2)">'+scheduled.length+'</div></div>'
+    +'</div>'
+    +'<div class="panel" style="margin-bottom:14px"><div class="panel-header"><h2>🗓 Sắp tới <span style="color:var(--accent2)">'+upcoming.length+'</span></h2></div>'
+    +(upcoming.length===0?'<div class="empty-state"><i class="ti ti-calendar-off"></i>Không có lịch hẹn nào sắp tới</div>'
+      :'<table><colgroup><col width="80"><col width="130"><col width="110"><col width="100"><col width="90"><col width="90"><col width="80"><col width="70"></colgroup>'
+      +'<thead><tr><th>Mã KH</th><th>Business</th><th>Customer</th><th>SĐT</th><th>Potential</th><th>Trạng thái</th><th>Ngày hẹn</th><th>Sale</th></tr></thead>'
+      +'<tbody>'+makeRows(upcoming)+'</tbody></table>')
+    +'</div>'
+    +(past.length>0?'<div class="panel"><div class="panel-header"><h2>⚠️ Đã qua <span style="color:var(--danger)">'+past.length+'</span></h2></div>'
+      +'<table><colgroup><col width="80"><col width="130"><col width="110"><col width="100"><col width="90"><col width="90"><col width="80"><col width="70"></colgroup>'
+      +'<thead><tr><th>Mã KH</th><th>Business</th><th>Customer</th><th>SĐT</th><th>Potential</th><th>Trạng thái</th><th>Ngày hẹn</th><th>Sale</th></tr></thead>'
+      +'<tbody>'+makeRows(past)+'</tbody></table></div>':'')
+    +'</div>';
+}
+
+
 function render(){
   const m=document.getElementById('main-area');
   if(!m)return;
@@ -1473,6 +1763,8 @@ function render(){
   else if(page==='alert')m.innerHTML=renderAlert();
   else if(page==='products')m.innerHTML=renderProducts();
   else if(page==='guide')m.innerHTML=renderGuide();
+  else if(page==='daily')renderDaily();
+  else if(page==='schedule')m.innerHTML=renderSchedule();
   if(selId&&!document.getElementById('detail-modal'))renderDetailModal(selId);
   if(addOpen&&!document.getElementById('add-modal'))renderAddModal();
 }
