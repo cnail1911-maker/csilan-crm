@@ -1195,7 +1195,7 @@ async function custAssignToSale(saleId,saleName){
   render();
 }
 
-
+function toggleAddToCampDropdown(btn){
   var existing=document.getElementById('add-to-camp-dropdown');
   if(existing){existing.remove();return;}
   var campNames=[...new Set(CUSTOMERS.map(function(c){return c.campaign_name;}).filter(Boolean))].sort();
