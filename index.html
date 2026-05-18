@@ -1375,19 +1375,20 @@ function renderProducts(){
         :'<td></td>')
       +'</tr>';
   });
-  const vendorFilter='<select class=\"fsel\" onchange=\"sessionStorage.setItem('prodVendor',this.value);sessionStorage.setItem('prodMgPage',1);render()\">'
-    +'<option value=\"all\"'+(fVendor==='all'?' selected':'')+'>Tất cả Vendor</option>'
-    +VENDOR_OPTS.map(function(v){return '<option value=\"'+v+'\"'+(fVendor===v?' selected':'')+'>'+v+'</option>';}).join('')
-    +'</select>';
+  const vendorFilter='<select class="fsel" onchange="'+
+    'sessionStorage.setItem(\'prodVendor\',this.value);sessionStorage.setItem(\'prodMgPage\',1);render()">'+
+    '<option value="all"'+(fVendor==='all'?' selected':'')+'>Tất cả Vendor</option>'+
+    VENDOR_OPTS.map(function(v){return '<option value="'+v+'"'+(fVendor===v?' selected':'')+'>'+v+'</option>';}).join('')+
+    '</select>';
   return '<div class="topbar"><div class="topbar-title">'+(isManagerProd?'Quản lý sản phẩm':'Sản phẩm')+'</div>'
     +'<div class="search-wrap"><i class="ti ti-search"></i><input id="prod-mg-search" placeholder="Tìm SKU, tên sản phẩm..." oninput="clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){prodMgFilter(document.getElementById(&quot;prod-mg-search&quot;).value);},120)" value="'+prodSearch+'"></div>'
     +vendorFilter
-    +(isManagerProd?'<button class=\"btn btn-primary\" onclick=\"openProdForm(null)\"><i class=\"ti ti-plus\"></i> Thêm sản phẩm</button>':'')
+    +(isManagerProd?'<button class="btn btn-primary" onclick="openProdForm(null)"><i class="ti ti-plus"></i> Thêm sản phẩm</button>':'')
     +'</div>'
     +'<div class="content">'
-    +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style=\"color:var(--brand2)\">'+filtered.length+'</span> sản phẩm</h2></div>'
-    +(filtered.length===0?'<div class=\"empty-state\"><i class=\"ti ti-package\"></i>Không tìm thấy sản phẩm</div>'
-      :'<table><colgroup><col width=\"80\"><col><col width=\"70\"><col width=\"80\"><col width=\"80\"><col width=\"150\"></colgroup>'
+    +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+filtered.length+'</span> sản phẩm</h2></div>'
+    +(filtered.length===0?'<div class="empty-state"><i class="ti ti-package"></i>Không tìm thấy sản phẩm</div>'
+      :'<table><colgroup><col width="80"><col><col width="70"><col width="80"><col width="80"><col width="150"></colgroup>'
       +'<thead><tr><th>SKU</th><th>Sản phẩm</th><th>Vendor</th><th>Giá</th><th>Tồn kho</th>'+(isManagerProd?'<th></th>':'')+'</tr></thead>'
       +'<tbody>'+rows+'</tbody></table>'
       +pgBar(filtered.length,pgProd,PAGE_SIZE,'setProdMgPage'))
