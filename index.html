@@ -428,11 +428,14 @@ function renderCustomers(){
   // Sale only sees approved+assigned customers
   let data=CUSTOMERS.filter(function(c){
     if(!isManager){
-      // Only show approved/null (imported) data assigned to this sale
-      if(c.approval_status==='pending'&&c.created_by!==currentUser.id)return false;
-      if(c.assigned_to!==currentUser.id&&c.created_by!==currentUser.id)return false;
-      // Must be approved or null (imported CSV data) - not rejected
-      if(c.approval_status==='rejected')return false;
+      // Sale only sees their own assigned customers
+      // assigned_to must match currentUser.id (auth.uid = profiles.id)
+      const uid=currentUser&&currentUser.id;
+      if(!uid)return false;
+      // Must be assigned to this sale OR created by this sale
+      if(c.assigned_to!==uid&&c.created_by!==uid)return false;
+      // Hide pending from other sales
+      if(c.approval_status==='pending'&&c.created_by!==uid)return false;
     }
     if(fStatus!=='all'&&c.status!==fStatus)return false;
     if(fSale!=='all'&&c.assigned_to!==fSale)return false;
@@ -944,10 +947,12 @@ function renderCampaign(){
     const states=[...new Set(CUSTOMERS.map(function(c){return c.state;}).filter(Boolean))].sort();
     const campNames=[...new Set(CUSTOMERS.map(function(c){return c.campaign_name;}).filter(Boolean))].sort();
     function fOpts(arr,id,label){
+      var fkey=id.replace('cf-','');
+      var cur=(window._campFilters&&window._campFilters[fkey])||'all';
       return '<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">'+label+'</div>'
         +'<select id="'+id+'" onchange="campSyncFilters();window._campPg=1;campPreview();render()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'
-        +'<option value="all">Tất cả</option>'
-        +arr.map(function(v){return '<option value="'+v+'">'+v+'</option>';}).join('')
+        +'<option value="all"'+(cur==='all'?' selected':'')+'>Tất cả</option>'
+        +arr.map(function(v){return '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+v+'</option>';}).join('')
         +'</select></div>';
     }
     assignForm='<div class="panel" style="margin-bottom:14px"><div class="panel-header"><h2>Tạo Campaign mới</h2></div>'
@@ -980,10 +985,12 @@ function renderCampaign(){
       +'</div>'
       +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">'
         +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Thuộc chiến dịch</div>'
-        +'<select id="cf-campaign" onchange="campSyncFilters();window._campPg=1;campPreview();render()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'
-        +'<option value="all">Tất cả</option>'
-        +'<option value="none">Chưa thuộc chiến dịch nào</option>'
-        +campNames.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('')
+        +(function(){var cur=(window._campFilters&&window._campFilters['campaign'])||'all';
+          return '<select id="cf-campaign" onchange="campSyncFilters();window._campPg=1;campPreview();render()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'
+            +'<option value="all"'+(cur==='all'?' selected':'')+'>Tất cả</option>'
+            +'<option value="none"'+(cur==='none'?' selected':'')+'>Chưa thuộc chiến dịch nào</option>'
+            +campNames.map(function(n){return '<option value="'+n+'"'+(cur===n?' selected':'')+'>'+n+'</option>';}).join('')
+            +'</select>';})()
         +'</select></div>'
         +'<div style="display:flex;align-items:end;padding-bottom:2px">'
         +'<button class="btn" onclick="campResetFilters()" style="font-size:11px;width:100%"><i class="ti ti-refresh"></i> Reset bộ lọc</button>'
@@ -1044,6 +1051,7 @@ function renderCampaign(){
       +'<input type="number" id="cf-overdue" value="'+(overdueDays||'')+'" min="0" placeholder="Số ngày" onchange="window._campPg=1;render()" style="width:80px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;color:var(--text);outline:none">'
       +'<div style="font-size:10px;color:var(--text3)">ngày</div>'
       +'<button class="btn" style="font-size:11px;padding:4px 10px" onclick="window._campPg=1;document.getElementById(&apos;cf-overdue&apos;).value=0;render()">Reset</button>'
+      +'<button class="btn" style="font-size:11px;padding:4px 10px" onclick="window._campSelected=new Set();render()"><i class="ti ti-square"></i> Bỏ chọn tất cả</button>'
       +'<button class="btn btn-primary" style="font-size:11px;padding:4px 10px" onclick="campAssignSelected()"><i class="ti ti-user-check"></i> Assign đã chọn</button>'
       +'<button class="btn" style="font-size:11px;padding:4px 10px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="campRecallSelected()"><i class="ti ti-rotate-clockwise"></i> Thu hồi đã chọn</button>'
       +'</div></div>'
@@ -1592,7 +1600,6 @@ async function renderDaily(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
   const m=document.getElementById('main');
   if(!m)return;
-  window._dailyLoading=true;
   const today=new Date();
   const defFrom=new Date(today);defFrom.setDate(today.getDate()-6);
   const fFrom=document.getElementById('daily-from')&&document.getElementById('daily-from').value||defFrom.toISOString().slice(0,10);
@@ -1689,7 +1696,6 @@ async function renderDaily(){
       +'</tr>'+dayRows;
   });
 
-  window._dailyLoading=false;
   const dc=document.getElementById('daily-content');
   if(dc){
     dc.innerHTML='<div class="panel"><div class="panel-header"><h2>Daily Report <span style="font-size:11px;color:var(--text3);font-weight:400">'+fFrom+' → '+fTo+'</span></h2></div>'
@@ -1771,7 +1777,7 @@ function render(){
   else if(page==='alert')m.innerHTML=renderAlert();
   else if(page==='products')m.innerHTML=renderProducts();
   else if(page==='guide')m.innerHTML=renderGuide();
-  else if(page==='daily'){if(!window._dailyLoading)renderDaily();}
+  else if(page==='daily')renderDaily();
   else if(page==='schedule')m.innerHTML=renderSchedule();
   if(selId&&!document.getElementById('detail-modal'))renderDetailModal(selId);
   if(addOpen&&!document.getElementById('add-modal'))renderAddModal();
