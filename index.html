@@ -1510,11 +1510,12 @@ async function saveProd(id){
   var fileInput=document.getElementById('prod-img-file');
   if(fileInput&&fileInput.files&&fileInput.files[0]){
     var file=fileInput.files[0];
-    var ext=file.name.split('.').pop().toLowerCase();
+    var ext=file.name.split('.').pop().toLowerCase()||'jpg';
     var fileName=sku+'.'+ext;
+    var mimeType=file.type||('image/'+ext);
     var statusEl=document.getElementById('prod-upload-status');
     if(statusEl)statusEl.textContent='Đang upload hình...';
-    var upRes=await sb.storage.from('products').upload(fileName,file,{upsert:true,contentType:file.type});
+    var upRes=await sb.storage.from('products').upload(fileName,file,{upsert:true,contentType:mimeType});
     if(upRes.error){showLoading(false);alert('Lỗi upload hình: '+upRes.error.message);return;}
     var urlData=sb.storage.from('products').getPublicUrl(fileName);
     imageUrl=urlData&&urlData.data?urlData.data.publicUrl:null;
@@ -1710,7 +1711,13 @@ async function saveDetail(customerId){
   };
   if(saleEl)update.assigned_to=saleEl.value;
   await sb.from('customers').update(update).eq('id',customerId);
-  if(note)await sb.from('call_logs').insert({customer_id:customerId,sale_id:currentUser.id,note:note,call_result:result||null});
+  // Always log activity - dù không có note vẫn đếm data thao tác
+  if(note||result){
+    await sb.from('call_logs').insert({customer_id:customerId,sale_id:currentUser.id,note:note||null,call_result:result||null,called_at:new Date().toISOString()});
+  } else {
+    // Log thao tác không có note (chuyển status)
+    await sb.from('call_logs').insert({customer_id:customerId,sale_id:currentUser.id,note:null,call_result:null,called_at:new Date().toISOString()});
+  }
   // Update local CUSTOMERS array instead of reloading all 26k rows
   const idx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
   if(idx>=0){
@@ -2092,8 +2099,8 @@ async function renderDailyData(){
   const fromDt=fFrom+'T00:00:00';
   const toDt=fTo+'T23:59:59';
 
-  // Chỉ lấy fields cần thiết từ call_logs
-  let {data:logs}=await sb.from('call_logs').select('customer_id,sale_id,created_at').gte('created_at',fromDt).lte('created_at',toDt);
+  // Chỉ lấy fields cần thiết từ call_logs - dùng called_at
+  let {data:logs}=await sb.from('call_logs').select('customer_id,sale_id,called_at').gte('called_at',fromDt).lte('called_at',toDt);
 
   // Load invoices
   const {data:invs}=await sb.from('invoices').select('submitted_by,sale_id,created_at,total').gte('created_at',fromDt).lte('created_at',toDt);
@@ -2119,7 +2126,7 @@ async function renderDailyData(){
     // Số khách unique thao tác trong kỳ
     const byDate={};
     saleLogs.forEach(function(l){
-      const day=l.created_at?l.created_at.slice(0,10):'';
+      const day=l.called_at?l.called_at.slice(0,10):'';
       if(!day)return;
       if(!byDate[day])byDate[day]=new Set();
       byDate[day].add(l.customer_id);
@@ -2156,8 +2163,7 @@ async function renderDailyData(){
     let dayRows='';
     dates.forEach(function(dt){
       const cnt=(byDate[dt]&&byDate[dt].size)||0;
-      const dtInvs=(invs||[]).filter(function(inv){return (inv.submitted_by===sale.id||inv.sale_id===sale.id)&&inv.created_at&&inv.created_at.slice(0,10)===dt;}).length;
-      dayRows+='<tr style="font-size:11px;color:var(--text3)">'
+      const dtInvs=(invs||[]).filter(function(inv){return (inv.submitted_by===sale.id||inv.sale_id===sale.id)&&inv.created_at&&inv.created_at.slice(0,10)===dt;}).length;      dayRows+='<tr style="font-size:11px;color:var(--text3)">'
         +'<td style="padding-left:32px">'+dt+'</td>'
         +'<td style="color:'+(cnt>0?'var(--accent2)':'var(--text3)')+'">'+cnt+'</td>'
         +'<td></td><td></td><td>'+dtInvs+'</td></tr>';
