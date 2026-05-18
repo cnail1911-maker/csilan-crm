@@ -943,7 +943,9 @@ async function recallOver30(){
   if(!confirm('Thu hồi '+ids.length+' khách quá 30 ngày?'))return;
   showLoading(true);
   await sb.from('customers').update({assigned_to:null,is_recalled:true,assigned_deadline:null}).in('id',ids);
-  await loadCustomers();showLoading(false);render();
+  const recallSet30=new Set(ids);
+  CUSTOMERS.forEach(function(c){if(recallSet30.has(c.id))Object.assign(c,{assigned_to:null,is_recalled:true,assigned_deadline:null,assigned_profile:null});});
+  showLoading(false);render();
   alert('Đã thu hồi '+ids.length+' khách!');
 }
 
@@ -1251,7 +1253,7 @@ async function addToCampaign(campName){
       var sale=salesList[i%salesList.length];
       var oldSaleName='';
       if(c.assigned_to){var os=PROFILES.find(function(p){return p.id===c.assigned_to;});oldSaleName=os?os.full_name:'';}
-      historyRows.push({customer_id:c.id,campaign_name:c.campaign_name||null,potential:c.potential,assigned_to_name:oldSaleName,recalled_by_name:mgrName});
+      historyRows.push({customer_id:c.id,campaign_name:c.campaign_name||null,potential:c.potential,assigned_to_name:oldSaleName,assigned_to_id:c.assigned_to||null,recalled_by_name:mgrName});
     }
   });
   if(historyRows.length>0){
@@ -1266,9 +1268,13 @@ async function addToCampaign(campName){
     for(var c=0;c<grp.ids.length;c+=500){
       var chunk=grp.ids.slice(c,c+500);
       await sb.from('customers').update({assigned_to:grp.sale.id,campaign_name:campName,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'}).in('id',chunk);
+      chunk.forEach(function(cid){
+        var idx=CUSTOMERS.findIndex(function(x){return x.id===cid;});
+        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale.id,campaign_name:campName,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile={id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role};}
+      });
     }
   }
-  await loadCustomers();showLoading(false);
+  showLoading(false);
   alert('Đã thêm '+dataPool.length+' khách vào Campaign "'+campName+'"!');
   render();
 }
@@ -1307,7 +1313,7 @@ async function createCampaign(){
       var sale=salesList[i%salesList.length];
       var oldSaleName='';
       if(c.assigned_to){var os=PROFILES.find(function(p){return p.id===c.assigned_to;});oldSaleName=os?os.full_name:'';}
-      historyRows.push({customer_id:c.id,campaign_name:c.campaign_name||null,potential:c.potential,assigned_to_name:oldSaleName,recalled_by_name:mgrName});
+      historyRows.push({customer_id:c.id,campaign_name:c.campaign_name||null,potential:c.potential,assigned_to_name:oldSaleName,assigned_to_id:c.assigned_to||null,recalled_by_name:mgrName});
     }
   });
   if(historyRows.length>0){
@@ -1322,9 +1328,13 @@ async function createCampaign(){
     for(var c=0;c<grp.ids.length;c+=500){
       var chunk=grp.ids.slice(c,c+500);
       await sb.from('customers').update({assigned_to:grp.sale.id,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'}).in('id',chunk);
+      chunk.forEach(function(cid){
+        var idx=CUSTOMERS.findIndex(function(x){return x.id===cid;});
+        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale.id,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile={id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role};}
+      });
     }
   }
-  await loadCustomers();showLoading(false);
+  showLoading(false);
   alert('Đã tạo Campaign "'+name+'" với '+dataPool.length+' khách cho '+salesList.length+' sale!');
   document.getElementById('camp-name').value='';
   render();
@@ -1672,11 +1682,10 @@ async function approveCustomer(id,status){
   const update={approval_status:status};
   if(status==='rejected'){update.assigned_to=null;}
   if(status==='approved'){
-    const {data:c}=await sb.from('customers').select('created_by').eq('id',id).single();
-    if(c&&c.created_by)update.assigned_to=c.created_by;
+    const localCust=CUSTOMERS.find(function(c){return c.id===id;});
+    if(localCust&&localCust.created_by)update.assigned_to=localCust.created_by;
   }
   await sb.from('customers').update(update).eq('id',id);
-  // Local update
   const aidx=CUSTOMERS.findIndex(function(c){return c.id===id;});
   if(aidx>=0)Object.assign(CUSTOMERS[aidx],update);
   showLoading(false);render();
@@ -1695,7 +1704,13 @@ async function doRecall(){
   await sb.from('customers').update({assigned_to:null,is_recalled:true,assigned_deadline:null}).in('id',ids);
   const toKeep=(expired||[]).filter(function(c){return c.potential&&c.potential!=='';});
   if(toKeep.length>0)await sb.from('customers').update({assigned_deadline:null}).in('id',toKeep.map(function(c){return c.id;}));
-  await loadCustomers();showLoading(false);render();
+  const recallSet=new Set(ids);
+  const keepSet=new Set(toKeep.map(function(c){return c.id;}));
+  CUSTOMERS.forEach(function(c){
+    if(recallSet.has(c.id))Object.assign(c,{assigned_to:null,is_recalled:true,assigned_deadline:null,assigned_profile:null});
+    else if(keepSet.has(c.id))c.assigned_deadline=null;
+  });
+  showLoading(false);render();
   alert('Thu hồi hoàn tất! Đã thu hồi '+toRecall.length+' khách.');
 }
 
@@ -1739,9 +1754,15 @@ window._campSelectAll=function(checked){
 async function campRecallOne(id){
   if(!confirm('Thu hồi khách này khỏi chiến dịch?'))return;
   showLoading(true);
-  await sb.from('customers').update({assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true}).eq('id',id);
+  var cust=CUSTOMERS.find(function(c){return c.id===id;});
+  if(cust&&(cust.potential||cust.campaign_name)){
+    var mgrName=currentProfile?currentProfile.full_name:'';
+    var saleName=cust.assigned_profile?cust.assigned_profile.full_name:'';
+    await sb.from('potential_history').insert({customer_id:id,campaign_name:cust.campaign_name||null,potential:cust.potential||null,assigned_to_name:saleName,assigned_to_id:cust.assigned_to||null,recalled_by_name:mgrName});
+  }
+  await sb.from('customers').update({assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,potential:null}).eq('id',id);
   const idx=CUSTOMERS.findIndex(function(c){return c.id===id;});
-  if(idx>=0)Object.assign(CUSTOMERS[idx],{assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,assigned_profile:null});
+  if(idx>=0)Object.assign(CUSTOMERS[idx],{assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,potential:null,assigned_profile:null});
   window._campSelected.delete(id);
   showLoading(false);render();
 }
@@ -1793,7 +1814,7 @@ async function campRecallBySale(saleId,saleName){
   var historyRows=[];
   targets.forEach(function(c){
     if(c.potential){
-      historyRows.push({customer_id:c.id,campaign_name:c.campaign_name||null,potential:c.potential,assigned_to_name:saleName,recalled_by_name:mgrName});
+      historyRows.push({customer_id:c.id,campaign_name:c.campaign_name||null,potential:c.potential,assigned_to_name:saleName,assigned_to_id:saleId,recalled_by_name:mgrName});
     }
   });
   if(historyRows.length>0){
@@ -1820,13 +1841,27 @@ async function campRecallSelected(){
   if(ids.length===0){alert('Chưa chọn khách nào!');return;}
   if(!confirm('Thu hồi '+ids.length+' khách đã chọn?'))return;
   showLoading(true);
+  var mgrName=currentProfile?currentProfile.full_name:'';
+  var historyRows=[];
+  ids.forEach(function(id){
+    var cust=CUSTOMERS.find(function(c){return c.id===id;});
+    if(cust&&(cust.potential||cust.campaign_name)){
+      var saleName=cust.assigned_profile?cust.assigned_profile.full_name:'';
+      historyRows.push({customer_id:id,campaign_name:cust.campaign_name||null,potential:cust.potential||null,assigned_to_name:saleName,assigned_to_id:cust.assigned_to||null,recalled_by_name:mgrName});
+    }
+  });
+  if(historyRows.length>0){
+    for(var h=0;h<historyRows.length;h+=100){
+      await sb.from('potential_history').insert(historyRows.slice(h,h+100));
+    }
+  }
   for(let i=0;i<ids.length;i+=100){
     const chunk=ids.slice(i,i+100);
-    await sb.from('customers').update({assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true}).in('id',chunk);
+    await sb.from('customers').update({assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,potential:null}).in('id',chunk);
   }
   const idSet=new Set(ids);
   CUSTOMERS.forEach(function(c){
-    if(idSet.has(c.id))Object.assign(c,{assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,assigned_profile:null});
+    if(idSet.has(c.id))Object.assign(c,{assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,potential:null,assigned_profile:null});
   });
   window._campSelected.clear();
   showLoading(false);render();
@@ -1861,7 +1896,7 @@ async function campAssignSelected(){
     if(cust&&cust.potential){
       var oldSaleName='';
       if(cust.assigned_to){var os=PROFILES.find(function(p){return p.id===cust.assigned_to;});oldSaleName=os?os.full_name:'';}
-      historyRows.push({customer_id:id,campaign_name:cust.campaign_name||null,potential:cust.potential,assigned_to_name:oldSaleName,recalled_by_name:mgrName});
+      historyRows.push({customer_id:id,campaign_name:cust.campaign_name||null,potential:cust.potential,assigned_to_name:oldSaleName,assigned_to_id:cust.assigned_to||null,recalled_by_name:mgrName});
     }
   });
   if(historyRows.length>0){
@@ -1896,21 +1931,22 @@ async function renderDailyData(){
   const fTo=window._dailyTo||today.toISOString().slice(0,10);
   const fSaleDaily=window._dailySale||'all';
 
-  // Load call_logs in date range
   const fromDt=fFrom+'T00:00:00';
   const toDt=fTo+'T23:59:59';
-  // Try called_at first, fallback to created_at
-  let {data:logs}=await sb.from('call_logs').select('*').gte('created_at',fromDt).lte('created_at',toDt);
 
-  // Load invoices in date range
-  const {data:invs}=await sb.from('invoices').select('*').gte('created_at',fromDt).lte('created_at',toDt);
+  // Chỉ lấy fields cần thiết từ call_logs
+  let {data:logs}=await sb.from('call_logs').select('customer_id,sale_id,created_at').gte('created_at',fromDt).lte('created_at',toDt);
 
-  // Group logs by sale + date: count unique customer_id per sale per day
+  // Load invoices
+  const {data:invs}=await sb.from('invoices').select('submitted_by,sale_id,created_at,total').gte('created_at',fromDt).lte('created_at',toDt);
+
+  // Load potential_history trong kỳ để tính KPI chính xác (dùng recalled_at)
+  const {data:potHist}=await sb.from('potential_history').select('customer_id,assigned_to_id,potential,recalled_at').gte('recalled_at',fromDt).lte('recalled_at',toDt);
+
   const salesToShow=isManager
     ?(fSaleDaily==='all'?PROFILES.filter(function(p){return p.role==='sale';}):PROFILES.filter(function(p){return p.id===fSaleDaily;}))
     :[currentProfile];
 
-  // Get all dates in range
   const dates=[];
   const d=new Date(fFrom);const dEnd=new Date(fTo);
   while(d<=dEnd){dates.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1);}
@@ -1922,39 +1958,43 @@ async function renderDailyData(){
     const saleLogs=(logs||[]).filter(function(l){return l.sale_id===sale.id;});
     const saleInvs=(invs||[]).filter(function(inv){return inv.submitted_by===sale.id||inv.sale_id===sale.id;});
 
-    // Count unique customers touched per day
+    // Số khách unique thao tác trong kỳ
     const byDate={};
     saleLogs.forEach(function(l){
-      const day=l.created_at?l.created_at.slice(0,10):(l.called_at?l.called_at.slice(0,10):'');
+      const day=l.created_at?l.created_at.slice(0,10):'';
       if(!day)return;
       if(!byDate[day])byDate[day]=new Set();
       byDate[day].add(l.customer_id);
     });
-
-    // Total unique customers in range
     const allUnique=new Set(saleLogs.map(function(l){return l.customer_id;}));
 
-    // Potential customers worked on
-    const potentialIds=new Set();
-    saleLogs.forEach(function(l){
-      const cust=CUSTOMERS.find(function(c){return c.id===l.customer_id;});
-      if(cust&&cust.potential)potentialIds.add(l.customer_id);
-    });
+    // KPI Potential — unique customer_id từ potential_history trong kỳ
+    // + khách hiện tại có potential != null, assigned_to = sale, potential_since trong kỳ
+    const potKpiIds=new Set();
+    // Từ potential_history (đã bị thu hồi trong kỳ)
+    (potHist||[]).filter(function(h){return h.assigned_to_id===sale.id&&h.potential;}).forEach(function(h){potKpiIds.add(h.customer_id);});
+    // Từ CUSTOMERS hiện tại (chưa bị thu hồi, potential_since trong kỳ)
+    CUSTOMERS.filter(function(c){
+      return c.assigned_to===sale.id&&c.potential&&c.potential_since&&c.potential_since>=fFrom&&c.potential_since<=fTo;
+    }).forEach(function(c){potKpiIds.add(c.id);});
 
-    // Potential breakdown
+    // Breakdown theo loại potential
     const potentialBreakdown={};
     POTENTIAL_OPTS.forEach(function(opt){potentialBreakdown[opt]=0;});
-    potentialIds.forEach(function(cid){
-      const cust=CUSTOMERS.find(function(c){return c.id===cid;});
-      if(cust&&cust.potential&&potentialBreakdown[cust.potential]!==undefined)potentialBreakdown[cust.potential]++;
+    // Từ history
+    (potHist||[]).filter(function(h){return h.assigned_to_id===sale.id&&h.potential;}).forEach(function(h){
+      if(potentialBreakdown[h.potential]!==undefined)potentialBreakdown[h.potential]++;
+    });
+    // Từ current (không double count)
+    CUSTOMERS.filter(function(c){
+      return c.assigned_to===sale.id&&c.potential&&c.potential_since&&c.potential_since>=fFrom&&c.potential_since<=fTo;
+    }).forEach(function(c){
+      if(potentialBreakdown[c.potential]!==undefined)potentialBreakdown[c.potential]++;
     });
 
     const invCount=saleInvs.length;
-    const init=sale.full_name.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
+    summary.push({sale:sale,total:allUnique.size,potential:potKpiIds.size,invs:invCount,byDate:byDate,potentialBreakdown:potentialBreakdown});
 
-    summary.push({sale:sale,total:allUnique.size,potential:potentialIds.size,invs:invCount,byDate:byDate,potentialBreakdown:potentialBreakdown});
-
-    // Daily breakdown rows
     let dayRows='';
     dates.forEach(function(dt){
       const cnt=(byDate[dt]&&byDate[dt].size)||0;
@@ -1970,7 +2010,7 @@ async function renderDailyData(){
     tableRows+='<tr style="border-top:2px solid var(--border)">'
       +'<td><strong style="color:var(--text)">'+sale.full_name+'</strong></td>'
       +'<td style="font-weight:700;color:var(--accent2)">'+allUnique.size+'</td>'
-      +'<td style="color:var(--warn)">'+potentialIds.size+'</td>'
+      +'<td style="color:var(--warn)">'+potKpiIds.size+'</td>'
       +'<td style="font-size:10px;color:var(--text3)">'+potBreakStr+'</td>'
       +'<td style="font-weight:600;color:var(--brand2)">'+invCount+'</td>'
       +'</tr>'+dayRows;
