@@ -248,13 +248,12 @@ let currentUser=null,currentProfile=null,CUSTOMERS=[],PROFILES=[],PRODUCTS_ALL=[
 let page='customers',fStatus='all',fSale='all',fPotential='all',fBrand='all',search='',selId=null,addOpen=false;
 let _searchTimer=null;
 function doSearch(val){
+  window._searchRaw=val;
   clearTimeout(_searchTimer);
   _searchTimer=setTimeout(function(){
-    search=val.toLowerCase();curPage=1;
-    var savedVal=val;
-    render();
+    search=val.toLowerCase();curPage=1;render();
     var el=document.getElementById('main-search');
-    if(el){el.value=savedVal;el.focus();try{el.setSelectionRange(savedVal.length,savedVal.length);}catch(e){}}
+    if(el){el.value=val;el.focus();try{el.setSelectionRange(val.length,val.length);}catch(e){}}
   },120);
 }
 function doSearch(val){
@@ -945,7 +944,7 @@ function renderCampaign(){
   let assignForm='';
   if(isManager){
     const salesOptions=PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){
-      return '<label style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;cursor:pointer;padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:rgba(255,255,255,0.05);color:var(--text2);white-space:nowrap"><input type="checkbox" value="'+p.id+'" style="accent-color:var(--brand);width:12px;height:12px"> '+p.full_name.split(' ').pop()+'</label>';
+      return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" value="'+p.id+'" style="accent-color:var(--brand)"> '+p.full_name+'</label>';
     }).join('');
     const states=[...new Set(CUSTOMERS.map(function(c){return c.state;}).filter(Boolean))].sort();
     const campNames=[...new Set(CUSTOMERS.map(function(c){return c.campaign_name;}).filter(Boolean))].sort();
@@ -966,8 +965,8 @@ function renderCampaign(){
         +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Deadline</div>'
         +'<input type="date" id="camp-deadline" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"></div>'
         +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Assign Sale (chọn nhiều)</div>'
-        +'<div id="camp-sales" style="display:flex;flex-wrap:wrap;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px">'
-        +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;cursor:pointer;padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:rgba(255,255,255,0.05);color:var(--text2)"><input type="checkbox" id="camp-sale-all" onchange="toggleAllSales(this)" style="accent-color:var(--brand);width:12px;height:12px"> Tất cả</label>'
+        +'<div id="camp-sales" style="display:flex;flex-direction:column;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;max-height:150px;overflow-y:auto">'
+        +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;padding-bottom:5px;border-bottom:1px solid var(--border)"><input type="checkbox" id="camp-sale-all" onchange="toggleAllSales(this)" style="accent-color:var(--brand)"> Tất cả sale (chia đều)</label>'
         +salesOptions
         +'</div></div>'
         +'<div style="padding-top:18px"><button class="btn btn-primary" onclick="createCampaign()" style="white-space:nowrap;width:100%"><i class="ti ti-speakerphone"></i> Tạo Campaign</button></div>'
