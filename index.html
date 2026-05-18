@@ -1163,7 +1163,7 @@ async function createCampaign(){
     var grp=saleGroups[saleIds[s]];
     for(var c=0;c<grp.ids.length;c+=500){
       var chunk=grp.ids.slice(c,c+500);
-      await sb.from('customers').update({assigned_to:grp.sale.id,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null}).in('id',chunk);
+      await sb.from('customers').update({assigned_to:grp.sale.id,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'}).in('id',chunk);
     }
   }
   await loadCustomers();showLoading(false);
@@ -1717,11 +1717,11 @@ async function campAssignSelected(){
     var grp=saleGroups[saleIds[s]];
     for(var c=0;c<grp.ids.length;c+=500){
       var chunk=grp.ids.slice(c,c+500);
-      await sb.from('customers').update({assigned_to:grp.sale.id,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null}).in('id',chunk);
+      await sb.from('customers').update({assigned_to:grp.sale.id,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'}).in('id',chunk);
       // Update local
       chunk.forEach(function(cid){
         var idx=CUSTOMERS.findIndex(function(x){return x.id===cid;});
-        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale.id,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null});CUSTOMERS[idx].assigned_profile={id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role};}
+        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale.id,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile={id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role};}
       });
     }
   }
