@@ -337,10 +337,10 @@ async function initApp(user){
   // Load products for all users (only in_stock for sale)
   const isManagerLoad=profile&&(profile.role==='manager'||profile.role==='admin');
   if(isManagerLoad){
-    const {data:allProds}=await sb.from('products').select('*').order('name').limit(500);
+    const {data:allProds}=await sb.from('products').select('*').order('name').limit(1000);
     PRODUCTS_ALL=allProds||[];
   } else {
-    const {data:saleProds}=await sb.from('products').select('*').order('name').limit(500);
+    const {data:saleProds}=await sb.from('products').select('*').order('name').limit(1000);
     PRODUCTS_ALL=saleProds||[];
   }
   const initials=((profile&&profile.full_name)||user.email).split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
@@ -1051,7 +1051,10 @@ function renderCampaign(){
       +'<button class="btn" style="font-size:11px;padding:4px 10px" onclick="window._campPg=1;document.getElementById(&apos;cf-overdue&apos;).value=0;render()">Reset</button>'
       +'<button class="btn" style="font-size:11px;padding:4px 10px" onclick="window._campSelected=new Set();render()"><i class="ti ti-square"></i> Bỏ chọn tất cả</button>'
       +'<button class="btn btn-primary" style="font-size:11px;padding:4px 10px" onclick="campAssignSelected()"><i class="ti ti-user-check"></i> Assign đã chọn</button>'
-      +'<button class="btn" style="font-size:11px;padding:4px 10px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="campRecallSelected()"><i class="ti ti-rotate-clockwise"></i> Thu hồi đã chọn</button>'
+      +'<div style="display:inline-flex">'
+      +'<button class="btn" style="font-size:11px;padding:4px 10px;border-color:rgba(255,118,117,0.4);color:var(--danger);border-right:none;border-radius:9px 0 0 9px" onclick="campRecallSelected()"><i class="ti ti-rotate-clockwise"></i> Thu hồi</button>'
+      +'<button class="btn" style="font-size:11px;padding:4px 7px;border-color:rgba(255,118,117,0.4);color:var(--danger);border-radius:0 9px 9px 0;position:relative" onclick="campRecallDropdown(this)" title="Tùy chọn thu hồi"><i class="ti ti-chevron-down"></i></button>'
+      +'</div>'
       +'</div></div>'
       +(displayData.length===0?'<div class="empty-state"><i class="ti ti-users"></i>Không có khách nào khớp</div>'
         :'<table><colgroup><col width="30"><col width="90"><col width="130"><col width="110"><col width="90"><col width="100"><col width="80"><col width="70"><col width="80"></colgroup>'
@@ -1584,6 +1587,76 @@ async function campRecallOne(id){
   window._campSelected.delete(id);
   showLoading(false);render();
 }
+function campRecallDropdown(btn){
+  var existing=document.getElementById('recall-dropdown');
+  if(existing){existing.remove();return;}
+  // Build sale list từ filtered data hiện tại
+  var fData=campGetFiltered();
+  var saleMap={};
+  fData.forEach(function(c){
+    if(c.assigned_to&&c.assigned_profile){
+      saleMap[c.assigned_to]=c.assigned_profile.full_name;
+    }
+  });
+  var saleEntries=Object.keys(saleMap);
+  var rect=btn.getBoundingClientRect();
+  var drop=document.createElement('div');
+  drop.id='recall-dropdown';
+  drop.style.cssText='position:fixed;top:'+(rect.bottom+4)+'px;right:'+(window.innerWidth-rect.right)+'px;background:#1a1240;border:1px solid rgba(255,118,117,0.3);border-radius:9px;overflow:hidden;z-index:9999;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,0.4)';
+  var html='<div style="padding:6px 12px;font-size:10px;color:rgba(240,238,255,0.4);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,0.06)">Tùy chọn thu hồi</div>';
+  html+='<div onclick="campRecallSelected();document.getElementById(\'recall-dropdown\').remove()" style="padding:9px 14px;font-size:12px;color:#FF7675;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,0.06)" onmouseover="this.style.background=\'rgba(255,118,117,0.08)\'" onmouseout="this.style.background=\'\'"><i class=\"ti ti-checkbox\"></i> Thu hồi đã chọn</div>';
+  if(saleEntries.length>0){
+    html+='<div style="padding:6px 12px;font-size:10px;color:rgba(240,238,255,0.4);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,0.06)">Thu hồi theo Sale</div>';
+    saleEntries.forEach(function(sid){
+      html+='<div onclick="campRecallBySale(\''+sid+'\',\''+saleMap[sid].replace(/'/g,'\\\'') +'\');document.getElementById(\'recall-dropdown\').remove()" style="padding:9px 14px;font-size:12px;color:#FF7675;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background=\'rgba(255,118,117,0.08)\'" onmouseout="this.style.background=\'\'"><i class=\"ti ti-user-minus\"></i> '+saleMap[sid]+'</div>';
+    });
+  } else {
+    html+='<div style="padding:9px 14px;font-size:12px;color:rgba(240,238,255,0.35)">Không có sale nào trong filter</div>';
+  }
+  drop.innerHTML=html;
+  document.body.appendChild(drop);
+  // Đóng khi click ra ngoài
+  setTimeout(function(){
+    document.addEventListener('click',function _close(e){
+      if(!drop.contains(e.target)&&e.target!==btn){drop.remove();document.removeEventListener('click',_close);}
+    });
+  },0);
+}
+
+async function campRecallBySale(saleId,saleName){
+  var fData=campGetFiltered();
+  var targets=fData.filter(function(c){return String(c.assigned_to)===String(saleId);});
+  if(targets.length===0){alert('Không có khách nào của '+saleName+' trong bộ lọc hiện tại!');return;}
+  if(!confirm('Thu hồi '+targets.length+' khách của '+saleName+' trong bộ lọc hiện tại?'))return;
+  showLoading(true);
+  var mgrName=currentProfile?currentProfile.full_name:'';
+  var ids=targets.map(function(c){return c.id;});
+  // Lưu potential_history
+  var historyRows=[];
+  targets.forEach(function(c){
+    if(c.potential){
+      historyRows.push({customer_id:c.id,campaign_name:c.campaign_name||null,potential:c.potential,assigned_to_name:saleName,recalled_by_name:mgrName});
+    }
+  });
+  if(historyRows.length>0){
+    for(var h=0;h<historyRows.length;h+=100){
+      await sb.from('potential_history').insert(historyRows.slice(h,h+100));
+    }
+  }
+  // Batch update
+  for(var i=0;i<ids.length;i+=100){
+    var chunk=ids.slice(i,i+100);
+    await sb.from('customers').update({assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,potential:null}).in('id',chunk);
+  }
+  var idSet=new Set(ids);
+  CUSTOMERS.forEach(function(c){
+    if(idSet.has(c.id))Object.assign(c,{assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,potential:null,assigned_profile:null});
+  });
+  showLoading(false);
+  alert('Đã thu hồi '+targets.length+' khách của '+saleName+'!');
+  render();
+}
+
 async function campRecallSelected(){
   const ids=[...window._campSelected];
   if(ids.length===0){alert('Chưa chọn khách nào!');return;}
