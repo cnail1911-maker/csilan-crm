@@ -336,7 +336,7 @@ async function initApp(user){
   // Load invoices after auth is confirmed
   await loadInvoices();
   // Load products for all users (only in_stock for sale)
-  const isManagerLoad=profile&&(profile.role==='manager'||profile.role==='admin');
+  const isManagerLoad=profile&&(profile.role==='manager'||profile.role==='admin'||profile.role==='leader');
   if(isManagerLoad){
     const {data:allProds}=await sb.from('products').select('*').order('name').limit(1000);
     PRODUCTS_ALL=allProds||[];
@@ -347,11 +347,11 @@ async function initApp(user){
   const initials=((profile&&profile.full_name)||user.email).split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
   document.getElementById('user-avatar').textContent=initials;
   document.getElementById('user-name').textContent=(profile&&profile.full_name)||user.email;
-  document.getElementById('user-role').textContent=profile&&profile.role==='manager'?'Manager':profile&&profile.role==='admin'?'Admin':'Sale';
+  document.getElementById('user-role').textContent=profile&&profile.role==='manager'?'Manager':profile&&profile.role==='admin'?'Admin':profile&&profile.role==='leader'?'Leader':'Sale';
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app-screen').style.display='block';
   // Show products & campaign nav for manager/admin
-  const isManagerInit=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isManagerInit=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const prodNav=document.getElementById('nav-products');
   if(prodNav)prodNav.style.display='flex';
   showLoading(false);render();
@@ -385,7 +385,7 @@ async function loadCustomers(){
   }
   CUSTOMERS=allData;
   // Update pending badge
-  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const pendingCount=isManager
     ?CUSTOMERS.filter(function(c){return c.approval_status==='pending';}).length
     :CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&c.created_by===currentUser.id;}).length;
@@ -398,7 +398,7 @@ async function loadCustomers(){
   
   // Alert badge - potential customers not contacted for 3+ days
   const today=new Date();
-  const isManagerForAlert=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isManagerForAlert=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const todayBadge=new Date();todayBadge.setHours(0,0,0,0);
   const alertCount=CUSTOMERS.filter(function(c){
     if(c.lead_status==='Closedeal')return false;
@@ -423,7 +423,7 @@ async function loadCustomers(){
 // RENDER CUSTOMERS
 // ============================================================
 function renderCustomers(){
-  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const campNames=[...new Set(CUSTOMERS.map(function(c){return c.campaign_name;}).filter(Boolean))].sort();
   // Sale only sees approved+assigned customers
   let data=CUSTOMERS.filter(function(c){
@@ -455,7 +455,7 @@ function renderCustomers(){
   filterHtml+='<select class="fsel" onchange="fBrand=this.value;curPage=1;render()"><option value="all">Tất cả Brand</option>'+BRAND_OPTS.map(function(b){return '<option value="'+b+'"'+(fBrand===b?' selected':'')+'>'+b+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fReason=this.value;curPage=1;render()"><option value="all">Tất cả Reason</option>'+REASON_OPTS.map(function(r){return '<option value="'+r+'"'+(fReason===r?' selected':'')+'>'+r+'</option>';}).join('')+'</select>';
   if(isManager){
-    filterHtml+='<select class="fsel" onchange="fSale=this.value;curPage=1;render()"><option value="all">Tất cả Sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
+    filterHtml+='<select class="fsel" onchange="fSale=this.value;curPage=1;render()"><option value="all">Tất cả Sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
     filterHtml+='<select class="fsel" onchange="fCampaign=this.value;curPage=1;render()"><option value="all">Tất cả Campaign</option><option value="__none__"'+(fCampaign==='__none__'?' selected':'')+'>Chưa thuộc chiến dịch nào</option>'+campNames.map(function(n){return '<option value="'+n+'"'+(fCampaign===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select>';
   }
 
@@ -521,7 +521,7 @@ function renderCustomers(){
 // RENDER POTENTIAL
 // ============================================================
 function renderPotential(){
-  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const potData=CUSTOMERS.filter(function(c){return c.potential&&c.potential.trim()!==''&&(fSale==='all'||c.assigned_to===fSale)&&(fPotential==='all'||c.potential===fPotential);});
   const pageData=potData.slice((potPage-1)*PAGE_SIZE,potPage*PAGE_SIZE);
 
@@ -531,7 +531,7 @@ function renderPotential(){
     if(cnt>0)statsHtml+='<div class="stat-card sc'+(i%4)+'"><div class="stat-label">'+p+'</div><div class="stat-val" style="color:var(--accent)">'+cnt+'</div></div>';
   });
 
-  let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;potPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
+  let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;potPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
   const potFilterHtml='<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fPotential=this.value;potPage=1;render()"><option value="all">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'"'+(fPotential===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select>';
 
   let rows='';
@@ -572,7 +572,7 @@ function renderPotential(){
 // RENDER CLOSEDEAL
 // ============================================================
 function renderClosedeal(){
-  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const pendingInvs=INVOICES.filter(function(i){return i.type==='invoice'&&i.approval_status==='pending';});
   
   let data=INVOICES.filter(function(inv){
@@ -600,7 +600,7 @@ function renderClosedeal(){
   filterHtml+='<select class="fsel" onchange="cdFilterOrder=this.value;cdPage=1;render()"><option value="all">Order Status</option>'+['Đang sản xuất','Đang giao','Đã nhận hàng'].map(function(s){return '<option value="'+s+'"'+(cdFilterOrder===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="cdFilterMonth=this.value;cdPage=1;render()"><option value="all">Tháng</option>'+['1','2','3','4','5','6','7','8','9','10','11','12'].map(function(m){return '<option value="'+m+'"'+(cdFilterMonth===m?' selected':'')+'>T'+m+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="cdFilterYear=this.value;cdPage=1;render()"><option value="all">Năm</option>'+years.map(function(y){return '<option value="'+y+'"'+(cdFilterYear===String(y)?' selected':'')+'>'+y+'</option>';}).join('')+'</select>';
-  if(isManager)filterHtml+='<select class="fsel" onchange="fSale=this.value;cdPage=1;render()"><option value="all">Sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
+  if(isManager)filterHtml+='<select class="fsel" onchange="fSale=this.value;cdPage=1;render()"><option value="all">Sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
 
   let rows='';
   pageData.forEach(function(inv){
@@ -723,7 +723,7 @@ let cdFilterPayment='all',cdFilterOrder='all',cdFilterMonth='all',cdFilterYear='
 
 
 function renderPipeline(){
-  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const pipeColors=['var(--brand2)','var(--warn)','var(--accent2)'];
   const campNames=[...new Set(CUSTOMERS.map(function(c){return c.campaign_name;}).filter(Boolean))].sort();
   if(!window._fPipeCamp)window._fPipeCamp='all';
@@ -733,7 +733,7 @@ function renderPipeline(){
   html+='<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="window._fPipeCamp=this.value;render()"><option value="all">Tất cả Campaign</option>'+campNames.map(function(n){return '<option value="'+n+'"'+(window._fPipeCamp===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select>';
   if(isManager){
     html+='<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()"><option value="all">Tất cả sale</option>'
-      +PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
+      +PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
   }
   html+='</div><div class="content" style="padding:0;overflow:auto"><div class="pipe-grid">';
   STATUS_OPTS.forEach(function(status,i){
@@ -778,7 +778,7 @@ function renderPipeline(){
 // RENDER PENDING
 // ============================================================
 function renderPending(){
-  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const pending=isManager
     ?CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&(fPendingSale==='all'||c.assigned_to===fPendingSale);})
     :CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&c.created_by===currentUser.id;});
@@ -786,7 +786,7 @@ function renderPending(){
     ?CUSTOMERS.filter(function(c){return c.approval_status==='rejected'&&(fPendingSale==='all'||c.assigned_to===fPendingSale);})
     :CUSTOMERS.filter(function(c){return c.approval_status==='rejected'&&c.created_by===currentUser.id;});
 
-  let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fPendingSale=this.value;pdPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fPendingSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
+  let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fPendingSale=this.value;pdPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fPendingSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
 
   const pgPending=pending.slice((pdPage-1)*PAGE_SIZE,pdPage*PAGE_SIZE);
 
@@ -842,7 +842,7 @@ function renderPending(){
 // RENDER ALERT - Potential chưa liên hệ 3+ ngày
 // ============================================================
 function renderAlert(){
-  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const today=new Date();today.setHours(0,0,0,0);
   if(typeof window.alertFPotential==='undefined')window.alertFPotential='all';
 
@@ -880,7 +880,7 @@ function renderAlert(){
     return '<span class="badge b-calling">'+days+' ngày</span>';
   }
   const potentialFilter='<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="window.alertFPotential=this.value;render()"><option value="all">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'"'+(window.alertFPotential===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select>';
-  const saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
+  const saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
   const filtered=alertData.filter(function(c){
     if(!isManager&&currentUser&&c.assigned_to!==currentUser.id)return false;
     if(fSale!=='all'&&c.assigned_to!==fSale)return false;
@@ -953,7 +953,8 @@ async function recallOver30(){
 // RENDER CAMPAIGN
 // ============================================================
 function renderCampaign(){
-  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
+  const isCampManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
   const campaigns={};
   CUSTOMERS.forEach(function(c){
     const name=c.campaign_name||'Không có campaign';
@@ -978,8 +979,8 @@ function renderCampaign(){
       +'</div>';
   });
   let assignForm='';
-  if(isManager){
-    const salesOptions=PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){
+  if(isCampManager){
+    const salesOptions=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){
       return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text);cursor:pointer;padding:4px 10px;border:1px solid var(--border);border-radius:20px;white-space:nowrap"><input type="checkbox" value="'+p.id+'" style="accent-color:var(--brand)"> '+p.full_name+'</label>';
     }).join('');
     const states=[...new Set(CUSTOMERS.map(function(c){return c.state;}).filter(Boolean))].sort();
@@ -1084,7 +1085,7 @@ function renderCampaign(){
         +'<td style="font-size:11px">'+(c.campaign_name||'—')+'</td>'
         +'<td>'+dlBadge+'</td>'
         +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
-        +'<td><button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="campRecallOne('+c.id+')">Thu hồi</button></td>'
+        +'<td>'+(isCampManager?'<button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="campRecallOne('+c.id+')">Thu hồi</button>':'')+'</td>'
         +'</tr>';
     });
     const totalPages=Math.ceil(displayData.length/PAGE_CAMP);
@@ -1108,11 +1109,13 @@ function renderCampaign(){
       +Object.keys(saleMapCamp).map(function(sid){return '<option value="'+sid+'"'+(campSaleFilter===sid?' selected':'')+'>'+saleMapCamp[sid]+'</option>';}).join('')
       +'</select>'
       +'<button class="btn" style="font-size:11px;padding:4px 10px" onclick="window._campSelected=new Set();render()"><i class="ti ti-square"></i> Bỏ chọn tất cả</button>'
-      +'<button class="btn btn-primary" style="font-size:11px;padding:4px 10px" onclick="campAssignSelected()"><i class="ti ti-user-check"></i> Assign đã chọn</button>'
-      +'<div style="display:inline-flex">'
-      +'<button class="btn" style="font-size:11px;padding:4px 10px;border-color:rgba(255,118,117,0.4);color:var(--danger);border-right:none;border-radius:9px 0 0 9px" onclick="campRecallSelected()"><i class="ti ti-rotate-clockwise"></i> Thu hồi</button>'
-      +'<button class="btn" style="font-size:11px;padding:4px 7px;border-color:rgba(255,118,117,0.4);color:var(--danger);border-radius:0 9px 9px 0;position:relative" onclick="campRecallDropdown(this)" title="Tùy chọn thu hồi"><i class="ti ti-chevron-down"></i></button>'
-      +'</div>'
+      +(isCampManager
+        ?'<button class="btn btn-primary" style="font-size:11px;padding:4px 10px" onclick="campAssignSelected()"><i class="ti ti-user-check"></i> Assign đã chọn</button>'
+        +'<div style="display:inline-flex">'
+        +'<button class="btn" style="font-size:11px;padding:4px 10px;border-color:rgba(255,118,117,0.4);color:var(--danger);border-right:none;border-radius:9px 0 0 9px" onclick="campRecallSelected()"><i class="ti ti-rotate-clockwise"></i> Thu hồi</button>'
+        +'<button class="btn" style="font-size:11px;padding:4px 7px;border-color:rgba(255,118,117,0.4);color:var(--danger);border-radius:0 9px 9px 0;position:relative" onclick="campRecallDropdown(this)" title="Tùy chọn thu hồi"><i class="ti ti-chevron-down"></i></button>'
+        +'</div>'
+        :'')
       +'</div></div>'
       +(displayData.length===0?'<div class="empty-state"><i class="ti ti-users"></i>Không có khách nào khớp</div>'
         :'<table><colgroup><col width="30"><col width="90"><col width="130"><col width="110"><col width="90"><col width="100"><col width="80"><col width="70"><col width="80"></colgroup>'
@@ -1181,7 +1184,7 @@ function custAssignDropdown(btn){
   drop.id='cust-assign-dropdown';
   drop.style.cssText='position:fixed;top:'+(rect.bottom+4)+'px;left:'+rect.left+'px;background:#1a1240;border:1px solid rgba(108,92,231,0.3);border-radius:9px;overflow:hidden;z-index:9999;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,0.4)';
   var html='<div style="padding:6px 12px;font-size:10px;color:rgba(240,238,255,0.4);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,0.06)">Chọn Sale để Assign</div>';
-  PROFILES.filter(function(p){return p.role==='sale';}).forEach(function(p){
+  PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).forEach(function(p){
     html+='<div onclick="custAssignToSale(\''+p.id+'\',\''+p.full_name.replace(/'/g,'\\\'') +'\');document.getElementById(\'cust-assign-dropdown\').remove()" style="padding:9px 14px;font-size:12px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,0.04)" onmouseover="this.style.background=\'rgba(108,92,231,0.1)\'" onmouseout="this.style.background=\'\'"><div class="avatar '+saleAvClass(p.id)+'" style="width:20px;height:20px;font-size:9px">'+p.full_name.split(' ').pop().charAt(0)+'</div>'+p.full_name+'</div>';
   });
   drop.innerHTML=html;
@@ -1241,7 +1244,7 @@ async function addToCampaign(campName){
   const allSaleCb=document.getElementById('camp-sale-all');
   let salesList=[];
   if(allSaleCb&&allSaleCb.checked){
-    salesList=PROFILES.filter(function(p){return p.role==='sale';});
+    salesList=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';});
   } else {
     const checked=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all):checked');
     const ids=Array.from(checked).map(function(cb){return cb.value;});
@@ -1301,7 +1304,7 @@ async function createCampaign(){
   const allSaleCb=document.getElementById('camp-sale-all');
   let salesList=[];
   if(allSaleCb&&allSaleCb.checked){
-    salesList=PROFILES.filter(function(p){return p.role==='sale';});
+    salesList=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';});
   } else {
     const checked=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all):checked');
     const ids=Array.from(checked).map(function(cb){return cb.value;});
@@ -1362,7 +1365,7 @@ function renderProducts(){
   const pgProd=Math.max(1,parseInt(sessionStorage.getItem('prodMgPage')||'1'));
   let prodSearch=sessionStorage.getItem('prodMgSearch')||'';
   const fVendor=sessionStorage.getItem('prodVendor')||'all';
-  const isManagerProd=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isManagerProd=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const filtered=PRODUCTS_ALL.filter(function(p){
     if(fVendor!=='all'&&p.brand!==fVendor)return false;
     if(!isManagerProd&&!p.in_stock)return false;
@@ -1574,7 +1577,7 @@ async function toggleActive(id,val){
 
 
 function renderKPI(){
-  const salesToShow=PROFILES.filter(function(p){return p.role==='sale';});
+  const salesToShow=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';});
   let statsHtml='';
   const allWon=CUSTOMERS.filter(function(c){return c.lead_status==='Closedeal';}).length;
   const allFU=CUSTOMERS.filter(function(c){return c.status==='Follow Up';}).length;
@@ -1645,12 +1648,12 @@ async function renderDetailModal(customerId){
   const c=CUSTOMERS.find(function(x){return x.id===customerId;});
   if(!c)return;
   const {data:logs}=await sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId).order('called_at',{ascending:false}).limit(15);
-  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const modal=document.createElement('div');
   modal.className='modal-overlay';modal.id='detail-modal';
   modal.onclick=function(e){if(e.target===modal){modal.remove();selId=null;}};
 
-  let saleField=isManager?('<div class="field"><label>Sale Assigned</label><select id="d-sale">'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(c.assigned_to===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select></div>'):'';
+  let saleField=isManager?('<div class="field"><label>Sale Assigned</label><select id="d-sale">'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(c.assigned_to===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select></div>'):'';
 
   let logHtml='<div style="font-size:12px;color:var(--text3)">Chưa có ghi chú</div>';
   if(logs&&logs.length>0){
@@ -1770,7 +1773,7 @@ function renderAddModal(){
   const modal=document.createElement('div');
   modal.className='modal-overlay';modal.id='add-modal';
   modal.onclick=function(e){if(e.target===modal){modal.remove();addOpen=false;}};
-  const salePH=PROFILES.filter(function(p){return p.role==='sale';});
+  const salePH=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';});
   modal.innerHTML='<div class="modal" onclick="event.stopPropagation()">'
     +'<div class="modal-header"><h3>Thêm khách hàng mới</h3>'
     +'<button class="btn" style="padding:4px 8px" onclick="document.getElementById(\'add-modal\').remove();addOpen=false"><i class="ti ti-x"></i></button></div>'
@@ -1902,7 +1905,7 @@ async function doRecall(){
 
 
 function renderGuide(){
-  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const tpl=document.getElementById('guide-tpl');
   const guideHtml=tpl?tpl.innerHTML:'';
   // Show/hide manager section
@@ -2057,7 +2060,7 @@ async function campAssignSelected(){
   if(!deadline){alert('Vui lòng chọn Deadline!');return;}
   const allSaleCb=document.getElementById('camp-sale-all');
   let salesList=[];
-  if(allSaleCb&&allSaleCb.checked){salesList=PROFILES.filter(function(p){return p.role==='sale';});}
+  if(allSaleCb&&allSaleCb.checked){salesList=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';});}
   else{const checked=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all):checked');const sIds=Array.from(checked).map(function(cb){return cb.value;});salesList=PROFILES.filter(function(p){return sIds.includes(p.id);});}
   if(salesList.length===0){alert('Vui lòng chọn ít nhất 1 sale!');return;}
   if(!confirm('Assign '+ids.length+' khách đã chọn vào Campaign "'+name+'"?'))return;
@@ -2105,7 +2108,7 @@ async function campAssignSelected(){
 
 // ── FIX 3+4: DAILY TAB ──
 async function renderDailyData(){
-  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const today=new Date();
   const defFrom=new Date(today);defFrom.setDate(today.getDate()-6);
   const fFrom=window._dailyFrom||defFrom.toISOString().slice(0,10);
@@ -2125,7 +2128,7 @@ async function renderDailyData(){
   const {data:potHist}=await sb.from('potential_history').select('customer_id,assigned_to_id,potential,recalled_at').gte('recalled_at',fromDt).lte('recalled_at',toDt);
 
   const salesToShow=isManager
-    ?(fSaleDaily==='all'?PROFILES.filter(function(p){return p.role==='sale';}):PROFILES.filter(function(p){return p.id===fSaleDaily;}))
+    ?(fSaleDaily==='all'?PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}):PROFILES.filter(function(p){return p.id===fSaleDaily;}))
     :[currentProfile];
 
   const dates=[];
@@ -2207,7 +2210,7 @@ async function renderDailyData(){
 
 // ── FIX 5: SCHEDULE TAB ──
 function renderSchedule(){
-  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const today=new Date();today.setHours(0,0,0,0);
 
   // Customers with Appointment Set sub_status
@@ -2279,7 +2282,7 @@ function render(){
   else if(page==='guide')m.innerHTML=renderGuide();
   else if(page==='daily'){
     // Render shell synchronously, load data async
-    const isManagerD=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+    const isManagerD=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
     const todayD=new Date();
     const defFromD=new Date(todayD);defFromD.setDate(todayD.getDate()-6);
     const fFromD=window._dailyFrom||defFromD.toISOString().slice(0,10);
@@ -2291,7 +2294,7 @@ function render(){
       +'<input type="date" id="daily-from" value="'+fFromD+'" onchange="window._dailyFrom=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">'
       +'<div style="font-size:11px;color:var(--text3)">đến</div>'
       +'<input type="date" id="daily-to" value="'+fToD+'" onchange="window._dailyTo=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">'
-      +(isManagerD?'<select id="daily-sale" onchange="window._dailySale=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none" class="fsel"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSaleD===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>':'')
+      +(isManagerD?'<select id="daily-sale" onchange="window._dailySale=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none" class="fsel"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fSaleD===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>':'')
       +'<button class="btn btn-primary" style="font-size:12px;padding:6px 14px" onclick="window._dailyFrom=document.getElementById(&quot;daily-from&quot;).value;window._dailyTo=document.getElementById(&quot;daily-to&quot;).value;var ds=document.getElementById(&quot;daily-sale&quot;);window._dailySale=ds?ds.value:&quot;all&quot;;renderDailyData()"><i class="ti ti-search"></i> Lọc</button>'
       +'</div><div id="daily-content" style="color:var(--text2);font-size:13px;padding:20px 0"><div style="display:flex;align-items:center;gap:10px"><div style="width:20px;height:20px;border:2px solid var(--brand2);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></div> Đang tải dữ liệu...</div></div></div>';
     renderDailyData();
