@@ -1343,41 +1343,52 @@ async function createCampaign(){
 // ============================================================
 // RENDER PRODUCTS (Manager only)
 // ============================================================
+const VENDOR_OPTS=['BOLSA','ONS','TSPA'];
 function renderProducts(){
   const pgProd=Math.max(1,parseInt(sessionStorage.getItem('prodMgPage')||'1'));
   let prodSearch=sessionStorage.getItem('prodMgSearch')||'';
+  const fVendor=sessionStorage.getItem('prodVendor')||'all';
+  const isManagerProd=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
   const filtered=PRODUCTS_ALL.filter(function(p){
+    if(fVendor!=='all'&&p.brand!==fVendor)return false;
+    if(!isManagerProd&&!p.in_stock)return false;
     return !prodSearch||(p.name||'').toLowerCase().includes(prodSearch.toLowerCase())||(p.sku||'').toLowerCase().includes(prodSearch.toLowerCase());
   });
   const pageData=filtered.slice((pgProd-1)*PAGE_SIZE,pgProd*PAGE_SIZE);
-
-  const isManagerProd=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
   let rows='';
   pageData.forEach(function(p){
-    rows+='<tr>'
+    const isActive=p.is_active!==false;
+    rows+='<tr style="'+(isActive?'':'opacity:0.5')+'">'
       +'<td style="font-size:10px;font-family:monospace;color:var(--text3)">'+(p.sku||'—')+'</td>'
       +'<td><div style="display:flex;align-items:center;gap:8px">'
-      +(p.image_url?'<img src="'+p.image_url+'" style="width:32px;height:32px;border-radius:4px;object-fit:cover;background:var(--surface2)" alt="">':'<div style="width:32px;height:32px;border-radius:4px;background:var(--surface2)"></div>')
-      +'<span style="color:var(--text)">'+(p.name||'—')+'</span></div></td>'
+      +(p.image_url?'<img src="'+p.image_url+'" style="width:36px;height:36px;border-radius:6px;object-fit:cover;background:var(--surface2)" alt="">':'<div style="width:36px;height:36px;border-radius:6px;background:var(--surface2);display:flex;align-items:center;justify-content:center"><i class=\"ti ti-photo\" style=\"color:var(--text3)\"></i></div>')
+      +'<div><div style="color:var(--text)">'+(p.name||'—')+'</div>'+(p.variant?'<div style="font-size:10px;color:var(--text3)">'+p.variant+'</div>':'')+'</div></div></td>'
       +'<td style="font-size:11px">'+(p.brand||'—')+'</td>'
-      +'<td style="font-size:11px">'+(p.variant||'—')+'</td>'
       +'<td style="color:var(--accent2);font-weight:600">$'+(p.price||0)+'</td>'
       +'<td>'+(p.in_stock?'<span class="badge b-won">In Stock</span>':'<span class="badge b-lost">Out</span>')+'</td>'
-      +(isManagerProd?'<td><div style="display:flex;gap:4px"><button class="btn" style="padding:3px 8px;font-size:10px" onclick="toggleStock('+p.id+','+(p.in_stock?'false':'true')+')">'+(p.in_stock?'Ẩn':'Hiện')+'</button></div></td>':'<td></td>')
+      +(isManagerProd
+        ?'<td><div style="display:flex;gap:4px">'
+          +'<button class="btn" style="padding:3px 8px;font-size:10px" onclick="openProdForm('+p.id+')"><i class="ti ti-edit"></i> Sửa</button>'
+          +'<button class="btn" style="padding:3px 8px;font-size:10px" onclick="toggleStock('+p.id+','+(p.in_stock?'false':'true')+')">'+(p.in_stock?'Ẩn':'Hiện')+'</button>'
+          +'<button class="btn" style="padding:3px 8px;font-size:10px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="toggleActive('+p.id+','+(isActive?'false':'true')+')">'+(isActive?'Deactive':'Active')+'</button>'
+          +'</div></td>'
+        :'<td></td>')
       +'</tr>';
   });
-
+  const vendorFilter='<select class=\"fsel\" onchange=\"sessionStorage.setItem('prodVendor',this.value);sessionStorage.setItem('prodMgPage',1);render()\">'
+    +'<option value=\"all\"'+(fVendor==='all'?' selected':'')+'>Tất cả Vendor</option>'
+    +VENDOR_OPTS.map(function(v){return '<option value=\"'+v+'\"'+(fVendor===v?' selected':'')+'>'+v+'</option>';}).join('')
+    +'</select>';
   return '<div class="topbar"><div class="topbar-title">'+(isManagerProd?'Quản lý sản phẩm':'Sản phẩm')+'</div>'
     +'<div class="search-wrap"><i class="ti ti-search"></i><input id="prod-mg-search" placeholder="Tìm SKU, tên sản phẩm..." oninput="clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){prodMgFilter(document.getElementById(&quot;prod-mg-search&quot;).value);},120)" value="'+prodSearch+'"></div>'
-    +'<span style="font-size:12px;color:var(--text2)">'+filtered.length+' sản phẩm</span>'
+    +vendorFilter
+    +(isManagerProd?'<button class=\"btn btn-primary\" onclick=\"openProdForm(null)\"><i class=\"ti ti-plus\"></i> Thêm sản phẩm</button>':'')
     +'</div>'
     +'<div class="content">'
-    +'<div class="panel"><div class="panel-header"><h2>Danh sách sản phẩm</h2>'
-    +'<span style="font-size:11px;color:var(--text3)">Ẩn/Hiện để quản lý sản phẩm hoạt động</span>'
-    +'</div>'
-    +(filtered.length===0?'<div class="empty-state"><i class="ti ti-package"></i>Không tìm thấy sản phẩm</div>'
-      :'<table><colgroup><col width="80"><col width="200"><col width="80"><col width="80"><col width="70"><col width="70"><col width="80"></colgroup>'
-      +'<thead><tr><th>SKU</th><th>Sản phẩm</th><th>Brand</th><th>Variant</th><th>Giá</th><th>Trạng thái</th><th></th></tr></thead>'
+    +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style=\"color:var(--brand2)\">'+filtered.length+'</span> sản phẩm</h2></div>'
+    +(filtered.length===0?'<div class=\"empty-state\"><i class=\"ti ti-package\"></i>Không tìm thấy sản phẩm</div>'
+      :'<table><colgroup><col width=\"80\"><col><col width=\"70\"><col width=\"80\"><col width=\"80\"><col width=\"150\"></colgroup>'
+      +'<thead><tr><th>SKU</th><th>Sản phẩm</th><th>Vendor</th><th>Giá</th><th>Tồn kho</th>'+(isManagerProd?'<th></th>':'')+'</tr></thead>'
       +'<tbody>'+rows+'</tbody></table>'
       +pgBar(filtered.length,pgProd,PAGE_SIZE,'setProdMgPage'))
     +'</div></div>';
@@ -1392,13 +1403,147 @@ function prodMgFilter(v){
   if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}
 }
 
+function suggestNextSku(prefix){
+  if(!prefix||prefix.length<3)return '';
+  const pfx=prefix.toUpperCase();
+  var maxNum=0;
+  PRODUCTS_ALL.forEach(function(p){
+    if(!p.sku)return;
+    var sku=p.sku.toUpperCase();
+    if(sku.startsWith(pfx)){var rest=sku.slice(pfx.length);var num=parseInt(rest,10);if(!isNaN(num)&&num>maxNum)maxNum=num;}
+  });
+  if(maxNum===0)return '';
+  var next=maxNum+1;
+  var padLen=String(maxNum).length;
+  return pfx+String(next).padStart(padLen,'0');
+}
+
+function onSkuInput(val){
+  var suggest=document.getElementById('sku-suggest');
+  if(!suggest)return;
+  if(!val||val.length<3){suggest.style.display='none';return;}
+  var next=suggestNextSku(val);
+  if(next&&next!==val.toUpperCase()){
+    suggest.textContent='Gợi ý: '+next+' (click để dùng)';
+    suggest.dataset.val=next;
+    suggest.style.display='block';
+  } else {suggest.style.display='none';}
+}
+
+function previewProdImg(input){
+  if(!input.files||!input.files[0])return;
+  var url=URL.createObjectURL(input.files[0]);
+  var prev=document.getElementById('prod-img-preview');
+  if(prev)prev.src=url;
+}
+
+function openProdForm(id){
+  var p=id?PRODUCTS_ALL.find(function(x){return x.id===id;}):null;
+  var m=document.createElement('div');
+  m.className='modal-overlay';m.id='prod-form-modal';
+  m.onclick=function(e){if(e.target===m)m.remove();};
+  var imgSrc=p&&p.image_url?p.image_url:'';
+  var imgHtml=imgSrc
+    ?'<img id="prod-img-preview" src="'+imgSrc+'" style="width:80px;height:80px;border-radius:8px;object-fit:cover;margin-bottom:6px;display:block" alt="">'
+    :'<div id="prod-img-preview-ph" style="width:80px;height:80px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;margin-bottom:6px"><i class=\"ti ti-photo\" style=\"font-size:24px;color:var(--text3)\"></i></div>';
+  m.innerHTML='<div class="modal" style="max-width:480px;width:100%">'
+    +'<div class="modal-header"><h3>'+(p?'Sửa sản phẩm':'Thêm sản phẩm mới')+'</h3>'
+    +'<button class="modal-close" onclick="document.getElementById('prod-form-modal').remove()">✕</button></div>'
+    +'<div style="padding:16px;display:flex;flex-direction:column;gap:12px">'
+    +'<div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px">'
+    +imgHtml
+    +'<label class="btn" style="font-size:11px;padding:4px 10px;cursor:pointer"><i class="ti ti-upload"></i> Chọn hình'
+    +'<input type="file" id="prod-img-file" accept="image/*" style="display:none" onchange="previewProdImg(this)"></label>'
+    +'<div id="prod-upload-status" style="font-size:10px;color:var(--text3)"></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">SKU</div>'
+    +'<input id="pf-sku" value="'+(p&&p.sku?p.sku:'')+'" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 9px;font-size:12px;color:var(--text);outline:none" placeholder="FUR-T12" oninput="onSkuInput(this.value)">'
+    +'<div id="sku-suggest" style="font-size:10px;color:var(--brand2);margin-top:3px;cursor:pointer;display:none" onclick="document.getElementById('pf-sku').value=this.dataset.val;this.style.display='none'"></div>'
+    +'</div>'
+    +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">Vendor</div>'
+    +'<select id="pf-brand" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 9px;font-size:12px;color:var(--text);outline:none">'
+    +VENDOR_OPTS.map(function(v){return '<option value="'+v+'"'+(p&&p.brand===v?' selected':'')+'>'+v+'</option>';}).join('')
+    +'</select></div></div>'
+    +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">Tên sản phẩm</div>'
+    +'<input id="pf-name" value="'+(p&&p.name?p.name:'')+'" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 9px;font-size:12px;color:var(--text);outline:none" placeholder="Tên sản phẩm..."></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">Variant</div>'
+    +'<input id="pf-variant" value="'+(p&&p.variant?p.variant:'')+'" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 9px;font-size:12px;color:var(--text);outline:none" placeholder="Color, size..."></div>'
+    +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">Giá ($)</div>'
+    +'<input id="pf-price" type="number" value="'+(p&&p.price?p.price:'')+'" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 9px;font-size:12px;color:var(--text);outline:none" placeholder="0"></div></div>'
+    +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">Mô tả</div>'
+    +'<textarea id="pf-desc" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 9px;font-size:12px;color:var(--text);outline:none;resize:vertical;min-height:60px">'+(p&&p.description?p.description:'')+'</textarea></div>'
+    +'<div style="display:flex;gap:16px">'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="pf-stock" '+((!p||p.in_stock!==false)?'checked':'')+' style="accent-color:var(--brand)"> In Stock</label>'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="pf-active" '+((!p||p.is_active!==false)?'checked':'')+' style="accent-color:var(--brand)"> Active</label>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +'<button class="btn" onclick="document.getElementById('prod-form-modal').remove()">Hủy</button>'
+    +'<button class="btn btn-primary" onclick="saveProd('+(p?p.id:'null')+')"><i class="ti ti-check"></i> '+(p?'Cập nhật':'Thêm mới')+'</button>'
+    +'</div></div></div>';
+  document.body.appendChild(m);
+}
+
+async function saveProd(id){
+  var sku=(document.getElementById('pf-sku').value||'').trim().toUpperCase();
+  var name=(document.getElementById('pf-name').value||'').trim();
+  if(!name){alert('Vui lòng nhập tên sản phẩm!');return;}
+  if(!sku){alert('Vui lòng nhập SKU!');return;}
+  var dupSku=PRODUCTS_ALL.find(function(p){return p.sku&&p.sku.toUpperCase()===sku&&p.id!==id;});
+  if(dupSku){alert('SKU "'+sku+'" đã tồn tại! ('+dupSku.name+')');return;}
+  showLoading(true);
+  var imageUrl=id?((PRODUCTS_ALL.find(function(p){return p.id===id;})||{}).image_url||null):null;
+  var fileInput=document.getElementById('prod-img-file');
+  if(fileInput&&fileInput.files&&fileInput.files[0]){
+    var file=fileInput.files[0];
+    var ext=file.name.split('.').pop().toLowerCase();
+    var fileName=sku+'.'+ext;
+    var statusEl=document.getElementById('prod-upload-status');
+    if(statusEl)statusEl.textContent='Đang upload hình...';
+    var upRes=await sb.storage.from('products').upload(fileName,file,{upsert:true,contentType:file.type});
+    if(upRes.error){showLoading(false);alert('Lỗi upload hình: '+upRes.error.message);return;}
+    var urlData=sb.storage.from('products').getPublicUrl(fileName);
+    imageUrl=urlData&&urlData.data?urlData.data.publicUrl:null;
+    if(statusEl)statusEl.textContent='Upload thành công!';
+  }
+  var payload={sku:sku,name:name,brand:document.getElementById('pf-brand').value,
+    variant:(document.getElementById('pf-variant').value||'').trim()||null,
+    price:parseFloat(document.getElementById('pf-price').value)||0,
+    description:(document.getElementById('pf-desc').value||'').trim()||null,
+    in_stock:document.getElementById('pf-stock').checked,
+    is_active:document.getElementById('pf-active').checked,
+    updated_at:new Date().toISOString()};
+  if(imageUrl)payload.image_url=imageUrl;
+  if(id){
+    var res=await sb.from('products').update(payload).eq('id',id);
+    if(res.error){showLoading(false);alert('Lỗi: '+res.error.message);return;}
+    var idx=PRODUCTS_ALL.findIndex(function(p){return p.id===id;});
+    if(idx>=0)Object.assign(PRODUCTS_ALL[idx],payload);
+  } else {
+    payload.created_at=new Date().toISOString();
+    var ins=await sb.from('products').insert(payload).select().single();
+    if(ins.error){showLoading(false);alert('Lỗi: '+ins.error.message);return;}
+    if(ins.data)PRODUCTS_ALL.unshift(ins.data);
+  }
+  document.getElementById('prod-form-modal')&&document.getElementById('prod-form-modal').remove();
+  showLoading(false);render();
+}
+
 async function toggleStock(id,val){
   await sb.from('products').update({in_stock:val}).eq('id',id);
-  // Update local cache
   const p=PRODUCTS_ALL.find(function(x){return x.id===id;});
   if(p)p.in_stock=val;
   render();
 }
+
+async function toggleActive(id,val){
+  await sb.from('products').update({is_active:val}).eq('id',id);
+  const p=PRODUCTS_ALL.find(function(x){return x.id===id;});
+  if(p)p.is_active=val;
+  render();
+}
+
 
 function renderKPI(){
   const salesToShow=PROFILES.filter(function(p){return p.role==='sale';});
