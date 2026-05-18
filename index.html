@@ -1728,7 +1728,9 @@ async function saveDetail(customerId){
     }
   }
   document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
-  selId=null;showLoading(false);render();
+  selId=null;showLoading(false);
+  if(page==='daily')renderDailyData();
+  else render();
 }
 
 function openInvoice(customerId){
