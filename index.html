@@ -428,9 +428,11 @@ function renderCustomers(){
   // Sale only sees approved+assigned customers
   let data=CUSTOMERS.filter(function(c){
     if(!isManager){
-      // RLS đã filter đúng, chỉ cần ẩn pending của người khác
+      // Only show approved/null (imported) data assigned to this sale
       if(c.approval_status==='pending'&&c.created_by!==currentUser.id)return false;
       if(c.assigned_to!==currentUser.id&&c.created_by!==currentUser.id)return false;
+      // Must be approved or null (imported CSV data) - not rejected
+      if(c.approval_status==='rejected')return false;
     }
     if(fStatus!=='all'&&c.status!==fStatus)return false;
     if(fSale!=='all'&&c.assigned_to!==fSale)return false;
@@ -943,7 +945,7 @@ function renderCampaign(){
     const campNames=[...new Set(CUSTOMERS.map(function(c){return c.campaign_name;}).filter(Boolean))].sort();
     function fOpts(arr,id,label){
       return '<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">'+label+'</div>'
-        +'<select id="'+id+'" onchange="campPreview()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'
+        +'<select id="'+id+'" onchange="campSyncFilters();window._campPg=1;campPreview();render()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'
         +'<option value="all">Tất cả</option>'
         +arr.map(function(v){return '<option value="'+v+'">'+v+'</option>';}).join('')
         +'</select></div>';
@@ -978,7 +980,7 @@ function renderCampaign(){
       +'</div>'
       +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">'
         +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Thuộc chiến dịch</div>'
-        +'<select id="cf-campaign" onchange="campPreview()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'
+        +'<select id="cf-campaign" onchange="campSyncFilters();window._campPg=1;campPreview();render()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'
         +'<option value="all">Tất cả</option>'
         +'<option value="none">Chưa thuộc chiến dịch nào</option>'
         +campNames.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('')
@@ -1061,27 +1063,28 @@ function renderCampaign(){
     +'</div>';
 }
 
+// Store filter state persistently
+window._campFilters={state:'all',status:'all',substatus:'all',lead:'all',brand:'all',potential:'all',timeuse:'all',reason:'all',campaign:'all'};
+function campSyncFilters(){
+  ['state','status','substatus','lead','brand','potential','timeuse','reason','campaign'].forEach(function(k){
+    var el=document.getElementById('cf-'+k);
+    if(el&&el.value)window._campFilters[k]=el.value;
+  });
+}
 function campGetFiltered(){
-  const state=document.getElementById('cf-state')&&document.getElementById('cf-state').value;
-  const status=document.getElementById('cf-status')&&document.getElementById('cf-status').value;
-  const substatus=document.getElementById('cf-substatus')&&document.getElementById('cf-substatus').value;
-  const lead=document.getElementById('cf-leadstatus')&&document.getElementById('cf-leadstatus').value;
-  const brand=document.getElementById('cf-brand')&&document.getElementById('cf-brand').value;
-  const potential=document.getElementById('cf-potential')&&document.getElementById('cf-potential').value;
-  const timeuse=document.getElementById('cf-timeuse')&&document.getElementById('cf-timeuse').value;
-  const reason=document.getElementById('cf-reason')&&document.getElementById('cf-reason').value;
-  const campaign=document.getElementById('cf-campaign')&&document.getElementById('cf-campaign').value;
+  campSyncFilters();
+  var f=window._campFilters;
   return CUSTOMERS.filter(function(c){
-    if(state&&state!=='all'&&c.state!==state)return false;
-    if(status&&status!=='all'&&c.status!==status)return false;
-    if(substatus&&substatus!=='all'&&c.sub_status!==substatus)return false;
-    if(lead&&lead!=='all'&&c.lead_status!==lead)return false;
-    if(brand&&brand!=='all'&&c.brand!==brand)return false;
-    if(potential&&potential!=='all'&&c.potential!==potential)return false;
-    if(timeuse&&timeuse!=='all'&&c.time_of_use!==timeuse)return false;
-    if(reason&&reason!=='all'&&c.reason!==reason)return false;
-    if(campaign&&campaign==='none'&&c.campaign_name)return false;
-    if(campaign&&campaign!=='all'&&campaign!=='none'&&c.campaign_name!==campaign)return false;
+    if(f.state&&f.state!=='all'&&c.state!==f.state)return false;
+    if(f.status&&f.status!=='all'&&c.status!==f.status)return false;
+    if(f.substatus&&f.substatus!=='all'&&c.sub_status!==f.substatus)return false;
+    if(f.lead&&f.lead!=='all'&&c.lead_status!==f.lead)return false;
+    if(f.brand&&f.brand!=='all'&&c.brand!==f.brand)return false;
+    if(f.potential&&f.potential!=='all'&&c.potential!==f.potential)return false;
+    if(f.timeuse&&f.timeuse!=='all'&&c.time_of_use!==f.timeuse)return false;
+    if(f.reason&&f.reason!=='all'&&c.reason!==f.reason)return false;
+    if(f.campaign&&f.campaign==='none'&&c.campaign_name)return false;
+    if(f.campaign&&f.campaign!=='all'&&f.campaign!=='none'&&c.campaign_name!==f.campaign)return false;
     return true;
   });
 }
@@ -1091,10 +1094,13 @@ function campPreview(){
   if(el)el.innerHTML='<span style="color:var(--text3);font-size:11px;margin-right:6px">Data đã lọc:</span>'+filtered.length+' khách';
 }
 function campResetFilters(){
-  ['cf-state','cf-status','cf-substatus','cf-leadstatus','cf-brand','cf-potential','cf-timeuse','cf-reason','cf-campaign'].forEach(function(id){
-    const el=document.getElementById(id);if(el)el.value='all';
+  ['state','status','substatus','lead','brand','potential','timeuse','reason','campaign'].forEach(function(k){
+    window._campFilters[k]='all';
+    var el=document.getElementById('cf-'+k);if(el)el.value='all';
   });
+  window._campPg=1;
   campPreview();
+  render();
 }
 function toggleAllSales(cb){
   const boxes=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all)');
@@ -1586,6 +1592,7 @@ async function renderDaily(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
   const m=document.getElementById('main');
   if(!m)return;
+  window._dailyLoading=true;
   const today=new Date();
   const defFrom=new Date(today);defFrom.setDate(today.getDate()-6);
   const fFrom=document.getElementById('daily-from')&&document.getElementById('daily-from').value||defFrom.toISOString().slice(0,10);
@@ -1605,8 +1612,8 @@ async function renderDaily(){
   // Load call_logs in date range
   const fromDt=fFrom+'T00:00:00';
   const toDt=fTo+'T23:59:59';
-  let logsQ=sb.from('call_logs').select('*').gte('called_at',fromDt).lte('called_at',toDt);
-  const {data:logs}=await logsQ;
+  // Try called_at first, fallback to created_at
+  let {data:logs}=await sb.from('call_logs').select('*').gte('created_at',fromDt).lte('created_at',toDt);
 
   // Load invoices in date range
   const {data:invs}=await sb.from('invoices').select('*').gte('created_at',fromDt).lte('created_at',toDt);
@@ -1631,7 +1638,7 @@ async function renderDaily(){
     // Count unique customers touched per day
     const byDate={};
     saleLogs.forEach(function(l){
-      const day=l.called_at?l.called_at.slice(0,10):'';
+      const day=l.created_at?l.created_at.slice(0,10):(l.called_at?l.called_at.slice(0,10):'');
       if(!day)return;
       if(!byDate[day])byDate[day]=new Set();
       byDate[day].add(l.customer_id);
@@ -1682,6 +1689,7 @@ async function renderDaily(){
       +'</tr>'+dayRows;
   });
 
+  window._dailyLoading=false;
   const dc=document.getElementById('daily-content');
   if(dc){
     dc.innerHTML='<div class="panel"><div class="panel-header"><h2>Daily Report <span style="font-size:11px;color:var(--text3);font-weight:400">'+fFrom+' → '+fTo+'</span></h2></div>'
@@ -1763,7 +1771,7 @@ function render(){
   else if(page==='alert')m.innerHTML=renderAlert();
   else if(page==='products')m.innerHTML=renderProducts();
   else if(page==='guide')m.innerHTML=renderGuide();
-  else if(page==='daily')renderDaily();
+  else if(page==='daily'){if(!window._dailyLoading)renderDaily();}
   else if(page==='schedule')m.innerHTML=renderSchedule();
   if(selId&&!document.getElementById('detail-modal'))renderDetailModal(selId);
   if(addOpen&&!document.getElementById('add-modal'))renderAddModal();
