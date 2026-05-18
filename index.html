@@ -1274,12 +1274,57 @@ async function renderDetailModal(customerId){
   if(!c)return;
   const {data:logs}=await sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId).order('called_at',{ascending:false}).limit(15);
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  // Load call_logs summary for sale (count + last date + last substatus)
+  var callCount=(logs||[]).length;
+  var lastContact=logs&&logs.length>0?(logs[0].called_at||logs[0].created_at):null;
+  // Load potential_history (manager: full detail; sale: count only)
+  var potHistory=[];
+  if(isManager){
+    var {data:phData}=await sb.from('potential_history').select('*').eq('customer_id',customerId).order('recalled_at',{ascending:false});
+    potHistory=phData||[];
+  } else {
+    var {data:phCount}=await sb.from('potential_history').select('id').eq('customer_id',customerId);
+    potHistory=phCount||[];
+  }
   const modal=document.createElement('div');
   modal.className='modal-overlay';modal.id='detail-modal';
   modal.onclick=function(e){if(e.target===modal){modal.remove();selId=null;}};
 
   let saleField=isManager?('<div class="field"><label>Sale Assigned</label><select id="d-sale">'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(c.assigned_to===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select></div>'):'';
 
+  // Build potential history block
+  var potHistHtml='';
+  if(potHistory.length>0){
+    if(isManager){
+      var phRows='';
+      potHistory.forEach(function(h){
+        var dt=h.recalled_at?new Date(h.recalled_at).toLocaleDateString('vi-VN'):'—';
+        phRows+='<div style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
+          +'<div style="width:6px;height:6px;border-radius:50%;background:var(--warn);flex-shrink:0;margin-top:5px"></div>'
+          +'<div style="flex:1">'
+          +'<div style="font-size:11px;color:var(--text);font-weight:600">'+(h.campaign_name||'—')+'</div>'
+          +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'
+          +'Potential: <span style="color:var(--accent2)">'+(h.potential||'—')+'</span>'
+          +' · Sale: '+(h.assigned_to_name||'—')
+          +' · Thu hồi: '+dt
+          +'</div></div></div>';
+      });
+      potHistHtml='<div style="border-top:1px solid rgba(255,255,255,0.08);margin:12px 0 10px;padding-top:12px">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--warn);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">📋 Lịch sử chiến dịch Potential</div>'
+        +phRows+'</div>';
+    } else {
+      // Sale: chỉ thấy summary, không thấy chi tiết
+      potHistHtml='<div style="border-top:1px solid rgba(255,255,255,0.08);margin:12px 0 10px;padding-top:12px">'
+        +'<div style="background:rgba(253,203,110,0.08);border:1px solid rgba(253,203,110,0.25);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px">'
+        +'<i class="ti ti-info-circle" style="color:var(--warn);font-size:16px;flex-shrink:0"></i>'
+        +'<div><div style="font-size:12px;color:var(--text);font-weight:600">Khách đã có lịch sử làm việc trước</div>'
+        +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'
+        +(callCount>0?callCount+' lần liên hệ'+(lastContact?' · Lần cuối: '+new Date(lastContact).toLocaleDateString('vi-VN'):''):'Chưa có lần liên hệ nào được ghi nhận')
+        +'</div>'
+        +'<div style="font-size:10px;color:var(--text3);margin-top:3px">🔒 Chi tiết chỉ Manager xem được</div>'
+        +'</div></div></div>';
+    }
+  }
   let logHtml='<div style="font-size:12px;color:var(--text3)">Chưa có ghi chú</div>';
   if(logs&&logs.length>0){
     logHtml='';
@@ -1315,6 +1360,7 @@ async function renderDetailModal(customerId){
     +'<div class="field"><label>Trạng thái data</label><div style="padding:8px;font-size:12px;color:'+(c.potential?'var(--accent2)':'var(--text3)')+'">'+(c.potential?'Giữ lại (có Potential)':'Thu hồi khi hết deadline')+'</div></div></div>'
     +'<div class="field"><label>Description</label><textarea id="d-desc">'+(c.description||'')+'</textarea></div>'
     +saleField
+    +potHistHtml
     +'<div style="border-top:1px solid rgba(255,255,255,0.08);margin:12px 0 10px;padding-top:12px">'
     +'<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Lịch sử liên hệ</div>'
     +logHtml+'</div>'
@@ -1550,9 +1596,16 @@ window._campSelectAll=function(checked){
 async function campRecallOne(id){
   if(!confirm('Thu hồi khách này khỏi chiến dịch?'))return;
   showLoading(true);
-  await sb.from('customers').update({assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true}).eq('id',id);
+  var cust=CUSTOMERS.find(function(c){return c.id===id;});
+  if(cust&&(cust.potential||cust.campaign_name)){
+    var saleName='';
+    if(cust.assigned_to){var sp=PROFILES.find(function(p){return p.id===cust.assigned_to;});saleName=sp?sp.full_name:'';}
+    var mgrName=currentProfile?currentProfile.full_name:'';
+    await sb.from('potential_history').insert({customer_id:id,campaign_name:cust.campaign_name||null,potential:cust.potential||null,assigned_to_name:saleName,recalled_by_name:mgrName});
+  }
+  await sb.from('customers').update({assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,potential:null}).eq('id',id);
   const idx=CUSTOMERS.findIndex(function(c){return c.id===id;});
-  if(idx>=0)Object.assign(CUSTOMERS[idx],{assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,assigned_profile:null});
+  if(idx>=0)Object.assign(CUSTOMERS[idx],{assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,potential:null,assigned_profile:null});
   window._campSelected.delete(id);
   showLoading(false);render();
 }
@@ -1561,13 +1614,29 @@ async function campRecallSelected(){
   if(ids.length===0){alert('Chưa chọn khách nào!');return;}
   if(!confirm('Thu hồi '+ids.length+' khách đã chọn?'))return;
   showLoading(true);
+  var mgrName=currentProfile?currentProfile.full_name:'';
+  // Lưu potential_history cho từng khách có potential hoặc campaign
+  var historyRows=[];
+  ids.forEach(function(id){
+    var cust=CUSTOMERS.find(function(c){return c.id===id;});
+    if(cust&&(cust.potential||cust.campaign_name)){
+      var saleName='';
+      if(cust.assigned_to){var sp=PROFILES.find(function(p){return p.id===cust.assigned_to;});saleName=sp?sp.full_name:'';}
+      historyRows.push({customer_id:id,campaign_name:cust.campaign_name||null,potential:cust.potential||null,assigned_to_name:saleName,recalled_by_name:mgrName});
+    }
+  });
+  if(historyRows.length>0){
+    for(var h=0;h<historyRows.length;h+=100){
+      await sb.from('potential_history').insert(historyRows.slice(h,h+100));
+    }
+  }
   for(let i=0;i<ids.length;i+=100){
     const chunk=ids.slice(i,i+100);
-    await sb.from('customers').update({assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true}).in('id',chunk);
+    await sb.from('customers').update({assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,potential:null}).in('id',chunk);
   }
   const idSet=new Set(ids);
   CUSTOMERS.forEach(function(c){
-    if(idSet.has(c.id))Object.assign(c,{assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,assigned_profile:null});
+    if(idSet.has(c.id))Object.assign(c,{assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,potential:null,assigned_profile:null});
   });
   window._campSelected.clear();
   showLoading(false);render();
