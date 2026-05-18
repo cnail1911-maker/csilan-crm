@@ -245,7 +245,8 @@ const PAGE_SIZE=50;
 
 // STATE
 let currentUser=null,currentProfile=null,CUSTOMERS=[],PROFILES=[],PRODUCTS_ALL=[],INVOICES=[];
-let page='customers',fStatus='all',fSale='all',fPotential='all',fBrand='all',search='',selId=null,addOpen=false;
+let page='customers',fStatus='all',fSale='all',fPotential='all',fBrand='all',fCampaign='all',search='',selId=null,addOpen=false;
+if(!window._custSelected)window._custSelected=new Set();
 let cdSearchInv='';
 let _searchTimer=null;
 function doSearch(val){
@@ -423,12 +424,12 @@ async function loadCustomers(){
 // ============================================================
 function renderCustomers(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const campNames=[...new Set(CUSTOMERS.map(function(c){return c.campaign_name;}).filter(Boolean))].sort();
   // Sale only sees approved+assigned customers
   let data=CUSTOMERS.filter(function(c){
     if(!isManager){
       const uid=currentUser&&currentUser.id;
       if(!uid)return false;
-      // Check both auth uid and profile id
       const profId=currentProfile&&currentProfile.id;
       const isAssigned=c.assigned_to===uid||c.assigned_to===profId;
       const isCreatedBy=c.created_by===uid||c.created_by===profId;
@@ -439,6 +440,8 @@ function renderCustomers(){
     if(fSale!=='all'&&c.assigned_to!==fSale)return false;
     if(fPotential!=='all'&&c.potential!==fPotential)return false;
     if(fBrand!=='all'&&c.brand!==fBrand)return false;
+    if(fCampaign==='__none__'&&c.campaign_name)return false;
+    if(fCampaign!=='all'&&fCampaign!=='__none__'&&c.campaign_name!==fCampaign)return false;
     if(search&&!((c.customer_name||'').toLowerCase().includes(search))&&!((c.cellphone||'').includes(search))&&!((c.business_phone||'').includes(search))&&!((c.business_name||'').toLowerCase().includes(search)))return false;
     return true;
   });
@@ -449,11 +452,29 @@ function renderCustomers(){
   let filterHtml='<select class="fsel" onchange="fStatus=this.value;curPage=1;render()"><option value="all">Tất cả Status</option>'+STATUS_OPTS.map(function(s){return '<option value="'+s+'"'+(fStatus===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fPotential=this.value;curPage=1;render()"><option value="all">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'"'+(fPotential===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fBrand=this.value;curPage=1;render()"><option value="all">Tất cả Brand</option>'+BRAND_OPTS.map(function(b){return '<option value="'+b+'"'+(fBrand===b?' selected':'')+'>'+b+'</option>';}).join('')+'</select>';
-  if(isManager)filterHtml+='<select class="fsel" onchange="fSale=this.value;curPage=1;render()"><option value="all">Tất cả Sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
+  if(isManager){
+    filterHtml+='<select class="fsel" onchange="fSale=this.value;curPage=1;render()"><option value="all">Tất cả Sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
+    filterHtml+='<select class="fsel" onchange="fCampaign=this.value;curPage=1;render()"><option value="all">Tất cả Campaign</option><option value="__none__"'+(fCampaign==='__none__'?' selected':'')+'>Chưa thuộc chiến dịch nào</option>'+campNames.map(function(n){return '<option value="'+n+'"'+(fCampaign===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select>';
+  }
+
+  // Action bar (chỉ Manager)
+  var actionBar='';
+  if(isManager&&window._custSelected.size>0){
+    actionBar='<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:rgba(108,92,231,0.12);border:1px solid rgba(108,92,231,0.3);border-radius:10px;margin-bottom:10px">'
+      +'<span style="font-size:12px;color:var(--brand2);font-weight:600">Đã chọn '+window._custSelected.size+' khách</span>'
+      +'<div style="margin-left:auto;display:flex;gap:8px">'
+      +'<button class="btn btn-primary" style="font-size:11px;padding:4px 12px" onclick="custAssignDropdown(this)"><i class="ti ti-user-check"></i> Assign cho Sale <i class="ti ti-chevron-down" style="font-size:10px"></i></button>'
+      +'<button class="btn" style="font-size:11px;padding:4px 12px" onclick="window._custSelected=new Set();render()"><i class="ti ti-square"></i> Bỏ chọn</button>'
+      +'</div></div>';
+  }
+
+  const allPageChecked=isManager&&pageData.length>0&&pageData.every(function(c){return window._custSelected.has(c.id);});
 
   let rows='';
   pageData.forEach(function(c){
+    const checked=window._custSelected.has(c.id);
     rows+='<tr onclick="selId='+c.id+';render()">'
+      +(isManager?'<td onclick="event.stopPropagation()" style="width:32px;text-align:center"><input type="checkbox" '+(checked?'checked':'')+' style="accent-color:var(--brand);cursor:pointer" onchange="if(this.checked){window._custSelected.add('+c.id+')}else{window._custSelected.delete('+c.id+')};render()"></td>':'')
       +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(c.ma_kh||'—')+'</td>'
       +'<td title="'+(c.business_name||'')+'">'+(c.business_name||'—')+'</td>'
       +'<td><div style="display:flex;align-items:center;gap:6px"><div class="avatar '+saleAvClass(c.assigned_to)+'" style="width:22px;height:22px;font-size:9px">'+saleInitials(c)+'</div><span style="color:var(--text)">'+(c.customer_name||'')+'</span></div></td>'
@@ -469,6 +490,8 @@ function renderCustomers(){
       +'</tr>';
   });
 
+  const chkAllTh=isManager?'<th style="width:32px"><input type="checkbox" '+(allPageChecked?'checked':'')+' style="accent-color:var(--brand);cursor:pointer" onchange="(function(el){pageData_custCheck='+JSON.stringify(pageData.map(function(c){return c.id;}))+';if(el.checked){pageData_custCheck.forEach(function(id){window._custSelected.add(id)})}else{pageData_custCheck.forEach(function(id){window._custSelected.delete(id)})};render()})(this)" title="Chọn tất cả trang này"></th>':'';
+
   return '<div class="topbar"><div class="topbar-title">Khách hàng</div>'
     +'<div class="search-wrap"><i class="ti ti-search"></i><input placeholder="Tìm tên, SĐT, công ty..." id="main-search" oninput="doSearch(this.value)" value="'+(window._searchRaw||search)+'"></div>'
     +(isManager?'<button class="btn" onclick="doRecall()" style="border-color:rgba(255,118,117,0.4);color:var(--danger)"><i class="ti ti-rotate-clockwise"></i> Thu hồi hết hạn</button>':'')
@@ -482,9 +505,10 @@ function renderCustomers(){
     +'<div class="stat-card sc3"><div class="stat-label">Tỉ lệ chốt</div><div class="stat-val" style="color:var(--warn)">'+(data.length?Math.round(won/data.length*100):0)+'%</div><div class="stat-sub">tháng này</div></div>'
     +'</div>'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+data.length+'</span> khách</h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+'</div></div>'
+    +actionBar
     +(data.length===0?'<div class="empty-state"><i class="ti ti-inbox"></i>Không có khách hàng nào</div>'
-      :'<table><colgroup><col width="78"><col width="115"><col width="110"><col width="95"><col width="68"><col width="70"><col width="72"><col width="72"><col width="72"><col width="70"><col width="40"><col width="80"></colgroup>'
-      +'<thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Status</th><th>Lead Status</th><th>Deadline</th><th>Ngày thêm</th><th></th><th>Sale</th></tr></thead>'
+      :'<table><colgroup>'+(isManager?'<col width="32">':'')+'<col width="78"><col width="115"><col width="110"><col width="95"><col width="68"><col width="70"><col width="72"><col width="72"><col width="72"><col width="70"><col width="40"><col width="80"></colgroup>'
+      +'<thead><tr>'+chkAllTh+'<th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Status</th><th>Lead Status</th><th>Deadline</th><th>Ngày thêm</th><th></th><th>Sale</th></tr></thead>'
       +'<tbody>'+rows+'</tbody></table>'
       +pgBar(data.length,curPage,PAGE_SIZE,'setCurPage'))
     +'</div></div>';
@@ -698,14 +722,25 @@ let cdFilterPayment='all',cdFilterOrder='all',cdFilterMonth='all',cdFilterYear='
 function renderPipeline(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
   const pipeColors=['var(--brand2)','var(--warn)','var(--accent2)'];
+  const campNames=[...new Set(CUSTOMERS.map(function(c){return c.campaign_name;}).filter(Boolean))].sort();
+  if(!window._fPipeCamp)window._fPipeCamp='all';
+  if(!window._fPipePot)window._fPipePot='all';
   let html='<div class="topbar"><div class="topbar-title">Pipeline</div>';
+  html+='<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="window._fPipePot=this.value;render()"><option value="all">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'"'+(window._fPipePot===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select>';
+  html+='<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="window._fPipeCamp=this.value;render()"><option value="all">Tất cả Campaign</option>'+campNames.map(function(n){return '<option value="'+n+'"'+(window._fPipeCamp===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select>';
   if(isManager){
     html+='<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()"><option value="all">Tất cả sale</option>'
       +PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
   }
   html+='</div><div class="content" style="padding:0;overflow:auto"><div class="pipe-grid">';
   STATUS_OPTS.forEach(function(status,i){
-    const cards=CUSTOMERS.filter(function(c){return c.status===status&&(fSale==='all'||c.assigned_to===fSale)&&c.approval_status==='approved';});
+    const cards=CUSTOMERS.filter(function(c){
+      return c.status===status
+        &&(fSale==='all'||c.assigned_to===fSale)
+        &&c.approval_status==='approved'
+        &&(window._fPipePot==='all'||c.potential===window._fPipePot)
+        &&(window._fPipeCamp==='all'||c.campaign_name===window._fPipeCamp);
+    });
     const pg=Math.max(1,pipePage[status]||1);
     const pgSize=10;
     const pgCards=cards.slice((pg-1)*pgSize,pg*pgSize);
@@ -1119,7 +1154,47 @@ function toggleAllSales(cb){
   const boxes=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all)');
   boxes.forEach(function(b){b.checked=false;});
 }
-function toggleAddToCampDropdown(btn){
+function custAssignDropdown(btn){
+  var existing=document.getElementById('cust-assign-dropdown');
+  if(existing){existing.remove();return;}
+  var rect=btn.getBoundingClientRect();
+  var drop=document.createElement('div');
+  drop.id='cust-assign-dropdown';
+  drop.style.cssText='position:fixed;top:'+(rect.bottom+4)+'px;left:'+rect.left+'px;background:#1a1240;border:1px solid rgba(108,92,231,0.3);border-radius:9px;overflow:hidden;z-index:9999;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,0.4)';
+  var html='<div style="padding:6px 12px;font-size:10px;color:rgba(240,238,255,0.4);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,0.06)">Chọn Sale để Assign</div>';
+  PROFILES.filter(function(p){return p.role==='sale';}).forEach(function(p){
+    html+='<div onclick="custAssignToSale(\''+p.id+'\',\''+p.full_name.replace(/'/g,'\\\'') +'\');document.getElementById(\'cust-assign-dropdown\').remove()" style="padding:9px 14px;font-size:12px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,0.04)" onmouseover="this.style.background=\'rgba(108,92,231,0.1)\'" onmouseout="this.style.background=\'\'"><div class="avatar '+saleAvClass(p.id)+'" style="width:20px;height:20px;font-size:9px">'+p.full_name.split(' ').pop().charAt(0)+'</div>'+p.full_name+'</div>';
+  });
+  drop.innerHTML=html;
+  document.body.appendChild(drop);
+  setTimeout(function(){
+    document.addEventListener('click',function _close(e){
+      if(!drop.contains(e.target)&&e.target!==btn){drop.remove();document.removeEventListener('click',_close);}
+    });
+  },0);
+}
+
+async function custAssignToSale(saleId,saleName){
+  var ids=[...window._custSelected];
+  if(ids.length===0)return;
+  if(!confirm('Assign '+ids.length+' khách cho '+saleName+'?'))return;
+  showLoading(true);
+  for(var i=0;i<ids.length;i+=100){
+    var chunk=ids.slice(i,i+100);
+    await sb.from('customers').update({assigned_to:saleId}).in('id',chunk);
+  }
+  var saleProf=PROFILES.find(function(p){return p.id===saleId;});
+  var idSet=new Set(ids);
+  CUSTOMERS.forEach(function(c){
+    if(idSet.has(c.id)){c.assigned_to=saleId;c.assigned_profile=saleProf||null;}
+  });
+  window._custSelected.clear();
+  showLoading(false);
+  alert('Đã assign '+ids.length+' khách cho '+saleName+'!');
+  render();
+}
+
+
   var existing=document.getElementById('add-to-camp-dropdown');
   if(existing){existing.remove();return;}
   var campNames=[...new Set(CUSTOMERS.map(function(c){return c.campaign_name;}).filter(Boolean))].sort();
