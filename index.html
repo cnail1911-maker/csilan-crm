@@ -140,7 +140,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 
 
   /* ── GUIDE STYLES ── */
-  .guide{max-width:860px;padding:1.5rem 0}
+  .guide{max-width:100%;padding:1.5rem 0}
   .guide .hero{background:linear-gradient(135deg,#1a1240 0%,#2d1b69 60%,#0f2a4a 100%);border-radius:16px;padding:28px 32px;margin-bottom:28px;border:1px solid rgba(162,155,254,0.2);position:relative;overflow:hidden}
   .guide .toc{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px 20px;margin-bottom:28px}
   .guide .toc-title{font-size:11px;font-weight:600;color:rgba(240,238,255,0.38);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px}
@@ -153,7 +153,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
   .guide .def-table{width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden}
   .guide .def-table thead tr{background:rgba(108,92,231,0.12)}
   .guide .def-table th{padding:9px 14px;font-size:11px;font-weight:600;color:var(--brand2);letter-spacing:0.6px;text-transform:uppercase;text-align:left;border-bottom:1px solid rgba(108,92,231,0.18)}
-  .guide .def-table td{padding:9px 14px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:top}
+  .guide .def-table td{padding:9px 14px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:top;word-break:break-word}
   .guide .def-table tr:last-child td{border-bottom:none}
   .guide .def-table tr:hover td{background:rgba(255,255,255,0.02)}
   .guide .key{font-weight:600;color:var(--text);white-space:nowrap;font-family:monospace;font-size:12px}
@@ -245,7 +245,7 @@ const PAGE_SIZE=50;
 
 // STATE
 let currentUser=null,currentProfile=null,CUSTOMERS=[],PROFILES=[],PRODUCTS_ALL=[],INVOICES=[];
-let page='customers',fStatus='all',fSale='all',fPotential='all',fBrand='all',fCampaign='all',search='',selId=null,addOpen=false;
+let page='customers',fStatus='all',fSale='all',fPotential='all',fBrand='all',fCampaign='all',fReason='all',search='',selId=null,addOpen=false;
 if(!window._custSelected)window._custSelected=new Set();
 let cdSearchInv='';
 let _searchTimer=null;
@@ -440,6 +440,7 @@ function renderCustomers(){
     if(fSale!=='all'&&c.assigned_to!==fSale)return false;
     if(fPotential!=='all'&&c.potential!==fPotential)return false;
     if(fBrand!=='all'&&c.brand!==fBrand)return false;
+    if(fReason!=='all'&&c.reason!==fReason)return false;
     if(fCampaign==='__none__'&&c.campaign_name)return false;
     if(fCampaign!=='all'&&fCampaign!=='__none__'&&c.campaign_name!==fCampaign)return false;
     if(search&&!((c.customer_name||'').toLowerCase().includes(search))&&!((c.cellphone||'').includes(search))&&!((c.business_phone||'').includes(search))&&!((c.business_name||'').toLowerCase().includes(search)))return false;
@@ -452,6 +453,7 @@ function renderCustomers(){
   let filterHtml='<select class="fsel" onchange="fStatus=this.value;curPage=1;render()"><option value="all">Tất cả Status</option>'+STATUS_OPTS.map(function(s){return '<option value="'+s+'"'+(fStatus===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fPotential=this.value;curPage=1;render()"><option value="all">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'"'+(fPotential===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fBrand=this.value;curPage=1;render()"><option value="all">Tất cả Brand</option>'+BRAND_OPTS.map(function(b){return '<option value="'+b+'"'+(fBrand===b?' selected':'')+'>'+b+'</option>';}).join('')+'</select>';
+  filterHtml+='<select class="fsel" onchange="fReason=this.value;curPage=1;render()"><option value="all">Tất cả Reason</option>'+REASON_OPTS.map(function(r){return '<option value="'+r+'"'+(fReason===r?' selected':'')+'>'+r+'</option>';}).join('')+'</select>';
   if(isManager){
     filterHtml+='<select class="fsel" onchange="fSale=this.value;curPage=1;render()"><option value="all">Tất cả Sale</option>'+PROFILES.filter(function(p){return p.role==='sale';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
     filterHtml+='<select class="fsel" onchange="fCampaign=this.value;curPage=1;render()"><option value="all">Tất cả Campaign</option><option value="__none__"'+(fCampaign==='__none__'?' selected':'')+'>Chưa thuộc chiến dịch nào</option>'+campNames.map(function(n){return '<option value="'+n+'"'+(fCampaign===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select>';
