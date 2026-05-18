@@ -246,14 +246,18 @@ const PAGE_SIZE=50;
 // STATE
 let currentUser=null,currentProfile=null,CUSTOMERS=[],PROFILES=[],PRODUCTS_ALL=[],INVOICES=[];
 let page='customers',fStatus='all',fSale='all',fPotential='all',fBrand='all',search='',selId=null,addOpen=false;
+let cdSearchInv='',cdPage=1,cdFilterPay='all',cdFilterOrd='all',cdFilterMonth='all',cdFilterYear='all',cdFilterSale='all';
 let _searchTimer=null;
 function doSearch(val){
   window._searchRaw=val;
   clearTimeout(_searchTimer);
   _searchTimer=setTimeout(function(){
+    var pos=0;
+    var el0=document.getElementById('main-search');
+    if(el0)pos=el0.selectionStart||val.length;
     search=val.toLowerCase();curPage=1;render();
     var el=document.getElementById('main-search');
-    if(el){el.value=val;el.focus();try{el.setSelectionRange(val.length,val.length);}catch(e){}}
+    if(el){el.value=val;el.focus();try{el.setSelectionRange(pos,pos);}catch(e){}}
   },120);
 }
 function doSearch(val){
@@ -572,7 +576,7 @@ function renderClosedeal(){
   const totalRevenue=enriched.reduce(function(s,inv){return s+(inv.total||0);},0);
   const years=[...new Set(INVOICES.map(function(inv){return new Date(inv.created_at).getFullYear();}))].sort(function(a,b){return b-a;});
 
-  let filterHtml='<input id="cd-search-inv" placeholder="Tìm mã đơn..." style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;color:var(--text);width:120px;outline:none" oninput="clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){cdSearchInv=this.value;cdPage=1;render();var e=document.getElementById(&quot;cd-search-inv&quot;);if(e){e.focus();}},150)" value="'+cdSearchInv+'">';
+  let filterHtml='<input id="cd-search-inv" placeholder="Tìm mã đơn..." style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;color:var(--text);width:120px;outline:none" oninput="clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){var v=this.value;cdSearchInv=v;cdPage=1;render();var e=document.getElementById(&quot;cd-search-inv&quot;);if(e){e.value=v;e.focus();}},150)" value="'+cdSearchInv+'">';
   filterHtml+='<select class="fsel" onchange="cdFilterPayment=this.value;cdPage=1;render()"><option value="all">Payment</option>'+['Paid in Full','Deposit Paid','Partially Paid','Cancelled'].map(function(s){return '<option value="'+s+'"'+(cdFilterPayment===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="cdFilterOrder=this.value;cdPage=1;render()"><option value="all">Order Status</option>'+['Đang sản xuất','Đang giao','Đã nhận hàng'].map(function(s){return '<option value="'+s+'"'+(cdFilterOrder===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="cdFilterMonth=this.value;cdPage=1;render()"><option value="all">Tháng</option>'+['1','2','3','4','5','6','7','8','9','10','11','12'].map(function(m){return '<option value="'+m+'"'+(cdFilterMonth===m?' selected':'')+'>T'+m+'</option>';}).join('')+'</select>';
