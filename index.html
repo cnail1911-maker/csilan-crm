@@ -193,14 +193,53 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
   @media (max-width: 768px){
     /* Layout */
     .app{flex-direction:column}
-    .sidebar{width:100%;height:auto;flex-direction:row;padding:0;border-right:none;border-bottom:1px solid var(--border);position:fixed;bottom:0;top:auto;z-index:100;background:var(--bg2);overflow-x:auto;overflow-y:hidden}
-    .sidebar-logo{display:none}
-    .sidebar-section{display:none}
-    .nav{flex-direction:row;padding:4px 2px;gap:0;min-width:max-content}
-    .nav-item{flex-direction:column;padding:6px 10px;font-size:9px;gap:2px;white-space:nowrap;border-radius:8px;min-width:56px;text-align:center}
-    .nav-item i{font-size:16px}
-    .nav-item .badge{top:-2px;right:2px;font-size:8px;padding:1px 4px}
-    .main{margin-left:0;margin-bottom:60px;width:100%}
+    .sidebar{
+      width:100%;height:56px;
+      flex-direction:row;
+      padding:0;
+      border-right:none;
+      border-top:1px solid var(--border);
+      position:fixed;bottom:0;top:auto;
+      z-index:200;
+      background:var(--bg2);
+      overflow:hidden;
+    }
+    .sidebar-logo{display:none !important}
+    .sidebar-section{display:none !important}
+    .user-info{display:none !important}
+    .nav{
+      flex-direction:row;
+      padding:0;gap:0;
+      width:100%;
+      overflow-x:auto;
+      overflow-y:hidden;
+      -webkit-overflow-scrolling:touch;
+      scrollbar-width:none;
+    }
+    .nav::-webkit-scrollbar{display:none}
+    .nav-item{
+      flex-direction:column;
+      padding:6px 8px 4px;
+      font-size:9px;
+      gap:2px;
+      white-space:nowrap;
+      border-radius:0;
+      min-width:60px;
+      flex:1;
+      text-align:center;
+      border-left:none !important;
+    }
+    .nav-item.active::before{
+      content:'';
+      position:absolute;
+      top:0;left:0;right:0;bottom:auto;
+      width:100%;height:2px;
+      background:linear-gradient(90deg,var(--brand),var(--accent));
+      border-radius:0;
+    }
+    .nav-item i{font-size:18px;width:auto}
+    .nav-sec{display:none}
+    .main{margin-left:0 !important;margin-bottom:56px;width:100%}
 
     /* Topbar */
     .topbar{padding:10px 12px;gap:8px;flex-wrap:wrap}
@@ -216,46 +255,28 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     .stat-card{padding:10px 12px}
     .stat-val{font-size:24px}
 
-    /* Table — horizontal scroll */
+    /* Table */
     table{font-size:10px;display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
     th,td{padding:6px 8px}
 
     /* Panel */
     .panel-header{flex-direction:column;gap:8px;align-items:flex-start}
-    .panel-header .fsel{font-size:11px;padding:5px 8px}
 
     /* Modal */
-    .modal{margin:12px;max-width:calc(100vw - 24px) !important;max-height:90vh;overflow-y:auto}
     .modal-overlay{align-items:flex-end;padding:0}
-    .modal{border-radius:16px 16px 0 0}
+    .modal{border-radius:16px 16px 0 0;margin:0;max-width:100% !important;max-height:90vh;overflow-y:auto}
 
     /* Pipeline */
     .pipe-grid{flex-direction:column;gap:12px;padding:10px}
     .pipe-col{min-width:100%}
 
-    /* Buttons */
-    .btn{font-size:11px;padding:5px 10px}
-    .btn-primary{padding:6px 12px}
-
-    /* Filters wrap */
-    .fsel{font-size:11px;padding:5px 8px;max-width:140px}
-
-    /* Campaign form */
-    #camp-sales{max-height:80px}
-
-    /* Hide less important columns on mobile */
-    table th:nth-child(n+7),
-    table td:nth-child(n+7){display:none}
-
-    /* User info at bottom of sidebar */
-    .user-info{display:none}
+    /* Filters */
+    .fsel{font-size:11px;padding:5px 8px}
   }
 
   @media (max-width: 480px){
-    .stats-row{grid-template-columns:1fr 1fr}
-    .nav-item{padding:5px 7px;min-width:48px;font-size:8px}
-    table th:nth-child(n+5),
-    table td:nth-child(n+5){display:none}
+    .nav-item{min-width:52px;font-size:8px;padding:5px 6px 3px}
+    .nav-item i{font-size:16px}
   }
 </style>
 <script>
