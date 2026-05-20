@@ -2,8 +2,15 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" href="data:,">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="logo-192.svg" type="image/svg+xml">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="C-Silan">
+<meta name="theme-color" content="#1a1240">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="logo-192.svg">
 <title>C-Silan CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
@@ -181,7 +188,86 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
   .guide .b-info{background:rgba(116,185,255,0.15);color:#74b9ff;border:1px solid rgba(116,185,255,0.3)}
   .guide .b-teal{background:rgba(0,206,201,0.15);color:#00CEC9;border:1px solid rgba(0,206,201,0.3)}
   .guide .b-purple{background:rgba(108,92,231,0.2);color:#A29BFE;border:1px solid rgba(108,92,231,0.3)}
+
+  /* ===== MOBILE RESPONSIVE ===== */
+  @media (max-width: 768px){
+    /* Layout */
+    .app{flex-direction:column}
+    .sidebar{width:100%;height:auto;flex-direction:row;padding:0;border-right:none;border-bottom:1px solid var(--border);position:fixed;bottom:0;top:auto;z-index:100;background:var(--bg2);overflow-x:auto;overflow-y:hidden}
+    .sidebar-logo{display:none}
+    .sidebar-section{display:none}
+    .nav{flex-direction:row;padding:4px 2px;gap:0;min-width:max-content}
+    .nav-item{flex-direction:column;padding:6px 10px;font-size:9px;gap:2px;white-space:nowrap;border-radius:8px;min-width:56px;text-align:center}
+    .nav-item i{font-size:16px}
+    .nav-item .badge{top:-2px;right:2px;font-size:8px;padding:1px 4px}
+    .main{margin-left:0;margin-bottom:60px;width:100%}
+
+    /* Topbar */
+    .topbar{padding:10px 12px;gap:8px;flex-wrap:wrap}
+    .topbar-title{font-size:16px}
+    .search-wrap{width:100%;order:3}
+    .search-wrap input{width:100%}
+
+    /* Content */
+    .content{padding:10px 10px 16px}
+
+    /* Stats */
+    .stats-row{grid-template-columns:1fr 1fr;gap:8px}
+    .stat-card{padding:10px 12px}
+    .stat-val{font-size:24px}
+
+    /* Table — horizontal scroll */
+    table{font-size:10px;display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+    th,td{padding:6px 8px}
+
+    /* Panel */
+    .panel-header{flex-direction:column;gap:8px;align-items:flex-start}
+    .panel-header .fsel{font-size:11px;padding:5px 8px}
+
+    /* Modal */
+    .modal{margin:12px;max-width:calc(100vw - 24px) !important;max-height:90vh;overflow-y:auto}
+    .modal-overlay{align-items:flex-end;padding:0}
+    .modal{border-radius:16px 16px 0 0}
+
+    /* Pipeline */
+    .pipe-grid{flex-direction:column;gap:12px;padding:10px}
+    .pipe-col{min-width:100%}
+
+    /* Buttons */
+    .btn{font-size:11px;padding:5px 10px}
+    .btn-primary{padding:6px 12px}
+
+    /* Filters wrap */
+    .fsel{font-size:11px;padding:5px 8px;max-width:140px}
+
+    /* Campaign form */
+    #camp-sales{max-height:80px}
+
+    /* Hide less important columns on mobile */
+    table th:nth-child(n+7),
+    table td:nth-child(n+7){display:none}
+
+    /* User info at bottom of sidebar */
+    .user-info{display:none}
+  }
+
+  @media (max-width: 480px){
+    .stats-row{grid-template-columns:1fr 1fr}
+    .nav-item{padding:5px 7px;min-width:48px;font-size:8px}
+    table th:nth-child(n+5),
+    table td:nth-child(n+5){display:none}
+  }
 </style>
+<script>
+  // Register Service Worker for PWA
+  if('serviceWorker' in navigator){
+    window.addEventListener('load',function(){
+      navigator.serviceWorker.register('/csilan-crm/sw.js')
+        .then(function(reg){console.log('SW registered:',reg.scope);})
+        .catch(function(err){console.log('SW error:',err);});
+    });
+  }
+</script>
 </head>
 <body>
 <div id="auth-screen">
