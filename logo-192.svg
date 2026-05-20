@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1240"/>
+      <stop offset="100%" style="stop-color:#0d0820"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a29bfe"/>
+      <stop offset="100%" style="stop-color:#6c5ce7"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffeaa7"/>
+      <stop offset="100%" style="stop-color:#fdcb6e"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="192" height="192" rx="36" fill="url(#bg)"/>
+  <path d="M 116 54 A 49 49 0 1 0 116 138" 
+        fill="none" stroke="url(#accent)" stroke-width="16" stroke-linecap="round" filter="url(#glow)"/>
+  <rect x="119" y="79" width="14" height="34" rx="3" fill="url(#accent)" opacity="0.9"/>
+  <rect x="136" y="90" width="14" height="23" rx="3" fill="url(#accent)" opacity="0.7"/>
+  <rect x="153" y="101" width="14" height="12" rx="3" fill="url(#accent)" opacity="0.5"/>
+  <path d="M 126 79 Q 143 75 160 101" fill="none" stroke="url(#gold)" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+  <circle cx="158" cy="67" r="4" fill="url(#gold)" filter="url(#glow)"/>
+  <text x="96" y="162" font-family="Georgia, serif" font-size="16" font-weight="700" fill="white" text-anchor="middle" letter-spacing="3">SILAN</text>
+</svg>

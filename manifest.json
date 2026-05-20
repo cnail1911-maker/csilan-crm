@@ -1,0 +1,27 @@
+{
+  "name": "C-Silan CRM",
+  "short_name": "C-Silan",
+  "description": "Sales Team CRM v5.0",
+  "start_url": "/csilan-crm/",
+  "scope": "/csilan-crm/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0d0820",
+  "theme_color": "#1a1240",
+  "icons": [
+    {
+      "src": "logo-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "vi"
+}
