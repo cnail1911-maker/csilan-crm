@@ -261,6 +261,15 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     .pipe-grid{flex-direction:column;gap:12px;padding:10px}
     .pipe-col{min-width:100%}
     .fsel{font-size:11px;padding:5px 8px}
+    /* KPI */
+    .kpi-grid{grid-template-columns:1fr 1fr !important}
+    .stats-row{grid-template-columns:1fr 1fr !important}
+    /* Campaign form grids */
+    [style*="grid-template-columns:1fr 1fr auto"]{grid-template-columns:1fr !important}
+    [style*="repeat(4,1fr)"]{grid-template-columns:1fr 1fr !important}
+    [style*="repeat(3,1fr)"]{grid-template-columns:1fr 1fr !important}
+    /* Campaign name input */
+    #camp-name{min-width:0 !important;width:100% !important}
   }
 </style>
 <script>
