@@ -268,8 +268,11 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     [style*="grid-template-columns:1fr 1fr auto"]{grid-template-columns:1fr !important}
     [style*="repeat(4,1fr)"]{grid-template-columns:1fr 1fr !important}
     [style*="repeat(3,1fr)"]{grid-template-columns:1fr 1fr !important}
-    /* Campaign name input */
-    #camp-name{min-width:0 !important;width:100% !important}
+    /* Campaign action bar */
+    #camp-action-bar{flex-wrap:wrap !important;gap:6px !important;padding:8px !important}
+    /* Hide less critical columns in campaign table on mobile */
+    .camp-table th:nth-child(n+4),
+    .camp-table td:nth-child(n+4){display:none !important}
   }
 </style>
 <script>
@@ -1201,7 +1204,7 @@ function renderCampaign(){
       pgHtml+='</div>';
     }
     campListPanel='<div class="panel" style="margin-top:14px"><div class="panel-header"><h2>Danh sách khách theo bộ lọc <span style="color:var(--accent2)">'+displayData.length+'</span></h2>'
-      +'<div style="display:flex;gap:8px;align-items:center">'
+      +'<div id="camp-action-bar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
       +'<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Quá hạn ≥</div>'
       +'<input type="number" id="cf-overdue" value="'+(overdueDays||'')+'" min="0" placeholder="Số ngày" onchange="window._campPg=1;render()" style="width:80px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;color:var(--text);outline:none">'
       +'<div style="font-size:10px;color:var(--text3)">ngày</div>'
@@ -1221,7 +1224,7 @@ function renderCampaign(){
         :'')
       +'</div></div>'
       +(displayData.length===0?'<div class="empty-state"><i class="ti ti-users"></i>Không có khách nào khớp</div>'
-        :'<table><colgroup><col width="30"><col width="90"><col width="130"><col width="110"><col width="90"><col width="100"><col width="80"><col width="70"><col width="80"></colgroup>'
+        :'<table class="camp-table"><colgroup><col width="30"><col width="90"><col width="130"><col width="110"><col width="90"><col width="100"><col width="80"><col width="70"><col width="80"></colgroup>'
         +'<thead><tr><th><input type="checkbox" onchange="window._campSelectAll(this.checked)" style="accent-color:var(--brand)"></th>'
         +'<th>Mã KH</th><th>Business</th><th>Customer</th><th>Potential</th><th>Campaign</th><th>Deadline</th><th>Sale</th><th></th></tr></thead>'
         +'<tbody>'+custRows+'</tbody></table>'+pgHtml)
