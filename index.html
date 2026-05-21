@@ -1339,6 +1339,7 @@ function editPhone(customerId, field, currentVal){
   var m=document.createElement('div');
   m.className='modal-overlay';m.id='edit-phone-modal';
   m.onclick=function(e){if(e.target===m)m.remove();};
+  var saveBtn='<button class="btn btn-primary" id="edit-phone-save"><i class="ti ti-check"></i> Lưu</button>';
   m.innerHTML='<div class="modal" style="max-width:360px;width:100%">'
     +'<div class="modal-header"><h3>Sửa '+label+'</h3>'
     +'<button class="modal-close" onclick="document.getElementById(\'edit-phone-modal\').remove()">✕</button></div>'
@@ -1346,11 +1347,13 @@ function editPhone(customerId, field, currentVal){
     +'<input id="edit-phone-input" value="'+currentVal+'" placeholder="Nhập số điện thoại..." style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:14px;font-family:monospace;color:var(--text);outline:none">'
     +'<div style="display:flex;gap:8px;justify-content:flex-end">'
     +'<button class="btn" onclick="document.getElementById(\'edit-phone-modal\').remove()">Hủy</button>'
-    +'<button class="btn btn-primary" onclick="savePhone('+customerId+',\''+field+'\')"><i class="ti ti-check"></i> Lưu</button>'
+    +saveBtn
     +'</div></div></div>';
   document.body.appendChild(m);
+  document.getElementById('edit-phone-save').onclick=function(){savePhone(customerId,field);};
   setTimeout(function(){var el=document.getElementById('edit-phone-input');if(el)el.focus();},100);
 }
+
 
   var label={'cellphone':'Cellphone','business_phone':'Business Phone','cellphone_2':'Cellphone 2'}[field]||field;  var m=document.createElement('div');
   m.className='modal-overlay';m.id='edit-phone-modal';
