@@ -800,16 +800,16 @@ function renderClosedeal(){
 
 async function approveInvoice(id,status){
   showLoading(true);
-  const update={approval_status:status};
-  if(status==='approved'){
-    const inv=INVOICES.find(function(i){return i.id===id;});
-    if(inv){
-      await sb.from('customers').update({lead_status:'Closedeal',latest_invoice_no:inv.invoice_no,total_amount:inv.total}).eq('id',inv.customer_id);
-    }
+  const inv=INVOICES.find(function(i){return i.id===id;});
+  if(status==='approved'&&inv){
+    await sb.from('customers').update({lead_status:'Closedeal',latest_invoice_no:inv.invoice_no,total_amount:inv.total}).eq('id',inv.customer_id);
+    // Update local customers
+    var cidx=CUSTOMERS.findIndex(function(c){return c.id===inv.customer_id;});
+    if(cidx>=0)Object.assign(CUSTOMERS[cidx],{lead_status:'Closedeal',latest_invoice_no:inv.invoice_no,total_amount:inv.total});
   }
-  await sb.from('invoices').update(update).eq('id',id);
-  await loadInvoices();
-  await loadCustomers();
+  await sb.from('invoices').update({approval_status:status}).eq('id',id);
+  // Update local invoices
+  if(inv)inv.approval_status=status;
   showLoading(false);render();
 }
 
@@ -839,12 +839,15 @@ async function openInvEdit(id){
 
 async function saveInvEdit(id){
   showLoading(true);
-  await sb.from('invoices').update({
+  const update={
     payment_status:document.getElementById('ie-pay').value||null,
     order_status:document.getElementById('ie-ord').value||null,
     tracking_number:document.getElementById('ie-track').value||null
-  }).eq('id',id);
-  await loadInvoices();
+  };
+  await sb.from('invoices').update(update).eq('id',id);
+  // Update local
+  const inv=INVOICES.find(function(i){return i.id===id;});
+  if(inv)Object.assign(inv,update);
   document.getElementById('inv-edit-modal')&&document.getElementById('inv-edit-modal').remove();
   showLoading(false);render();
 }
