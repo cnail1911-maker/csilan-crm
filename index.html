@@ -729,9 +729,11 @@ function renderClosedeal(){
   });
 
   // Pending approval rows
+  // Pending invoice rows - sale can edit their own pending invoices
   let pendingRows='';
   pendingInvs.forEach(function(inv){
     const cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;})||{};
+    const isMine=currentUser&&inv.sale_id===currentUser.id;
     pendingRows+='<tr>'
       +'<td style="font-size:10px;font-family:monospace;color:var(--warn)">'+(inv.invoice_no||'—')+'</td>'
       +'<td>'+(cust.business_name||'—')+'</td>'
@@ -739,8 +741,9 @@ function renderClosedeal(){
       +'<td style="color:var(--accent2);font-weight:700">$'+(inv.total||0).toLocaleString()+'</td>'
       +'<td style="font-size:10px;color:var(--text3)">'+fmtDate(inv.created_at)+'</td>'
       +'<td><div style="display:flex;gap:4px">'
-      +'<button class="btn btn-primary" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'approved\')">✓ Duyệt</button>'
-      +'<button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'rejected\')">✗ Từ chối</button>'
+      +(isManager?'<button class="btn btn-primary" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'approved\')">✓ Duyệt</button>':'')
+      +(isManager?'<button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'rejected\')">✗ Từ chối</button>':'')
+      +(isMine?'<button class="btn" style="padding:3px 8px;font-size:11px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="editInvoicePage(\''+inv.invoice_no+'\')"><i class="ti ti-edit"></i> Sửa</button>':'')
       +'</div></td>'
       +'</tr>';
   });
@@ -1823,13 +1826,13 @@ async function renderDetailModal(customerId){
     +'<div style="display:flex;align-items:center;gap:6px">'
     +'<span style="font-size:13px;font-family:monospace;color:var(--text)">'+(c.cellphone||'—')+'</span>'
     +(c.cellphone?'<a href="openphone://call?number=+1'+c.cellphone.replace(/\D/g,'').slice(-10)+'&from='+(currentProfile&&currentProfile.openphone_number||'')+'" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;text-decoration:none"><i class="ti ti-phone" style="font-size:13px"></i></a>':'')
-    +(isManager?'<button onclick="editPhone('+c.id+',&quot;cellphone&quot;,&quot;'+(c.cellphone||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>':'')
+    +'<button onclick="editPhone('+c.id+',&quot;cellphone&quot;,&quot;'+(c.cellphone||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>'
     +'</div></div>'
     +'<div class="field"><label>Business Phone</label>'
     +'<div style="display:flex;align-items:center;gap:6px">'
     +'<span style="font-size:13px;font-family:monospace;color:var(--text)">'+(c.business_phone||'—')+'</span>'
     +(c.business_phone?'<a href="openphone://call?number=+1'+c.business_phone.replace(/\D/g,'').slice(-10)+'&from='+(currentProfile&&currentProfile.openphone_number||'')+'" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;text-decoration:none"><i class="ti ti-phone" style="font-size:13px"></i></a>':'')
-    +(isManager?'<button onclick="editPhone('+c.id+',&quot;business_phone&quot;,&quot;'+(c.business_phone||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>':'')
+    +'<button onclick="editPhone('+c.id+',&quot;business_phone&quot;,&quot;'+(c.business_phone||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>'
     +'</div></div>'
     +'</div>'
     +'<div class="field-row">'
@@ -1837,7 +1840,7 @@ async function renderDetailModal(customerId){
     +'<div style="display:flex;align-items:center;gap:6px">'
     +'<span style="font-size:13px;font-family:monospace;color:var(--text)">'+(c.cellphone_2||'—')+'</span>'
     +(c.cellphone_2?'<a href="openphone://call?number=+1'+c.cellphone_2.replace(/\D/g,'').slice(-10)+'&from='+(currentProfile&&currentProfile.openphone_number||'')+'" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;text-decoration:none"><i class="ti ti-phone" style="font-size:13px"></i></a>':'')
-    +(isManager?'<button onclick="editPhone('+c.id+',&quot;cellphone_2&quot;,&quot;'+(c.cellphone_2||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>':'')
+    +'<button onclick="editPhone('+c.id+',&quot;cellphone_2&quot;,&quot;'+(c.cellphone_2||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>'
     +'</div></div>'
     +'<div class="field"></div>'
     +'</div>'
@@ -1909,7 +1912,10 @@ async function saveDetail(customerId){
   else render();
 }
 
-function openInvoice(customerId){
+function editInvoicePage(invoiceNo){
+  sessionStorage.setItem('edit_invoice_no', invoiceNo);
+  window.open('invoice.html?edit='+encodeURIComponent(invoiceNo), '_blank');
+}
   // Save customer id to sessionStorage then open invoice page
   sessionStorage.setItem('invoice_customer_id', customerId);
   window.open('invoice.html', '_blank');
