@@ -1323,14 +1323,19 @@ async function makeOpenPhoneCall(toNumber){
   var btn=event&&event.target;
   if(btn){btn.disabled=true;btn.style.opacity='0.5';}
   try{
-    var resp=await fetch('https://api.openphone.com/v1/calls',{
+    var resp=await fetch('https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/openphone-call',{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'a3d61caece6a8c60fe2c87c6d6c820eb7fc4923d780ffc00ed5d59dbaadb3a18'},
-      body:JSON.stringify({from:phoneId,to:formatted,userId:userId})
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+SUPABASE_ANON
+      },
+      body:JSON.stringify({to:formatted,from:phoneId,userId:userId})
     });
     var data=await resp.json();
-    if(!resp.ok){alert('Lỗi gọi: '+(data.message||resp.status));}
-  }catch(e){alert('Lỗi kết nối OpenPhone: '+e.message);}
+    if(!resp.ok){alert('Lỗi gọi: '+(data.message||data.error||resp.status));}
+  }catch(e){
+    alert('Lỗi kết nối: '+e.message);
+  }
   if(btn){btn.disabled=false;btn.style.opacity='1';}
 }
 
