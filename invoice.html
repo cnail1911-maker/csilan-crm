@@ -183,9 +183,10 @@ table.inv-table tr:last-child td{border-bottom:none}
   }
   .preview-wrap.mobile-show #invoice-preview{
     width:760px;
-    transform-origin:top left;
+    transform-origin:top center;
     transform:scale(var(--inv-scale,0.45));
-    margin-bottom:calc((760px * (1 - var(--inv-scale,0.45))) * -1);
+    margin-left:calc((100vw - 760px) / 2);
+    margin-bottom:calc((760px * (1 - var(--inv-scale,0.45))) * -1 + 20px);
   }
   .preview-toolbar{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);background:#fff}
   .preview-toolbar h2{font-size:14px}
