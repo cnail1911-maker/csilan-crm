@@ -1822,13 +1822,13 @@ async function renderDetailModal(customerId){
     +'<div class="field"><label>Cellphone</label>'
     +'<div style="display:flex;align-items:center;gap:6px">'
     +'<span style="font-size:13px;font-family:monospace;color:var(--text)">'+(c.cellphone||'—')+'</span>'
-    +(c.cellphone?'<a href="openphone://call?number=%2B1'+c.cellphone.replace(/\D/g,'').slice(-10)+'" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;text-decoration:none"><i class="ti ti-phone" style="font-size:13px"></i></a>':'')
+    +(c.cellphone?'<a href="openphone://call?number=+1'+c.cellphone.replace(/\D/g,'').slice(-10)+'" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;text-decoration:none"><i class="ti ti-phone" style="font-size:13px"></i></a>':'')
     +(isManager?'<button onclick="editPhone('+c.id+',&quot;cellphone&quot;,&quot;'+(c.cellphone||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>':'')
     +'</div></div>'
     +'<div class="field"><label>Business Phone</label>'
     +'<div style="display:flex;align-items:center;gap:6px">'
     +'<span style="font-size:13px;font-family:monospace;color:var(--text)">'+(c.business_phone||'—')+'</span>'
-    +(c.business_phone?'<a href="openphone://call?number=%2B1'+c.business_phone.replace(/\D/g,'').slice(-10)+'" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;text-decoration:none"><i class="ti ti-phone" style="font-size:13px"></i></a>':'')
+    +(c.business_phone?'<a href="openphone://call?number=+1'+c.business_phone.replace(/\D/g,'').slice(-10)+'" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;text-decoration:none"><i class="ti ti-phone" style="font-size:13px"></i></a>':'')
     +(isManager?'<button onclick="editPhone('+c.id+',&quot;business_phone&quot;,&quot;'+(c.business_phone||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>':'')
     +'</div></div>'
     +'</div>'
@@ -1836,7 +1836,7 @@ async function renderDetailModal(customerId){
     +'<div class="field"><label>Cellphone 2</label>'
     +'<div style="display:flex;align-items:center;gap:6px">'
     +'<span style="font-size:13px;font-family:monospace;color:var(--text)">'+(c.cellphone_2||'—')+'</span>'
-    +(c.cellphone_2?'<a href="openphone://call?number=%2B1'+c.cellphone_2.replace(/\D/g,'').slice(-10)+'" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;text-decoration:none"><i class="ti ti-phone" style="font-size:13px"></i></a>':'')
+    +(c.cellphone_2?'<a href="openphone://call?number=+1'+c.cellphone_2.replace(/\D/g,'').slice(-10)+'" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;text-decoration:none"><i class="ti ti-phone" style="font-size:13px"></i></a>':'')
     +(isManager?'<button onclick="editPhone('+c.id+',&quot;cellphone_2&quot;,&quot;'+(c.cellphone_2||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>':'')
     +'</div></div>'
     +'<div class="field"></div>'
