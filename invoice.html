@@ -168,7 +168,25 @@ table.inv-table tr:last-child td{border-bottom:none}
   .sidebar{width:100%;min-width:0;border-right:none;border-bottom:1px solid var(--border);max-height:none}
   .sidebar-body{max-height:none;overflow-y:visible;padding:10px}
   .preview-wrap{display:none;width:100%}
-  .preview-wrap.mobile-show{display:flex;flex-direction:column;position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;background:var(--cream)}
+  .preview-wrap.mobile-show{
+    display:flex;flex-direction:column;
+    position:fixed;top:0;left:0;right:0;bottom:0;
+    z-index:999;background:var(--cream);
+    overflow-y:auto;overflow-x:hidden;
+  }
+  .preview-wrap.mobile-show .preview-toolbar{
+    position:sticky;top:0;z-index:10;
+    padding:10px 12px;
+    display:flex;justify-content:space-between;align-items:center;
+    border-bottom:1px solid var(--border);background:#fff;
+    flex-shrink:0;
+  }
+  .preview-wrap.mobile-show #invoice-preview{
+    width:760px;
+    transform-origin:top left;
+    transform:scale(var(--inv-scale,0.45));
+    margin-bottom:calc((760px * (1 - var(--inv-scale,0.45))) * -1);
+  }
   .preview-toolbar{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);background:#fff}
   .preview-toolbar h2{font-size:14px}
   .field-row{grid-template-columns:1fr}
@@ -803,7 +821,21 @@ async function saveAndDownload(action){
 function showMobilePreview(){
   renderPreview();
   var pw=document.querySelector('.preview-wrap');
-  if(pw)pw.classList.add('mobile-show');
+  if(pw){
+    pw.classList.add('mobile-show');
+    // Tính scale để vừa màn hình
+    var screenW=window.innerWidth;
+    var scale=Math.min(1,(screenW-16)/760);
+    document.documentElement.style.setProperty('--inv-scale',scale.toFixed(3));
+    // Set chiều cao đúng sau scale
+    var preview=document.getElementById('invoice-preview');
+    if(preview){
+      setTimeout(function(){
+        var scaledH=preview.scrollHeight*scale;
+        preview.parentElement.style.minHeight=(scaledH+60)+'px';
+      },100);
+    }
+  }
 }
 function hideMobilePreview(){
   var pw=document.querySelector('.preview-wrap');
