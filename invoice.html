@@ -169,7 +169,7 @@ table.inv-table tr:last-child td{border-bottom:none}
   .sidebar-body{max-height:none;overflow-y:visible;padding:10px}
   .preview-wrap{display:none;width:100%}
   .preview-wrap.mobile-show{
-    display:flex;flex-direction:column;
+    display:block !important;
     position:fixed;top:0;left:0;right:0;bottom:0;
     z-index:999;background:var(--cream);
     overflow-y:auto;overflow-x:hidden;
@@ -179,14 +179,13 @@ table.inv-table tr:last-child td{border-bottom:none}
     padding:10px 12px;
     display:flex;justify-content:space-between;align-items:center;
     border-bottom:1px solid var(--border);background:#fff;
-    flex-shrink:0;
   }
   .preview-wrap.mobile-show #invoice-preview{
-    width:760px;
-    transform-origin:top left;
-    transform:scale(var(--inv-scale,0.45));
-    margin-bottom:calc(760px * (var(--inv-scale,0.45) - 1));
-    flex-shrink:0;
+    width:760px !important;
+    transform-origin:top left !important;
+    transform:scale(var(--inv-scale,0.5)) !important;
+    display:block !important;
+    margin-bottom:calc((760px * (var(--inv-scale,0.5) - 1))) !important;
   }
   .preview-toolbar{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);background:#fff}
   .preview-toolbar h2{font-size:14px}
