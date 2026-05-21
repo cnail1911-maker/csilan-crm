@@ -1315,10 +1315,8 @@ async function makeOpenPhoneCall(toNumber){
   if(!toNumber){alert('Không có số điện thoại!');return;}
   var phoneId=currentProfile&&currentProfile.openphone_phone_id;
   var userId='USEa9LBsFo';
-  // Format số: lấy 10 số cuối, thêm +1
   var formatted='+1'+toNumber.replace(/\D/g,'').slice(-10);
   if(!phoneId){
-    // Fallback deep link nếu không có phoneNumberId
     window.open('openphone://call?number='+formatted);
     return;
   }
@@ -1327,26 +1325,32 @@ async function makeOpenPhoneCall(toNumber){
   try{
     var resp=await fetch('https://api.openphone.com/v1/calls',{
       method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':'a3d61caece6a8c60fe2c87c6d6c820eb7fc4923d780ffc00ed5d59dbaadb3a18'
-      },
-      body:JSON.stringify({
-        from:phoneId,
-        to:formatted,
-        userId:userId
-      })
+      headers:{'Content-Type':'application/json','Authorization':'a3d61caece6a8c60fe2c87c6d6c820eb7fc4923d780ffc00ed5d59dbaadb3a18'},
+      body:JSON.stringify({from:phoneId,to:formatted,userId:userId})
     });
     var data=await resp.json();
-    if(!resp.ok){
-      alert('Lỗi gọi: '+(data.message||resp.status));
-    }
-  }catch(e){
-    alert('Lỗi kết nối OpenPhone: '+e.message);
-  }
+    if(!resp.ok){alert('Lỗi gọi: '+(data.message||resp.status));}
+  }catch(e){alert('Lỗi kết nối OpenPhone: '+e.message);}
   if(btn){btn.disabled=false;btn.style.opacity='1';}
 }
 
+function editPhone(customerId, field, currentVal){
+  var label={'cellphone':'Cellphone','business_phone':'Business Phone','cellphone_2':'Cellphone 2'}[field]||field;
+  var m=document.createElement('div');
+  m.className='modal-overlay';m.id='edit-phone-modal';
+  m.onclick=function(e){if(e.target===m)m.remove();};
+  m.innerHTML='<div class="modal" style="max-width:360px;width:100%">'
+    +'<div class="modal-header"><h3>Sửa '+label+'</h3>'
+    +'<button class="modal-close" onclick="document.getElementById(\'edit-phone-modal\').remove()">✕</button></div>'
+    +'<div style="padding:16px;display:flex;flex-direction:column;gap:12px">'
+    +'<input id="edit-phone-input" value="'+currentVal+'" placeholder="Nhập số điện thoại..." style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:14px;font-family:monospace;color:var(--text);outline:none">'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +'<button class="btn" onclick="document.getElementById(\'edit-phone-modal\').remove()">Hủy</button>'
+    +'<button class="btn btn-primary" onclick="savePhone('+customerId+',\''+field+'\')"><i class="ti ti-check"></i> Lưu</button>'
+    +'</div></div></div>';
+  document.body.appendChild(m);
+  setTimeout(function(){var el=document.getElementById('edit-phone-input');if(el)el.focus();},100);
+}
 
   var label={'cellphone':'Cellphone','business_phone':'Business Phone','cellphone_2':'Cellphone 2'}[field]||field;  var m=document.createElement('div');
   m.className='modal-overlay';m.id='edit-phone-modal';
