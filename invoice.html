@@ -183,10 +183,11 @@ table.inv-table tr:last-child td{border-bottom:none}
   }
   .preview-wrap.mobile-show #invoice-preview{
     width:760px;
-    transform-origin:top center;
+    transform-origin:top left;
     transform:scale(var(--inv-scale,0.45));
-    margin-left:calc((100vw - 760px) / 2);
-    margin-bottom:calc((760px * (1 - var(--inv-scale,0.45))) * -1 + 20px);
+    margin-left:0;
+    margin-right:0;
+    margin-bottom:calc(760px * (var(--inv-scale,0.45) - 1) - 20px);
   }
   .preview-toolbar{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);background:#fff}
   .preview-toolbar h2{font-size:14px}
@@ -824,17 +825,15 @@ function showMobilePreview(){
   var pw=document.querySelector('.preview-wrap');
   if(pw){
     pw.classList.add('mobile-show');
-    // Tính scale để vừa màn hình
     var screenW=window.innerWidth;
-    var scale=Math.min(1,(screenW-16)/760);
-    document.documentElement.style.setProperty('--inv-scale',scale.toFixed(3));
-    // Set chiều cao đúng sau scale
+    var scale=(screenW-16)/760;
+    if(scale>1)scale=1;
+    document.documentElement.style.setProperty('--inv-scale',scale.toFixed(4));
+    // Center: offset = (screenW - 760*scale) / 2
+    var offset=Math.max(0,(screenW-760*scale)/2);
     var preview=document.getElementById('invoice-preview');
     if(preview){
-      setTimeout(function(){
-        var scaledH=preview.scrollHeight*scale;
-        preview.parentElement.style.minHeight=(scaledH+60)+'px';
-      },100);
+      preview.style.marginLeft=offset+'px';
     }
   }
 }
