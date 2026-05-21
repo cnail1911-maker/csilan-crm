@@ -185,9 +185,8 @@ table.inv-table tr:last-child td{border-bottom:none}
     width:760px;
     transform-origin:top left;
     transform:scale(var(--inv-scale,0.45));
-    margin-left:0;
-    margin-right:0;
-    margin-bottom:calc(760px * (var(--inv-scale,0.45) - 1) - 20px);
+    margin-bottom:calc(760px * (var(--inv-scale,0.45) - 1));
+    flex-shrink:0;
   }
   .preview-toolbar{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);background:#fff}
   .preview-toolbar h2{font-size:14px}
@@ -825,16 +824,13 @@ function showMobilePreview(){
   var pw=document.querySelector('.preview-wrap');
   if(pw){
     pw.classList.add('mobile-show');
+    pw.style.padding='0';
     var screenW=window.innerWidth;
-    var scale=(screenW-16)/760;
-    if(scale>1)scale=1;
+    var scale=Math.min(1,screenW/760);
     document.documentElement.style.setProperty('--inv-scale',scale.toFixed(4));
-    // Center: offset = (screenW - 760*scale) / 2
-    var offset=Math.max(0,(screenW-760*scale)/2);
     var preview=document.getElementById('invoice-preview');
-    if(preview){
-      preview.style.marginLeft=offset+'px';
-    }
+    if(preview){preview.style.marginLeft='0';}
+    pw.scrollTop=0;
   }
 }
 function hideMobilePreview(){
