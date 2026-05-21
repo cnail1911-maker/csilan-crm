@@ -350,7 +350,7 @@ const PAGE_SIZE=50;
 
 // STATE
 let currentUser=null,currentProfile=null,CUSTOMERS=[],PROFILES=[],PRODUCTS_ALL=[],INVOICES=[];
-let page='customers',fStatus='all',fSale='all',fPotential='all',fBrand='all',fCampaign='all',fReason='all',search='',selId=null,addOpen=false;
+let page='customers',fStatus='all',fSale='all',fPotential='all',fBrand='all',fCampaign='all',fReason='all',fOverdue='all',search='',selId=null,addOpen=false;
 if(!window._custSelected)window._custSelected=new Set();
 let cdSearchInv='';
 let _searchTimer=null;
@@ -547,9 +547,17 @@ function renderCustomers(){
     if(fPotential!=='all'&&c.potential!==fPotential)return false;
     if(fBrand!=='all'&&c.brand!==fBrand)return false;
     if(fReason!=='all'&&c.reason!==fReason)return false;
+    if(fOverdue!=='all'){
+      var lastC=c.last_contacted?new Date(c.last_contacted):null;
+      var days=lastC?Math.floor((new Date()-lastC)/(1000*60*60*24)):-1;
+      if(fOverdue==='3-7'&&!(days>=3&&days<=7))return false;
+      if(fOverdue==='8-14'&&!(days>=8&&days<=14))return false;
+      if(fOverdue==='15-30'&&!(days>=15&&days<=30))return false;
+      if(fOverdue==='30+'&&!(days>30))return false;
+    }
     if(fCampaign==='__none__'&&c.campaign_name)return false;
     if(fCampaign!=='all'&&fCampaign!=='__none__'&&c.campaign_name!==fCampaign)return false;
-    if(search&&!((c.customer_name||'').toLowerCase().includes(search))&&!((c.cellphone||'').includes(search))&&!((c.business_phone||'').includes(search))&&!((c.cellphone_2||'').includes(search))&&!((c.business_name||'').toLowerCase().includes(search)))return false;
+    if(search&&!((c.customer_name||'').toLowerCase().includes(search))&&!((c.cellphone||'').includes(search))&&!((c.business_phone||'').includes(search))&&!((c.cellphone_2||'').includes(search))&&!((c.business_name||'').toLowerCase().includes(search))&&!((c.ma_kh||'').toLowerCase().includes(search)))return false;
     return true;
   });
   const won=data.filter(function(c){return c.lead_status==='Closedeal';}).length;
@@ -560,6 +568,7 @@ function renderCustomers(){
   filterHtml+='<select class="fsel" onchange="fPotential=this.value;curPage=1;render()"><option value="all">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'"'+(fPotential===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fBrand=this.value;curPage=1;render()"><option value="all">Tất cả Brand</option>'+BRAND_OPTS.map(function(b){return '<option value="'+b+'"'+(fBrand===b?' selected':'')+'>'+b+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fReason=this.value;curPage=1;render()"><option value="all">Tất cả Reason</option>'+REASON_OPTS.map(function(r){return '<option value="'+r+'"'+(fReason===r?' selected':'')+'>'+r+'</option>';}).join('')+'</select>';
+  filterHtml+='<select class="fsel" onchange="fOverdue=this.value;curPage=1;render()"><option value="all">Tất cả quá hạn</option><option value="3-7"'+(fOverdue==='3-7'?' selected':'')+'>3-7 ngày</option><option value="8-14"'+(fOverdue==='8-14'?' selected':'')+'>8-14 ngày</option><option value="15-30"'+(fOverdue==='15-30'?' selected':'')+'>15-30 ngày</option><option value="30+"'+(fOverdue==='30+'?' selected':'')+'>30+ ngày</option></select>';
   if(isManager){
     filterHtml+='<select class="fsel" onchange="fSale=this.value;curPage=1;render()"><option value="all">Tất cả Sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
     filterHtml+='<select class="fsel" onchange="fCampaign=this.value;curPage=1;render()"><option value="all">Tất cả Campaign</option><option value="__none__"'+(fCampaign==='__none__'?' selected':'')+'>Chưa thuộc chiến dịch nào</option>'+campNames.map(function(n){return '<option value="'+n+'"'+(fCampaign===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select>';
@@ -602,7 +611,7 @@ function renderCustomers(){
   const chkAllTh=isManager?'<th style="width:32px"><input type="checkbox" '+(allPageChecked?'checked':'')+' style="accent-color:var(--brand);cursor:pointer" onchange="if(this.checked){window._custPageIds.forEach(function(id){window._custSelected.add(id)})}else{window._custPageIds.forEach(function(id){window._custSelected.delete(id)})};render()" title="Chọn tất cả trang này"></th>':'';
 
   return '<div class="topbar"><div class="topbar-title">Khách hàng</div>'
-    +'<div class="search-wrap"><i class="ti ti-search"></i><input placeholder="Tìm tên, SĐT, công ty..." id="main-search" oninput="doSearch(this.value)" value="'+(window._searchRaw||search)+'"></div>'
+    +'<div class="search-wrap"><i class="ti ti-search"></i><input placeholder="Tìm tên, SĐT, mã KH, công ty..." id="main-search" oninput="doSearch(this.value)" value="'+(window._searchRaw||search)+'"></div>'
     +(isManager?'<button class="btn" onclick="doRecall()" style="border-color:rgba(255,118,117,0.4);color:var(--danger)"><i class="ti ti-rotate-clockwise"></i> Thu hồi hết hạn</button>':'')
     +'<button class="btn btn-primary" onclick="addOpen=true;render()"><i class="ti ti-plus"></i> Thêm khách</button>'
     +'</div>'
@@ -1865,7 +1874,7 @@ async function renderDetailModal(customerId){
     +'</div>'
     +'<div class="modal-body">'
     +'<div class="field-row3"><div class="field"><label>Status</label><select id="d-status">'+selOpts(STATUS_OPTS,c.status)+'</select></div>'
-    +'<div class="field"><label>Sub-status</label><select id="d-substatus">'+selOpts(SUBSTATUS_OPTS,c.sub_status)+'</select></div>'
+    +'<div class="field"><label>Sub-status</label><select id="d-substatus" onchange="var r=document.getElementById(\'d-timeline-req\');if(r)r.style.display=this.value===\'Appointment Set\'?\'inline\':\'none\'">'+selOpts(SUBSTATUS_OPTS,c.sub_status)+'</select></div>'
     +'<div class="field"><label>Lead Status</label><select id="d-leadstatus">'+selOpts(LEAD_OPTS,c.lead_status)+'</select></div></div>'
     +'<div class="field-row"><div class="field"><label>Potential</label><select id="d-potential">'+selOpts(POTENTIAL_OPTS,c.potential)+'</select></div>'
     +'<div class="field"><label>Brand</label><select id="d-brand">'+selOpts(BRAND_OPTS,c.brand)+'</select></div></div>'
@@ -1899,7 +1908,9 @@ async function renderDetailModal(customerId){
     +'<div class="field-row"><div class="field"><label>Times of Use</label><select id="d-times">'+selOpts(TIMES_OPTS,c.times_of_use)+'</select></div>'
     +'<div class="field"><label>Reason</label><select id="d-reason">'+selOpts(REASON_OPTS,c.reason)+'</select></div></div>'
     +'<div class="field-row"><div class="field"><label>Deadline thu hồi</label><input type="date" id="d-deadline" value="'+(c.assigned_deadline||'')+'"></div>'
-    +'<div class="field"><label>Trạng thái data</label><div style="padding:8px;font-size:12px;color:'+(c.potential?'var(--accent2)':'var(--text3)')+'">'+(c.potential?'Giữ lại (có Potential)':'Thu hồi khi hết deadline')+'</div></div></div>'
+    +'<div class="field"><label>Ngày hẹn <span id="d-timeline-req" style="color:var(--danger);display:'+(c.sub_status==='Appointment Set'?'inline':'none')+'">*</span></label><input type="date" id="d-timeline" value="'+(c.timeline_follow||'')+'"></div></div>'
+    +'<div class="field-row"><div class="field"><label>Trạng thái data</label><div style="padding:8px;font-size:12px;color:'+(c.potential?'var(--accent2)':'var(--text3)')+'">'+(c.potential?'Giữ lại (có Potential)':'Thu hồi khi hết deadline')+'</div></div>'
+    +'<div class="field"></div></div>'
     +'<div class="field"><label>Description</label><textarea id="d-desc">'+(c.description||'')+'</textarea></div>'
     +saleField
     +'<div style="border-top:1px solid rgba(255,255,255,0.08);margin:12px 0 10px;padding-top:12px">'
@@ -1923,9 +1934,18 @@ async function saveDetail(customerId){
   const result=document.getElementById('d-result')&&document.getElementById('d-result').value;
   const saleEl=document.getElementById('d-sale');
   const deadline=document.getElementById('d-deadline')&&document.getElementById('d-deadline').value;
+  const subStatus=document.getElementById('d-substatus')&&document.getElementById('d-substatus').value;
+  const timeline=document.getElementById('d-timeline')&&document.getElementById('d-timeline').value;
+  // Validate: Appointment Set bắt buộc có timeline_follow
+  if(subStatus==='Appointment Set'&&!timeline){
+    showLoading(false);
+    alert('Sub-Status "Appointment Set" bắt buộc phải có Ngày hẹn!');
+    document.getElementById('d-timeline')&&document.getElementById('d-timeline').focus();
+    return;
+  }
   const update={
     status:document.getElementById('d-status')&&document.getElementById('d-status').value||null,
-    sub_status:document.getElementById('d-substatus')&&document.getElementById('d-substatus').value||null,
+    sub_status:subStatus||null,
     lead_status:document.getElementById('d-leadstatus')&&document.getElementById('d-leadstatus').value||null,
     potential:document.getElementById('d-potential')&&document.getElementById('d-potential').value||null,
     brand:document.getElementById('d-brand')&&document.getElementById('d-brand').value||null,
@@ -1937,6 +1957,7 @@ async function saveDetail(customerId){
     reason:document.getElementById('d-reason')&&document.getElementById('d-reason').value||null,
     description:document.getElementById('d-desc')&&document.getElementById('d-desc').value||null,
     assigned_deadline:deadline||null,
+    timeline_follow:timeline||null,
   };
   if(saleEl)update.assigned_to=saleEl.value;
   await sb.from('customers').update(update).eq('id',customerId);
