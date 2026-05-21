@@ -1916,6 +1916,8 @@ function editInvoicePage(invoiceNo){
   sessionStorage.setItem('edit_invoice_no', invoiceNo);
   window.open('invoice.html?edit='+encodeURIComponent(invoiceNo), '_blank');
 }
+
+function openInvoice(customerId){
   // Save customer id to sessionStorage then open invoice page
   sessionStorage.setItem('invoice_customer_id', customerId);
   window.open('invoice.html', '_blank');
