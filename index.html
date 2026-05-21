@@ -437,7 +437,7 @@ async function initApp(user){
   const {data:profile}=await sb.from('profiles').select('*').eq('id',user.id).single();
   currentProfile=profile;
   await loadCustomers();
-  const {data:profs}=await sb.from('profiles').select('*,openphone_number').eq('is_active',true).order('full_name');
+  const {data:profs}=await sb.from('profiles').select('*,openphone_number,openphone_phone_id').eq('is_active',true).order('full_name');
   PROFILES=profs||[];
   // Load invoices after auth is confirmed
   await loadInvoices();
@@ -1311,7 +1311,43 @@ function toggleAllSales(cb){
   const boxes=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all)');
   boxes.forEach(function(b){b.checked=false;});
 }
-function editPhone(customerId, field, currentVal){
+async function makeOpenPhoneCall(toNumber){
+  if(!toNumber){alert('Không có số điện thoại!');return;}
+  var phoneId=currentProfile&&currentProfile.openphone_phone_id;
+  var userId='USEa9LBsFo';
+  // Format số: lấy 10 số cuối, thêm +1
+  var formatted='+1'+toNumber.replace(/\D/g,'').slice(-10);
+  if(!phoneId){
+    // Fallback deep link nếu không có phoneNumberId
+    window.open('openphone://call?number='+formatted);
+    return;
+  }
+  var btn=event&&event.target;
+  if(btn){btn.disabled=true;btn.style.opacity='0.5';}
+  try{
+    var resp=await fetch('https://api.openphone.com/v1/calls',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'a3d61caece6a8c60fe2c87c6d6c820eb7fc4923d780ffc00ed5d59dbaadb3a18'
+      },
+      body:JSON.stringify({
+        from:phoneId,
+        to:formatted,
+        userId:userId
+      })
+    });
+    var data=await resp.json();
+    if(!resp.ok){
+      alert('Lỗi gọi: '+(data.message||resp.status));
+    }
+  }catch(e){
+    alert('Lỗi kết nối OpenPhone: '+e.message);
+  }
+  if(btn){btn.disabled=false;btn.style.opacity='1';}
+}
+
+
   var label={'cellphone':'Cellphone','business_phone':'Business Phone','cellphone_2':'Cellphone 2'}[field]||field;  var m=document.createElement('div');
   m.className='modal-overlay';m.id='edit-phone-modal';
   m.onclick=function(e){if(e.target===m)m.remove();};
@@ -1850,13 +1886,13 @@ async function renderDetailModal(customerId){
     +'<div class="field"><label>Cellphone</label>'
     +'<div style="display:flex;align-items:center;gap:6px">'
     +'<span style="font-size:13px;font-family:monospace;color:var(--text)">'+(c.cellphone||'—')+'</span>'
-    +(c.cellphone?'<a href="openphone://call?number=+1'+c.cellphone.replace(/\D/g,'').slice(-10)+'&from='+(currentProfile&&currentProfile.openphone_number||'')+'" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;text-decoration:none"><i class="ti ti-phone" style="font-size:13px"></i></a>':'')
+    +(c.cellphone?'<button onclick="makeOpenPhoneCall(\''+c.cellphone+'\')" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;border:none;cursor:pointer" title="Gọi qua OpenPhone"><i class="ti ti-phone" style="font-size:13px"></i></button>':'')
     +'<button onclick="editPhone('+c.id+',&quot;cellphone&quot;,&quot;'+(c.cellphone||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>'
     +'</div></div>'
     +'<div class="field"><label>Business Phone</label>'
     +'<div style="display:flex;align-items:center;gap:6px">'
     +'<span style="font-size:13px;font-family:monospace;color:var(--text)">'+(c.business_phone||'—')+'</span>'
-    +(c.business_phone?'<a href="openphone://call?number=+1'+c.business_phone.replace(/\D/g,'').slice(-10)+'&from='+(currentProfile&&currentProfile.openphone_number||'')+'" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;text-decoration:none"><i class="ti ti-phone" style="font-size:13px"></i></a>':'')
+    +(c.business_phone?'<button onclick="makeOpenPhoneCall(\''+c.business_phone+'\')" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;border:none;cursor:pointer" title="Gọi qua OpenPhone"><i class="ti ti-phone" style="font-size:13px"></i></button>':'')
     +'<button onclick="editPhone('+c.id+',&quot;business_phone&quot;,&quot;'+(c.business_phone||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>'
     +'</div></div>'
     +'</div>'
@@ -1864,7 +1900,7 @@ async function renderDetailModal(customerId){
     +'<div class="field"><label>Cellphone 2</label>'
     +'<div style="display:flex;align-items:center;gap:6px">'
     +'<span style="font-size:13px;font-family:monospace;color:var(--text)">'+(c.cellphone_2||'—')+'</span>'
-    +(c.cellphone_2?'<a href="openphone://call?number=+1'+c.cellphone_2.replace(/\D/g,'').slice(-10)+'&from='+(currentProfile&&currentProfile.openphone_number||'')+'" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;text-decoration:none"><i class="ti ti-phone" style="font-size:13px"></i></a>':'')
+    +(c.cellphone_2?'<button onclick="makeOpenPhoneCall(\''+c.cellphone_2+'\')" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;border:none;cursor:pointer" title="Gọi qua OpenPhone"><i class="ti ti-phone" style="font-size:13px"></i></button>':'')
     +'<button onclick="editPhone('+c.id+',&quot;cellphone_2&quot;,&quot;'+(c.cellphone_2||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>'
     +'</div></div>'
     +'<div class="field"></div>'
