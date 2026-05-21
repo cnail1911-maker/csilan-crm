@@ -162,6 +162,23 @@ table.inv-table tr:last-child td{border-bottom:none}
 .auth-field input:focus{border-color:var(--red)}
 .auth-btn{width:100%;padding:10px;background:var(--red);color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;font-family:Arial,sans-serif;cursor:pointer}
 .auth-error{color:var(--red);font-size:12px;margin-top:8px;display:none}
+/* ===== MOBILE ===== */
+@media(max-width:768px){
+  .app{flex-direction:column;height:auto;min-height:100vh}
+  .sidebar{width:100%;min-width:0;border-right:none;border-bottom:1px solid var(--border);max-height:none}
+  .sidebar-body{max-height:none;overflow-y:visible;padding:10px}
+  .preview-wrap{display:none;width:100%}
+  .preview-wrap.mobile-show{display:flex;flex-direction:column;position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;background:var(--cream)}
+  .preview-toolbar{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);background:#fff}
+  .preview-toolbar h2{font-size:14px}
+  .field-row{grid-template-columns:1fr}
+  .sidebar-footer{position:sticky;bottom:0;background:#fff;z-index:10;padding:10px 14px;gap:6px;border-top:1px solid var(--border)}
+  .sidebar-footer .btn{flex:1;padding:10px 8px;font-size:12px}
+  .company-cards{flex-wrap:wrap}
+  .type-btn{padding:10px}
+  .field input,.field select,.field textarea{font-size:13px;padding:9px 10px}
+  .product-item{flex-wrap:wrap;gap:6px}
+}
 </style>
 </head>
 <body>
@@ -280,7 +297,7 @@ table.inv-table tr:last-child td{border-bottom:none}
 
     <div class="sidebar-footer">
       <button class="btn" onclick="resetForm()"><i class="ti ti-refresh"></i> Reset</button>
-      <button class="btn btn-outline" onclick="saveAndDownload('preview')"><i class="ti ti-eye"></i> Preview</button>
+      <button class="btn btn-outline" onclick="showMobilePreview()"><i class="ti ti-eye"></i> Preview</button>
       <button class="btn btn-red" onclick="saveAndDownload('pdf')"><i class="ti ti-download"></i> Tải PDF</button>
     </div>
   </div>
@@ -290,8 +307,9 @@ table.inv-table tr:last-child td{border-bottom:none}
     <div class="preview-toolbar">
       <h2>Preview Invoice</h2>
       <div style="display:flex;gap:8px">
-        <button class="btn" onclick="window.open('index.html','_self')"><i class="ti ti-arrow-left"></i> Về CRM</button>
-        <button class="btn btn-red" onclick="saveAndDownload('pdf')"><i class="ti ti-file-download"></i> Tải PDF</button>
+        <button class="btn" onclick="hideMobilePreview()"><i class="ti ti-arrow-left"></i> Chỉnh sửa</button>
+        <button class="btn" onclick="window.open('index.html','_self')"><i class="ti ti-home"></i> Về CRM</button>
+        <button class="btn btn-red" onclick="editInvoiceId?updateInvoice():saveAndDownload('pdf')"><i class="ti ti-file-download"></i> Tải PDF</button>
       </div>
     </div>
     <div id="invoice-preview">
@@ -372,6 +390,13 @@ async function initApp(user){
     sessionStorage.removeItem('invoice_customer_id');
     const {data:c}=await sb.from('customers').select('*').eq('id',parseInt(preloadId)).single();
     if(c)selectCustomer(c);
+  }
+
+  // Edit mode: load existing invoice
+  const urlParams=new URLSearchParams(window.location.search);
+  const editInvNo=urlParams.get('edit');
+  if(editInvNo){
+    await loadInvoiceForEdit(editInvNo);
   }
 
   renderPreview();
@@ -773,6 +798,173 @@ async function saveAndDownload(action){
     showLoading(false);
     alert(successMsg);
   }
+}
+
+function showMobilePreview(){
+  renderPreview();
+  var pw=document.querySelector('.preview-wrap');
+  if(pw)pw.classList.add('mobile-show');
+}
+function hideMobilePreview(){
+  var pw=document.querySelector('.preview-wrap');
+  if(pw)pw.classList.remove('mobile-show');
+}
+
+// EDIT MODE
+let editInvoiceId=null;
+let editInvoiceNo=null;
+
+async function loadInvoiceForEdit(invoiceNo){
+  showLoading(true);
+  // Load invoice
+  const {data:inv,error}=await sb.from('invoices').select('*').eq('invoice_no',invoiceNo).single();
+  if(error||!inv){showLoading(false);alert('Không tìm thấy đơn hàng: '+invoiceNo);return;}
+  editInvoiceId=inv.id;
+  editInvoiceNo=inv.invoice_no;
+
+  // Load invoice items
+  const {data:invItems}=await sb.from('invoice_items').select('*').eq('invoice_id',inv.id);
+
+  // Load customer
+  const {data:cust}=await sb.from('customers').select('*').eq('id',inv.customer_id).single();
+  if(cust)selectCustomer(cust);
+
+  // Set doc type
+  docType=inv.type||'invoice';
+  document.querySelectorAll('.type-btn').forEach(function(btn){
+    btn.classList.toggle('active',btn.dataset.type===docType);
+  });
+
+  // Set company
+  if(inv.company_id){
+    selectedCompany=COMPANIES.find(function(c){return c.id===inv.company_id;})||null;
+    renderCompanyCards();
+    const sel=document.getElementById('company-select');
+    if(sel)sel.value=inv.company_id;
+  }
+
+  // Set form fields
+  if(inv.date)document.getElementById('inv-date').value=inv.date;
+  if(inv.location)document.getElementById('inv-location').value=inv.location;
+  if(inv.requested_delivery)document.getElementById('inv-delivery').value=inv.requested_delivery;
+  if(inv.tax_pct)document.getElementById('inv-tax').value=inv.tax_pct;
+  if(inv.deposit)document.getElementById('inv-deposit').value=inv.deposit;
+  if(inv.extra_discount)document.getElementById('inv-extra-disc').value=inv.extra_discount;
+  if(inv.note)document.getElementById('inv-note').value=inv.note;
+
+  // Load items
+  items=(invItems||[]).map(function(it){
+    return {
+      id:Date.now()+Math.random(),
+      product_id:it.product_id||null,
+      name:it.product_name,
+      image_url:it.image_url||null,
+      qty:it.qty,
+      unit_price:it.unit_price,
+      discount:it.discount||0,
+      amount:it.amount
+    };
+  });
+
+  // Update UI to show edit mode
+  document.querySelector('.sidebar-title').textContent='Chỉnh sửa '+invoiceNo;
+  const footer=document.querySelector('.sidebar-footer');
+  if(footer){
+    footer.innerHTML='<button class="btn" onclick="resetEditMode()"><i class="ti ti-x"></i> Hủy</button>'
+      +'<button class="btn btn-outline" onclick="renderPreview()"><i class="ti ti-eye"></i> Preview</button>'
+      +'<button class="btn btn-red" onclick="updateInvoice()"><i class="ti ti-device-floppy"></i> Cập nhật & Tải PDF</button>';
+  }
+
+  renderItems();
+  calcTotals();
+  renderPreview();
+  showLoading(false);
+}
+
+async function updateInvoice(){
+  if(!selectedCustomer){alert('Vui lòng chọn khách hàng!');return;}
+  if(items.length===0){alert('Vui lòng thêm ít nhất 1 sản phẩm!');return;}
+  if(!editInvoiceId){alert('Lỗi: không tìm thấy ID đơn hàng!');return;}
+  showLoading(true);
+
+  const subtotal=items.reduce(function(s,i){return s+i.amount;},0);
+  const taxPct=parseFloat(document.getElementById('inv-tax').value)||0;
+  const tax=subtotal*taxPct/100;
+  const extraDisc=parseFloat(document.getElementById('inv-extra-disc').value)||0;
+  const deposit=parseFloat(document.getElementById('inv-deposit').value)||0;
+  const total=subtotal+tax-extraDisc;
+  const balance=total-deposit;
+
+  // Update invoice
+  const {error:invErr}=await sb.from('invoices').update({
+    customer_id:selectedCustomer.id,
+    company_id:selectedCompany?selectedCompany.id:null,
+    date:document.getElementById('inv-date').value,
+    location:document.getElementById('inv-location').value,
+    requested_delivery:document.getElementById('inv-delivery').value,
+    tax_pct:taxPct,
+    deposit:deposit,
+    extra_discount:extraDisc,
+    note:document.getElementById('inv-note').value,
+    subtotal:subtotal,
+    total:total,
+    balance_due:balance,
+    approval_status:'pending'
+  }).eq('id',editInvoiceId);
+
+  if(invErr){showLoading(false);alert('Lỗi cập nhật: '+invErr.message);return;}
+
+  // Delete old items and reinsert
+  await sb.from('invoice_items').delete().eq('invoice_id',editInvoiceId);
+  const newItems=items.map(function(it){
+    return {
+      invoice_id:editInvoiceId,
+      product_id:it.product_id||null,
+      product_name:it.name,
+      image_url:it.image_url||null,
+      qty:it.qty,
+      unit_price:it.unit_price,
+      discount:it.discount,
+      amount:it.amount
+    };
+  });
+  await sb.from('invoice_items').insert(newItems);
+
+  // Update customer
+  if(selectedCustomer){
+    await sb.from('customers').update({latest_invoice_no:editInvoiceNo,total_amount:total}).eq('id',selectedCustomer.id);
+  }
+
+  // Download PDF
+  document.getElementById('inv-po').value=editInvoiceNo;
+  renderPreview();
+  setTimeout(async function(){
+    const element=document.getElementById('invoice-preview');
+    const opt={
+      margin:[8,6,8,6],filename:editInvoiceNo+'.pdf',
+      image:{type:'jpeg',quality:0.95},
+      html2canvas:{scale:1.5,useCORS:true,allowTaint:true,logging:false},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait',compress:true},
+      pagebreak:{mode:['avoid-all','css']}
+    };
+    await html2pdf().set(opt).from(element).save();
+    showLoading(false);
+    alert('Đã cập nhật đơn '+editInvoiceNo+' — chờ Admin duyệt lại!');
+  },500);
+}
+
+function resetEditMode(){
+  editInvoiceId=null;
+  editInvoiceNo=null;
+  // Restore original footer buttons
+  const footer=document.querySelector('.sidebar-footer');
+  if(footer){
+    footer.innerHTML='<button class="btn" onclick="resetForm()"><i class="ti ti-refresh"></i> Reset</button>'
+      +'<button class="btn btn-outline" onclick="renderPreview()"><i class="ti ti-eye"></i> Preview</button>'
+      +'<button class="btn btn-red" onclick="saveAndDownload(\'pdf\')"><i class="ti ti-download"></i> Tải PDF</button>';
+  }
+  document.querySelector('.sidebar-title').textContent='Tạo Invoice mới';
+  resetForm();
 }
 
 function resetForm(){
