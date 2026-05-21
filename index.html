@@ -757,12 +757,34 @@ function renderClosedeal(){
     +'<div class="stat-card sc1"><div class="stat-label">Đã nhận hàng</div><div class="stat-val" style="color:var(--accent2)">'+INVOICES.filter(function(i){return i.order_status==='Đã nhận hàng';}).length+'</div></div>'
     +'</div>';
 
-  // Pending section - show first
-  if(isManager&&pendingInvs.length>0){
+  // Pending section - manager thấy tất cả, sale thấy của mình
+  const myPendingInvs=isManager
+    ?pendingInvs
+    :pendingInvs.filter(function(i){return currentUser&&i.sale_id===currentUser.id;});
+
+  if(myPendingInvs.length>0){
+    // Rebuild pending rows for sale (only their own)
+    let visiblePendingRows='';
+    myPendingInvs.forEach(function(inv){
+      const cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;})||{};
+      const isMine=currentUser&&inv.sale_id===currentUser.id;
+      visiblePendingRows+='<tr>'
+        +'<td style="font-size:10px;font-family:monospace;color:var(--warn)">'+(inv.invoice_no||'—')+'</td>'
+        +'<td>'+(cust.business_name||'—')+'</td>'
+        +'<td style="color:var(--text)">'+(cust.customer_name||'—')+'</td>'
+        +'<td style="color:var(--accent2);font-weight:700">$'+(inv.total||0).toLocaleString()+'</td>'
+        +'<td style="font-size:10px;color:var(--text3)">'+fmtDate(inv.created_at)+'</td>'
+        +'<td><div style="display:flex;gap:4px">'
+        +(isManager?'<button class="btn btn-primary" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'approved\')">✓ Duyệt</button>':'')
+        +(isManager?'<button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'rejected\')">✗ Từ chối</button>':'')
+        +(isMine?'<button class="btn" style="padding:3px 8px;font-size:11px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="editInvoicePage(\''+inv.invoice_no+'\')"><i class="ti ti-edit"></i> Sửa</button>':'')
+        +'</div></td>'
+        +'</tr>';
+    });
     html+='<div class="panel" style="margin-bottom:14px;border-color:rgba(253,203,110,0.3)">'
-      +'<div class="panel-header" style="background:rgba(253,203,110,0.08)"><h2><span style="color:var(--warn)">⏳ Chờ Admin duyệt</span> <span style="color:var(--warn)">'+pendingInvs.length+'</span></h2></div>'
+      +'<div class="panel-header" style="background:rgba(253,203,110,0.08)"><h2><span style="color:var(--warn)">⏳ Chờ duyệt</span> <span style="color:var(--warn)">'+myPendingInvs.length+'</span></h2></div>'
       +'<table><thead><tr><th>Mã đơn</th><th>Business Name</th><th>Customer</th><th>Total</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>'
-      +'<tbody>'+pendingRows+'</tbody></table></div>';
+      +'<tbody>'+visiblePendingRows+'</tbody></table></div>';
   }
 
   // Main table
