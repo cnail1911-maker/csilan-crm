@@ -717,6 +717,7 @@ function renderPreview(){
       +'⚡ Tổng chênh lệch vs giá gốc: <strong>'+(totalDiff===0?'Đúng giá':tdSign+'$'+Math.abs(totalDiff).toLocaleString())+'</strong>'
       +' — '+tdLabel
       +'</div>';
+  }
 
   const cuAddr=cu?[cu.address,cu.city,cu.zipcode,cu.state].filter(Boolean).join(' '):'';
 
