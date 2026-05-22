@@ -689,10 +689,13 @@ function renderPreview(){
       if(refPrice>0){
         var diffClass=diff>0?'price-diff-pos':diff<0?'price-diff-neg':'price-diff-zero';
         var diffSign=diff>0?'+':'';
-        var bestNote=(it.best_price&&it.best_price>0)?'<span class="best-price-note">Giá tốt nhất: $'+it.best_price.toLocaleString()+'</span>':'';
-        diffHtml='<tr class="no-print"><td colspan="6" style="padding:0 10px 6px 10px;border-bottom:none">'
-          +'<span class="price-ref-label">So với '+refLabel+' $'+refPrice.toLocaleString()+': </span>'
-          +'<span class="'+diffClass+'">'+(diff===0?'Đúng giá':diffSign+'$'+Math.abs(diff).toLocaleString()+'/sp → '+diffSign+'$'+Math.abs(diffTotal).toLocaleString()+' cả đơn')+'</span>'
+        var bestNote=(it.best_price&&it.best_price>0)
+          ?'<span class="best-price-note">Tốt nhất: $'+it.best_price.toLocaleString()+'</span>'
+          :'';
+        var diffText=diff===0?'=':(diffSign+'$'+Math.abs(diff).toLocaleString());
+        diffHtml='<tr class="no-print"><td colspan="6" style="padding:2px 10px 6px 62px;border-bottom:none">'
+          +'<span class="price-ref-label">$'+refPrice.toLocaleString()+' </span>'
+          +'<span class="'+diffClass+'">'+diffText+'</span>'
           +bestNote
           +'</td></tr>';
       }
@@ -712,10 +715,8 @@ function renderPreview(){
   if(items.length>0){
     var tdClass=totalDiff>0?'pos':totalDiff<0?'neg':'zero';
     var tdSign=totalDiff>0?'+':'';
-    var tdLabel=totalDiff>0?'Cao hơn giá gốc':totalDiff<0?'Thấp hơn giá gốc':'Đúng giá gốc';
     totalDiffHtml='<div class="no-print inv-diff-summary-wrap '+tdClass+'">'
-      +'⚡ Tổng chênh lệch vs giá gốc: <strong>'+(totalDiff===0?'Đúng giá':tdSign+'$'+Math.abs(totalDiff).toLocaleString())+'</strong>'
-      +' — '+tdLabel
+      +'Tổng chênh lệch: <strong>'+(totalDiff===0?'$0':tdSign+'$'+Math.abs(totalDiff).toLocaleString())+'</strong>'
       +'</div>';
   }
 
