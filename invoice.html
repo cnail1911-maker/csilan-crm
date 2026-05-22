@@ -854,10 +854,7 @@ async function saveAndDownload(action){
   if(action==='pdf'){
     setTimeout(async function(){
       const element=document.getElementById('invoice-preview');
-      // Ẩn no-print trước khi render
-      const noPrintEls=Array.from(element.querySelectorAll('.no-print'));
-      noPrintEls.forEach(function(el){el.setAttribute('data-pdf-hidden','1');el.style.display='none';});
-      // Convert ảnh sang base64 để tránh CORS
+      // Convert ảnh sang base64 trước
       const imgs=Array.from(element.querySelectorAll('img'));
       const origSrcs=imgs.map(function(img){return img.src;});
       await Promise.all(imgs.map(async function(img){
@@ -865,31 +862,42 @@ async function saveAndDownload(action){
         try{
           const resp=await fetch(img.src);
           const blob=await resp.blob();
-          const b64=await new Promise(function(res){
+          img.src=await new Promise(function(res){
             const rd=new FileReader();rd.onload=function(){res(rd.result);};rd.readAsDataURL(blob);
           });
-          img.src=b64;
-        }catch(e){img.style.visibility='hidden';}
+        }catch(e){}
       }));
-      const opt={
-        margin:[8,6,8,6],
-        filename:invNo+'.pdf',
-        image:{type:'jpeg',quality:0.95},
-        html2canvas:{scale:1.5,useCORS:false,allowTaint:false,logging:false,windowWidth:document.getElementById('invoice-preview').offsetWidth+72},
-        jsPDF:{unit:'mm',format:'a4',orientation:'portrait',compress:true},
-        pagebreak:{mode:['avoid-all','css']}
+      // Lấy nội dung HTML của invoice (đã có base64 ảnh)
+      const html=element.innerHTML;
+      // Restore ảnh gốc ngay
+      imgs.forEach(function(img,i){img.src=origSrcs[i];});
+      // Lấy toàn bộ CSS hiện tại
+      const styles=Array.from(document.styleSheets).map(function(ss){
+        try{return Array.from(ss.cssRules).map(function(r){return r.cssText;}).join('\n');}
+        catch(e){return '';}
+      }).join('\n');
+      // Mở print window
+      const pw=window.open('','_blank','width=900,height=700');
+      pw.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">');
+      pw.document.write('<title>'+invNo+'</title>');
+      pw.document.write('<style>'+styles+'</style>');
+      pw.document.write('<style>');
+      pw.document.write('body{margin:0;padding:20px;background:#fff;font-family:Arial,sans-serif}');
+      pw.document.write('#invoice-preview{width:760px;margin:0 auto;background:#fff;padding:30px 36px;font-family:Arial,sans-serif}');
+      pw.document.write('.no-print{display:none!important}');
+      pw.document.write('@media print{.no-print{display:none!important}body{padding:0}#invoice-preview{width:100%}}');
+      pw.document.write('</style></head><body>');
+      pw.document.write('<div id="invoice-preview">'+html+'</div>');
+      pw.document.write('</body></html>');
+      pw.document.close();
+      pw.onload=function(){
+        pw.focus();
+        pw.print();
+        pw.onafterprint=function(){pw.close();};
       };
-      try{
-        await html2pdf().set(opt).from(element).save();
-      }finally{
-        // Restore ảnh gốc
-        imgs.forEach(function(img,i){img.src=origSrcs[i];img.style.visibility='';});
-        // Bật lại no-print
-        noPrintEls.forEach(function(el){el.removeAttribute('data-pdf-hidden');el.style.display='';});
-        showLoading(false);
-        alert(successMsg+' PDF đã tải!');
-      }
-    },500);
+      showLoading(false);
+      alert(successMsg+' Hộp thoại in đang mở — chọn "Save as PDF"!');
+    },300);
   } else {
     showLoading(false);
     alert(successMsg);
@@ -1053,8 +1061,6 @@ async function updateInvoice(){
   renderPreview();
   setTimeout(async function(){
     const element=document.getElementById('invoice-preview');
-    const noPrintEls=Array.from(element.querySelectorAll('.no-print'));
-    noPrintEls.forEach(function(el){el.style.display='none';});
     const imgs=Array.from(element.querySelectorAll('img'));
     const origSrcs=imgs.map(function(img){return img.src;});
     await Promise.all(imgs.map(async function(img){
@@ -1062,28 +1068,28 @@ async function updateInvoice(){
       try{
         const resp=await fetch(img.src);
         const blob=await resp.blob();
-        const b64=await new Promise(function(res){
+        img.src=await new Promise(function(res){
           const rd=new FileReader();rd.onload=function(){res(rd.result);};rd.readAsDataURL(blob);
         });
-        img.src=b64;
-      }catch(e){img.style.visibility='hidden';}
+      }catch(e){}
     }));
-    const opt={
-      margin:[8,6,8,6],filename:editInvoiceNo+'.pdf',
-      image:{type:'jpeg',quality:0.95},
-      html2canvas:{scale:1.5,useCORS:false,allowTaint:false,logging:false,windowWidth:document.getElementById('invoice-preview').offsetWidth+72},
-      jsPDF:{unit:'mm',format:'a4',orientation:'portrait',compress:true},
-      pagebreak:{mode:['avoid-all','css']}
-    };
-    try{
-      await html2pdf().set(opt).from(element).save();
-    }finally{
-      imgs.forEach(function(img,i){img.src=origSrcs[i];img.style.visibility='';});
-      noPrintEls.forEach(function(el){el.style.display='';});
-      showLoading(false);
-      alert('Đã cập nhật đơn '+editInvoiceNo+' — chờ Admin duyệt lại!');
-    }
-  },500);
+    const html=element.innerHTML;
+    imgs.forEach(function(img,i){img.src=origSrcs[i];});
+    const styles=Array.from(document.styleSheets).map(function(ss){
+      try{return Array.from(ss.cssRules).map(function(r){return r.cssText;}).join('\n');}
+      catch(e){return '';}
+    }).join('\n');
+    const pw=window.open('','_blank','width=900,height=700');
+    pw.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">');
+    pw.document.write('<title>'+editInvoiceNo+'</title>');
+    pw.document.write('<style>'+styles+'</style>');
+    pw.document.write('<style>body{margin:0;padding:20px;background:#fff;font-family:Arial,sans-serif}#invoice-preview{width:760px;margin:0 auto;background:#fff;padding:30px 36px;font-family:Arial,sans-serif}.no-print{display:none!important}@media print{.no-print{display:none!important}body{padding:0}#invoice-preview{width:100%}}</style>');
+    pw.document.write('</head><body><div id="invoice-preview">'+html+'</div></body></html>');
+    pw.document.close();
+    pw.onload=function(){pw.focus();pw.print();pw.onafterprint=function(){pw.close();};};
+    showLoading(false);
+    alert('Đã cập nhật đơn '+editInvoiceNo+' — chờ Admin duyệt lại!');
+  },300);
 }
 
 function resetEditMode(){
