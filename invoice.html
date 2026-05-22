@@ -144,6 +144,17 @@ table.inv-table tr:last-child td{border-bottom:none}
 .inv-balance-label{color:var(--dark)}
 .inv-balance-val{color:var(--red)}
 .inv-thank{text-align:center;font-style:italic;font-size:12px;color:var(--red);font-weight:600;padding:10px 0;border-top:1px solid var(--border)}
+.no-print{display:block !important}
+.price-diff-pos{color:#27ae60;font-weight:600;font-size:10px}
+.price-diff-neg{color:#e74c3c;font-weight:600;font-size:10px}
+.price-diff-zero{color:#999;font-size:10px}
+.price-ref-label{color:#999;font-size:10px}
+.inv-diff-summary-wrap{margin-top:4px;padding:5px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.inv-diff-summary-wrap.pos{background:#eafaf1;color:#1e8449;border:1px solid #a9dfbf}
+.inv-diff-summary-wrap.neg{background:#fdf2f2;color:#c0392b;border:1px solid #f5b7b1}
+.inv-diff-summary-wrap.zero{background:#f5f5f5;color:#888;border:1px solid #ddd}
+.best-price-note{font-size:9px;color:#b7770d;background:#fff8e1;border:1px solid #ffe082;border-radius:3px;padding:1px 5px;margin-left:4px;font-weight:600}
+@media print{.no-print{display:none !important}}
 .inv-divider-bottom{height:1px;background:var(--red);margin-bottom:10px}
 
 /* LOADING */
@@ -542,7 +553,9 @@ function addItem(p){
     qty:1,
     unit_price:p.price||0,
     discount:0,
-    amount:p.price||0
+    amount:p.price||0,
+    base_price:p.price||0,
+    best_price:(p.gia_tot_nhat&&p.gia_tot_nhat>0)?p.gia_tot_nhat:null
   };
   items.push(item);
   document.getElementById('prod-search').value='';
@@ -657,6 +670,7 @@ function renderPreview(){
   const docLabel=docType==='invoice'?'INVOICE':'QUOTATION';
 
   let prodRows='';
+  let totalDiff=0;
   if(items.length===0){
     prodRows='<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:20px">Chưa có sản phẩm</td></tr>';
   } else {
@@ -664,6 +678,24 @@ function renderPreview(){
       const imgHtml=it.image_url
         ?'<img class="inv-product-img" src="'+it.image_url+'" onerror="this.style.display=\'none\'" alt="">'
         :'<div class="inv-product-img" style="display:flex;align-items:center;justify-content:center;font-size:24px">📦</div>';
+      // Tính chênh lệch: ưu tiên best_price nếu có, fallback về base_price
+      var refPrice=(it.best_price&&it.best_price>0)?it.best_price:(it.base_price||0);
+      var refLabel=(it.best_price&&it.best_price>0)?'giá tốt nhất':'giá niêm yết';
+      var diff=(it.unit_price||0)-refPrice;
+      var diffPerItem=diff; // chênh lệch mỗi đơn vị
+      var diffTotal=diffPerItem*(it.qty||1); // chênh lệch theo qty
+      totalDiff+=diffTotal;
+      var diffHtml='';
+      if(refPrice>0){
+        var diffClass=diff>0?'price-diff-pos':diff<0?'price-diff-neg':'price-diff-zero';
+        var diffSign=diff>0?'+':'';
+        var bestNote=(it.best_price&&it.best_price>0)?'<span class="best-price-note">Giá tốt nhất: $'+it.best_price.toLocaleString()+'</span>':'';
+        diffHtml='<tr class="no-print"><td colspan="6" style="padding:0 10px 6px 10px;border-bottom:none">'
+          +'<span class="price-ref-label">So với '+refLabel+' $'+refPrice.toLocaleString()+': </span>'
+          +'<span class="'+diffClass+'">'+(diff===0?'Đúng giá':diffSign+'$'+Math.abs(diff).toLocaleString()+'/sp → '+diffSign+'$'+Math.abs(diffTotal).toLocaleString()+' cả đơn')+'</span>'
+          +bestNote
+          +'</td></tr>';
+      }
       prodRows+='<tr>'
         +'<td>'+imgHtml+'</td>'
         +'<td>'+it.name+'</td>'
@@ -671,9 +703,20 @@ function renderPreview(){
         +'<td style="text-align:right">'+fmt(it.unit_price)+'</td>'
         +'<td style="text-align:right">'+fmt(it.discount)+'</td>'
         +'<td>'+fmt(it.amount)+'</td>'
-        +'</tr>';
+        +'</tr>'
+        +diffHtml;
     });
   }
+  // Dòng tổng chênh lệch toàn đơn
+  var totalDiffHtml='';
+  if(items.length>0){
+    var tdClass=totalDiff>0?'pos':totalDiff<0?'neg':'zero';
+    var tdSign=totalDiff>0?'+':'';
+    var tdLabel=totalDiff>0?'Cao hơn giá gốc':totalDiff<0?'Thấp hơn giá gốc':'Đúng giá gốc';
+    totalDiffHtml='<div class="no-print inv-diff-summary-wrap '+tdClass+'">'
+      +'⚡ Tổng chênh lệch vs giá gốc: <strong>'+(totalDiff===0?'Đúng giá':tdSign+'$'+Math.abs(totalDiff).toLocaleString())+'</strong>'
+      +' — '+tdLabel
+      +'</div>';
 
   const cuAddr=cu?[cu.address,cu.city,cu.zipcode,cu.state].filter(Boolean).join(' '):'';
 
@@ -711,7 +754,8 @@ function renderPreview(){
     +'<div class="inv-divider" style="margin-bottom:10px"></div>'
     +'<div class="inv-notes-totals">'    +'<div class="inv-notes">'    +'<p>* Includes a 12-month warranty and lifetime technical support. Products are sourced directly from the manufacturer, ensuring quality, authenticity, and reliable after-sales service. Meets U.S quality and safety standards.</p>'    +'<p>* Order must be in full before delivery or ship.</p>'    +'<p>* All custom made items are non-refundable or cancel.</p>'    +'<p>* Returned item will be refunded less original shipping and 30% restocking fee.</p>'    +'<p>* If any balance (payment) has not been received, we have the right to pick up all the unpaid merechandise.</p>'    +'</div>'    +'<div class="inv-totals"><div class="inv-totals-box">'    +'<div class="inv-total-row"><span class="inv-total-label">Subtotal</span><span class="inv-total-val">'+fmt(subtotal)+'</span></div>'    +(tax>0?'<div class="inv-total-row"><span class="inv-total-label">Tax</span><span class="inv-total-val">'+fmt(tax)+'</span></div>':'')    +(extraDisc>0?'<div class="inv-total-row" style="color:#27AE60"><span class="inv-total-label">Extra Discount</span><span class="inv-total-val">-'+fmt(extraDisc)+'</span></div>':'')    +'<div class="inv-grand-total">'+fmt(total)+'</div>'    +'<div class="inv-total-row"><span class="inv-total-label">Deposit</span><span class="inv-total-val">'+fmt(deposit)+'</span></div>'    +'<div class="inv-balance-row"><span class="inv-balance-label">Balance Due</span><span class="inv-balance-val">'+fmt(balance)+'</span></div>'    +'</div></div>'    +'</div>'
     +'<div class="inv-divider-bottom"></div>'
-    +'<div class="inv-thank">\'Thank You for Your Business\'</div>';
+    +'<div class="inv-thank">\'Thank You for Your Business\'</div>'
+    +totalDiffHtml;
 }
 
 // SAVE + DOWNLOAD
@@ -890,7 +934,15 @@ async function loadInvoiceForEdit(invoiceNo){
       qty:it.qty,
       unit_price:it.unit_price,
       discount:it.discount||0,
-      amount:it.amount
+      amount:it.amount,
+      base_price:(function(){
+        var p=it.product_id?PRODUCTS.find(function(x){return x.id===it.product_id;}):null;
+        return p?p.price:it.unit_price;
+      })(),
+      best_price:(function(){
+        var p=it.product_id?PRODUCTS.find(function(x){return x.id===it.product_id;}):null;
+        return (p&&p.gia_tot_nhat&&p.gia_tot_nhat>0)?p.gia_tot_nhat:null;
+      })()
     };
   });
 
