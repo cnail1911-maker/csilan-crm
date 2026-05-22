@@ -1903,6 +1903,8 @@ async function renderDetailModal(customerId){
     +'</div></div>'
     +'<div class="field"></div>'
     +'</div>'
+    +'<div class="field-row"><div class="field"><label>Address</label><input id="d-address" value="'+(c.address||'')+'" placeholder="Số nhà, tên đường..."></div>'
+    +'<div class="field"><label>City</label><input id="d-city" value="'+(c.city||'')+'" placeholder="Thành phố"></div></div>'
     +'<div class="field-row"><div class="field"><label>State</label><select id="d-state">'+selOpts(STATE_OPTS,c.state)+'</select></div>'
     +'<div class="field"><label>Zipcode</label><input id="d-zip" value="'+(c.zipcode||'')+'"></div></div>'
     +'<div class="field-row"><div class="field"><label>Times of Use</label><select id="d-times">'+selOpts(TIMES_OPTS,c.times_of_use)+'</select></div>'
@@ -1953,6 +1955,8 @@ async function saveDetail(customerId){
     customer_name:document.getElementById('d-name')&&document.getElementById('d-name').value||null,
     state:document.getElementById('d-state')&&document.getElementById('d-state').value||null,
     zipcode:document.getElementById('d-zip')&&document.getElementById('d-zip').value||null,
+    address:document.getElementById('d-address')&&document.getElementById('d-address').value.trim()||null,
+    city:document.getElementById('d-city')&&document.getElementById('d-city').value.trim()||null,
     times_of_use:document.getElementById('d-times')&&document.getElementById('d-times').value||null,
     reason:document.getElementById('d-reason')&&document.getElementById('d-reason').value||null,
     description:document.getElementById('d-desc')&&document.getElementById('d-desc').value||null,
@@ -2022,6 +2026,8 @@ function renderAddModal(){
     +'<div class="field"><label>Cellphone</label><input id="a-cell" placeholder="SĐT di động"></div></div>'
     +'<div class="field-row"><div class="field"><label>Cellphone 2</label><input id="a-cell2" placeholder="SĐT dự phòng / liên hệ khác"></div>'
     +'<div class="field"></div></div>'
+    +'<div class="field-row"><div class="field"><label>Address</label><input id="a-address" placeholder="Số nhà, tên đường..."></div>'
+    +'<div class="field"><label>City</label><input id="a-city" placeholder="Thành phố"></div></div>'
     +'<div class="field-row"><div class="field"><label>State *</label><select id="a-state"><option value="">-- Chọn State --</option>'+STATE_OPTS.map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div>'
     +'<div class="field"><label>Zipcode</label><input id="a-zip" placeholder="12345"></div></div>'
     +'<div class="field-row"><div class="field"><label>Potential</label><select id="a-pot">'+selOpts(POTENTIAL_OPTS)+'</select></div>'
@@ -2075,6 +2081,8 @@ async function doAdd(){
     cellphone_2:(document.getElementById('a-cell2')&&document.getElementById('a-cell2').value||'').trim()||null,
     state:document.getElementById('a-state')&&document.getElementById('a-state').value||null,
     zipcode:document.getElementById('a-zip')&&document.getElementById('a-zip').value||null,
+    address:document.getElementById('a-address')&&document.getElementById('a-address').value.trim()||null,
+    city:document.getElementById('a-city')&&document.getElementById('a-city').value.trim()||null,
     potential:document.getElementById('a-pot')&&document.getElementById('a-pot').value||null,
     status:document.getElementById('a-status')&&document.getElementById('a-status').value||'New',
     sub_status:document.getElementById('a-substatus')&&document.getElementById('a-substatus').value||null,
