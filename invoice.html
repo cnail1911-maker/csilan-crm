@@ -849,20 +849,40 @@ async function saveAndDownload(action){
     :'Đã tạo báo giá '+invNo+'!';
 
   if(action==='pdf'){
-    // Download PDF
+    // Download PDF — convert images to base64 first to avoid CORS/canvas taint
     setTimeout(async function(){
       const element=document.getElementById('invoice-preview');
+      const clone=element.cloneNode(true);
+      clone.querySelectorAll('.no-print').forEach(function(el){el.style.display='none';});
+      const imgs=Array.from(clone.querySelectorAll('img'));
+      await Promise.all(imgs.map(async function(img){
+        if(!img.src||img.src.startsWith('data:'))return;
+        try{
+          const resp=await fetch(img.src);
+          const blob=await resp.blob();
+          const b64=await new Promise(function(res){
+            const rd=new FileReader();rd.onload=function(){res(rd.result);};rd.readAsDataURL(blob);
+          });
+          img.src=b64;
+        }catch(e){img.style.display='none';}
+      }));
+      clone.style.cssText='position:absolute;left:-9999px;top:0;width:'+element.offsetWidth+'px';
+      document.body.appendChild(clone);
       const opt={
         margin:[8,6,8,6],
         filename:invNo+'.pdf',
         image:{type:'jpeg',quality:0.95},
-        html2canvas:{scale:1.5,useCORS:true,allowTaint:true,logging:false},
+        html2canvas:{scale:1.5,useCORS:false,allowTaint:false,logging:false},
         jsPDF:{unit:'mm',format:'a4',orientation:'portrait',compress:true},
         pagebreak:{mode:['avoid-all','css']}
       };
-      await html2pdf().set(opt).from(element).save();
-      showLoading(false);
-      alert(successMsg+' PDF đã tải!');
+      try{
+        await html2pdf().set(opt).from(clone).save();
+      }finally{
+        document.body.removeChild(clone);
+        showLoading(false);
+        alert(successMsg+' PDF đã tải!');
+      }
     },500);
   } else {
     showLoading(false);
@@ -1027,16 +1047,36 @@ async function updateInvoice(){
   renderPreview();
   setTimeout(async function(){
     const element=document.getElementById('invoice-preview');
+    const clone=element.cloneNode(true);
+    clone.querySelectorAll('.no-print').forEach(function(el){el.style.display='none';});
+    const imgs=Array.from(clone.querySelectorAll('img'));
+    await Promise.all(imgs.map(async function(img){
+      if(!img.src||img.src.startsWith('data:'))return;
+      try{
+        const resp=await fetch(img.src);
+        const blob=await resp.blob();
+        const b64=await new Promise(function(res){
+          const rd=new FileReader();rd.onload=function(){res(rd.result);};rd.readAsDataURL(blob);
+        });
+        img.src=b64;
+      }catch(e){img.style.display='none';}
+    }));
+    clone.style.cssText='position:absolute;left:-9999px;top:0;width:'+element.offsetWidth+'px';
+    document.body.appendChild(clone);
     const opt={
       margin:[8,6,8,6],filename:editInvoiceNo+'.pdf',
       image:{type:'jpeg',quality:0.95},
-      html2canvas:{scale:1.5,useCORS:true,allowTaint:true,logging:false},
+      html2canvas:{scale:1.5,useCORS:false,allowTaint:false,logging:false},
       jsPDF:{unit:'mm',format:'a4',orientation:'portrait',compress:true},
       pagebreak:{mode:['avoid-all','css']}
     };
-    await html2pdf().set(opt).from(element).save();
-    showLoading(false);
-    alert('Đã cập nhật đơn '+editInvoiceNo+' — chờ Admin duyệt lại!');
+    try{
+      await html2pdf().set(opt).from(clone).save();
+    }finally{
+      document.body.removeChild(clone);
+      showLoading(false);
+      alert('Đã cập nhật đơn '+editInvoiceNo+' — chờ Admin duyệt lại!');
+    }
   },500);
 }
 
