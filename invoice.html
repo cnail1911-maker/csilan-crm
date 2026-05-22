@@ -561,7 +561,7 @@ function updateItem(id,field,val){
   const item=items.find(function(i){return i._id===id;});
   if(!item)return;
   item[field]=parseFloat(val)||0;
-  item.amount=Math.max(0,(item.qty||1)*(item.unit_price||0)-(item.discount||0));
+  item.amount=Math.max(0,(item.qty||1)*(item.unit_price||0)-(item.discount||0)*(item.qty||1));
   renderItems();
   calcTotals();
 }
