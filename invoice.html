@@ -185,7 +185,8 @@ table.inv-table tr:last-child td{border-bottom:none}
     transform-origin:top left !important;
     transform:scale(var(--inv-scale,0.5)) !important;
     display:block !important;
-    margin-bottom:calc((760px * (var(--inv-scale,0.5) - 1))) !important;
+    overflow:hidden !important;
+    margin-bottom:calc(760px * (var(--inv-scale,0.5) - 1)) !important;
   }
   .preview-toolbar{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);background:#fff}
   .preview-toolbar h2{font-size:14px}
