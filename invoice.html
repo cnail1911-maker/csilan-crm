@@ -679,11 +679,14 @@ function renderPreview(){
         ?'<img class="inv-product-img" src="'+it.image_url+'" onerror="this.style.display=\'none\'" alt="">'
         :'<div class="inv-product-img" style="display:flex;align-items:center;justify-content:center;font-size:24px">📦</div>';
       // Tính chênh lệch: ưu tiên best_price nếu có, fallback về base_price
-      // So sánh Amount (đã trừ discount) với refPrice * qty
+      // base_price = giá gốc trong DB, so với amount (unit_price*qty - discount)
       var refPrice=(it.best_price&&it.best_price>0)?it.best_price:(it.base_price||0);
-      var refAmount=refPrice*(it.qty||1);
-      var diff=(it.amount||0)-refAmount; // amount sau discount vs giá gốc*qty
+      var refAmount=refPrice*(it.qty||1); // giá gốc * qty, không trừ discount
+      // diff âm = sale bán thấp hơn giá gốc (kể cả do discount)
+      // diff dương = sale bán cao hơn giá gốc
+      var diff=(it.amount||0)-refAmount;
       totalDiff+=diff;
+      console.log('[diff]',it.name,'unit_price=',it.unit_price,'discount=',it.discount,'amount=',it.amount,'base_price=',it.base_price,'refPrice=',refPrice,'refAmount=',refAmount,'diff=',diff);
       var diffHtml='';
       if(refPrice>0){
         var diffClass=diff>0?'price-diff-pos':diff<0?'price-diff-neg':'price-diff-zero';
@@ -693,13 +696,11 @@ function renderPreview(){
           ?'<span class="best-price-note">Tốt nhất: $'+it.best_price.toLocaleString()+'</span>'
           :'';
         // Giá gốc dưới cột Unit Price (col 4), chênh lệch dưới cột Amount (col 6)
-        diffHtml='<tr class="no-print" style="border-bottom:1px solid #eee">'
-          +'<td></td>'
-          +'<td></td>'
-          +'<td></td>'
-          +'<td style="text-align:right;font-size:10px;color:#999;padding-top:0;padding-bottom:6px">$'+refPrice.toLocaleString()+'</td>'
-          +'<td></td>'
-          +'<td style="text-align:right;font-size:10px;padding-top:0;padding-bottom:6px">'
+        diffHtml='<tr class="no-print" style="border-bottom:1px solid #f0ebe5">'
+          +'<td colspan="3" style="padding:0 0 5px 0;border-bottom:none"></td>'
+          +'<td style="text-align:right;font-size:10px;color:#aaa;padding:0 0 5px 0;border-bottom:none">$'+refPrice.toLocaleString()+'</td>'
+          +'<td style="border-bottom:none;padding:0 0 5px 0"></td>'
+          +'<td style="text-align:right;font-size:10px;padding:0 0 5px 0;border-bottom:none;font-weight:600">'
           +'<span class="'+diffClass+'">'+diffText+'</span>'+bestNote
           +'</td>'
           +'</tr>';
@@ -754,8 +755,9 @@ function renderPreview(){
       +(cuAddr?'<div class="inv-customer-info">Address: '+cuAddr+'</div>':'')
       :'<div style="color:var(--gray);font-style:italic">Chưa chọn khách hàng</div>')
     +'</div>'
-    +'<table class="inv-table">'
-    +'<thead><tr><th style="width:60px">IMAGE</th><th>DESCRIPTION</th><th style="width:40px;text-align:center">QTY</th><th style="width:80px;text-align:right">UNIT PRICE</th><th style="width:80px;text-align:right">DISCOUNT</th><th style="width:80px;text-align:right">AMOUNT</th></tr></thead>'
+    +'<table class="inv-table" style="table-layout:fixed;width:100%">'
+    +'<colgroup><col style="width:62px"><col><col style="width:44px"><col style="width:88px"><col style="width:88px"><col style="width:88px"></colgroup>'
+    +'<thead><tr><th style="width:62px">IMAGE</th><th>DESCRIPTION</th><th style="width:44px;text-align:center">QTY</th><th style="width:88px;text-align:right">UNIT PRICE</th><th style="width:88px;text-align:right">DISCOUNT</th><th style="width:88px;text-align:right">AMOUNT</th></tr></thead>'
     +'<tbody>'+prodRows+'</tbody>'
     +'</table>'
     +'<div class="inv-divider" style="margin-bottom:10px"></div>'
@@ -849,12 +851,14 @@ async function saveAndDownload(action){
     :'Đã tạo báo giá '+invNo+'!';
 
   if(action==='pdf'){
-    // Download PDF — convert images to base64 first to avoid CORS/canvas taint
     setTimeout(async function(){
       const element=document.getElementById('invoice-preview');
-      const clone=element.cloneNode(true);
-      clone.querySelectorAll('.no-print').forEach(function(el){el.style.display='none';});
-      const imgs=Array.from(clone.querySelectorAll('img'));
+      // Ẩn no-print trước khi render
+      const noPrintEls=Array.from(element.querySelectorAll('.no-print'));
+      noPrintEls.forEach(function(el){el.setAttribute('data-pdf-hidden','1');el.style.display='none';});
+      // Convert ảnh sang base64 để tránh CORS
+      const imgs=Array.from(element.querySelectorAll('img'));
+      const origSrcs=imgs.map(function(img){return img.src;});
       await Promise.all(imgs.map(async function(img){
         if(!img.src||img.src.startsWith('data:'))return;
         try{
@@ -864,22 +868,23 @@ async function saveAndDownload(action){
             const rd=new FileReader();rd.onload=function(){res(rd.result);};rd.readAsDataURL(blob);
           });
           img.src=b64;
-        }catch(e){img.style.display='none';}
+        }catch(e){img.style.visibility='hidden';}
       }));
-      clone.style.cssText='position:absolute;left:-9999px;top:0;width:'+element.offsetWidth+'px';
-      document.body.appendChild(clone);
       const opt={
         margin:[8,6,8,6],
         filename:invNo+'.pdf',
         image:{type:'jpeg',quality:0.95},
-        html2canvas:{scale:1.5,useCORS:false,allowTaint:false,logging:false},
+        html2canvas:{scale:1.5,useCORS:false,allowTaint:false,logging:false,windowWidth:760},
         jsPDF:{unit:'mm',format:'a4',orientation:'portrait',compress:true},
         pagebreak:{mode:['avoid-all','css']}
       };
       try{
-        await html2pdf().set(opt).from(clone).save();
+        await html2pdf().set(opt).from(element).save();
       }finally{
-        document.body.removeChild(clone);
+        // Restore ảnh gốc
+        imgs.forEach(function(img,i){img.src=origSrcs[i];img.style.visibility='';});
+        // Bật lại no-print
+        noPrintEls.forEach(function(el){el.removeAttribute('data-pdf-hidden');el.style.display='';});
         showLoading(false);
         alert(successMsg+' PDF đã tải!');
       }
@@ -1047,9 +1052,10 @@ async function updateInvoice(){
   renderPreview();
   setTimeout(async function(){
     const element=document.getElementById('invoice-preview');
-    const clone=element.cloneNode(true);
-    clone.querySelectorAll('.no-print').forEach(function(el){el.style.display='none';});
-    const imgs=Array.from(clone.querySelectorAll('img'));
+    const noPrintEls=Array.from(element.querySelectorAll('.no-print'));
+    noPrintEls.forEach(function(el){el.style.display='none';});
+    const imgs=Array.from(element.querySelectorAll('img'));
+    const origSrcs=imgs.map(function(img){return img.src;});
     await Promise.all(imgs.map(async function(img){
       if(!img.src||img.src.startsWith('data:'))return;
       try{
@@ -1059,21 +1065,20 @@ async function updateInvoice(){
           const rd=new FileReader();rd.onload=function(){res(rd.result);};rd.readAsDataURL(blob);
         });
         img.src=b64;
-      }catch(e){img.style.display='none';}
+      }catch(e){img.style.visibility='hidden';}
     }));
-    clone.style.cssText='position:absolute;left:-9999px;top:0;width:'+element.offsetWidth+'px';
-    document.body.appendChild(clone);
     const opt={
       margin:[8,6,8,6],filename:editInvoiceNo+'.pdf',
       image:{type:'jpeg',quality:0.95},
-      html2canvas:{scale:1.5,useCORS:false,allowTaint:false,logging:false},
+      html2canvas:{scale:1.5,useCORS:false,allowTaint:false,logging:false,windowWidth:760},
       jsPDF:{unit:'mm',format:'a4',orientation:'portrait',compress:true},
       pagebreak:{mode:['avoid-all','css']}
     };
     try{
-      await html2pdf().set(opt).from(clone).save();
+      await html2pdf().set(opt).from(element).save();
     }finally{
-      document.body.removeChild(clone);
+      imgs.forEach(function(img,i){img.src=origSrcs[i];img.style.visibility='';});
+      noPrintEls.forEach(function(el){el.style.display='';});
       showLoading(false);
       alert('Đã cập nhật đơn '+editInvoiceNo+' — chờ Admin duyệt lại!');
     }
