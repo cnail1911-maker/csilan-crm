@@ -815,7 +815,44 @@ async function approveInvoice(id,status){
     // Update local customers
     var cidx=CUSTOMERS.findIndex(function(c){return c.id===inv.customer_id;});
     if(cidx>=0)Object.assign(CUSTOMERS[cidx],{lead_status:'Closedeal',latest_invoice_no:inv.invoice_no,total_amount:inv.total});
+
+    // Gọi Edge Function sync sang Finance khi approved
+    try{
+      const {data:items}=await sb.from('invoice_items').select('*').eq('invoice_id',id);
+      const payload={
+        invoice_id:     id,
+        invoice_no:     inv.invoice_no,
+        invoice_date:   inv.invoice_date||inv.created_at?.slice(0,10),
+        customer_name:  inv.customer_name||inv.ten_tiem||'',
+        customer_id:    inv.customer_id||null,
+        sale_rep:       inv.sale_rep||inv.submitted_by||'',
+        total:          inv.total||0,
+        deposit:        inv.deposit||0,
+        tax:            inv.tax||0,
+        items:          (items||[]).map(function(it){return{
+          product_id:   it.product_id||null,
+          sku:          it.sku||null,
+          product_name: it.product_name||'',
+          qty:          it.qty||1,
+          unit_price:   it.unit_price||0,
+          discount:     it.discount||0,
+          amount:       it.amount||0
+        };}),
+      };
+      const EDGE_URL='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/sync-invoice-to-finance';
+      const r=await fetch(EDGE_URL,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},
+        body:JSON.stringify(payload)
+      });
+      const result=await r.json();
+      if(!r.ok){console.warn('Sync Finance warn:',result);}
+      else{console.log('Synced to Finance OK:',result);}
+    }catch(e){
+      console.warn('Sync Finance error (non-blocking):',e.message);
+    }
   }
+
   await sb.from('invoices').update({approval_status:status}).eq('id',id);
   // Update local invoices
   if(inv)inv.approval_status=status;
