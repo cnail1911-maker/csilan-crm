@@ -868,7 +868,12 @@ async function approveInvoice(id,status){
         invoice_date:   inv.invoice_date||inv.created_at?.slice(0,10),
         customer_name:  inv.customer_name||inv.ten_tiem||'',
         customer_id:    inv.customer_id||null,
-        sale_rep:       inv.sale_rep||inv.submitted_by||'',
+        sale_rep:       (function(){
+          // CRM lưu sale_id (UUID), cần lookup tên từ PROFILES
+          const saleId=inv.sale_id||inv.created_by||null;
+          const prof=saleId?PROFILES.find(function(p){return p.id===saleId;}):null;
+          return prof?prof.full_name:(inv.sale_rep||inv.submitted_by||'');
+        })(),
         total:          inv.total||0,
         deposit:        inv.deposit||0,
         tax:            inv.tax||0,
