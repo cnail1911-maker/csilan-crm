@@ -461,6 +461,49 @@ async function initApp(user){
   const prodNav=document.getElementById('nav-products');
   if(prodNav)prodNav.style.display='flex';
   showLoading(false);render();
+
+  // ── REALTIME: Products sync từ Finance ──
+  sb.channel('crm-products-rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'products'},function(payload){
+      if(payload.eventType==='INSERT'){
+        if(!PRODUCTS_ALL.find(function(p){return p.id===payload.new.id;}))PRODUCTS_ALL.push(payload.new);
+      }else if(payload.eventType==='UPDATE'){
+        const idx=PRODUCTS_ALL.findIndex(function(p){return p.id===payload.new.id;});
+        if(idx>=0)PRODUCTS_ALL[idx]=payload.new;else PRODUCTS_ALL.push(payload.new);
+      }else if(payload.eventType==='DELETE'){
+        PRODUCTS_ALL=PRODUCTS_ALL.filter(function(p){return p.id!==payload.old.id;});
+      }
+    }).subscribe();
+
+  // ── REALTIME: Invoices ──
+  sb.channel('crm-invoices-rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'invoices'},function(payload){
+      if(payload.eventType==='INSERT'){
+        if(!INVOICES.find(function(i){return i.id===payload.new.id;}))INVOICES.unshift(payload.new);
+      }else if(payload.eventType==='UPDATE'){
+        const idx=INVOICES.findIndex(function(i){return i.id===payload.new.id;});
+        if(idx>=0)INVOICES[idx]=payload.new;else INVOICES.unshift(payload.new);
+      }else if(payload.eventType==='DELETE'){
+        INVOICES=INVOICES.filter(function(i){return i.id!==payload.old.id;});
+      }
+      const isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
+      const cnt=isM?INVOICES.filter(function(i){return i.approval_status==='pending';}).length:INVOICES.filter(function(i){return i.approval_status==='pending'&&i.created_by===currentUser.id;}).length;
+      const badge=document.getElementById('pending-badge');
+      if(badge){badge.textContent=cnt;badge.style.display=cnt>0?'inline-flex':'none';}
+      render();
+    }).subscribe();
+
+  // ── REALTIME: Customers ──
+  sb.channel('crm-customers-rt')
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'customers'},function(payload){
+      if(!CUSTOMERS.find(function(c){return c.id===payload.new.id;}))CUSTOMERS.unshift(payload.new);
+      render();
+    })
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'customers'},function(payload){
+      const idx=CUSTOMERS.findIndex(function(c){return c.id===payload.new.id;});
+      if(idx>=0)Object.assign(CUSTOMERS[idx],payload.new);else CUSTOMERS.unshift(payload.new);
+      render();
+    }).subscribe();
 }
 
 async function loadInvoices(){
@@ -570,7 +613,7 @@ function renderCustomers(){
   filterHtml+='<select class="fsel" onchange="fReason=this.value;curPage=1;render()"><option value="all">Tất cả Reason</option>'+REASON_OPTS.map(function(r){return '<option value="'+r+'"'+(fReason===r?' selected':'')+'>'+r+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fOverdue=this.value;curPage=1;render()"><option value="all">Tất cả quá hạn</option><option value="3-7"'+(fOverdue==='3-7'?' selected':'')+'>3-7 ngày</option><option value="8-14"'+(fOverdue==='8-14'?' selected':'')+'>8-14 ngày</option><option value="15-30"'+(fOverdue==='15-30'?' selected':'')+'>15-30 ngày</option><option value="30+"'+(fOverdue==='30+'?' selected':'')+'>30+ ngày</option></select>';
   if(isManager){
-    filterHtml+='<select class="fsel" onchange="fSale=this.value;curPage=1;render()"><option value="all">Tất cả Sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
+    filterHtml+='<select class="fsel" onchange="fSale=this.value;curPage=1;render()"><option value="all">Tất cả Sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
     filterHtml+='<select class="fsel" onchange="fCampaign=this.value;curPage=1;render()"><option value="all">Tất cả Campaign</option><option value="__none__"'+(fCampaign==='__none__'?' selected':'')+'>Chưa thuộc chiến dịch nào</option>'+campNames.map(function(n){return '<option value="'+n+'"'+(fCampaign===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select>';
   }
 
@@ -646,7 +689,7 @@ function renderPotential(){
     if(cnt>0)statsHtml+='<div class="stat-card sc'+(i%4)+'"><div class="stat-label">'+p+'</div><div class="stat-val" style="color:var(--accent)">'+cnt+'</div></div>';
   });
 
-  let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;potPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
+  let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;potPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
   const potFilterHtml='<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fPotential=this.value;potPage=1;render()"><option value="all">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'"'+(fPotential===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select>';
 
   let rows='';
@@ -715,7 +758,7 @@ function renderClosedeal(){
   filterHtml+='<select class="fsel" onchange="cdFilterOrder=this.value;cdPage=1;render()"><option value="all">Order Status</option>'+['Đang sản xuất','Đang giao','Đã nhận hàng'].map(function(s){return '<option value="'+s+'"'+(cdFilterOrder===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="cdFilterMonth=this.value;cdPage=1;render()"><option value="all">Tháng</option>'+['1','2','3','4','5','6','7','8','9','10','11','12'].map(function(m){return '<option value="'+m+'"'+(cdFilterMonth===m?' selected':'')+'>T'+m+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="cdFilterYear=this.value;cdPage=1;render()"><option value="all">Năm</option>'+years.map(function(y){return '<option value="'+y+'"'+(cdFilterYear===String(y)?' selected':'')+'>'+y+'</option>';}).join('')+'</select>';
-  if(isManager)filterHtml+='<select class="fsel" onchange="fSale=this.value;cdPage=1;render()"><option value="all">Sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
+  if(isManager)filterHtml+='<select class="fsel" onchange="fSale=this.value;cdPage=1;render()"><option value="all">Sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
 
   let rows='';
   pageData.forEach(function(inv){
@@ -913,7 +956,7 @@ function renderPipeline(){
   html+='<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="window._fPipeCamp=this.value;render()"><option value="all">Tất cả Campaign</option>'+campNames.map(function(n){return '<option value="'+n+'"'+(window._fPipeCamp===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select>';
   if(isManager){
     html+='<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()"><option value="all">Tất cả sale</option>'
-      +PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
+      +PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
   }
   html+='</div><div class="content" style="padding:0;overflow:auto"><div class="pipe-grid">';
   STATUS_OPTS.forEach(function(status,i){
@@ -966,7 +1009,7 @@ function renderPending(){
     ?CUSTOMERS.filter(function(c){return c.approval_status==='rejected'&&(fPendingSale==='all'||c.assigned_to===fPendingSale);})
     :CUSTOMERS.filter(function(c){return c.approval_status==='rejected'&&c.created_by===currentUser.id;});
 
-  let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fPendingSale=this.value;pdPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fPendingSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
+  let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fPendingSale=this.value;pdPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fPendingSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
 
   const pgPending=pending.slice((pdPage-1)*PAGE_SIZE,pdPage*PAGE_SIZE);
 
@@ -1061,7 +1104,7 @@ function renderAlert(){
     return '<span class="badge b-calling">'+days+' ngày</span>';
   }
   const potentialFilter='<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="window.alertFPotential=this.value;render()"><option value="all">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'"'+(window.alertFPotential===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select>';
-  const saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
+  const saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
   const filtered=alertData.filter(function(c){
     if(!isManager&&currentUser&&c.assigned_to!==currentUser.id)return false;
     if(fSale!=='all'&&c.assigned_to!==fSale)return false;
@@ -1161,7 +1204,7 @@ function renderCampaign(){
   });
   let assignForm='';
   if(isCampManager){
-    const salesOptions=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){
+    const salesOptions=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){
       return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text);cursor:pointer;padding:4px 10px;border:1px solid var(--border);border-radius:20px;white-space:nowrap"><input type="checkbox" value="'+p.id+'" style="accent-color:var(--brand)"> '+p.full_name+'</label>';
     }).join('');
     const states=[...new Set(CUSTOMERS.map(function(c){return c.state;}).filter(Boolean))].sort();
@@ -1421,7 +1464,7 @@ function custAssignDropdown(btn){
   drop.id='cust-assign-dropdown';
   drop.style.cssText='position:fixed;top:'+(rect.bottom+4)+'px;left:'+rect.left+'px;background:#1a1240;border:1px solid rgba(108,92,231,0.3);border-radius:9px;overflow:hidden;z-index:9999;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,0.4)';
   var html='<div style="padding:6px 12px;font-size:10px;color:rgba(240,238,255,0.4);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,0.06)">Chọn Sale để Assign</div>';
-  PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).forEach(function(p){
+  PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).forEach(function(p){
     html+='<div onclick="custAssignToSale(\''+p.id+'\',\''+p.full_name.replace(/'/g,'\\\'') +'\');document.getElementById(\'cust-assign-dropdown\').remove()" style="padding:9px 14px;font-size:12px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,0.04)" onmouseover="this.style.background=\'rgba(108,92,231,0.1)\'" onmouseout="this.style.background=\'\'"><div class="avatar '+saleAvClass(p.id)+'" style="width:20px;height:20px;font-size:9px">'+p.full_name.split(' ').pop().charAt(0)+'</div>'+p.full_name+'</div>';
   });
   drop.innerHTML=html;
@@ -1481,7 +1524,7 @@ async function addToCampaign(campName){
   const allSaleCb=document.getElementById('camp-sale-all');
   let salesList=[];
   if(allSaleCb&&allSaleCb.checked){
-    salesList=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';});
+    salesList=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';});
   } else {
     const checked=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all):checked');
     const ids=Array.from(checked).map(function(cb){return cb.value;});
@@ -1541,7 +1584,7 @@ async function createCampaign(){
   const allSaleCb=document.getElementById('camp-sale-all');
   let salesList=[];
   if(allSaleCb&&allSaleCb.checked){
-    salesList=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';});
+    salesList=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';});
   } else {
     const checked=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all):checked');
     const ids=Array.from(checked).map(function(cb){return cb.value;});
@@ -1814,7 +1857,7 @@ async function toggleActive(id,val){
 
 
 function renderKPI(){
-  const salesToShow=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';});
+  const salesToShow=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';});
   let statsHtml='';
   const allWon=CUSTOMERS.filter(function(c){return c.lead_status==='Closedeal';}).length;
   const allFU=CUSTOMERS.filter(function(c){return c.status==='Follow Up';}).length;
@@ -1890,7 +1933,7 @@ async function renderDetailModal(customerId){
   modal.className='modal-overlay';modal.id='detail-modal';
   modal.onclick=function(e){if(e.target===modal){modal.remove();selId=null;}};
 
-  let saleField=isManager?('<div class="field"><label>Sale Assigned</label><select id="d-sale">'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(c.assigned_to===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select></div>'):'';
+  let saleField=isManager?('<div class="field"><label>Sale Assigned</label><select id="d-sale">'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(c.assigned_to===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select></div>'):'';
 
   let logHtml='<div style="font-size:12px;color:var(--text3)">Chưa có ghi chú</div>';
   if(logs&&logs.length>0){
@@ -2052,7 +2095,7 @@ function renderAddModal(){
   const modal=document.createElement('div');
   modal.className='modal-overlay';modal.id='add-modal';
   modal.onclick=function(e){if(e.target===modal){modal.remove();addOpen=false;}};
-  const salePH=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';});
+  const salePH=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';});
   modal.innerHTML='<div class="modal" onclick="event.stopPropagation()">'
     +'<div class="modal-header"><h3>Thêm khách hàng mới</h3>'
     +'<button class="btn" style="padding:4px 8px" onclick="document.getElementById(\'add-modal\').remove();addOpen=false"><i class="ti ti-x"></i></button></div>'
@@ -2346,7 +2389,7 @@ async function campAssignSelected(){
   if(!deadline){alert('Vui lòng chọn Deadline!');return;}
   const allSaleCb=document.getElementById('camp-sale-all');
   let salesList=[];
-  if(allSaleCb&&allSaleCb.checked){salesList=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';});}
+  if(allSaleCb&&allSaleCb.checked){salesList=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';});}
   else{const checked=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all):checked');const sIds=Array.from(checked).map(function(cb){return cb.value;});salesList=PROFILES.filter(function(p){return sIds.includes(p.id);});}
   if(salesList.length===0){alert('Vui lòng chọn ít nhất 1 sale!');return;}
   if(!confirm('Assign '+ids.length+' khách đã chọn vào Campaign "'+name+'"?'))return;
@@ -2414,7 +2457,7 @@ async function renderDailyData(){
   const {data:potHist}=await sb.from('potential_history').select('customer_id,assigned_to_id,potential,recalled_at').gte('recalled_at',fromDt).lte('recalled_at',toDt);
 
   const salesToShow=isManager
-    ?(fSaleDaily==='all'?PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}):PROFILES.filter(function(p){return p.id===fSaleDaily;}))
+    ?(fSaleDaily==='all'?PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}):PROFILES.filter(function(p){return p.id===fSaleDaily;}))
     :[currentProfile];
 
   const dates=[];
@@ -2580,7 +2623,7 @@ function render(){
       +'<input type="date" id="daily-from" value="'+fFromD+'" onchange="window._dailyFrom=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">'
       +'<div style="font-size:11px;color:var(--text3)">đến</div>'
       +'<input type="date" id="daily-to" value="'+fToD+'" onchange="window._dailyTo=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">'
-      +(isManagerD?'<select id="daily-sale" onchange="window._dailySale=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none" class="fsel"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fSaleD===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>':'')
+      +(isManagerD?'<select id="daily-sale" onchange="window._dailySale=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none" class="fsel"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSaleD===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>':'')
       +'<button class="btn btn-primary" style="font-size:12px;padding:6px 14px" onclick="window._dailyFrom=document.getElementById(&quot;daily-from&quot;).value;window._dailyTo=document.getElementById(&quot;daily-to&quot;).value;var ds=document.getElementById(&quot;daily-sale&quot;);window._dailySale=ds?ds.value:&quot;all&quot;;renderDailyData()"><i class="ti ti-search"></i> Lọc</button>'
       +'</div><div id="daily-content" style="color:var(--text2);font-size:13px;padding:20px 0"><div style="display:flex;align-items:center;gap:10px"><div style="width:20px;height:20px;border:2px solid var(--brand2);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></div> Đang tải dữ liệu...</div></div></div>';
     renderDailyData();
