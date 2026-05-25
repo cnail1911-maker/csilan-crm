@@ -862,18 +862,28 @@ async function approveInvoice(id,status){
     // Gọi Edge Function sync sang Finance khi approved
     try{
       const {data:items}=await sb.from('invoice_items').select('*').eq('invoice_id',id);
+      // Resolve sale_rep: lookup từ PROFILES, fetch từ DB nếu chưa có (race condition guard)
+      const saleId=inv.sale_id||inv.created_by||null;
+      let saleRepName=inv.sale_rep||inv.submitted_by||'';
+      if(saleId){
+        let prof=PROFILES.find(function(p){return p.id===saleId;});
+        if(!prof){
+          // PROFILES chưa load xong — fetch trực tiếp
+          try{
+            const {data:pd}=await sb.from('profiles').select('full_name').eq('id',saleId).single();
+            if(pd)prof=pd;
+          }catch(e2){console.warn('Profile fetch fallback error:',e2.message);}
+        }
+        if(prof&&prof.full_name)saleRepName=prof.full_name;
+      }
+
       const payload={
         invoice_id:     id,
         invoice_no:     inv.invoice_no,
         invoice_date:   inv.invoice_date||inv.created_at?.slice(0,10),
         customer_name:  inv.customer_name||inv.ten_tiem||'',
         customer_id:    inv.customer_id||null,
-        sale_rep:       (function(){
-          // CRM lưu sale_id (UUID), cần lookup tên từ PROFILES
-          const saleId=inv.sale_id||inv.created_by||null;
-          const prof=saleId?PROFILES.find(function(p){return p.id===saleId;}):null;
-          return prof?prof.full_name:(inv.sale_rep||inv.submitted_by||'');
-        })(),
+        sale_rep:       saleRepName,
         total:          inv.total||0,
         deposit:        inv.deposit||0,
         tax:            inv.tax||0,
@@ -894,8 +904,8 @@ async function approveInvoice(id,status){
         body:JSON.stringify(payload)
       });
       const result=await r.json();
-      if(!r.ok){console.warn('Sync Finance warn:',result);}
-      else{console.log('Synced to Finance OK:',result);}
+      if(!r.ok){console.warn('[Sync Finance] FAIL:',result);}
+      else{console.log('[Sync Finance] OK — sale_rep:'+saleRepName+' matched_profile:'+result.matched_profile,result);}
     }catch(e){
       console.warn('Sync Finance error (non-blocking):',e.message);
     }
