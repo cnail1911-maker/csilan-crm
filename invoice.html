@@ -627,12 +627,13 @@ async function generateInvoiceNo(){
   const dateStr=String(today.getFullYear()).slice(2)+String(today.getMonth()+1).padStart(2,'0')+String(today.getDate()).padStart(2,'0');
   const prefix=docType==='invoice'?'INV':'BG';
   
-  // Count ALL invoices today (không filter sale_id để tránh trùng số)
-  const todayStart=new Date().toISOString().split('T')[0];
-  const {count}=await sb.from('invoices')
-    .select('*',{count:'exact',head:true})
-    .eq('type',docType)
-    .gte('created_at',todayStart);
+  // Đếm theo invoice_no pattern để tránh lỗi timezone UTC vs VN
+  const prefix2=docType==='invoice'?'INVC01':'BGC01';
+  const {data:todayInvs}=await sb.from('invoices')
+    .select('invoice_no')
+    .like('invoice_no',`${prefix2}${dateStr}%`)
+    .eq('type',docType);
+  const count=(todayInvs||[]).length;
   
   const seq=String((count||0)+1).padStart(2,'0');
   return prefix+'C'+empCode+dateStr+'-'+seq;
