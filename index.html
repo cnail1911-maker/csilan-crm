@@ -881,7 +881,10 @@ async function approveInvoice(id,status){
         invoice_id:     id,
         invoice_no:     inv.invoice_no,
         invoice_date:   inv.invoice_date||inv.created_at?.slice(0,10),
-        customer_name:  inv.customer_name||inv.ten_tiem||'',
+        customer_name:  (function(){
+          const cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;});
+          return cust?(cust.business_name||cust.customer_name||''):(inv.customer_name||inv.ten_tiem||'');
+        })(),
         customer_id:    inv.customer_id||null,
         sale_rep:       saleRepName,
         total:          inv.total||0,
