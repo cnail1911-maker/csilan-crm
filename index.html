@@ -893,6 +893,7 @@ async function approveInvoice(id,status){
         items:          (items||[]).map(function(it){return{
           product_id:   it.product_id||null,
           sku:          it.sku||null,
+          image_url:    it.image_url||null,
           product_name: it.product_name||'',
           qty:          it.qty||1,
           unit_price:   it.unit_price||0,
