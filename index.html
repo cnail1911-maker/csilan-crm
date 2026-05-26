@@ -1308,7 +1308,11 @@ function renderCampaign(){
       });
     }
     if(campSaleFilter!=='all'){
-      displayData=displayData.filter(function(c){return c.assigned_to===campSaleFilter;});
+      if(campSaleFilter==='__unassigned__'){
+        displayData=displayData.filter(function(c){return !c.assigned_to;});
+      } else {
+        displayData=displayData.filter(function(c){return c.assigned_to===campSaleFilter;});
+      }
     }
     const PAGE_CAMP=20;
     const campPg=window._campPg||1;
@@ -1349,6 +1353,7 @@ function renderCampaign(){
       +'<div style="width:1px;height:20px;background:var(--border);margin:0 2px"></div>'
       +'<select style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--text);outline:none" onchange="window._campSaleFilter=this.value;window._campPg=1;window._campSelected=new Set();render()">'
       +'<option value="all"'+(campSaleFilter==='all'?' selected':'')+'>Tất cả Sale</option>'
+      +'<option value="__unassigned__"'+(campSaleFilter==='__unassigned__'?' selected':'')+'>Chưa thuộc sale nào</option>'
       +Object.keys(saleMapCamp).map(function(sid){return '<option value="'+sid+'"'+(campSaleFilter===sid?' selected':'')+'>'+saleMapCamp[sid]+'</option>';}).join('')
       +'</select>'
       +'<button class="btn" style="font-size:11px;padding:4px 10px" onclick="window._campSelected=new Set();render()"><i class="ti ti-square"></i> Bỏ chọn tất cả</button>'
