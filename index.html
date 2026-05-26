@@ -646,7 +646,7 @@ function renderCustomers(){
       +'<td>'+dlBadge(c.assigned_deadline)+'</td>'
       +'<td style="font-size:10px;color:var(--text3)">'+fmtDate(c.created_at)+'</td>'
       +(function(){const lastC=c.last_contacted?new Date(c.last_contacted):null;if(!c.potential||c.potential===''||!lastC)return '<td></td>';const days=Math.floor((new Date()-lastC)/(1000*60*60*24));if(days<3)return '<td></td>';const col=days>30?'var(--danger)':days>=7?'var(--warn)':'var(--accent)';return '<td style="font-size:10px;color:'+col+';font-weight:600">'+(days>30?'30+':days)+'d ⚠</td>';})()
-      +'<td style="font-size:11px;color:var(--text2)"><div>'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</div>'+(c.campaign_name?'<div style="font-size:9px;color:var(--text3)">'+c.campaign_name+'</div>':'')+'</td>'
+      +'<td style="font-size:11px;color:var(--text2)"><div>'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'Not Assign')+'</div>'+(c.campaign_name?'<div style="font-size:9px;color:var(--text3)">'+c.campaign_name+'</div>':'')+'</td>'
       +'</tr>';
   });
 
@@ -709,7 +709,7 @@ function renderPotential(){
           +'<td style="font-size:11px;font-weight:600;color:'+col+'">'+(days>30?'30+ ngày':days+' ngày')+'</td>';
       })()
       +'<td>'+lBadge(c.lead_status)+'</td>'
-      +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'Not Assign')+'</td>'
       +'</tr>';
   });
 
@@ -1041,7 +1041,7 @@ function renderPending(){
       +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone||'—')+'</td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.business_phone||'—')+'</td>'
       +'<td>'+(c.is_duplicate?'<span class="badge b-lost">Trùng SĐT</span>':'<span class="badge b-new">Mới</span>')+'</td>'
-      +'<td style="font-size:11px">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
+      +'<td style="font-size:11px">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'Not Assign')+'</td>'
       +'<td style="font-size:10px;color:var(--text3)">'+fmtDate(c.created_at)+'</td>'
       +(isManager?'<td><div style="display:flex;gap:4px"><button class="btn btn-primary" style="padding:3px 8px;font-size:11px" onclick="approveCustomer('+c.id+',\'approved\')">✓ Duyệt</button><button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="approveCustomer('+c.id+',\'rejected\')">✗ Từ chối</button></div></td>':'')
       +'</tr>';
@@ -1056,7 +1056,7 @@ function renderPending(){
       +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone||'—')+'</td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.business_phone||'—')+'</td>'
       +'<td><span class="badge b-lost">Từ chối</span></td>'
-      +'<td style="font-size:11px">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
+      +'<td style="font-size:11px">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'Not Assign')+'</td>'
       +'<td style="font-size:10px;color:var(--text3)">'+fmtDate(c.created_at)+'</td>'
       +(isManager?'<td><button class="btn btn-primary" style="padding:3px 8px;font-size:11px" onclick="approveCustomer('+c.id+',\'approved\')">✓ Duyệt lại</button></td>':'<td><span style="font-size:11px;color:var(--danger)">Đã từ chối</span></td>')
       +'</tr>';
@@ -1142,7 +1142,7 @@ function renderAlert(){
       +'<td style="font-size:11px;color:var(--accent);font-weight:500">'+(c.potential||'—')+'</td>'
       +'<td>'+sBadge(c.status)+'</td>'
       +'<td>'+daysBadge(c)+'</td>'
-      +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'Not Assign')+'</td>'
       +(isManager?'<td><button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="event.stopPropagation();recallOne('+c.id+')">Thu hồi</button></td>':'')
       +'</tr>';
   });
@@ -1331,7 +1331,7 @@ function renderCampaign(){
         +'<td style="font-size:11px">'+(c.potential||'—')+'</td>'
         +'<td style="font-size:11px">'+(c.campaign_name||'—')+'</td>'
         +'<td>'+dlBadge+'</td>'
-        +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
+        +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'Not Assign')+'</td>'
         +'<td>'+(isCampManager?'<button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="campRecallOne('+c.id+')">Thu hồi</button>':'')+'</td>'
         +'</tr>';
     });
@@ -1554,7 +1554,7 @@ async function addToCampaign(campName){
     const ids=Array.from(checked).map(function(cb){return cb.value;});
     salesList=PROFILES.filter(function(p){return ids.includes(p.id);});
   }
-  if(salesList.length===0){alert('Vui lòng chọn ít nhất 1 sale!');return;}
+  // Agent optional - cho phép tạo campaign không có sale
   const dataPool=campGetFiltered();
   if(dataPool.length===0){alert('Không có data nào khớp với bộ lọc!');return;}
   if(!confirm('Thêm '+dataPool.length+' khách vào Campaign "'+campName+'" cho '+salesList.length+' sale với deadline '+deadline+'?'))return;
@@ -1614,7 +1614,7 @@ async function createCampaign(){
     const ids=Array.from(checked).map(function(cb){return cb.value;});
     salesList=PROFILES.filter(function(p){return ids.includes(p.id);});
   }
-  if(salesList.length===0){alert('Vui lòng chọn ít nhất 1 sale!');return;}
+  // Agent optional - cho phép tạo campaign không có sale
   const dataPool=campGetFiltered();
   if(dataPool.length===0){alert('Không có data nào khớp với bộ lọc!');return;}
   if(!confirm('Phân công '+dataPool.length+' khách cho Campaign "'+name+'" cho '+salesList.length+' sale với deadline '+deadline+'?'))return;
@@ -2415,7 +2415,7 @@ async function campAssignSelected(){
   let salesList=[];
   if(allSaleCb&&allSaleCb.checked){salesList=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';});}
   else{const checked=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all):checked');const sIds=Array.from(checked).map(function(cb){return cb.value;});salesList=PROFILES.filter(function(p){return sIds.includes(p.id);});}
-  if(salesList.length===0){alert('Vui lòng chọn ít nhất 1 sale!');return;}
+  // Agent optional - cho phép tạo campaign không có sale
   if(!confirm('Assign '+ids.length+' khách đã chọn vào Campaign "'+name+'"?'))return;
   showLoading(true);
   var mgrName=currentProfile?currentProfile.full_name:'';
@@ -2532,23 +2532,39 @@ async function renderDailyData(){
     const invCount=saleInvs.length;
     summary.push({sale:sale,total:allUnique.size,potential:potKpiIds.size,invs:invCount,byDate:byDate,potentialBreakdown:potentialBreakdown});
 
+        // Potential per day breakdown
+    const potByDate={};
+    dates.forEach(function(dt){potByDate[dt]={ids:new Set(),breakdown:{}};(POTENTIAL_OPTS||[]).forEach(function(opt){potByDate[dt].breakdown[opt]=0;});});
+    (potHist||[]).filter(function(h){return h.assigned_to_id===sale.id&&h.potential;}).forEach(function(h){
+      const day=h.recalled_at?h.recalled_at.slice(0,10):'';
+      if(potByDate[day]){potByDate[day].ids.add(h.customer_id);if(potByDate[day].breakdown[h.potential]!==undefined)potByDate[day].breakdown[h.potential]++;}
+    });
+    CUSTOMERS.filter(function(c){return c.assigned_to===sale.id&&c.potential&&c.potential_since&&c.potential_since>=fFrom&&c.potential_since<=fTo;}).forEach(function(c){
+      const day=c.potential_since?c.potential_since.slice(0,10):'';
+      if(potByDate[day]&&!potByDate[day].ids.has(c.id)){potByDate[day].ids.add(c.id);if(potByDate[day].breakdown[c.potential]!==undefined)potByDate[day].breakdown[c.potential]++;}
+    });
+
     let dayRows='';
     dates.forEach(function(dt){
       const cnt=(byDate[dt]&&byDate[dt].size)||0;
-      const dtInvs=(invs||[]).filter(function(inv){return (inv.submitted_by===sale.id||inv.sale_id===sale.id)&&inv.created_at&&inv.created_at.slice(0,10)===dt;}).length;      dayRows+='<tr style="font-size:11px;color:var(--text3)">'
-        +'<td style="padding-left:32px">'+dt+'</td>'
-        +'<td style="color:'+(cnt>0?'var(--accent2)':'var(--text3)')+'">'+cnt+'</td>'
-        +'<td></td><td></td><td>'+dtInvs+'</td></tr>';
-    });
+      const dtPot=potByDate[dt]?potByDate[dt].ids.size:0;
+      const dtPotStr=potByDate[dt]?Object.entries(potByDate[dt].breakdown).filter(function(e){return e[1]>0;}).map(function(e){return e[0]+': '+e[1];}).join(' | '):'';
+      const dtInvs=(invs||[]).filter(function(inv){return (inv.submitted_by===sale.id||inv.sale_id===sale.id)&&inv.created_at&&inv.created_at.slice(0,10)===dt&&(inv.type==='invoice'||!inv.type);}).length;
+      const dtQuotes=(invs||[]).filter(function(inv){return (inv.submitted_by===sale.id||inv.sale_id===sale.id)&&inv.created_at&&inv.created_at.slice(0,10)===dt&&inv.type==='quotation';}).length;
+      dayRows+='<tr style="font-size:11px;color:var(--text3)">'        +'<td style="padding-left:32px">'+dt+'</td>'        +'<td style="color:'+(cnt>0?'var(--accent2)':'var(--text3)')+'">'+cnt+'</td>'        +'<td style="color:'+(dtPot>0?'var(--warn)':'var(--text3)')+'">'+dtPot+'</td>'        +'<td style="font-size:10px">'+dtPotStr+'</td>'        +'<td>'+dtQuotes+'</td>'        +'<td>'+dtInvs+'</td></tr>';
+    })
 
     const potBreakStr=Object.entries(potentialBreakdown).filter(function(e){return e[1]>0;}).map(function(e){return e[0]+': '+e[1];}).join(' | ')||'—';
+    const quoteCount=saleInvs.filter(function(inv){return inv.type==='quotation';}).length;
+    const realInvCount=saleInvs.filter(function(inv){return inv.type==='invoice'||!inv.type;}).length;
 
     tableRows+='<tr style="border-top:2px solid var(--border)">'
       +'<td><strong style="color:var(--text)">'+sale.full_name+'</strong></td>'
       +'<td style="font-weight:700;color:var(--accent2)">'+allUnique.size+'</td>'
       +'<td style="color:var(--warn)">'+potKpiIds.size+'</td>'
       +'<td style="font-size:10px;color:var(--text3)">'+potBreakStr+'</td>'
-      +'<td style="font-weight:600;color:var(--brand2)">'+invCount+'</td>'
+      +'<td style="font-weight:600;color:#4fc3f7">'+quoteCount+'</td>'
+      +'<td style="font-weight:600;color:var(--brand2)">'+realInvCount+'</td>'
       +'</tr>'+dayRows;
   });
 
@@ -2592,7 +2608,7 @@ function renderSchedule(){
         +'<td style="font-size:11px;color:var(--accent)">'+(c.potential||'—')+'</td>'
         +'<td>'+badge+'</td>'
         +'<td style="font-size:11px">'+dt.toLocaleDateString('vi-VN')+'</td>'
-        +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
+        +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'Not Assign')+'</td>'
         +'</tr>';
     }).join('');
   }
