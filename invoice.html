@@ -650,7 +650,7 @@ function renderItems(){
       +'<div class="item-fields">'
       +'<div class="item-field"><label>QTY</label><input type="number" value="'+it.qty+'" min="1" onchange="updateItem('+it._id+',\'qty\',this.value)"></div>'
       +'<div class="item-field"><label>Unit Price</label><input type="number" value="'+it.unit_price+'" min="0" onchange="updateItem('+it._id+',\'unit_price\',this.value)"></div>'
-      +'<div class="item-field"><label>Discount ($)</label><input type="number" value="'+it.discount+'" min="0" onchange="updateItem('+it._id+',\'discount\',this.value)"></div>'
+      +'<div class="item-field"><label>Disc($)</label><input type="number" value="'+it.discount+'" min="0" onchange="updateItem('+it._id+',\'discount\',this.value)"></div>'
       +(it.is_shipping?'<div class="item-field"><label>Cost ($)</label><input type="number" value="'+(it.vendor_cost||0)+'" min="0" onchange="updateItem('+it._id+',\'vendor_cost\',this.value)" style="border-color:#e74c3c"></div>':'')
       +'<div class="item-field"><label>Amount</label><input type="text" value="'+fmt(it.amount)+'" readonly style="background:var(--light);color:var(--red);font-weight:700"></div>'
       +'</div></div>';
