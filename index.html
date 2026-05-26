@@ -1595,7 +1595,7 @@ async function addToCampaign(campName){
       await sb.from('customers').update({assigned_to:grp.sale?grp.sale.id:null,campaign_name:campName,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'}).in('id',chunk);
       chunk.forEach(function(cid){
         var idx=CUSTOMERS.findIndex(function(x){return x.id===cid;});
-        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale.id,campaign_name:campName,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile={id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role};}
+        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale?grp.sale.id:null,campaign_name:campName,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile={id:grp.sale.id,full_name:grp.sale?grp.sale.full_name:null,role:grp.sale.role};}
       });
     }
   }
@@ -1652,10 +1652,10 @@ async function createCampaign(){
     var grp=saleGroups[saleIds[s]];
     for(var c=0;c<grp.ids.length;c+=500){
       var chunk=grp.ids.slice(c,c+500);
-      await sb.from('customers').update({assigned_to:grp.sale.id,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'}).in('id',chunk);
+      await sb.from('customers').update({assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'}).in('id',chunk);
       chunk.forEach(function(cid){
         var idx=CUSTOMERS.findIndex(function(x){return x.id===cid;});
-        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale.id,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile={id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role};}
+        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile={id:grp.sale.id,full_name:grp.sale?grp.sale.full_name:null,role:grp.sale.role};}
       });
     }
   }
@@ -2451,11 +2451,11 @@ async function campAssignSelected(){
     var grp=saleGroups[saleIds[s]];
     for(var c=0;c<grp.ids.length;c+=500){
       var chunk=grp.ids.slice(c,c+500);
-      await sb.from('customers').update({assigned_to:grp.sale.id,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'}).in('id',chunk);
+      await sb.from('customers').update({assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'}).in('id',chunk);
       // Update local
       chunk.forEach(function(cid){
         var idx=CUSTOMERS.findIndex(function(x){return x.id===cid;});
-        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale.id,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile={id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role};}
+        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile={id:grp.sale.id,full_name:grp.sale?grp.sale.full_name:null,role:grp.sale.role};}
       });
     }
   }
@@ -2576,7 +2576,7 @@ async function renderDailyData(){
   if(dc){
     dc.innerHTML='<div class="panel"><div class="panel-header"><h2>Daily Report <span style="font-size:11px;color:var(--text3);font-weight:400">'+fFrom+' → '+fTo+'</span></h2></div>'
       +'<table><colgroup><col width="160"><col width="120"><col width="80"><col><col width="80"></colgroup>'
-      +'<thead><tr><th>Sale / Ngày</th><th>Data thao tác (unique)</th><th>Potential</th><th>Potential chi tiết</th><th>Quotation</th><th>Invoice</th></tr></thead>'
+      +'<thead><tr><th>Sale / Ngày</th><th>Data thao tác (unique)</th><th>Potential</th><th>Potential chi tiết</th><th>Invoice</th></tr></thead>'
       +'<tbody>'+tableRows+'</tbody></table></div>';
   }
 }
