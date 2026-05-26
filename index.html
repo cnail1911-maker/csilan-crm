@@ -1562,16 +1562,20 @@ async function addToCampaign(campName){
   var mgrName=currentProfile?currentProfile.full_name:'';
   // Gom nhóm theo sale
   var saleGroups={};
-  for(var i=0;i<dataPool.length;i++){
-    var sale=salesList[i%salesList.length];
-    if(!saleGroups[sale.id])saleGroups[sale.id]={sale:sale,ids:[]};
-    saleGroups[sale.id].ids.push(dataPool[i].id);
+  if(salesList.length>0){
+    for(var i=0;i<dataPool.length;i++){
+      var sale=salesList[i%salesList.length];
+      if(!saleGroups[sale.id])saleGroups[sale.id]={sale:sale,ids:[]};
+      saleGroups[sale.id].ids.push(dataPool[i].id);
+    }
+  } else {
+    saleGroups['__unassigned__']={sale:null,ids:dataPool.map(function(c){return c.id;})};
   }
   // Lưu potential_history cho khách có potential
   var historyRows=[];
   dataPool.forEach(function(c,i){
     if(c.potential){
-      var sale=salesList[i%salesList.length];
+      var sale=salesList.length>0?salesList[i%salesList.length]:null;
       var oldSaleName='';
       if(c.assigned_to){var os=PROFILES.find(function(p){return p.id===c.assigned_to;});oldSaleName=os?os.full_name:'';}
       historyRows.push({customer_id:c.id,campaign_name:c.campaign_name||null,potential:c.potential,assigned_to_name:oldSaleName,assigned_to_id:c.assigned_to||null,recalled_by_name:mgrName});
@@ -1588,7 +1592,7 @@ async function addToCampaign(campName){
     var grp=saleGroups[saleIds[s]];
     for(var c=0;c<grp.ids.length;c+=500){
       var chunk=grp.ids.slice(c,c+500);
-      await sb.from('customers').update({assigned_to:grp.sale.id,campaign_name:campName,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'}).in('id',chunk);
+      await sb.from('customers').update({assigned_to:grp.sale?grp.sale.id:null,campaign_name:campName,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'}).in('id',chunk);
       chunk.forEach(function(cid){
         var idx=CUSTOMERS.findIndex(function(x){return x.id===cid;});
         if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale.id,campaign_name:campName,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile={id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role};}
