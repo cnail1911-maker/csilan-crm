@@ -80,7 +80,7 @@ body{font-family:Arial,sans-serif;background:var(--cream);color:var(--dark);font
 .item-del{background:none;border:none;cursor:pointer;color:var(--gray);font-size:14px;padding:2px}
 .item-del:hover{color:var(--red)}
 .item-fields{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px}
-.item-field{display:flex;flex-direction:column;gap:2px}
+.item-field{display:flex;flex-direction:column;gap:2pxmin-width:50px;max-width:85px;}
 .item-field label{font-size:9px;color:var(--gray);text-transform:uppercase;letter-spacing:0.5px}
 .item-field input{border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:12px;font-family:Arial,sans-serif;outline:none;background:#fff;width:100%}
 .item-field input:focus{border-color:var(--red)}
@@ -316,6 +316,7 @@ table.inv-table tr:last-child td{border-bottom:none}
 
     <div class="sidebar-footer">
       <button class="btn" onclick="resetForm()"><i class="ti ti-refresh"></i> Reset</button>
+      <button class="btn" onclick="addShippingLine()" style="background:#f8f9fa;color:#333;border:1px dashed #999;width:100%;margin-bottom:6px"><i class="ti ti-truck"></i> + Thêm Shipping</button>
       <button class="btn btn-outline" onclick="showMobilePreview()"><i class="ti ti-eye"></i> Preview</button>
       <button class="btn btn-red" onclick="saveAndDownload('pdf')"><i class="ti ti-download"></i> Tải PDF</button>
     </div>
@@ -542,11 +543,15 @@ function addItem(p){
     qty:1,
     unit_price:p.price||0,
     discount:0,
-    amount:p.price||0
+    amount:p.price||0,
+    vendor_cost:null,
+    is_shipping:false
   };
   items.push(item);
   document.getElementById('prod-search').value='';
   document.getElementById('prod-results').style.display='none';
+  // Fetch vendor_cost từ Finance
+  fetchVendorCost(item);
   renderItems();
   calcTotals();
 }
@@ -562,6 +567,70 @@ function updateItem(id,field,val){
   if(!item)return;
   item[field]=parseFloat(val)||0;
   item.amount=Math.max(0,(item.qty||1)*(item.unit_price||0)-(item.discount||0)*(item.qty||1));
+  renderItems();
+  calcTotals();
+}
+
+
+// ── VENDOR COST (Finance sync) ────────────────────────────────
+const EDGE_VENDOR_COST='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/get-vendor-cost';
+
+async function fetchVendorCost(item){
+  if(!item.sku&&!item.product_id)return;
+  try{
+    const r=await fetch(EDGE_VENDOR_COST,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},
+      body:JSON.stringify({skus:item.sku?[item.sku]:[],product_ids:item.product_id?[item.product_id]:[]})
+    });
+    const d=await r.json();
+    if(d.costs){
+      const cost=d.costs[item.sku]??d.costs[item.product_id]??null;
+      if(cost!==null){
+        item.vendor_cost=cost;
+        renderItems();
+      }
+    }
+  }catch(e){console.warn('vendor_cost fetch failed:',e.message);}
+}
+
+async function fetchAllVendorCosts(){
+  const skus=items.filter(i=>i.sku&&!i.is_shipping).map(i=>i.sku);
+  const ids=items.filter(i=>i.product_id&&!i.sku&&!i.is_shipping).map(i=>i.product_id);
+  if(!skus.length&&!ids.length)return;
+  try{
+    const r=await fetch(EDGE_VENDOR_COST,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},
+      body:JSON.stringify({skus,product_ids:ids})
+    });
+    const d=await r.json();
+    if(d.costs){
+      items.forEach(function(it){
+        if(it.is_shipping)return;
+        const cost=d.costs[it.sku]??d.costs[it.product_id]??null;
+        if(cost!==null)it.vendor_cost=cost;
+      });
+      renderItems();
+    }
+  }catch(e){console.warn('fetchAllVendorCosts failed:',e.message);}
+}
+
+function addShippingLine(){
+  const item={
+    _id:Date.now(),
+    product_id:null,
+    name:'Shipping',
+    sku:'SHIPPING',
+    image_url:null,
+    qty:1,
+    unit_price:0,
+    discount:0,
+    amount:0,
+    vendor_cost:0,
+    is_shipping:true
+  };
+  items.push(item);
   renderItems();
   calcTotals();
 }
@@ -582,6 +651,7 @@ function renderItems(){
       +'<div class="item-field"><label>QTY</label><input type="number" value="'+it.qty+'" min="1" onchange="updateItem('+it._id+',\'qty\',this.value)"></div>'
       +'<div class="item-field"><label>Unit Price</label><input type="number" value="'+it.unit_price+'" min="0" onchange="updateItem('+it._id+',\'unit_price\',this.value)"></div>'
       +'<div class="item-field"><label>Discount ($)</label><input type="number" value="'+it.discount+'" min="0" onchange="updateItem('+it._id+',\'discount\',this.value)"></div>'
+      +(it.is_shipping?'<div class="item-field"><label>Cost ($)</label><input type="number" value="'+(it.vendor_cost||0)+'" min="0" onchange="updateItem('+it._id+',\'vendor_cost\',this.value)" style="border-color:#e74c3c"></div>':'')
       +'<div class="item-field"><label>Amount</label><input type="text" value="'+fmt(it.amount)+'" readonly style="background:var(--light);color:var(--red);font-weight:700"></div>'
       +'</div></div>';
   }).join('');
@@ -640,6 +710,18 @@ async function generateInvoiceNo(){
 }
 
 // PREVIEW RENDER
+
+function buildVarianceBox(items){
+  const totalVariance=items.reduce(function(s,it){
+    if(it.vendor_cost===null||it.vendor_cost===undefined)return s;
+    return s+(it.unit_price-it.vendor_cost)*it.qty;
+  },0);
+  const hasAny=items.some(function(it){return it.vendor_cost!==null&&it.vendor_cost!==undefined;});
+  if(!hasAny)return '';
+  const color=totalVariance>0?'#27ae60':totalVariance<0?'#e74c3c':'#95a5a6';
+  return '<div class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:8px 12px;border:2px solid '+color+';border-radius:6px;font-weight:700;color:'+color+'"><span>Variance</span><span>'+fmt(totalVariance)+'</span></div>';
+}
+
 function renderPreview(){
   const co=selectedCompany||{name:'Company Name',address:'Address',phone:'Phone',logo_url:''};
   const cu=selectedCustomer;
@@ -665,14 +747,11 @@ function renderPreview(){
       const imgHtml=it.image_url
         ?'<img class="inv-product-img" src="'+it.image_url+'" onerror="this.style.display=\'none\'" alt="">'
         :'<div class="inv-product-img" style="display:flex;align-items:center;justify-content:center;font-size:24px">📦</div>';
-      prodRows+='<tr>'
-        +'<td>'+imgHtml+'</td>'
-        +'<td>'+it.name+'</td>'
-        +'<td style="text-align:center">'+it.qty+'</td>'
-        +'<td style="text-align:right">'+fmt(it.unit_price)+'</td>'
-        +'<td style="text-align:right">'+fmt(it.discount)+'</td>'
-        +'<td>'+fmt(it.amount)+'</td>'
-        +'</tr>';
+            const chenh=(it.vendor_cost!==null&&it.vendor_cost!==undefined)?(it.unit_price-it.vendor_cost):null;
+      const chenhAmt=chenh!==null?chenh*it.qty:null;
+      const chenhHtml=chenh!==null?'<div class="no-print" style="color:#e74c3c;font-size:10px;font-weight:600">$'+chenh.toFixed(2)+'</div>':'';
+      const chenhAmtHtml=chenhAmt!==null?'<div class="no-print" style="color:#e74c3c;font-size:10px;font-weight:600">$'+chenhAmt.toFixed(2)+'</div>':'';
+      prodRows+='<tr>'        +'<td>'+imgHtml+'</td>'        +'<td>'+it.name+'</td>'        +'<td style="text-align:center">'+it.qty+'</td>'        +'<td style="text-align:right">'+fmt(it.unit_price)+chenhHtml+'</td>'        +'<td style="text-align:right">'+fmt(it.discount)+'</td>'        +'<td>'+fmt(it.amount)+chenhAmtHtml+'</td>'        +'</tr>';
     });
   }
 
@@ -710,7 +789,8 @@ function renderPreview(){
     +'<tbody>'+prodRows+'</tbody>'
     +'</table>'
     +'<div class="inv-divider" style="margin-bottom:10px"></div>'
-    +'<div class="inv-notes-totals">'    +'<div class="inv-notes">'    +'<p>* Includes a 12-month warranty and lifetime technical support. Products are sourced directly from the manufacturer, ensuring quality, authenticity, and reliable after-sales service. Meets U.S quality and safety standards.</p>'    +'<p>* Order must be in full before delivery or ship.</p>'    +'<p>* All custom made items are non-refundable or cancel.</p>'    +'<p>* Returned item will be refunded less original shipping and 30% restocking fee.</p>'    +'<p>* If any balance (payment) has not been received, we have the right to pick up all the unpaid merechandise.</p>'    +'</div>'    +'<div class="inv-totals"><div class="inv-totals-box">'    +'<div class="inv-total-row"><span class="inv-total-label">Subtotal</span><span class="inv-total-val">'+fmt(subtotal)+'</span></div>'    +(tax>0?'<div class="inv-total-row"><span class="inv-total-label">Tax</span><span class="inv-total-val">'+fmt(tax)+'</span></div>':'')    +(extraDisc>0?'<div class="inv-total-row" style="color:#27AE60"><span class="inv-total-label">Extra Discount</span><span class="inv-total-val">-'+fmt(extraDisc)+'</span></div>':'')    +'<div class="inv-grand-total">'+fmt(total)+'</div>'    +'<div class="inv-total-row"><span class="inv-total-label">Deposit</span><span class="inv-total-val">'+fmt(deposit)+'</span></div>'    +'<div class="inv-balance-row"><span class="inv-balance-label">Balance Due</span><span class="inv-balance-val">'+fmt(balance)+'</span></div>'    +'</div></div>'    +'</div>'
+    +'<div class="inv-notes-totals">'    +'<div class="inv-notes">'    +'<p>* Includes a 12-month warranty and lifetime technical support. Products are sourced directly from the manufacturer, ensuring quality, authenticity, and reliable after-sales service. Meets U.S quality and safety standards.</p>'    +'<p>* Order must be in full before delivery or ship.</p>'    +'<p>* All custom made items are non-refundable or cancel.</p>'    +'<p>* Returned item will be refunded less original shipping and 30% restocking fee.</p>'    +'<p>* If any balance (payment) has not been received, we have the right to pick up all the unpaid merechandise.</p>'    +'</div>'    +'<div class="inv-totals"><div class="inv-totals-box">'    +'<div class="inv-total-row"><span class="inv-total-label">Subtotal</span><span class="inv-total-val">'+fmt(subtotal)+'</span></div>'    +(tax>0?'<div class="inv-total-row"><span class="inv-total-label">Tax</span><span class="inv-total-val">'+fmt(tax)+'</span></div>':'')    +(extraDisc>0?'<div class="inv-total-row" style="color:#27AE60"><span class="inv-total-label">Extra Discount</span><span class="inv-total-val">-'+fmt(extraDisc)+'</span></div>':'')    +'<div class="inv-grand-total">'+fmt(total)+'</div>'    +'<div class="inv-total-row"><span class="inv-total-label">Deposit</span><span class="inv-total-val">'+fmt(deposit)+'</span></div>'    +'<div class="inv-balance-row"><span class="inv-balance-label">Balance Due</span><span class="inv-balance-val">'+fmt(balance)+'</span></div>'\
+    +buildVarianceBox(items)    +'</div></div>'    +'</div>'
     +'<div class="inv-divider-bottom"></div>'
     +'<div class="inv-thank">\'Thank You for Your Business\'</div>';
 }
