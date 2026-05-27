@@ -954,8 +954,6 @@ async function approveInvoice(id,status){
     }catch(e){
       console.warn('Sync Finance error (non-blocking):',e.message);
     }
-  }
-
   } else {
     // rejected: chỉ update invoices
     await sb.from('invoices').update({approval_status:status}).eq('id',id);
