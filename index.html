@@ -135,7 +135,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
   border:1px solid rgba(255,255,255,0.12);
   border-radius:8px;
   padding:7px 10px;
-  font-size:12px;
+  font-size:14px;
   color:var(--text);
   font-family:'Be Vietnam Pro',sans-serif;
   outline:none;
@@ -347,7 +347,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
       <div class="nav-tabs">
       <div class="nav-item active" onclick="setPage('customers')" id="nav-customers"><i class="ti ti-users"></i> Khách hàng</div>
       <div class="nav-item" onclick="setPage('potential')" id="nav-potential"><i class="ti ti-star"></i> Tiềm năng</div>
-      <div class="nav-item" onclick="setPage('closedeal')" id="nav-closedeal"><i class="ti ti-trophy"></i> Closedeal <span class="nav-badge" id="badge-cd" style="display:none">0</span></div>
+      <div class="nav-item" onclick="setPage('closedeal')" id="nav-closedeal"><i class="ti ti-trophy"></i> Order <span class="nav-badge" id="badge-cd" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('pipeline')" id="nav-pipeline"><i class="ti ti-layout-kanban"></i> Pipeline</div>
       <div class="nav-item" onclick="setPage('pending')" id="nav-pending"><i class="ti ti-clock"></i> Chờ duyệt <span class="nav-badge" id="badge-pending" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('kpi')" id="nav-kpi"><i class="ti ti-chart-bar"></i> Báo cáo KPI</div>
@@ -578,11 +578,12 @@ async function loadCustomers(){
     ?CUSTOMERS.filter(function(c){return c.approval_status==='pending';}).length
     :CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&c.created_by===currentUser.id;}).length;
   const badge=document.getElementById('badge-pending');
-  if(badge){badge.textContent=pendingCount;badge.style.display=pendingCount>0?'inline':'none';}
-  // Update closedeal badge for pending invoices
   const pendingInvCount=INVOICES.filter(function(i){return i.approval_status==='pending';}).length;
+  const totalPendingBadge=pendingCount+pendingInvCount;
+  if(badge){badge.textContent=totalPendingBadge;badge.style.display=totalPendingBadge>0?'inline':'none';}
+  // Order tab badge: no longer shows pending invoices (moved to Chờ duyệt)
   const cdBadge=document.getElementById('badge-cd');
-  if(cdBadge){cdBadge.textContent=pendingInvCount;cdBadge.style.display=pendingInvCount>0?'inline':'none';}
+  if(cdBadge){cdBadge.style.display='none';}
   
   // Alert badge - potential customers not contacted for 3+ days
   const today=new Date();
@@ -844,39 +845,11 @@ function renderClosedeal(){
     +'<div class="stats-row">'
     +'<div class="stat-card sc2"><div class="stat-label">Đơn đã duyệt</div><div class="stat-val" style="color:var(--accent2)">'+enriched.length+'</div></div>'
     +'<div class="stat-card sc0"><div class="stat-label">Doanh thu</div><div class="stat-val" style="color:var(--brand2);font-size:18px">$'+totalRevenue.toLocaleString()+'</div></div>'
-    +'<div class="stat-card sc3"><div class="stat-label">Chờ duyệt</div><div class="stat-val" style="color:var(--warn)">'+pendingInvs.length+'</div></div>'
+    +'<div class="stat-card sc3"><div class="stat-label">Invoice tháng này</div><div class="stat-val" style="color:var(--warn)">'+INVOICES.filter(function(i){return i.type==="invoice"&&i.approval_status==="approved"&&new Date(i.created_at).getMonth()===new Date().getMonth();}).length+'</div></div>'
     +'<div class="stat-card sc1"><div class="stat-label">Đã nhận hàng</div><div class="stat-val" style="color:var(--accent2)">'+INVOICES.filter(function(i){return i.order_status==='Đã nhận hàng';}).length+'</div></div>'
     +'</div>';
 
-  // Pending section - manager thấy tất cả, sale thấy của mình
-  const myPendingInvs=isManager
-    ?pendingInvs
-    :pendingInvs.filter(function(i){return currentUser&&i.sale_id===currentUser.id;});
-
-  if(myPendingInvs.length>0){
-    // Rebuild pending rows for sale (only their own)
-    let visiblePendingRows='';
-    myPendingInvs.forEach(function(inv){
-      const cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;})||{};
-      const isMine=currentUser&&inv.sale_id===currentUser.id;
-      visiblePendingRows+='<tr>'
-        +'<td style="font-size:10px;font-family:monospace;color:var(--warn)">'+(inv.invoice_no||'—')+'</td>'
-        +'<td>'+(cust.business_name||'—')+'</td>'
-        +'<td style="color:var(--text)">'+(cust.customer_name||'—')+'</td>'
-        +'<td style="color:var(--accent2);font-weight:700">$'+(inv.total||0).toLocaleString()+'</td>'
-        +'<td style="font-size:10px;color:var(--text3)">'+fmtDate(inv.created_at)+'</td>'
-        +'<td><div style="display:flex;gap:4px">'
-        +(isManager?'<button class="btn btn-primary" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'approved\')">✓ Duyệt</button>':'')
-        +(isManager?'<button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'rejected\')">✗ Từ chối</button>':'')
-        +(isMine?'<button class="btn" style="padding:3px 8px;font-size:11px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="editInvoicePage(\''+inv.invoice_no+'\')"><i class="ti ti-edit"></i> Sửa</button>':'')
-        +'</div></td>'
-        +'</tr>';
-    });
-    html+='<div class="panel" style="margin-bottom:14px;border-color:rgba(253,203,110,0.3)">'
-      +'<div class="panel-header" style="background:rgba(253,203,110,0.08)"><h2><span style="color:var(--warn)">⏳ Chờ duyệt</span> <span style="color:var(--warn)">'+myPendingInvs.length+'</span></h2></div>'
-      +'<table><thead><tr><th>Mã đơn</th><th>Business Name</th><th>Customer</th><th>Total</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>'
-      +'<tbody>'+visiblePendingRows+'</tbody></table></div>';
-  }
+  // Pending invoices moved to Chờ duyệt tab
 
   // Main table
   html+='<div class="panel"><div class="panel-header"><h2>Đơn hàng đã duyệt <span style="color:var(--accent2)">'+enriched.length+'</span></h2></div>'
@@ -893,8 +866,14 @@ async function approveInvoice(id,status){
   showLoading(true);
   const inv=INVOICES.find(function(i){return i.id===id;});
   if(status==='approved'&&inv){
-    await sb.from('customers').update({lead_status:'Closedeal',latest_invoice_no:inv.invoice_no,total_amount:inv.total}).eq('id',inv.customer_id);
-    // Update local customers
+    // Batch update: invoices + customers in parallel
+    const [invRes,custRes]=await Promise.all([
+      sb.from('invoices').update({approval_status:'approved'}).eq('id',id),
+      sb.from('customers').update({lead_status:'Closedeal',latest_invoice_no:inv.invoice_no,total_amount:inv.total}).eq('id',inv.customer_id)
+    ]);
+    // Update local state immediately — no reload needed
+    const iidx=INVOICES.findIndex(function(i){return i.id===id;});
+    if(iidx>=0)Object.assign(INVOICES[iidx],{approval_status:'approved'});
     var cidx=CUSTOMERS.findIndex(function(c){return c.id===inv.customer_id;});
     if(cidx>=0)Object.assign(CUSTOMERS[cidx],{lead_status:'Closedeal',latest_invoice_no:inv.invoice_no,total_amount:inv.total});
 
@@ -954,9 +933,12 @@ async function approveInvoice(id,status){
     }
   }
 
-  await sb.from('invoices').update({approval_status:status}).eq('id',id);
-  // Update local invoices
-  if(inv)inv.approval_status=status;
+  // For rejected: update invoices only (customers not affected)
+  if(status!=='approved'){
+    await sb.from('invoices').update({approval_status:status}).eq('id',id);
+    const iidx=INVOICES.findIndex(function(i){return i.id===id;});
+    if(iidx>=0)INVOICES[iidx].approval_status=status;
+  }
   showLoading(false);render();
 }
 
@@ -1104,10 +1086,35 @@ function renderPending(){
   const thExtra=isManager?'<th>Thao tác</th>':'';
   const tableHead='<thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Cellphone</th><th>Business Phone</th><th>Loại</th><th>Sale</th><th>Ngày thêm</th>'+thExtra+'</tr></thead>';
 
+  // ── Invoice pending section ──
+  const pendingInvoices=isManager
+    ?INVOICES.filter(function(i){return i.approval_status==='pending';})
+    :INVOICES.filter(function(i){return i.approval_status==='pending'&&(i.sale_id===currentUser.id||i.created_by===currentUser.id);});
+
+  let invPendingRows='';
+  pendingInvoices.forEach(function(inv){
+    const cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;})||{};
+    const isMine=currentUser&&(inv.sale_id===currentUser.id||inv.created_by===currentUser.id);
+    const saleId=inv.sale_id||inv.created_by;
+    let saleName='—';
+    if(saleId){
+      const prof=PROFILES.find(function(p){return p.id===saleId;});
+      if(prof)saleName=prof.full_name;
+      else if(inv.sale_rep||inv.submitted_by)saleName=inv.sale_rep||inv.submitted_by;
+    }
+    invPendingRows+='<tr>'      +'<td style="font-size:10px;font-family:monospace;color:var(--warn)">'+(inv.invoice_no||'—')+'</td>'      +'<td>'+(cust.business_name||inv.business_name||'—')+'</td>'      +'<td style="color:var(--text)">'+(cust.customer_name||inv.customer_name||'—')+'</td>'      +'<td style="color:var(--accent2);font-weight:700">$'+(inv.total||0).toLocaleString()+'</td>'      +'<td style="font-size:11px;color:var(--text2)">'+saleName+'</td>'      +'<td style="font-size:10px;color:var(--text3)">'+fmtDate(inv.created_at)+'</td>'      +'<td><div style="display:flex;gap:4px">'      +(isManager?'<button class="btn btn-primary" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'approved\')">✓ Duyệt</button>':'')      +(isManager?'<button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'rejected\')">✗ Từ chối</button>':'')      +(isMine?'<button class="btn" style="padding:3px 8px;font-size:11px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="editInvoicePage(\''+inv.invoice_no+'\')"><i class="ti ti-edit"></i> Sửa</button>':'')      +'</div></td>'      +'</tr>';
+  });
+
+  const totalLabel=pending.length+' KH · '+pendingInvoices.length+' Invoice chờ duyệt';
   return '<div class="topbar"><div class="topbar-title">Chờ duyệt</div>'
-    +'<div style="font-size:12px;color:var(--warn)">'+pending.length+' chờ duyệt · '+rejected.length+' đã từ chối</div>'+saleFilter+'</div>'
+    +'<div style="font-size:12px;color:var(--warn)">'+totalLabel+'</div>'+saleFilter+'</div>'
     +'<div class="content">'
-    +'<div class="panel"><div class="panel-header"><h2>Chờ duyệt <span style="color:var(--warn)">'+pending.length+'</span></h2>'+(isManager?'<span style="font-size:11px;color:var(--text3)">Sale không thấy khách cho đến khi được duyệt</span>':'')+'</div>'
+    +(pendingInvoices.length>0
+      ?'<div class="panel" style="margin-bottom:14px;border-color:rgba(253,203,110,0.3)"><div class="panel-header" style="background:rgba(253,203,110,0.08)"><h2><i class="ti ti-file-invoice" style="color:var(--warn)"></i> Invoice chờ duyệt <span style="color:var(--warn)">'+pendingInvoices.length+'</span></h2>'+(isManager?'<span style="font-size:11px;color:var(--text3)">Duyệt để chuyển khách sang tab Order</span>':'')+'</div>'
+      +'<table><thead><tr><th>Mã đơn</th><th>Business Name</th><th>Customer</th><th>Total</th><th>Sale</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>'
+      +'<tbody>'+invPendingRows+'</tbody></table></div>'
+      :'')
+    +'<div class="panel"><div class="panel-header"><h2>Khách hàng chờ duyệt <span style="color:var(--warn)">'+pending.length+'</span></h2>'+(isManager?'<span style="font-size:11px;color:var(--text3)">Sale không thấy khách cho đến khi được duyệt</span>':'')+'</div>'
     +(pending.length===0?'<div class="empty-state"><i class="ti ti-clock"></i>Không có khách chờ duyệt</div>'
       :'<table>'+tableHead+'<tbody>'+pendingRows+'</tbody></table>'+pgBar(pending.length,pdPage,PAGE_SIZE,'setPdPage'))
     +'</div>'
@@ -2033,7 +2040,7 @@ async function renderDetailModal(customerId){
 
   // Helpers
   const f='display:flex;flex-direction:column;gap:4px';
-  const lb='font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px';
+  const lb='font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;display:block;opacity:0.75';
   function lbl(t){return '<label style="'+lb+'">'+t+'</label>';}
   function row(cols,items){return '<div style="display:grid;grid-template-columns:'+cols+';gap:8px;margin-bottom:10px;align-items:start">'+items+'</div>';}
   function fd(label,input){return '<div style="'+f+'">'+lbl(label)+input+'</div>';}
@@ -2213,8 +2220,13 @@ function editInvoicePage(invoiceNo){
   window.open('invoice.html?edit='+encodeURIComponent(invoiceNo), '_blank');
 }
 
-function openInvoice(customerId){
-  // Save customer id to sessionStorage then open invoice page
+async function openInvoice(customerId){
+  // Set sub_status = Quotation Sent on customer
+  const cidx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
+  if(cidx>=0&&CUSTOMERS[cidx].sub_status!=='Quotation Sent'){
+    await sb.from('customers').update({sub_status:'Quotation Sent'}).eq('id',customerId);
+    CUSTOMERS[cidx].sub_status='Quotation Sent';
+  }
   sessionStorage.setItem('invoice_customer_id', customerId);
   window.open('invoice.html', '_blank');
 }
@@ -2689,8 +2701,8 @@ async function renderDailyData(){
   const dc=document.getElementById('daily-content');
   if(dc){
     dc.innerHTML='<div class="panel"><div class="panel-header"><h2>Daily Report <span style="font-size:11px;color:var(--text3);font-weight:400">'+fFrom+' → '+fTo+'</span></h2></div>'
-      +'<table><colgroup><col width="160"><col width="120"><col width="80"><col><col width="80"></colgroup>'
-      +'<thead><tr><th>Sale / Ngày</th><th>Data thao tác (unique)</th><th>Potential</th><th>Potential chi tiết</th><th>Invoice</th></tr></thead>'
+      +'<table><colgroup><col width="160"><col width="120"><col width="80"><col><col width="70"><col width="80"></colgroup>'
+      +'<thead><tr><th>Sale / Ngày</th><th>Data thao tác (unique)</th><th>Potential</th><th>Potential chi tiết</th><th>Quotation</th><th>Invoice</th></tr></thead>'
       +'<tbody>'+tableRows+'</tbody></table></div>';
   }
 }
