@@ -308,7 +308,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
       <div class="nav-tabs">
       <div class="nav-item active" onclick="setPage('customers')" id="nav-customers"><i class="ti ti-users"></i> Khách hàng</div>
       <div class="nav-item" onclick="setPage('potential')" id="nav-potential"><i class="ti ti-star"></i> Tiềm năng</div>
-      <div class="nav-item" onclick="setPage('closedeal')" id="nav-closedeal"><i class="ti ti-shopping-cart"></i> Order <span class="nav-badge" id="badge-cd" style="display:none">0</span></div>
+      <div class="nav-item" onclick="setPage('closedeal')" id="nav-closedeal"><i class="ti ti-trophy"></i> Closedeal <span class="nav-badge" id="badge-cd" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('pipeline')" id="nav-pipeline"><i class="ti ti-layout-kanban"></i> Pipeline</div>
       <div class="nav-item" onclick="setPage('pending')" id="nav-pending"><i class="ti ti-clock"></i> Chờ duyệt <span class="nav-badge" id="badge-pending" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('kpi')" id="nav-kpi"><i class="ti ti-chart-bar"></i> Báo cáo KPI</div>
@@ -461,31 +461,6 @@ async function initApp(user){
   const prodNav=document.getElementById('nav-products');
   if(prodNav)prodNav.style.display='flex';
   showLoading(false);render();
-
-  // ── REALTIME: Invoices + Customers auto-sync ──
-  sb.channel('crm-invoices-rt')
-    .on('postgres_changes',{event:'*',schema:'public',table:'invoices'},function(payload){
-      if(payload.eventType==='INSERT'){
-        if(!INVOICES.find(function(i){return i.id===payload.new.id;}))
-          INVOICES.unshift(payload.new);
-      } else if(payload.eventType==='UPDATE'){
-        var idx=INVOICES.findIndex(function(i){return i.id===payload.new.id;});
-        if(idx>=0)Object.assign(INVOICES[idx],payload.new);
-        else INVOICES.unshift(payload.new);
-      } else if(payload.eventType==='DELETE'){
-        INVOICES=INVOICES.filter(function(i){return i.id!==payload.old.id;});
-      }
-      updateBadges();render();
-    })
-    .subscribe();
-
-  sb.channel('crm-customers-rt')
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'customers'},function(payload){
-      var idx=CUSTOMERS.findIndex(function(c){return c.id===payload.new.id;});
-      if(idx>=0)Object.assign(CUSTOMERS[idx],payload.new);
-      updateBadges();render();
-    })
-    .subscribe();
 
   // ── REALTIME: Products sync từ Finance ──
   sb.channel('crm-products-rt')
@@ -710,8 +685,8 @@ function renderPotential(){
 
   let statsHtml='<div class="stat-card sc0"><div class="stat-label">Tổng tiềm năng</div><div class="stat-val" style="color:var(--brand2)">'+potData.length+'</div></div>';
   POTENTIAL_OPTS.forEach(function(p,i){
-    const cnt=potData.filter(function(c){return c.potential===p;}).length;
-    if(cnt>0)statsHtml+='<div class="stat-card sc'+(i%4)+'"><div class="stat-label">'+p+'</div><div class="stat-val" style="color:var(--accent)">'+cnt+'</div></div>';
+        const cnt=potData.filter(function(c){return c.potential===p;}).length;
+    if(cnt>0)statsHtml+='<div class="stat-card sc'+(i+1)+'" style="cursor:pointer;border:'+(fPotential===p?'2px solid var(--brand2)':'1px solid transparent')+'" onclick="window._fPotential=window._fPotential===\''+p+'\'?\'all\':\''+p+'\';document.querySelector(\'[id=pot-filter-sel]\')&&(document.querySelector(\'[id=pot-filter-sel]\').value=window._fPotential===\'all\'?\'all\':\''+p+'\');renderPotential()"><div class="stat-label">'+p+'</div><div class="stat-val" style="color:var(--accent2)">'+cnt+'</div>'+(fPotential===p?'<div style="font-size:9px;color:var(--brand2)">▼ Lọc</div>':'')+'</div>';
   });
 
   let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;potPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
@@ -801,10 +776,6 @@ function renderClosedeal(){
       +'<td>'+(inv.order_status?'<span class="badge '+(ordBadge[inv.order_status]||'b-new')+'">'+inv.order_status+'</span>':'—')+'</td>'
       +'<td style="font-size:11px;color:var(--text3)">'+(inv.tracking_number||'—')+'</td>'
       +'<td style="font-size:11px;color:var(--text2)">'+((inv.assigned_profile&&inv.assigned_profile.full_name)?inv.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
-      +'<td style="font-size:11px;color:var(--accent2);font-weight:500">'+(function(){
-        const saleProf=PROFILES.find(function(p){return p.id===(inv.sale_id||inv.submitted_by);});
-        return saleProf?(saleProf.nickname||saleProf.full_name.split(' ').pop()):'—';
-      })()+'</td>'
       +(isManager?'<td><button class="btn" style="padding:2px 8px;font-size:10px" onclick="openInvEdit('+inv.id+')">✏️</button></td>':'')
       +'</tr>';
   });
@@ -829,7 +800,7 @@ function renderClosedeal(){
       +'</tr>';
   });
 
-  let html='<div class="topbar"><div class="topbar-title">Order</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+'</div></div>'
+  let html='<div class="topbar"><div class="topbar-title">Closedeal</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+'</div></div>'
     +'<div class="content">'
     +'<div class="stats-row">'
     +'<div class="stat-card sc2"><div class="stat-label">Đơn đã duyệt</div><div class="stat-val" style="color:var(--accent2)">'+enriched.length+'</div></div>'
@@ -871,8 +842,8 @@ function renderClosedeal(){
   // Main table
   html+='<div class="panel"><div class="panel-header"><h2>Đơn hàng đã duyệt <span style="color:var(--accent2)">'+enriched.length+'</span></h2></div>'
     +(enriched.length===0?'<div class="empty-state"><i class="ti ti-trophy"></i>Chưa có đơn hàng nào được duyệt</div>'
-      :'<table><colgroup><col width="100"><col width="115"><col width="100"><col width="50"><col width="50"><col width="80"><col width="95"><col width="85"><col width="65"><col width="60">'+(isManager?'<col width="40">':'')+'</colgroup>'
-      +'<thead><tr><th>Mã đơn</th><th>Business Name</th><th>Customer</th><th style="text-align:center">Month</th><th style="text-align:center">Year</th><th>Revenue</th><th>Payment Status</th><th>Order Status</th><th>Tracking</th><th>Sale</th><th>Người tạo</th>'+(isManager?'<th></th>':'')+'</tr></thead>'
+      :'<table><colgroup><col width="95"><col width="110"><col width="95"><col width="45"><col width="45"><col width="75"><col width="90"><col width="85"><col width="65"><col width="65"><col width="60">'+(isManager?'<col width="40">':'')+'</colgroup>'
+      +'<thead><tr><th>Mã đơn</th><th>Business Name</th><th>Customer</th><th style="text-align:center">Month</th><th style="text-align:center">Year</th><th>Revenue</th><th>Payment Status</th><th>Order Status</th><th>Tracking</th><th>Sale</th>'+(isManager?'<th></th>':'')+'</tr></thead>'
       +'<tbody>'+rows+'</tbody></table>'
       +pgBar(enriched.length,cdPage,PAGE_SIZE,'setCdPage'))
     +'</div></div>';
@@ -883,22 +854,10 @@ async function approveInvoice(id,status){
   showLoading(true);
   const inv=INVOICES.find(function(i){return i.id===id;});
   if(status==='approved'&&inv){
-    // Batch update: customers + invoices song song
-    const [custRes,invRes]=await Promise.all([
-      sb.from('customers').update({
-        lead_status:'Closedeal',
-        sub_status:'Quotation Sent',
-        latest_invoice_no:inv.invoice_no,
-        total_amount:inv.total
-      }).eq('id',inv.customer_id),
-      sb.from('invoices').update({approval_status:'approved'}).eq('id',id)
-    ]);
-    if(custRes.error)console.warn('customer update error:',custRes.error.message);
-    if(invRes.error)console.warn('invoice update error:',invRes.error.message);
-    // Local state update ngay lập tức - không reload
+    await sb.from('customers').update({lead_status:'Closedeal',latest_invoice_no:inv.invoice_no,total_amount:inv.total}).eq('id',inv.customer_id);
+    // Update local customers
     var cidx=CUSTOMERS.findIndex(function(c){return c.id===inv.customer_id;});
-    if(cidx>=0)Object.assign(CUSTOMERS[cidx],{lead_status:'Closedeal',sub_status:'Quotation Sent',latest_invoice_no:inv.invoice_no,total_amount:inv.total});
-    inv.approval_status='approved';
+    if(cidx>=0)Object.assign(CUSTOMERS[cidx],{lead_status:'Closedeal',latest_invoice_no:inv.invoice_no,total_amount:inv.total});
 
     // Gọi Edge Function sync sang Finance khi approved
     try{
@@ -954,18 +913,12 @@ async function approveInvoice(id,status){
     }catch(e){
       console.warn('Sync Finance error (non-blocking):',e.message);
     }
-  } else {
-    // rejected: chỉ update invoices
-    await sb.from('invoices').update({approval_status:status}).eq('id',id);
-    if(inv)inv.approval_status=status;
   }
-  showLoading(false);
-  // Local re-render, không reload
-  updateBadges();
-  const curPage=document.querySelector('.nav-item.active')||{id:''};
-  const pg=curPage.id?curPage.id.replace('nav-',''):'';
-  if(pg==='closedeal'||pg==='pending'||pg==='invoices')render();
-  else render();
+
+  await sb.from('invoices').update({approval_status:status}).eq('id',id);
+  // Update local invoices
+  if(inv)inv.approval_status=status;
+  showLoading(false);render();
 }
 
 async function openInvEdit(id){
@@ -1068,25 +1021,12 @@ function renderPipeline(){
 // ============================================================
 function renderPending(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
-  // Lấy customer_ids có invoice pending (chờ duyệt)
-  const pendingInvCustIds=new Set(INVOICES.filter(function(i){
-    return i.type==='invoice'&&i.approval_status==='pending';
-  }).map(function(i){return i.customer_id;}));
-
   const pending=isManager
-    ?CUSTOMERS.filter(function(c){
-        const hasPendingInv=pendingInvCustIds.has(c.id);
-        const isNewPending=c.approval_status==='pending';
-        return (hasPendingInv||isNewPending)&&(fPendingSale==='all'||c.assigned_to===fPendingSale);
-      })
-    :CUSTOMERS.filter(function(c){
-        const hasPendingInv=pendingInvCustIds.has(c.id);
-        const isNewPending=c.approval_status==='pending';
-        return (hasPendingInv||isNewPending)&&c.assigned_to===currentUser.id;
-      });
+    ?CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&(fPendingSale==='all'||c.assigned_to===fPendingSale);})
+    :CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&c.created_by===currentUser.id;});
   const rejected=isManager
     ?CUSTOMERS.filter(function(c){return c.approval_status==='rejected'&&(fPendingSale==='all'||c.assigned_to===fPendingSale);})
-    :CUSTOMERS.filter(function(c){return c.approval_status==='rejected'&&c.assigned_to===currentUser.id;});
+    :CUSTOMERS.filter(function(c){return c.approval_status==='rejected'&&c.created_by===currentUser.id;});
 
   let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fPendingSale=this.value;pdPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fPendingSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
 
@@ -2019,86 +1959,49 @@ function renderKPI(){
 async function renderDetailModal(customerId){
   const c=CUSTOMERS.find(function(x){return x.id===customerId;});
   if(!c)return;
-  const {data:logs}=await sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId).order('called_at',{ascending:false}).limit(15);
+  const [logsRes]=await Promise.all([
+    sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId).order('called_at',{ascending:false}).limit(20)
+  ]);
+  const logs=logsRes.data||[];
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
+
   const modal=document.createElement('div');
   modal.className='modal-overlay';modal.id='detail-modal';
   modal.onclick=function(e){if(e.target===modal){modal.remove();selId=null;}};
 
-  let saleField=isManager?('<div class="field"><label>Sale Assigned</label><select id="d-sale">'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(c.assigned_to===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select></div>'):'';
+  let saleField=isManager?('<div class="field" style="grid-column:1/-1"><label>Sale Assigned</label><select id="d-sale">'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(c.assigned_to===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select></div>'):'';
 
-  let logHtml='<div style="font-size:12px;color:var(--text3)">Chưa có ghi chú</div>';
-  if(logs&&logs.length>0){
-    logHtml='';
+  // Log html
+  let logHtml='<div style="font-size:12px;color:var(--text3);padding:8px 0">Chưa có ghi chú</div>';
+  if(logs.length>0){
+    logHtml='<div style="max-height:200px;overflow-y:auto;padding-right:4px">';
     logs.forEach(function(l){
-      logHtml+='<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:10px">'
-        +'<div style="width:7px;height:7px;border-radius:50%;background:var(--brand);flex-shrink:0;margin-top:5px"></div>'
-        +'<div><div style="font-size:12px;color:var(--text2)">'+l.note+'</div>'
-        +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+((l.sale&&l.sale.full_name)||'—')+' · '+fmtDateTime(l.called_at)+'</div></div></div>';
+      const resultLabel=l.call_result&&l.call_result!=='null'?'<span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;background:rgba(108,92,231,0.15);color:var(--brand2);margin-right:6px">'+l.call_result+'</span>':'';
+      const noteText=(l.note&&l.note!=='null'&&l.note.trim()!=='')?l.note.trim():'';
+      const contentLine=resultLabel+(noteText||(!l.call_result?'<span style="color:var(--text3);font-style:italic">Thao tác</span>':''));
+      logHtml+='<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:8px">'        +'<div style="width:6px;height:6px;border-radius:50%;background:var(--brand);flex-shrink:0;margin-top:6px"></div>'        +'<div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--text2)">'+contentLine+'</div>'        +'<div style="font-size:10px;color:var(--text3);margin-top:1px">'+((l.sale&&l.sale.full_name)||'—')+' · '+fmtDateTime(l.called_at)+'</div></div></div>';
     });
+    logHtml+='</div>';
   }
 
-  modal.innerHTML='<div class="modal" onclick="event.stopPropagation()" style="width:620px">'
-    +'<div class="modal-header">'
-    +'<div class="avatar '+saleAvClass(c.assigned_to)+'" style="width:36px;height:36px;font-size:12px">'+saleInitials(c)+'</div>'
-    +'<div style="flex:1"><h3>'+(c.customer_name||'')+'</h3><div style="font-size:11px;color:var(--text3)">'+(c.business_name||'—')+' · <span style="font-family:monospace">'+(c.ma_kh||'—')+'</span></div></div>'
-    +'<button class="btn" style="padding:4px 8px" onclick="document.getElementById(\'detail-modal\').remove();selId=null"><i class="ti ti-x"></i></button>'
-    +'</div>'
-    +'<div class="modal-body">'
-    +'<div class="field-row3"><div class="field"><label>Status</label><select id="d-status">'+selOpts(STATUS_OPTS,c.status)+'</select></div>'
-    +'<div class="field"><label>Sub-status</label><select id="d-substatus" onchange="var r=document.getElementById(\'d-timeline-req\');if(r)r.style.display=this.value===\'Appointment Set\'?\'inline\':\'none\'">'+selOpts(SUBSTATUS_OPTS,c.sub_status)+'</select></div>'
-    +'<div class="field"><label>Lead Status</label><select id="d-leadstatus">'+selOpts(LEAD_OPTS,c.lead_status)+'</select></div></div>'
-    +'<div class="field-row"><div class="field"><label>Potential</label><select id="d-potential">'+selOpts(POTENTIAL_OPTS,c.potential)+'</select></div>'
-    +'<div class="field"><label>Brand</label><select id="d-brand">'+selOpts(BRAND_OPTS,c.brand)+'</select></div></div>'
-    +'<div class="field-row"><div class="field"><label>Business Name</label><input id="d-biz" value="'+(c.business_name||'')+'"></div>'
-    +'<div class="field"><label>Customer Name</label><input id="d-name" value="'+(c.customer_name||'')+'"></div></div>'
-    +'<div class="field-row">'
-    +'<div class="field"><label>Cellphone</label>'
-    +'<div style="display:flex;align-items:center;gap:6px">'
-    +'<span style="font-size:13px;font-family:monospace;color:var(--text)">'+(c.cellphone||'—')+'</span>'
-    +(c.cellphone?'<button onclick="makeOpenPhoneCall(\''+c.cellphone+'\')" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;border:none;cursor:pointer" title="Gọi qua OpenPhone"><i class="ti ti-phone" style="font-size:13px"></i></button>':'')
-    +'<button onclick="editPhone('+c.id+',&quot;cellphone&quot;,&quot;'+(c.cellphone||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>'
-    +'</div></div>'
-    +'<div class="field"><label>Business Phone</label>'
-    +'<div style="display:flex;align-items:center;gap:6px">'
-    +'<span style="font-size:13px;font-family:monospace;color:var(--text)">'+(c.business_phone||'—')+'</span>'
-    +(c.business_phone?'<button onclick="makeOpenPhoneCall(\''+c.business_phone+'\')" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;border:none;cursor:pointer" title="Gọi qua OpenPhone"><i class="ti ti-phone" style="font-size:13px"></i></button>':'')
-    +'<button onclick="editPhone('+c.id+',&quot;business_phone&quot;,&quot;'+(c.business_phone||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>'
-    +'</div></div>'
-    +'</div>'
-    +'<div class="field-row">'
-    +'<div class="field"><label>Cellphone 2</label>'
-    +'<div style="display:flex;align-items:center;gap:6px">'
-    +'<span style="font-size:13px;font-family:monospace;color:var(--text)">'+(c.cellphone_2||'—')+'</span>'
-    +(c.cellphone_2?'<button onclick="makeOpenPhoneCall(\''+c.cellphone_2+'\')" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;border:none;cursor:pointer" title="Gọi qua OpenPhone"><i class="ti ti-phone" style="font-size:13px"></i></button>':'')
-    +'<button onclick="editPhone('+c.id+',&quot;cellphone_2&quot;,&quot;'+(c.cellphone_2||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:12px"></i></button>'
-    +'</div></div>'
-    +'<div class="field"></div>'
-    +'</div>'
-    +'<div class="field-row"><div class="field"><label>Address</label><input id="d-address" value="'+(c.address||'')+'" placeholder="Số nhà, tên đường..."></div>'
-    +'<div class="field"><label>City</label><input id="d-city" value="'+(c.city||'')+'" placeholder="Thành phố"></div></div>'
-    +'<div class="field-row"><div class="field"><label>State</label><select id="d-state">'+selOpts(STATE_OPTS,c.state)+'</select></div>'
-    +'<div class="field"><label>Zipcode</label><input id="d-zip" value="'+(c.zipcode||'')+'"></div></div>'
-    +'<div class="field-row"><div class="field"><label>Times of Use</label><select id="d-times">'+selOpts(TIMES_OPTS,c.times_of_use)+'</select></div>'
-    +'<div class="field"><label>Reason</label><select id="d-reason">'+selOpts(REASON_OPTS,c.reason)+'</select></div></div>'
-    +'<div class="field-row"><div class="field"><label>Deadline thu hồi</label><input type="date" id="d-deadline" value="'+(c.assigned_deadline||'')+'"></div>'
-    +'<div class="field"><label>Ngày hẹn <span id="d-timeline-req" style="color:var(--danger);display:'+(c.sub_status==='Appointment Set'?'inline':'none')+'">*</span></label><input type="date" id="d-timeline" value="'+(c.timeline_follow||'')+'"></div></div>'
-    +'<div class="field-row"><div class="field"><label>Trạng thái data</label><div style="padding:8px;font-size:12px;color:'+(c.potential?'var(--accent2)':'var(--text3)')+'">'+(c.potential?'Giữ lại (có Potential)':'Thu hồi khi hết deadline')+'</div></div>'
-    +'<div class="field"></div></div>'
-    +'<div class="field"><label>Description</label><textarea id="d-desc">'+(c.description||'')+'</textarea></div>'
-    +saleField
-    +'<div style="border-top:1px solid rgba(255,255,255,0.08);margin:12px 0 10px;padding-top:12px">'
-    +'<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Lịch sử liên hệ</div>'
-    +logHtml+'</div>'
-    +'<div class="field-row"><div class="field"><label>Kết quả cuộc gọi</label><select id="d-result"><option value="">-- Chọn --</option>'+['Bắt máy','Không bắt máy','Hẹn gọi lại','Đã gặp','Quan tâm','Chốt'].map(function(r){return '<option>'+r+'</option>';}).join('')+'</select></div>'
-    +'<div class="field"><label>Ghi chú</label><textarea id="d-note" placeholder="Nội dung cuộc gọi..." style="min-height:40px"></textarea></div></div>'
-    +'</div>'
-    +'<div class="modal-footer">'
-    +'<button class="btn" onclick="document.getElementById(\'detail-modal\').remove();selId=null">Đóng</button>'
-    +(isManager?'<button class="btn btn-danger" onclick="deleteCustomer('+c.id+')"><i class="ti ti-trash"></i> Xóa</button>':'')
-    +'<button class="btn" style="border-color:rgba(253,203,110,0.5);color:var(--warn)" onclick="openInvoice('+c.id+')"><i class="ti ti-file-invoice"></i> Tạo Invoice</button>'
-    +'<button class="btn btn-primary" onclick="saveDetail('+c.id+')"><i class="ti ti-device-floppy"></i> Lưu</button>'
-    +'</div></div>';
+  const phoneBtn=function(phone,field){
+    return '<div style="display:flex;align-items:center;gap:4px">'      +'<span style="font-size:12px;font-family:monospace;color:var(--text)">'+(phone||'—')+'</span>'      +(phone?'<button onclick="makeOpenPhoneCall(\''+phone+'\')" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;border:none;cursor:pointer"><i class="ti ti-phone" style="font-size:11px"></i></button>':'')      +'<button onclick="editPhone('+c.id+',\"'+field+'\",\"'+(phone||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:11px"></i></button>'      +'</div>';
+  };
+
+  modal.innerHTML='<div class="modal" onclick="event.stopPropagation()" style="width:900px;max-width:96vw">'    +'<div class="modal-header">'    +'<div class="avatar '+saleAvClass(c.assigned_to)+'" style="width:36px;height:36px;font-size:12px">'+saleInitials(c)+'</div>'    +'<div style="flex:1"><h3>'+(c.customer_name||'')+'</h3><div style="font-size:11px;color:var(--text3)">'+(c.business_name||'—')+' · <span style="font-family:monospace">'+(c.ma_kh||'—')+'</span></div></div>'    +'<button class="btn" style="padding:4px 8px" onclick="document.getElementById(\'detail-modal\').remove();selId=null"><i class="ti ti-x"></i></button>'    +'</div>'    +'<div class="modal-body" style="display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start">'
+    // LEFT COLUMN
+    +'<div>'    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>Status</label><select id="d-status">'+selOpts(STATUS_OPTS,c.status)+'</select></div>'    +'<div class="field"><label>Sub-status</label><select id="d-substatus" onchange="var r=document.getElementById(\'d-timeline-req\');if(r)r.style.display=this.value===\'Appointment Set\'?\'inline\':\'none\';if(this.value===\'Appointment Set\')document.getElementById(\'d-timeline\')&&document.getElementById(\'d-timeline\').focus();">'+selOpts(SUBSTATUS_OPTS,c.sub_status)+'</select></div>'    +'<div class="field"><label>Lead Status</label><select id="d-leadstatus">'+selOpts(LEAD_OPTS,c.lead_status)+'</select></div>'    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>Business Name</label><input id="d-biz" value="'+(c.business_name||'')+'"></div>'    +'<div class="field"><label>Business Phone</label>'+phoneBtn(c.business_phone,'business_phone')+'</div>'    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>Address</label><input id="d-address" value="'+(c.address||'')+'" placeholder="Số nhà, tên đường..."></div>'    +'<div class="field"><label>City</label><input id="d-city" value="'+(c.city||'')+'" placeholder="Thành phố"></div>'    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>State</label><select id="d-state">'+selOpts(STATE_OPTS,c.state)+'</select></div>'    +'<div class="field"><label>Zipcode</label><input id="d-zip" value="'+(c.zipcode||'')+'"></div>'    +'<div class="field"><label>Trạng thái data</label><div style="padding:6px;font-size:11px;color:'+(c.potential?'var(--accent2)':'var(--text3)')+';">'+(c.potential?'Giữ lại (Potential)':'Thu hồi khi hết deadline')+'</div></div>'    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>Customer Name</label><input id="d-name" value="'+(c.customer_name||'')+'"></div>'    +'<div class="field"><label>Cellphone</label>'+phoneBtn(c.cellphone,'cellphone')+'</div>'    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>Customer Name 2</label><input id="d-name2" value="'+(c.customer_name_2||'')+'"></div>'    +'<div class="field"><label>Cellphone 2</label>'+phoneBtn(c.cellphone_2,'cellphone_2')+'</div>'    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>Potential</label><select id="d-potential">'+selOpts(POTENTIAL_OPTS,c.potential)+'</select></div>'    +'<div class="field"><label>Times of Use</label><select id="d-times">'+selOpts(TIMES_OPTS,c.times_of_use)+'</select></div>'    +'<div class="field"><label>Brand</label><select id="d-brand">'+selOpts(BRAND_OPTS,c.brand)+'</select></div>'    +'<div class="field"><label>Reason</label><select id="d-reason">'+selOpts(REASON_OPTS,c.reason)+'</select></div>'    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>Deadline thu hồi</label><input type="date" id="d-deadline" value="'+(c.assigned_deadline||'')+'"></div>'    +'<div class="field"><label>Ngày hẹn <span id="d-timeline-req" style="color:var(--danger);display:'+(c.sub_status==='Appointment Set'?'inline':'none')+'">*</span></label><input type="date" id="d-timeline" value="'+(c.timeline_follow||'')+'" onchange="if(this.value){var ss=document.getElementById(\'d-substatus\');if(ss&&ss.value!==\'Appointment Set\')ss.value=\'Appointment Set\';}"></div>'    +'</div>'
+    +'<div class="field" style="margin-bottom:8px"><label>Description</label><textarea id="d-desc" style="min-height:50px">'+(c.description||'')+'</textarea></div>'    +saleField    +'</div>'
+    // RIGHT COLUMN - Kết quả gọi + Lịch sử
+    +'<div style="display:flex;flex-direction:column;gap:10px">'    +'<div class="field"><label>Kết quả cuộc gọi</label>'    +'<select id="d-result"><option value="">-- Chọn --</option>'    +['Bắt máy','Không bắt máy','Tắt máy ngang','Hẹn gọi lại'].map(function(r){return '<option>'+r+'</option>';}).join('')    +'</select></div>'    +'<div class="field"><label>Ghi chú</label><textarea id="d-note" placeholder="Nội dung cuộc gọi..." style="min-height:70px"></textarea></div>'    +'<div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:10px">'    +'<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Lịch sử liên hệ <span style="font-weight:400;color:var(--text3)">('+logs.length+')</span></div>'    +logHtml    +'</div>'    +'</div>'
+    +'</div>'    +'<div class="modal-footer">'    +'<button type="button" class="btn" onclick="document.getElementById(\'detail-modal\').remove();selId=null">Đóng</button>'    +(isManager?'<button type="button" class="btn btn-danger" onclick="deleteCustomer('+c.id+')"><i class="ti ti-trash"></i> Xóa</button>':'')    +'<button type="button" class="btn" style="border-color:rgba(253,203,110,0.5);color:var(--warn)" onclick="openInvoice('+c.id+')"><i class="ti ti-file-invoice"></i> Tạo Invoice</button>'    +'<button type="button" class="btn btn-primary" onclick="saveDetail('+c.id+')"><i class="ti ti-device-floppy"></i> Lưu</button>'    +'</div></div>';
   document.body.appendChild(modal);
 }
 
@@ -2110,6 +2013,16 @@ async function saveDetail(customerId){
   const deadline=document.getElementById('d-deadline')&&document.getElementById('d-deadline').value;
   const subStatus=document.getElementById('d-substatus')&&document.getElementById('d-substatus').value;
   const timeline=document.getElementById('d-timeline')&&document.getElementById('d-timeline').value;
+  // Rule: Completed yêu cầu >= 3 lần tương tác
+  const leadStatus=document.getElementById('d-leadstatus')&&document.getElementById('d-leadstatus').value;
+  if(leadStatus==='Completed'){
+    const {count:logCount}=await sb.from('call_logs').select('id',{count:'exact',head:true}).eq('customer_id',customerId);
+    if((logCount||0)<3){
+      showLoading(false);
+      alert('Khách hàng phải có ít nhất 3 lần tương tác mới được chuyển sang Completed! Hiện có: '+(logCount||0)+' lần.');
+      return;
+    }
+  }
   // Validate: Appointment Set bắt buộc có timeline_follow
   if(subStatus==='Appointment Set'&&!timeline){
     showLoading(false);
@@ -2132,8 +2045,10 @@ async function saveDetail(customerId){
     times_of_use:document.getElementById('d-times')&&document.getElementById('d-times').value||null,
     reason:document.getElementById('d-reason')&&document.getElementById('d-reason').value||null,
     description:document.getElementById('d-desc')&&document.getElementById('d-desc').value||null,
+    customer_name_2:document.getElementById('d-name2')&&document.getElementById('d-name2').value.trim()||null,
     assigned_deadline:deadline||null,
     timeline_follow:timeline||null,
+    ...(timeline&&!subStatus?{sub_status:'Appointment Set'}:{}),
   };
   if(saleEl)update.assigned_to=saleEl.value;
   await sb.from('customers').update(update).eq('id',customerId);
@@ -2539,14 +2454,15 @@ async function renderDailyData(){
   const fromDt=fFrom+'T00:00:00';
   const toDt=fTo+'T23:59:59';
 
-  // Chỉ lấy fields cần thiết từ call_logs - dùng called_at
-  let {data:logs}=await sb.from('call_logs').select('customer_id,sale_id,called_at').gte('called_at',fromDt).lte('called_at',toDt);
-
-  // Load invoices
-  const {data:invs}=await sb.from('invoices').select('submitted_by,sale_id,created_at,total').gte('created_at',fromDt).lte('created_at',toDt);
-
-  // Load potential_history trong kỳ để tính KPI chính xác (dùng recalled_at)
-  const {data:potHist}=await sb.from('potential_history').select('customer_id,assigned_to_id,potential,recalled_at').gte('recalled_at',fromDt).lte('recalled_at',toDt);
+  // Tối ưu: fetch 3 bảng song song
+  const [logsRes,invsRes,potHistRes]=await Promise.all([
+    sb.from('call_logs').select('customer_id,sale_id,called_at').gte('called_at',fromDt).lte('called_at',toDt),
+    sb.from('invoices').select('submitted_by,sale_id,created_at,total,type').gte('created_at',fromDt).lte('created_at',toDt),
+    sb.from('potential_history').select('customer_id,assigned_to_id,potential,recalled_at').gte('recalled_at',fromDt).lte('recalled_at',toDt)
+  ]);
+  let logs=logsRes.data||[];
+  const invs=invsRes.data||[];
+  const potHist=potHistRes.data||[];
 
   const salesToShow=isManager
     ?(fSaleDaily==='all'?PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}):PROFILES.filter(function(p){return p.id===fSaleDaily;}))
