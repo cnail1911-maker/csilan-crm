@@ -544,7 +544,8 @@ function addItem(p){
     discount:0,
     amount:p.price||0,
     vendor_cost:null,
-    is_shipping:false
+    crm_price:p.price||0,
+    is_shipping:!!(p.sku&&(p.sku.toUpperCase().includes('SHIP')||p.sku.toUpperCase()==='SHIPPING'))||(p.name&&p.name.toLowerCase().includes('shipping'))
   };
   items.push(item);
   document.getElementById('prod-search').value='';
