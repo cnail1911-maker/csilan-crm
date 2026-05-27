@@ -78,6 +78,9 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .sc1{background:linear-gradient(135deg,rgba(0,206,201,0.25),rgba(0,206,201,0.08))}
 .sc2{background:linear-gradient(135deg,rgba(0,184,148,0.3),rgba(0,184,148,0.1))}
 .sc3{background:linear-gradient(135deg,rgba(253,203,110,0.25),rgba(253,203,110,0.08))}
+.sc4{background:linear-gradient(135deg,rgba(232,67,147,0.25),rgba(232,67,147,0.08))}
+.sc5{background:linear-gradient(135deg,rgba(255,118,117,0.25),rgba(255,118,117,0.08))}
+.sc6{background:linear-gradient(135deg,rgba(116,185,255,0.25),rgba(116,185,255,0.08))}
 .stat-label{font-size:10px;color:var(--text2);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px}
 .stat-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700}
 .stat-sub{font-size:10px;color:var(--text3);margin-top:3px}
@@ -686,7 +689,7 @@ function renderPotential(){
   let statsHtml='<div class="stat-card sc0"><div class="stat-label">Tổng tiềm năng</div><div class="stat-val" style="color:var(--brand2)">'+potData.length+'</div></div>';
   POTENTIAL_OPTS.forEach(function(p,i){
         const cnt=potData.filter(function(c){return c.potential===p;}).length;
-    if(cnt>0)statsHtml+='<div class="stat-card sc'+(i+1)+'" style="cursor:pointer;border:'+(fPotential===p?'2px solid var(--brand2)':'1px solid transparent')+'" onclick="window._fPotential=window._fPotential===\''+p+'\'?\'all\':\''+p+'\';document.querySelector(\'[id=pot-filter-sel]\')&&(document.querySelector(\'[id=pot-filter-sel]\').value=window._fPotential===\'all\'?\'all\':\''+p+'\');renderPotential()"><div class="stat-label">'+p+'</div><div class="stat-val" style="color:var(--accent2)">'+cnt+'</div>'+(fPotential===p?'<div style="font-size:9px;color:var(--brand2)">▼ Lọc</div>':'')+'</div>';
+    if(cnt>0)statsHtml+='<div class="stat-card sc'+(i+1)+'" style="cursor:pointer;border:'+(fPotential===p?'2px solid var(--brand2)':'1px solid transparent')+'" onclick="window._potClick=window._potClick===\''+p+'\'?\'all\':\''+p+'\';var sel=document.getElementById(\'pot-filter-sel\');if(sel){sel.value=window._potClick;var ev=new Event(\'change\');sel.dispatchEvent(ev);}else{fPotential=window._potClick||=\'all\';renderPotential();}"><div class="stat-label">'+p+'</div><div class="stat-val" style="color:var(--accent2)">'+cnt+'</div>'+(fPotential===p?'<div style="font-size:9px;color:var(--brand2)">▼ Lọc</div>':'')+'</div>';
   });
 
   let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;potPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
@@ -952,7 +955,7 @@ async function saveInvEdit(id){
     order_status:document.getElementById('ie-ord').value||null,
     tracking_number:document.getElementById('ie-track').value||null
   };
-  await sb.from('invoices').update(update).eq('id',id);
+  await sb.from('invoices').update(update).eq('id',parseInt(id)||id);
   // Update local
   const inv=INVOICES.find(function(i){return i.id===id;});
   if(inv)Object.assign(inv,update);
@@ -1959,49 +1962,134 @@ function renderKPI(){
 async function renderDetailModal(customerId){
   const c=CUSTOMERS.find(function(x){return x.id===customerId;});
   if(!c)return;
-  const [logsRes]=await Promise.all([
-    sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId).order('called_at',{ascending:false}).limit(20)
-  ]);
+  const logsRes=await sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId).order('called_at',{ascending:false}).limit(25);
   const logs=logsRes.data||[];
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
+
+  // Remove existing
+  const existing=document.getElementById('detail-modal');
+  if(existing)existing.remove();
 
   const modal=document.createElement('div');
   modal.className='modal-overlay';modal.id='detail-modal';
   modal.onclick=function(e){if(e.target===modal){modal.remove();selId=null;}};
 
-  let saleField=isManager?('<div class="field" style="grid-column:1/-1"><label>Sale Assigned</label><select id="d-sale">'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(c.assigned_to===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select></div>'):'';
-
-  // Log html
-  let logHtml='<div style="font-size:12px;color:var(--text3);padding:8px 0">Chưa có ghi chú</div>';
+  // Log html - 5 dòng ~170px
+  let logHtml='<div style="font-size:12px;color:var(--text3);padding:6px 0">Chưa có ghi chú</div>';
   if(logs.length>0){
-    logHtml='<div style="max-height:200px;overflow-y:auto;padding-right:4px">';
+    logHtml='<div style="max-height:170px;overflow-y:auto;padding-right:4px">';
     logs.forEach(function(l){
-      const resultLabel=l.call_result&&l.call_result!=='null'?'<span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;background:rgba(108,92,231,0.15);color:var(--brand2);margin-right:6px">'+l.call_result+'</span>':'';
-      const noteText=(l.note&&l.note!=='null'&&l.note.trim()!=='')?l.note.trim():'';
-      const contentLine=resultLabel+(noteText||(!l.call_result?'<span style="color:var(--text3);font-style:italic">Thao tác</span>':''));
-      logHtml+='<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:8px">'        +'<div style="width:6px;height:6px;border-radius:50%;background:var(--brand);flex-shrink:0;margin-top:6px"></div>'        +'<div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--text2)">'+contentLine+'</div>'        +'<div style="font-size:10px;color:var(--text3);margin-top:1px">'+((l.sale&&l.sale.full_name)||'—')+' · '+fmtDateTime(l.called_at)+'</div></div></div>';
+      const res=l.call_result&&l.call_result!=='null'?'<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(108,92,231,0.2);color:var(--brand2);margin-right:5px">'+l.call_result+'</span>':'';
+      const note=(l.note&&l.note!=='null'&&l.note.trim()!=='')?l.note.trim():'';
+      const line=res+(note||(!l.call_result?'<span style="color:var(--text3);font-style:italic">Thao tác</span>':''));
+      logHtml+='<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:8px">'\
+        +'<div style="width:6px;height:6px;border-radius:50%;background:var(--brand);flex-shrink:0;margin-top:5px"></div>'\
+        +'<div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--text2)">'+line+'</div>'\
+        +'<div style="font-size:10px;color:var(--text3);margin-top:1px">'+((l.sale&&l.sale.full_name)||'—')+' · '+fmtDateTime(l.called_at)+'</div></div></div>';
     });
     logHtml+='</div>';
   }
 
-  const phoneBtn=function(phone,field){
-    return '<div style="display:flex;align-items:center;gap:4px">'      +'<span style="font-size:12px;font-family:monospace;color:var(--text)">'+(phone||'—')+'</span>'      +(phone?'<button onclick="makeOpenPhoneCall(\''+phone+'\')" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;border:none;cursor:pointer"><i class="ti ti-phone" style="font-size:11px"></i></button>':'')      +'<button onclick="editPhone('+c.id+',\"'+field+'\",\"'+(phone||'')+'&quot;)" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:11px"></i></button>'      +'</div>';
+  const phoneBlock=function(phone,field){
+    return '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">'\
+      +'<span style="font-size:12px;font-family:monospace;color:var(--text)">'+(phone||'—')+'</span>'\
+      +(phone?'<button type="button" onclick="makeOpenPhoneCall(\''+phone+'\')" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;border:none;cursor:pointer"><i class="ti ti-phone" style="font-size:11px"></i></button>':'')\
+      +'<button type="button" onclick="editPhone('+c.id+',\''+field+'\',\''+(phone||'')+'\')" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:11px"></i></button>'\
+      +'</div>';
   };
 
-  modal.innerHTML='<div class="modal" onclick="event.stopPropagation()" style="width:900px;max-width:96vw">'    +'<div class="modal-header">'    +'<div class="avatar '+saleAvClass(c.assigned_to)+'" style="width:36px;height:36px;font-size:12px">'+saleInitials(c)+'</div>'    +'<div style="flex:1"><h3>'+(c.customer_name||'')+'</h3><div style="font-size:11px;color:var(--text3)">'+(c.business_name||'—')+' · <span style="font-family:monospace">'+(c.ma_kh||'—')+'</span></div></div>'    +'<button class="btn" style="padding:4px 8px" onclick="document.getElementById(\'detail-modal\').remove();selId=null"><i class="ti ti-x"></i></button>'    +'</div>'    +'<div class="modal-body" style="display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start">'
-    // LEFT COLUMN
-    +'<div>'    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>Status</label><select id="d-status">'+selOpts(STATUS_OPTS,c.status)+'</select></div>'    +'<div class="field"><label>Sub-status</label><select id="d-substatus" onchange="var r=document.getElementById(\'d-timeline-req\');if(r)r.style.display=this.value===\'Appointment Set\'?\'inline\':\'none\';if(this.value===\'Appointment Set\')document.getElementById(\'d-timeline\')&&document.getElementById(\'d-timeline\').focus();">'+selOpts(SUBSTATUS_OPTS,c.sub_status)+'</select></div>'    +'<div class="field"><label>Lead Status</label><select id="d-leadstatus">'+selOpts(LEAD_OPTS,c.lead_status)+'</select></div>'    +'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>Business Name</label><input id="d-biz" value="'+(c.business_name||'')+'"></div>'    +'<div class="field"><label>Business Phone</label>'+phoneBtn(c.business_phone,'business_phone')+'</div>'    +'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>Address</label><input id="d-address" value="'+(c.address||'')+'" placeholder="Số nhà, tên đường..."></div>'    +'<div class="field"><label>City</label><input id="d-city" value="'+(c.city||'')+'" placeholder="Thành phố"></div>'    +'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>State</label><select id="d-state">'+selOpts(STATE_OPTS,c.state)+'</select></div>'    +'<div class="field"><label>Zipcode</label><input id="d-zip" value="'+(c.zipcode||'')+'"></div>'    +'<div class="field"><label>Trạng thái data</label><div style="padding:6px;font-size:11px;color:'+(c.potential?'var(--accent2)':'var(--text3)')+';">'+(c.potential?'Giữ lại (Potential)':'Thu hồi khi hết deadline')+'</div></div>'    +'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>Customer Name</label><input id="d-name" value="'+(c.customer_name||'')+'"></div>'    +'<div class="field"><label>Cellphone</label>'+phoneBtn(c.cellphone,'cellphone')+'</div>'    +'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>Customer Name 2</label><input id="d-name2" value="'+(c.customer_name_2||'')+'"></div>'    +'<div class="field"><label>Cellphone 2</label>'+phoneBtn(c.cellphone_2,'cellphone_2')+'</div>'    +'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>Potential</label><select id="d-potential">'+selOpts(POTENTIAL_OPTS,c.potential)+'</select></div>'    +'<div class="field"><label>Times of Use</label><select id="d-times">'+selOpts(TIMES_OPTS,c.times_of_use)+'</select></div>'    +'<div class="field"><label>Brand</label><select id="d-brand">'+selOpts(BRAND_OPTS,c.brand)+'</select></div>'    +'<div class="field"><label>Reason</label><select id="d-reason">'+selOpts(REASON_OPTS,c.reason)+'</select></div>'    +'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'    +'<div class="field"><label>Deadline thu hồi</label><input type="date" id="d-deadline" value="'+(c.assigned_deadline||'')+'"></div>'    +'<div class="field"><label>Ngày hẹn <span id="d-timeline-req" style="color:var(--danger);display:'+(c.sub_status==='Appointment Set'?'inline':'none')+'">*</span></label><input type="date" id="d-timeline" value="'+(c.timeline_follow||'')+'" onchange="if(this.value){var ss=document.getElementById(\'d-substatus\');if(ss&&ss.value!==\'Appointment Set\')ss.value=\'Appointment Set\';}"></div>'    +'</div>'
-    +'<div class="field" style="margin-bottom:8px"><label>Description</label><textarea id="d-desc" style="min-height:50px">'+(c.description||'')+'</textarea></div>'    +saleField    +'</div>'
-    // RIGHT COLUMN - Kết quả gọi + Lịch sử
-    +'<div style="display:flex;flex-direction:column;gap:10px">'    +'<div class="field"><label>Kết quả cuộc gọi</label>'    +'<select id="d-result"><option value="">-- Chọn --</option>'    +['Bắt máy','Không bắt máy','Tắt máy ngang','Hẹn gọi lại'].map(function(r){return '<option>'+r+'</option>';}).join('')    +'</select></div>'    +'<div class="field"><label>Ghi chú</label><textarea id="d-note" placeholder="Nội dung cuộc gọi..." style="min-height:70px"></textarea></div>'    +'<div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:10px">'    +'<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Lịch sử liên hệ <span style="font-weight:400;color:var(--text3)">('+logs.length+')</span></div>'    +logHtml    +'</div>'    +'</div>'
-    +'</div>'    +'<div class="modal-footer">'    +'<button type="button" class="btn" onclick="document.getElementById(\'detail-modal\').remove();selId=null">Đóng</button>'    +(isManager?'<button type="button" class="btn btn-danger" onclick="deleteCustomer('+c.id+')"><i class="ti ti-trash"></i> Xóa</button>':'')    +'<button type="button" class="btn" style="border-color:rgba(253,203,110,0.5);color:var(--warn)" onclick="openInvoice('+c.id+')"><i class="ti ti-file-invoice"></i> Tạo Invoice</button>'    +'<button type="button" class="btn btn-primary" onclick="saveDetail('+c.id+')"><i class="ti ti-device-floppy"></i> Lưu</button>'    +'</div></div>';
+  const saleOpts=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(c.assigned_to===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('');
+
+  // CSS grid cho modal
+  const g6='display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:10px;align-items:start';
+  const g4='display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;align-items:start';
+  const g3='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;align-items:start';
+  const g2='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;align-items:start';
+  const fld='display:flex;flex-direction:column;gap:4px';
+  const lbl='font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px';
+
+  modal.innerHTML=
+    '<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:12px;width:98vw;max-width:1200px;margin:auto;max-height:95vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5)">'\
+
+    // HEADER
+    +'<div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);position:sticky;top:0;background:var(--bg2);z-index:1;border-radius:12px 12px 0 0">'\
+    +'<div class="avatar '+saleAvClass(c.assigned_to)+'" style="width:38px;height:38px;font-size:13px;flex-shrink:0">'+saleInitials(c)+'</div>'\
+    +'<div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.customer_name||'')+'</div>'\
+    +'<div style="font-size:11px;color:var(--text3)">'+(c.business_name||'—')+' · <span style="font-family:monospace">'+(c.ma_kh||'—')+'</span></div></div>'\
+    +'<button type="button" style="padding:4px 8px;background:none;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text2);cursor:pointer" onclick="document.getElementById(\'detail-modal\').remove();selId=null"><i class="ti ti-x"></i></button>'\
+    +'</div>'\
+
+    // BODY
+    +'<div style="padding:16px 20px">'\
+
+    // ROW 1: Business Name | Business Phone | Address | City | State | Zipcode
+    +'<div style="'+g6+'">'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Business Name</label><input id="d-biz" value="'+(c.business_name||'')+'" style="height:34px"></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Business Phone</label>'+phoneBlock(c.business_phone,'business_phone')+'</div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Address</label><input id="d-address" value="'+(c.address||'')+'" placeholder="Địa chỉ" style="height:34px"></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">City</label><input id="d-city" value="'+(c.city||'')+'" placeholder="Thành phố" style="height:34px"></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">State</label><select id="d-state" style="height:34px">'+selOpts(STATE_OPTS,c.state)+'</select></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Zipcode</label><input id="d-zip" value="'+(c.zipcode||'')+'" style="height:34px"></div>'\
+    +'</div>'\
+
+    // ROW 2: Customer Name | Cellphone | Customer Name 2 | Cellphone 2
+    +'<div style="'+g4+'">'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Customer Name</label><input id="d-name" value="'+(c.customer_name||'')+'" style="height:34px"></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Cellphone</label>'+phoneBlock(c.cellphone,'cellphone')+'</div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Customer Name 2</label><input id="d-name2" value="'+(c.customer_name_2||'')+'" style="height:34px"></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Cellphone 2</label>'+phoneBlock(c.cellphone_2,'cellphone_2')+'</div>'\
+    +'</div>'\
+
+    // ROW 3: Description | Kết quả cuộc gọi | Ghi chú
+    +'<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:10px;align-items:start">'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Description</label><textarea id="d-desc" style="min-height:68px;resize:vertical">'+(c.description||'')+'</textarea></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Kết quả cuộc gọi</label>'\
+    +'<select id="d-result" style="height:34px"><option value="">-- Chọn --</option>'\
+    +['Bắt máy','Không bắt máy','Tắt máy ngang','Hẹn gọi lại'].map(function(r){return '<option>'+r+'</option>';}).join('')\
+    +'</select></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Ghi chú</label><textarea id="d-note" placeholder="Nội dung cuộc gọi..." style="min-height:68px;resize:vertical"></textarea></div>'\
+    +'</div>'\
+
+    // ROW 4: Status | Sub-Status | Lead Status | Lịch sử liên hệ
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:8px;margin-bottom:10px;align-items:start">'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Status</label><select id="d-status" style="height:34px">'+selOpts(STATUS_OPTS,c.status)+'</select></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Sub-Status</label>'\
+    +'<select id="d-substatus" style="height:34px" onchange="var r=document.getElementById(\'d-timeline-req\');if(r)r.style.display=this.value===\'Appointment Set\'?\'inline\':\'none\';">'+selOpts(SUBSTATUS_OPTS,c.sub_status)+'</select></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Lead Status</label><select id="d-leadstatus" style="height:34px">'+selOpts(LEAD_OPTS,c.lead_status)+'</select></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Lịch sử liên hệ <span style="font-weight:400;color:var(--text3)">('+logs.length+')</span></label>'\
+    +'<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px">'+logHtml+'</div></div>'\
+    +'</div>'\
+
+    // ROW 5: Potential | Times of Use | Brand | Reason
+    +'<div style="'+g4+'">'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Potential</label><select id="d-potential" style="height:34px">'+selOpts(POTENTIAL_OPTS,c.potential)+'</select></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Times of Use</label><select id="d-times" style="height:34px">'+selOpts(TIMES_OPTS,c.times_of_use)+'</select></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Brand</label><select id="d-brand" style="height:34px">'+selOpts(BRAND_OPTS,c.brand)+'</select></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Reason</label><select id="d-reason" style="height:34px">'+selOpts(REASON_OPTS,c.reason)+'</select></div>'\
+    +'</div>'\
+
+    // ROW 6: Deadline | Ngày hẹn | Trạng thái data
+    +'<div style="'+g3+'">'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Deadline thu hồi</label><input type="date" id="d-deadline" value="'+(c.assigned_deadline||'')+'" style="height:34px"></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Ngày hẹn <span id="d-timeline-req" style="color:var(--danger);display:'+(c.sub_status==='Appointment Set'?'inline':'none')+'">*</span></label>'\
+    +'<input type="date" id="d-timeline" value="'+(c.timeline_follow||'')+'" style="height:34px" onchange="if(this.value){var ss=document.getElementById(\'d-substatus\');if(ss&&ss.value!==\'Appointment Set\'){ss.value=\'Appointment Set\';var r=document.getElementById(\'d-timeline-req\');if(r)r.style.display=\'inline\';}}"></div>'\
+    +'<div style="'+fld+'"><label style="'+lbl+'">Trạng thái data</label>'\
+    +'<div style="padding:8px 10px;font-size:12px;color:'+(c.potential?'var(--accent2)':'var(--text3)')+';background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;height:34px;display:flex;align-items:center">'+(c.potential?'Giữ lại (Potential)':'Thu hồi khi hết deadline')+'</div></div>'\
+    +'</div>'\
+
+    +'</div>'\
+
+    // FOOTER: Sale Assigned | spacer | buttons
+    +'<div style="display:flex;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid rgba(255,255,255,0.08);background:var(--bg2);border-radius:0 0 12px 12px;position:sticky;bottom:0">'\
+    +(isManager?'<div style="'+fld+';min-width:200px"><label style="'+lbl+'">Sale Assigned</label><select id="d-sale" style="height:34px">'+saleOpts+'</select></div>':'')\
+    +'<div style="flex:1"></div>'\
+    +'<button type="button" class="btn" onclick="document.getElementById(\'detail-modal\').remove();selId=null">Đóng</button>'\
+    +(isManager?'<button type="button" class="btn btn-danger" onclick="deleteCustomer('+c.id+')"><i class="ti ti-trash"></i> Xóa</button>':'')\
+    +'<button type="button" class="btn" style="border-color:rgba(253,203,110,0.5);color:var(--warn)" onclick="openInvoice('+c.id+')"><i class="ti ti-file-invoice"></i> Tạo Invoice</button>'\
+    +'<button type="button" class="btn btn-primary" onclick="saveDetail('+c.id+')"><i class="ti ti-device-floppy"></i> Lưu</button>'\
+    +'</div>'\
+    +'</div>';
+
   document.body.appendChild(modal);
 }
 
