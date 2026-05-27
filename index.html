@@ -2041,7 +2041,7 @@ async function renderDetailModal(customerId){
   function inp(id,val,ph){return '<input id="'+id+'" value="'+(val||'')+'" '+(ph?'placeholder="'+ph+'"':'')+' style="height:34px">';}
   function ta(id,val,ph,h){return '<textarea id="'+id+'" '+(ph?'placeholder="'+ph+'"':'')+' style="min-height:'+(h||60)+'px;resize:vertical">'+(val||'')+'</textarea>';}
 
-  var html='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:12px;width:98vw;max-width:1200px;margin:auto;max-height:95vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5)">';
+  var html='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:12px;width:98vw;max-width:1200px;margin:auto;max-height:95vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5)">';
 
   // HEADER
   html+='<div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);position:sticky;top:0;background:var(--bg2);z-index:1;border-radius:12px 12px 0 0">';
@@ -2051,54 +2051,57 @@ async function renderDetailModal(customerId){
   html+='<button type="button" style="padding:4px 10px;background:none;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text2);cursor:pointer" onclick="document.getElementById(\'detail-modal\').remove();selId=null"><i class="ti ti-x"></i></button>';
   html+='</div>';
 
-  // BODY
-  html+='<div style="padding:16px 20px">';
+  // BODY — 2-column layout: main (left) + sidebar history (right)
+  html+='<div style="display:grid;grid-template-columns:1fr 300px;gap:0;flex:1;min-height:0;overflow:hidden">';
 
-  // ROW 1: Business Name | Business Phone | Address | City | State | Zipcode
-  html+=row('repeat(6,1fr)',
+  // ── LEFT MAIN ──
+  html+='<div style="padding:16px 20px;border-right:1px solid rgba(255,255,255,0.07);overflow-y:auto;max-height:calc(95vh - 130px)">';
+
+  // ROW 1: Biz Name (2fr) | Address (2fr) | City | State | Zip
+  html+=row('2fr 2fr 1fr 1fr 1fr',
     fd('Business Name',inp('d-biz',c.business_name))+
-    fd('Business Phone',pb(c.business_phone,'business_phone'))+
-    fd('Address',inp('d-address',c.address,'Địa chỉ'))+
+    fd('Address',inp('d-address',c.address,'Số nhà, tên đường...'))+
     fd('City',inp('d-city',c.city,'Thành phố'))+
     fd('State',sel('d-state',STATE_OPTS,c.state))+
     fd('Zipcode',inp('d-zip',c.zipcode))
   );
 
-  // ROW 2: Customer Name | Cellphone | Customer Name 2 | Cellphone 2
-  html+=row('repeat(4,1fr)',
+  // ROW 2: Biz Phone | Customer Name | Cellphone | Name 2 | Phone 2
+  html+=row('1fr 1fr 1fr 1fr 1fr',
+    fd('Business Phone',pb(c.business_phone,'business_phone'))+
     fd('Customer Name',inp('d-name',c.customer_name))+
     fd('Cellphone',pb(c.cellphone,'cellphone'))+
     fd('Customer Name 2',inp('d-name2',c.customer_name_2))+
     fd('Cellphone 2',pb(c.cellphone_2,'cellphone_2'))
   );
 
-  // ROW 3: Description | Kết quả | Ghi chú
+  // ROW 3: Description full width
+  html+='<div style="margin-bottom:10px">'+lbl('Description')+ta('d-desc',c.description,'Mô tả khách hàng...',72)+'</div>';
+
+  // ROW 4: Kết quả cuộc gọi | Ghi chú (2fr)
   var resultSel='<select id="d-result" style="height:34px"><option value="">-- Chọn --</option>'+['Bắt máy','Không bắt máy','Tắt máy ngang','Hẹn gọi lại'].map(function(r){return '<option>'+r+'</option>';}).join('')+'</select>';
-  html+=row('2fr 1fr 1fr',
-    fd('Description',ta('d-desc',c.description,'',68))+
+  html+=row('1fr 2fr',
     fd('Kết quả cuộc gọi',resultSel)+
     fd('Ghi chú',ta('d-note','','Nội dung cuộc gọi...',68))
   );
 
-  // ROW 4: Status | Sub-Status | Lead Status | Lịch sử liên hệ
+  // ROW 5: Status | Sub-Status | Lead Status | Potential
   var subSel='<select id="d-substatus" style="height:34px" onchange="var r=document.getElementById(\'d-timeline-req\');if(r)r.style.display=this.value===\'Appointment Set\'?\'inline\':\'none\';">'+selOpts(SUBSTATUS_OPTS,c.sub_status)+'</select>';
-  var logBox='<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px">'+logHtml+'</div>';
-  html+=row('1fr 1fr 1fr 2fr',
+  html+=row('repeat(4,1fr)',
     fd('Status',sel('d-status',STATUS_OPTS,c.status))+
     fd('Sub-Status',subSel)+
     fd('Lead Status',sel('d-leadstatus',LEAD_OPTS,c.lead_status))+
-    '<div style="'+f+'">'+lbl('Lịch sử liên hệ <span style="font-weight:400;color:var(--text3)">('+logs.length+')</span>')+logBox+'</div>'
+    fd('Potential',sel('d-potential',POTENTIAL_OPTS,c.potential))
   );
 
-  // ROW 5: Potential | Times of Use | Brand | Reason
-  html+=row('repeat(4,1fr)',
-    fd('Potential',sel('d-potential',POTENTIAL_OPTS,c.potential))+
+  // ROW 6: Times of Use | Brand | Reason (2fr)
+  html+=row('1fr 1fr 2fr',
     fd('Times of Use',sel('d-times',TIMES_OPTS,c.times_of_use))+
     fd('Brand',sel('d-brand',BRAND_OPTS,c.brand))+
     fd('Reason',sel('d-reason',REASON_OPTS,c.reason))
   );
 
-  // ROW 6: Deadline | Ngày hẹn | Trạng thái data
+  // ROW 7: Deadline | Ngày hẹn | Trạng thái data
   var deadlineInp='<input type="date" id="d-deadline" value="'+(c.assigned_deadline||'')+'" style="height:34px">';
   var timelineInp='<input type="date" id="d-timeline" value="'+(c.timeline_follow||'')+'" style="height:34px" onchange="if(this.value){var ss=document.getElementById(\'d-substatus\');if(ss&&ss.value!==\'Appointment Set\'){ss.value=\'Appointment Set\';var r=document.getElementById(\'d-timeline-req\');if(r)r.style.display=\'inline\';}}">';
   var tlReq='<span id="d-timeline-req" style="color:var(--danger);display:'+(c.sub_status==='Appointment Set'?'inline':'none')+'">*</span>';
@@ -2109,7 +2112,17 @@ async function renderDetailModal(customerId){
     fd('Trạng thái data',dataStatus)
   );
 
-  html+='</div>'; // end body
+  html+='</div>'; // end left main
+
+  // ── RIGHT SIDEBAR: Lịch sử liên hệ ──
+  html+='<div style="display:flex;flex-direction:column;background:rgba(255,255,255,0.02);max-height:calc(95vh - 130px)">';
+  html+='<div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">';
+  html+=lbl('Lịch sử liên hệ <span style="font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0">('+logs.length+')</span>');
+  html+='</div>';
+  html+='<div style="flex:1;overflow-y:auto;padding:10px 14px">'+logHtml+'</div>';
+  html+='</div>'; // end sidebar
+
+  html+='</div>'; // end 2-col grid
 
   // FOOTER
   html+='<div style="display:flex;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid rgba(255,255,255,0.08);background:var(--bg2);border-radius:0 0 12px 12px;position:sticky;bottom:0">';
