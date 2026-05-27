@@ -28,6 +28,7 @@
   --main:#0f0c24;--surface:rgba(255,255,255,0.05);--surface2:rgba(255,255,255,0.08);
   --text:#F0EEFF;--text2:rgba(240,238,255,0.6);--text3:rgba(240,238,255,0.35);
   --border:rgba(255,255,255,0.1);
+  --bg2:#1a1240;
 }
 body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--text);font-size:13px}
 #auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--main);position:relative;overflow:hidden}
@@ -126,30 +127,41 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 .field select option{background:#1a1240}
 .field textarea{resize:vertical;min-height:60px}
 .modal-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
-/* ── Detail Modal: style all bare inputs/selects/textareas ── */
+/* ── Detail Modal: inputs/selects/textareas match .field style ── */
 #detail-modal input,
 #detail-modal select,
 #detail-modal textarea{
-  background:var(--surface);
-  border:1px solid var(--border);
+  background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.12);
   border-radius:8px;
-  padding:6px 10px;
+  padding:7px 10px;
   font-size:12px;
   color:var(--text);
   font-family:'Be Vietnam Pro',sans-serif;
   outline:none;
   width:100%;
-  transition:border-color 0.15s;
+  transition:border-color 0.15s,box-shadow 0.15s;
 }
 #detail-modal input:focus,
 #detail-modal select:focus,
-#detail-modal textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(108,92,231,0.15);}
+#detail-modal textarea:focus{
+  border-color:var(--brand);
+  box-shadow:0 0 0 3px rgba(108,92,231,0.18);
+}
 #detail-modal select{cursor:pointer;}
 #detail-modal select option{background:#1a1240;color:var(--text);}
 #detail-modal input[type=date]{color-scheme:dark;}
 #detail-modal input::placeholder,
 #detail-modal textarea::placeholder{color:var(--text3);}
-#detail-modal label{font-size:10px;color:var(--text3);letter-spacing:0.8px;text-transform:uppercase;font-weight:700;display:block;margin-bottom:3px;}
+#detail-modal label{
+  font-size:10px;
+  color:rgba(240,238,255,0.45);
+  letter-spacing:0.8px;
+  text-transform:uppercase;
+  font-weight:700;
+  display:block;
+  margin-bottom:3px;
+}
 .loading-overlay{position:fixed;inset:0;background:rgba(15,12,36,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:300;gap:12px}
 .spinner{width:36px;height:36px;border:3px solid rgba(108,92,231,0.2);border-top-color:var(--brand);border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
