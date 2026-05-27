@@ -2045,7 +2045,7 @@ async function renderDetailModal(customerId){
   );
 
   // ROW 4: Status | Sub-Status | Lead Status | Lịch sử liên hệ
-  var subSel='<select id="d-substatus" style="height:34px" onchange="var r=document.getElementById('d-timeline-req');if(r)r.style.display=this.value==='Appointment Set'?'inline':'none';">'+selOpts(SUBSTATUS_OPTS,c.sub_status)+'</select>';
+  var subSel='<select id="d-substatus" style="height:34px" onchange="var r=document.getElementById(\'d-timeline-req\');if(r)r.style.display=this.value===\'Appointment Set\'?\'inline\':\'none\';">'+selOpts(SUBSTATUS_OPTS,c.sub_status)+'</select>';
   var logBox='<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px">'+logHtml+'</div>';
   html+=row('1fr 1fr 1fr 2fr',
     fd('Status',sel('d-status',STATUS_OPTS,c.status))+
@@ -2064,7 +2064,7 @@ async function renderDetailModal(customerId){
 
   // ROW 6: Deadline | Ngày hẹn | Trạng thái data
   var deadlineInp='<input type="date" id="d-deadline" value="'+(c.assigned_deadline||'')+'" style="height:34px">';
-  var timelineInp='<input type="date" id="d-timeline" value="'+(c.timeline_follow||'')+'" style="height:34px" onchange="if(this.value){var ss=document.getElementById('d-substatus');if(ss&&ss.value!=='Appointment Set'){ss.value='Appointment Set';var r=document.getElementById('d-timeline-req');if(r)r.style.display='inline';}}">';
+  var timelineInp='<input type="date" id="d-timeline" value="'+(c.timeline_follow||'')+'" style="height:34px" onchange="if(this.value){var ss=document.getElementById(\'d-substatus\');if(ss&&ss.value!==\'Appointment Set\'){ss.value=\'Appointment Set\';var r=document.getElementById(\'d-timeline-req\');if(r)r.style.display=\'inline\';}}">';
   var tlReq='<span id="d-timeline-req" style="color:var(--danger);display:'+(c.sub_status==='Appointment Set'?'inline':'none')+'">*</span>';
   var dataStatus='<div style="padding:8px 10px;font-size:12px;color:'+(c.potential?'var(--accent2)':'var(--text3)')+';background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;height:34px;display:flex;align-items:center">'+(c.potential?'Giữ lại (Potential)':'Thu hồi khi hết deadline')+'</div>';
   html+=row('1fr 1fr 1fr',
