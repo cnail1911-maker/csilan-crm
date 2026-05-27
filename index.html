@@ -1965,128 +1965,127 @@ async function renderDetailModal(customerId){
   const logsRes=await sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId).order('called_at',{ascending:false}).limit(25);
   const logs=logsRes.data||[];
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
-
-  // Remove existing
   const existing=document.getElementById('detail-modal');
   if(existing)existing.remove();
-
   const modal=document.createElement('div');
   modal.className='modal-overlay';modal.id='detail-modal';
   modal.onclick=function(e){if(e.target===modal){modal.remove();selId=null;}};
 
-  // Log html - 5 dòng ~170px
+  // Build log html
   let logHtml='<div style="font-size:12px;color:var(--text3);padding:6px 0">Chưa có ghi chú</div>';
   if(logs.length>0){
-    logHtml='<div style="max-height:170px;overflow-y:auto;padding-right:4px">';
+    let lh='<div style="max-height:170px;overflow-y:auto;padding-right:4px">';
     logs.forEach(function(l){
       const res=l.call_result&&l.call_result!=='null'?'<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(108,92,231,0.2);color:var(--brand2);margin-right:5px">'+l.call_result+'</span>':'';
-      const note=(l.note&&l.note!=='null'&&l.note.trim()!=='')?l.note.trim():'';
+      const note=l.note&&l.note!=='null'&&l.note.trim()!==''?l.note.trim():'';
       const line=res+(note||(!l.call_result?'<span style="color:var(--text3);font-style:italic">Thao tác</span>':''));
-      logHtml+='<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--brand);flex-shrink:0;margin-top:5px"></div><div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--text2)">'+line+'</div><div style="font-size:10px;color:var(--text3);margin-top:1px">'+((l.sale&&l.sale.full_name)||'—')+' · '+fmtDateTime(l.called_at)+'</div></div></div>';
+      lh+='<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--brand);flex-shrink:0;margin-top:5px"></div><div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--text2)">'+line+'</div><div style="font-size:10px;color:var(--text3);margin-top:1px">'+((l.sale&&l.sale.full_name)||'—')+' · '+fmtDateTime(l.called_at)+'</div></div></div>';
     });
-    logHtml+='</div>';
+    lh+='</div>';
+    logHtml=lh;
   }
 
-  const phoneBlock=function(phone,field){
-    return '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">'\
-      +'<span style="font-size:12px;font-family:monospace;color:var(--text)">'+(phone||'—')+'</span>'\
-      +(phone?'<button type="button" onclick="makeOpenPhoneCall(\''+phone+'\')" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;border:none;cursor:pointer"><i class="ti ti-phone" style="font-size:11px"></i></button>':'')\
-      +'<button type="button" onclick="editPhone('+c.id+',\''+field+'\',\''+(phone||'')+'\')" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:11px"></i></button>'\
-      +'</div>';
-  };
+  // Phone block helper
+  function pb(phone,field){
+    var btn1=phone?'<button type="button" onclick="makeOpenPhoneCall(''+phone+'')" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;border:none;cursor:pointer"><i class="ti ti-phone" style="font-size:11px"></i></button>':'';
+    var btn2='<button type="button" onclick="editPhone('+c.id+',''+field+'',''+(phone||'')+'')" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:11px"></i></button>';
+    return '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;min-height:34px"><span style="font-size:12px;font-family:monospace;color:var(--text)">'+(phone||'—')+'</span>'+btn1+btn2+'</div>';
+  }
 
   const saleOpts=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(c.assigned_to===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('');
 
-  // CSS grid cho modal
-  const g6='display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:10px;align-items:start';
-  const g4='display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;align-items:start';
-  const g3='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;align-items:start';
-  const g2='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;align-items:start';
-  const fld='display:flex;flex-direction:column;gap:4px';
-  const lbl='font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px';
+  // Helpers
+  const f='display:flex;flex-direction:column;gap:4px';
+  const lb='font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px';
+  function lbl(t){return '<label style="'+lb+'">'+t+'</label>';}
+  function row(cols,items){return '<div style="display:grid;grid-template-columns:'+cols+';gap:8px;margin-bottom:10px;align-items:start">'+items+'</div>';}
+  function fd(label,input){return '<div style="'+f+'">'+lbl(label)+input+'</div>';}
+  function sel(id,opts,val){return '<select id="'+id+'" style="height:34px">'+selOpts(opts,val)+'</select>';}
+  function inp(id,val,ph){return '<input id="'+id+'" value="'+(val||'')+'" '+(ph?'placeholder="'+ph+'"':'')+' style="height:34px">';}
+  function ta(id,val,ph,h){return '<textarea id="'+id+'" '+(ph?'placeholder="'+ph+'"':'')+' style="min-height:'+(h||60)+'px;resize:vertical">'+(val||'')+'</textarea>';}
 
-  modal.innerHTML=
-    '<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:12px;width:98vw;max-width:1200px;margin:auto;max-height:95vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5)">'\
+  var html='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:12px;width:98vw;max-width:1200px;margin:auto;max-height:95vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5)">';
 
-    // HEADER
-    +'<div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);position:sticky;top:0;background:var(--bg2);z-index:1;border-radius:12px 12px 0 0">'\
-    +'<div class="avatar '+saleAvClass(c.assigned_to)+'" style="width:38px;height:38px;font-size:13px;flex-shrink:0">'+saleInitials(c)+'</div>'\
-    +'<div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.customer_name||'')+'</div>'\
-    +'<div style="font-size:11px;color:var(--text3)">'+(c.business_name||'—')+' · <span style="font-family:monospace">'+(c.ma_kh||'—')+'</span></div></div>'\
-    +'<button type="button" style="padding:4px 8px;background:none;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text2);cursor:pointer" onclick="document.getElementById(\'detail-modal\').remove();selId=null"><i class="ti ti-x"></i></button>'\
-    +'</div>'\
+  // HEADER
+  html+='<div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);position:sticky;top:0;background:var(--bg2);z-index:1;border-radius:12px 12px 0 0">';
+  html+='<div class="avatar '+saleAvClass(c.assigned_to)+'" style="width:38px;height:38px;font-size:13px;flex-shrink:0">'+saleInitials(c)+'</div>';
+  html+='<div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.customer_name||'')+'</div>';
+  html+='<div style="font-size:11px;color:var(--text3)">'+(c.business_name||'—')+' · <span style="font-family:monospace">'+(c.ma_kh||'—')+'</span></div></div>';
+  html+='<button type="button" style="padding:4px 10px;background:none;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text2);cursor:pointer" onclick="document.getElementById('detail-modal').remove();selId=null"><i class="ti ti-x"></i></button>';
+  html+='</div>';
 
-    // BODY
-    +'<div style="padding:16px 20px">'\
+  // BODY
+  html+='<div style="padding:16px 20px">';
 
-    // ROW 1: Business Name | Business Phone | Address | City | State | Zipcode
-    +'<div style="'+g6+'">'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Business Name</label><input id="d-biz" value="'+(c.business_name||'')+'" style="height:34px"></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Business Phone</label>'+phoneBlock(c.business_phone,'business_phone')+'</div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Address</label><input id="d-address" value="'+(c.address||'')+'" placeholder="Địa chỉ" style="height:34px"></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">City</label><input id="d-city" value="'+(c.city||'')+'" placeholder="Thành phố" style="height:34px"></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">State</label><select id="d-state" style="height:34px">'+selOpts(STATE_OPTS,c.state)+'</select></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Zipcode</label><input id="d-zip" value="'+(c.zipcode||'')+'" style="height:34px"></div>'\
-    +'</div>'\
+  // ROW 1: Business Name | Business Phone | Address | City | State | Zipcode
+  html+=row('repeat(6,1fr)',
+    fd('Business Name',inp('d-biz',c.business_name))+
+    fd('Business Phone',pb(c.business_phone,'business_phone'))+
+    fd('Address',inp('d-address',c.address,'Địa chỉ'))+
+    fd('City',inp('d-city',c.city,'Thành phố'))+
+    fd('State',sel('d-state',STATE_OPTS,c.state))+
+    fd('Zipcode',inp('d-zip',c.zipcode))
+  );
 
-    // ROW 2: Customer Name | Cellphone | Customer Name 2 | Cellphone 2
-    +'<div style="'+g4+'">'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Customer Name</label><input id="d-name" value="'+(c.customer_name||'')+'" style="height:34px"></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Cellphone</label>'+phoneBlock(c.cellphone,'cellphone')+'</div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Customer Name 2</label><input id="d-name2" value="'+(c.customer_name_2||'')+'" style="height:34px"></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Cellphone 2</label>'+phoneBlock(c.cellphone_2,'cellphone_2')+'</div>'\
-    +'</div>'\
+  // ROW 2: Customer Name | Cellphone | Customer Name 2 | Cellphone 2
+  html+=row('repeat(4,1fr)',
+    fd('Customer Name',inp('d-name',c.customer_name))+
+    fd('Cellphone',pb(c.cellphone,'cellphone'))+
+    fd('Customer Name 2',inp('d-name2',c.customer_name_2))+
+    fd('Cellphone 2',pb(c.cellphone_2,'cellphone_2'))
+  );
 
-    // ROW 3: Description | Kết quả cuộc gọi | Ghi chú
-    +'<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:10px;align-items:start">'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Description</label><textarea id="d-desc" style="min-height:68px;resize:vertical">'+(c.description||'')+'</textarea></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Kết quả cuộc gọi</label>'\
-    +'<select id="d-result" style="height:34px"><option value="">-- Chọn --</option>'\
-    +['Bắt máy','Không bắt máy','Tắt máy ngang','Hẹn gọi lại'].map(function(r){return '<option>'+r+'</option>';}).join('')\
-    +'</select></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Ghi chú</label><textarea id="d-note" placeholder="Nội dung cuộc gọi..." style="min-height:68px;resize:vertical"></textarea></div>'\
-    +'</div>'\
+  // ROW 3: Description | Kết quả | Ghi chú
+  var resultSel='<select id="d-result" style="height:34px"><option value="">-- Chọn --</option>'+['Bắt máy','Không bắt máy','Tắt máy ngang','Hẹn gọi lại'].map(function(r){return '<option>'+r+'</option>';}).join('')+'</select>';
+  html+=row('2fr 1fr 1fr',
+    fd('Description',ta('d-desc',c.description,'',68))+
+    fd('Kết quả cuộc gọi',resultSel)+
+    fd('Ghi chú',ta('d-note','','Nội dung cuộc gọi...',68))
+  );
 
-    // ROW 4: Status | Sub-Status | Lead Status | Lịch sử liên hệ
-    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:8px;margin-bottom:10px;align-items:start">'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Status</label><select id="d-status" style="height:34px">'+selOpts(STATUS_OPTS,c.status)+'</select></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Sub-Status</label>'\
-    +'<select id="d-substatus" style="height:34px" onchange="var r=document.getElementById(\'d-timeline-req\');if(r)r.style.display=this.value===\'Appointment Set\'?\'inline\':\'none\';">'+selOpts(SUBSTATUS_OPTS,c.sub_status)+'</select></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Lead Status</label><select id="d-leadstatus" style="height:34px">'+selOpts(LEAD_OPTS,c.lead_status)+'</select></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Lịch sử liên hệ <span style="font-weight:400;color:var(--text3)">('+logs.length+')</span></label>'\
-    +'<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px">'+logHtml+'</div></div>'\
-    +'</div>'\
+  // ROW 4: Status | Sub-Status | Lead Status | Lịch sử liên hệ
+  var subSel='<select id="d-substatus" style="height:34px" onchange="var r=document.getElementById('d-timeline-req');if(r)r.style.display=this.value==='Appointment Set'?'inline':'none';">'+selOpts(SUBSTATUS_OPTS,c.sub_status)+'</select>';
+  var logBox='<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px">'+logHtml+'</div>';
+  html+=row('1fr 1fr 1fr 2fr',
+    fd('Status',sel('d-status',STATUS_OPTS,c.status))+
+    fd('Sub-Status',subSel)+
+    fd('Lead Status',sel('d-leadstatus',LEAD_OPTS,c.lead_status))+
+    '<div style="'+f+'">'+lbl('Lịch sử liên hệ <span style="font-weight:400;color:var(--text3)">('+logs.length+')</span>')+logBox+'</div>'
+  );
 
-    // ROW 5: Potential | Times of Use | Brand | Reason
-    +'<div style="'+g4+'">'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Potential</label><select id="d-potential" style="height:34px">'+selOpts(POTENTIAL_OPTS,c.potential)+'</select></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Times of Use</label><select id="d-times" style="height:34px">'+selOpts(TIMES_OPTS,c.times_of_use)+'</select></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Brand</label><select id="d-brand" style="height:34px">'+selOpts(BRAND_OPTS,c.brand)+'</select></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Reason</label><select id="d-reason" style="height:34px">'+selOpts(REASON_OPTS,c.reason)+'</select></div>'\
-    +'</div>'\
+  // ROW 5: Potential | Times of Use | Brand | Reason
+  html+=row('repeat(4,1fr)',
+    fd('Potential',sel('d-potential',POTENTIAL_OPTS,c.potential))+
+    fd('Times of Use',sel('d-times',TIMES_OPTS,c.times_of_use))+
+    fd('Brand',sel('d-brand',BRAND_OPTS,c.brand))+
+    fd('Reason',sel('d-reason',REASON_OPTS,c.reason))
+  );
 
-    // ROW 6: Deadline | Ngày hẹn | Trạng thái data
-    +'<div style="'+g3+'">'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Deadline thu hồi</label><input type="date" id="d-deadline" value="'+(c.assigned_deadline||'')+'" style="height:34px"></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Ngày hẹn <span id="d-timeline-req" style="color:var(--danger);display:'+(c.sub_status==='Appointment Set'?'inline':'none')+'">*</span></label>'\
-    +'<input type="date" id="d-timeline" value="'+(c.timeline_follow||'')+'" style="height:34px" onchange="if(this.value){var ss=document.getElementById(\'d-substatus\');if(ss&&ss.value!==\'Appointment Set\'){ss.value=\'Appointment Set\';var r=document.getElementById(\'d-timeline-req\');if(r)r.style.display=\'inline\';}}"></div>'\
-    +'<div style="'+fld+'"><label style="'+lbl+'">Trạng thái data</label>'\
-    +'<div style="padding:8px 10px;font-size:12px;color:'+(c.potential?'var(--accent2)':'var(--text3)')+';background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;height:34px;display:flex;align-items:center">'+(c.potential?'Giữ lại (Potential)':'Thu hồi khi hết deadline')+'</div></div>'\
-    +'</div>'\
+  // ROW 6: Deadline | Ngày hẹn | Trạng thái data
+  var deadlineInp='<input type="date" id="d-deadline" value="'+(c.assigned_deadline||'')+'" style="height:34px">';
+  var timelineInp='<input type="date" id="d-timeline" value="'+(c.timeline_follow||'')+'" style="height:34px" onchange="if(this.value){var ss=document.getElementById('d-substatus');if(ss&&ss.value!=='Appointment Set'){ss.value='Appointment Set';var r=document.getElementById('d-timeline-req');if(r)r.style.display='inline';}}">';
+  var tlReq='<span id="d-timeline-req" style="color:var(--danger);display:'+(c.sub_status==='Appointment Set'?'inline':'none')+'">*</span>';
+  var dataStatus='<div style="padding:8px 10px;font-size:12px;color:'+(c.potential?'var(--accent2)':'var(--text3)')+';background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;height:34px;display:flex;align-items:center">'+(c.potential?'Giữ lại (Potential)':'Thu hồi khi hết deadline')+'</div>';
+  html+=row('1fr 1fr 1fr',
+    fd('Deadline thu hồi',deadlineInp)+
+    '<div style="'+f+'">'+lbl('Ngày hẹn '+tlReq)+timelineInp+'</div>'+
+    fd('Trạng thái data',dataStatus)
+  );
 
-    +'</div>'\
+  html+='</div>'; // end body
 
-    // FOOTER: Sale Assigned | spacer | buttons
-    +'<div style="display:flex;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid rgba(255,255,255,0.08);background:var(--bg2);border-radius:0 0 12px 12px;position:sticky;bottom:0">'\
-    +(isManager?'<div style="'+fld+';min-width:200px"><label style="'+lbl+'">Sale Assigned</label><select id="d-sale" style="height:34px">'+saleOpts+'</select></div>':'')\
-    +'<div style="flex:1"></div>'\
-    +'<button type="button" class="btn" onclick="document.getElementById(\'detail-modal\').remove();selId=null">Đóng</button>'\
-    +(isManager?'<button type="button" class="btn btn-danger" onclick="deleteCustomer('+c.id+')"><i class="ti ti-trash"></i> Xóa</button>':'')\
-    +'<button type="button" class="btn" style="border-color:rgba(253,203,110,0.5);color:var(--warn)" onclick="openInvoice('+c.id+')"><i class="ti ti-file-invoice"></i> Tạo Invoice</button>'\
-    +'<button type="button" class="btn btn-primary" onclick="saveDetail('+c.id+')"><i class="ti ti-device-floppy"></i> Lưu</button>'\
-    +'</div>'\
-    +'</div>';
+  // FOOTER
+  html+='<div style="display:flex;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid rgba(255,255,255,0.08);background:var(--bg2);border-radius:0 0 12px 12px;position:sticky;bottom:0">';
+  if(isManager) html+='<div style="'+f+';min-width:180px">'+lbl('Sale Assigned')+'<select id="d-sale" style="height:34px">'+saleOpts+'</select></div>';
+  html+='<div style="flex:1"></div>';
+  html+='<button type="button" class="btn" onclick="document.getElementById('detail-modal').remove();selId=null">Đóng</button>';
+  if(isManager) html+='<button type="button" class="btn btn-danger" onclick="deleteCustomer('+c.id+')"><i class="ti ti-trash"></i> Xóa</button>';
+  html+='<button type="button" class="btn" style="border-color:rgba(253,203,110,0.5);color:var(--warn)" onclick="openInvoice('+c.id+')"><i class="ti ti-file-invoice"></i> Tạo Invoice</button>';
+  html+='<button type="button" class="btn btn-primary" onclick="saveDetail('+c.id+')"><i class="ti ti-device-floppy"></i> Lưu</button>';
+  html+='</div>';
 
+  html+='</div>'; // end modal container
+  modal.innerHTML=html;
   document.body.appendChild(modal);
 }
 
