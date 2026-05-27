@@ -308,7 +308,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
       <div class="nav-tabs">
       <div class="nav-item active" onclick="setPage('customers')" id="nav-customers"><i class="ti ti-users"></i> Khách hàng</div>
       <div class="nav-item" onclick="setPage('potential')" id="nav-potential"><i class="ti ti-star"></i> Tiềm năng</div>
-      <div class="nav-item" onclick="setPage('closedeal')" id="nav-closedeal"><i class="ti ti-trophy"></i> Closedeal <span class="nav-badge" id="badge-cd" style="display:none">0</span></div>
+      <div class="nav-item" onclick="setPage('closedeal')" id="nav-closedeal"><i class="ti ti-shopping-cart"></i> Order <span class="nav-badge" id="badge-cd" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('pipeline')" id="nav-pipeline"><i class="ti ti-layout-kanban"></i> Pipeline</div>
       <div class="nav-item" onclick="setPage('pending')" id="nav-pending"><i class="ti ti-clock"></i> Chờ duyệt <span class="nav-badge" id="badge-pending" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('kpi')" id="nav-kpi"><i class="ti ti-chart-bar"></i> Báo cáo KPI</div>
@@ -461,6 +461,31 @@ async function initApp(user){
   const prodNav=document.getElementById('nav-products');
   if(prodNav)prodNav.style.display='flex';
   showLoading(false);render();
+
+  // ── REALTIME: Invoices + Customers auto-sync ──
+  sb.channel('crm-invoices-rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'invoices'},function(payload){
+      if(payload.eventType==='INSERT'){
+        if(!INVOICES.find(function(i){return i.id===payload.new.id;}))
+          INVOICES.unshift(payload.new);
+      } else if(payload.eventType==='UPDATE'){
+        var idx=INVOICES.findIndex(function(i){return i.id===payload.new.id;});
+        if(idx>=0)Object.assign(INVOICES[idx],payload.new);
+        else INVOICES.unshift(payload.new);
+      } else if(payload.eventType==='DELETE'){
+        INVOICES=INVOICES.filter(function(i){return i.id!==payload.old.id;});
+      }
+      updateBadges();render();
+    })
+    .subscribe();
+
+  sb.channel('crm-customers-rt')
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'customers'},function(payload){
+      var idx=CUSTOMERS.findIndex(function(c){return c.id===payload.new.id;});
+      if(idx>=0)Object.assign(CUSTOMERS[idx],payload.new);
+      updateBadges();render();
+    })
+    .subscribe();
 
   // ── REALTIME: Products sync từ Finance ──
   sb.channel('crm-products-rt')
@@ -776,6 +801,10 @@ function renderClosedeal(){
       +'<td>'+(inv.order_status?'<span class="badge '+(ordBadge[inv.order_status]||'b-new')+'">'+inv.order_status+'</span>':'—')+'</td>'
       +'<td style="font-size:11px;color:var(--text3)">'+(inv.tracking_number||'—')+'</td>'
       +'<td style="font-size:11px;color:var(--text2)">'+((inv.assigned_profile&&inv.assigned_profile.full_name)?inv.assigned_profile.full_name.split(' ').pop():'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--accent2);font-weight:500">'+(function(){
+        const saleProf=PROFILES.find(function(p){return p.id===(inv.sale_id||inv.submitted_by);});
+        return saleProf?(saleProf.nickname||saleProf.full_name.split(' ').pop()):'—';
+      })()+'</td>'
       +(isManager?'<td><button class="btn" style="padding:2px 8px;font-size:10px" onclick="openInvEdit('+inv.id+')">✏️</button></td>':'')
       +'</tr>';
   });
@@ -800,7 +829,7 @@ function renderClosedeal(){
       +'</tr>';
   });
 
-  let html='<div class="topbar"><div class="topbar-title">Closedeal</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+'</div></div>'
+  let html='<div class="topbar"><div class="topbar-title">Order</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+'</div></div>'
     +'<div class="content">'
     +'<div class="stats-row">'
     +'<div class="stat-card sc2"><div class="stat-label">Đơn đã duyệt</div><div class="stat-val" style="color:var(--accent2)">'+enriched.length+'</div></div>'
@@ -843,7 +872,7 @@ function renderClosedeal(){
   html+='<div class="panel"><div class="panel-header"><h2>Đơn hàng đã duyệt <span style="color:var(--accent2)">'+enriched.length+'</span></h2></div>'
     +(enriched.length===0?'<div class="empty-state"><i class="ti ti-trophy"></i>Chưa có đơn hàng nào được duyệt</div>'
       :'<table><colgroup><col width="100"><col width="115"><col width="100"><col width="50"><col width="50"><col width="80"><col width="95"><col width="85"><col width="65"><col width="60">'+(isManager?'<col width="40">':'')+'</colgroup>'
-      +'<thead><tr><th>Mã đơn</th><th>Business Name</th><th>Customer</th><th style="text-align:center">Month</th><th style="text-align:center">Year</th><th>Revenue</th><th>Payment Status</th><th>Order Status</th><th>Tracking</th><th>Sale</th>'+(isManager?'<th></th>':'')+'</tr></thead>'
+      +'<thead><tr><th>Mã đơn</th><th>Business Name</th><th>Customer</th><th style="text-align:center">Month</th><th style="text-align:center">Year</th><th>Revenue</th><th>Payment Status</th><th>Order Status</th><th>Tracking</th><th>Sale</th><th>Người tạo</th>'+(isManager?'<th></th>':'')+'</tr></thead>'
       +'<tbody>'+rows+'</tbody></table>'
       +pgBar(enriched.length,cdPage,PAGE_SIZE,'setCdPage'))
     +'</div></div>';
@@ -854,10 +883,22 @@ async function approveInvoice(id,status){
   showLoading(true);
   const inv=INVOICES.find(function(i){return i.id===id;});
   if(status==='approved'&&inv){
-    await sb.from('customers').update({lead_status:'Closedeal',latest_invoice_no:inv.invoice_no,total_amount:inv.total}).eq('id',inv.customer_id);
-    // Update local customers
+    // Batch update: customers + invoices song song
+    const [custRes,invRes]=await Promise.all([
+      sb.from('customers').update({
+        lead_status:'Closedeal',
+        sub_status:'Quotation Sent',
+        latest_invoice_no:inv.invoice_no,
+        total_amount:inv.total
+      }).eq('id',inv.customer_id),
+      sb.from('invoices').update({approval_status:'approved'}).eq('id',id)
+    ]);
+    if(custRes.error)console.warn('customer update error:',custRes.error.message);
+    if(invRes.error)console.warn('invoice update error:',invRes.error.message);
+    // Local state update ngay lập tức - không reload
     var cidx=CUSTOMERS.findIndex(function(c){return c.id===inv.customer_id;});
-    if(cidx>=0)Object.assign(CUSTOMERS[cidx],{lead_status:'Closedeal',latest_invoice_no:inv.invoice_no,total_amount:inv.total});
+    if(cidx>=0)Object.assign(CUSTOMERS[cidx],{lead_status:'Closedeal',sub_status:'Quotation Sent',latest_invoice_no:inv.invoice_no,total_amount:inv.total});
+    inv.approval_status='approved';
 
     // Gọi Edge Function sync sang Finance khi approved
     try{
@@ -915,10 +956,18 @@ async function approveInvoice(id,status){
     }
   }
 
-  await sb.from('invoices').update({approval_status:status}).eq('id',id);
-  // Update local invoices
-  if(inv)inv.approval_status=status;
-  showLoading(false);render();
+  } else {
+    // rejected: chỉ update invoices
+    await sb.from('invoices').update({approval_status:status}).eq('id',id);
+    if(inv)inv.approval_status=status;
+  }
+  showLoading(false);
+  // Local re-render, không reload
+  updateBadges();
+  const curPage=document.querySelector('.nav-item.active')||{id:''};
+  const pg=curPage.id?curPage.id.replace('nav-',''):'';
+  if(pg==='closedeal'||pg==='pending'||pg==='invoices')render();
+  else render();
 }
 
 async function openInvEdit(id){
@@ -1021,12 +1070,25 @@ function renderPipeline(){
 // ============================================================
 function renderPending(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
+  // Lấy customer_ids có invoice pending (chờ duyệt)
+  const pendingInvCustIds=new Set(INVOICES.filter(function(i){
+    return i.type==='invoice'&&i.approval_status==='pending';
+  }).map(function(i){return i.customer_id;}));
+
   const pending=isManager
-    ?CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&(fPendingSale==='all'||c.assigned_to===fPendingSale);})
-    :CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&c.created_by===currentUser.id;});
+    ?CUSTOMERS.filter(function(c){
+        const hasPendingInv=pendingInvCustIds.has(c.id);
+        const isNewPending=c.approval_status==='pending';
+        return (hasPendingInv||isNewPending)&&(fPendingSale==='all'||c.assigned_to===fPendingSale);
+      })
+    :CUSTOMERS.filter(function(c){
+        const hasPendingInv=pendingInvCustIds.has(c.id);
+        const isNewPending=c.approval_status==='pending';
+        return (hasPendingInv||isNewPending)&&c.assigned_to===currentUser.id;
+      });
   const rejected=isManager
     ?CUSTOMERS.filter(function(c){return c.approval_status==='rejected'&&(fPendingSale==='all'||c.assigned_to===fPendingSale);})
-    :CUSTOMERS.filter(function(c){return c.approval_status==='rejected'&&c.created_by===currentUser.id;});
+    :CUSTOMERS.filter(function(c){return c.approval_status==='rejected'&&c.assigned_to===currentUser.id;});
 
   let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fPendingSale=this.value;pdPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fPendingSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
 
