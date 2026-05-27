@@ -1987,9 +1987,10 @@ async function renderDetailModal(customerId){
 
   // Phone block helper
   function pb(phone,field){
-    var btn1=phone?'<button type="button" onclick="makeOpenPhoneCall(''+phone+'')" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;border:none;cursor:pointer"><i class="ti ti-phone" style="font-size:11px"></i></button>':'';
-    var btn2='<button type="button" onclick="editPhone('+c.id+',''+field+'',''+(phone||'')+'')" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:11px"></i></button>';
-    return '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;min-height:34px"><span style="font-size:12px;font-family:monospace;color:var(--text)">'+(phone||'—')+'</span>'+btn1+btn2+'</div>';
+    var p2=phone||'';
+    var btn1=p2?('<button type="button" onclick="makeOpenPhoneCall(this.dataset.p)" data-p="'+p2+'" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(0,184,148,0.15);color:#00b894;border:none;cursor:pointer"><i class="ti ti-phone" style="font-size:11px"></i></button>'):'';
+    var btn2='<button type="button" onclick="editPhone(this.dataset.c,this.dataset.f,this.dataset.p)" data-c="'+c.id+'" data-f="'+field+'" data-p="'+p2+'" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(108,92,231,0.15);color:var(--brand2);border:none;cursor:pointer"><i class="ti ti-pencil" style="font-size:11px"></i></button>';
+    return '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;min-height:34px"><span style="font-size:12px;font-family:monospace;color:var(--text)">'+(p2||'—')+'</span>'+btn1+btn2+'</div>';
   }
 
   const saleOpts=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(c.assigned_to===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('');
