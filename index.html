@@ -312,6 +312,37 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     /* Hide less critical columns in campaign table on mobile */
     .camp-table th:nth-child(n+4),
     .camp-table td:nth-child(n+4){display:none !important}
+
+    /* ── Detail Modal: stack 2-col to 1-col on mobile ── */
+    #detail-modal .modal-overlay > div{max-height:100vh !important;border-radius:0 !important;}
+    [id^="detail-modal"] [style*="grid-template-columns:1fr 300px"]{
+      grid-template-columns:1fr !important;
+    }
+    /* Hide history sidebar in modal on mobile — show inline instead */
+    [style*="grid-template-columns:1fr 300px"] > div:last-child{
+      display:none !important;
+    }
+    /* Detail modal rows: stack to single col */
+    [style*="display:grid"][style*="repeat"]{
+      grid-template-columns:1fr 1fr !important;
+    }
+    [style*="2fr 2fr 1fr 1fr 1fr"]{grid-template-columns:1fr 1fr !important;}
+    [style*="1fr 1fr 1fr 1fr 1fr"]{grid-template-columns:1fr 1fr !important;}
+
+    /* ── Chat: show sidebar on mobile via toggle ── */
+    .chat-layout{grid-template-columns:1fr !important;}
+    .chat-sidebar{
+      display:none !important;
+      position:fixed !important;left:0;top:52px;bottom:60px;
+      width:75vw !important;max-width:280px;z-index:200;
+      background:#1a1240 !important;border-right:1px solid var(--border);
+    }
+    .chat-sidebar.show{display:flex !important;}
+    .chat-mobile-menu-btn{display:flex !important;}
+
+    /* ── AI FAB: above bottom nav ── */
+    #ai-fab{bottom:70px !important;right:12px !important;}
+    #ai-panel{bottom:120px !important;right:4px !important;left:4px !important;}
   }
 
 /* ════════════════════════════════════════
@@ -458,7 +489,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 #ai-send:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
 @media(max-width:480px){
   #ai-panel{right:4px;left:4px;width:auto;bottom:76px;}
-  #ai-fab{bottom:16px;right:16px;}
+  #ai-fab{bottom:70px;right:12px;width:44px;height:44px;}
 }
 
 /* ════════════════════════════════════════
@@ -486,6 +517,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 .chat-header-members{font-size:11px;color:var(--text3);}
 .chat-header-btn{background:none;border:none;cursor:pointer;color:var(--text3);padding:5px;border-radius:6px;font-size:15px;transition:color 0.15s,background 0.15s;}
 .chat-header-btn:hover{color:var(--text);background:rgba(255,255,255,0.08);}
+.chat-mobile-menu-btn{display:none;background:none;border:none;cursor:pointer;color:var(--text3);padding:5px;border-radius:6px;font-size:18px;margin-right:6px;}
 .chat-header-btn.muted{color:var(--warn);}
 
 .chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:2px;}
@@ -4494,7 +4526,15 @@ function render(){
       dms.forEach(function(r){
         const unread=unreadCounts[r.id]||0;
         const active=r.id===currentRoomId?' active':'';
-        const otherName=r.dm_name||r.name||'DM';
+        // For DM: find the other member's name from PROFILES
+        let otherName=r.dm_name||'DM';
+        if(r.is_direct&&r.members){
+          const otherId=(r.members||[]).find(function(id){return id!==myId();});
+          if(otherId&&window.PROFILES){
+            const p=window.PROFILES.find(function(x){return x.id===otherId;});
+            if(p)otherName=p.full_name||p.email||'DM';
+          }
+        }
         const initials=otherName.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
         html+='<div class="chat-room-item'+active+'" data-rid="'+esc(r.id)+'" onclick="window._chatSelectRoom(this.dataset.rid)">'
           +'<div class="chat-room-icon dm">'+initials+'</div>'
@@ -4580,7 +4620,7 @@ function render(){
       profilesHtml+='</div>';
     }
     root.innerHTML='<div class="chat-layout">'
-      +'<div class="chat-sidebar">'
+      +'<div class="chat-sidebar" id="chat-sidebar">'
       +'<div class="chat-sidebar-header"><span class="chat-sidebar-title">Chat</span>'
       +(isManager()?'<button class="chat-header-btn" onclick="window._chatCreateRoom()" title="Tạo phòng"><i class="ti ti-plus"></i></button>':'')
       +'</div>'
@@ -4589,6 +4629,7 @@ function render(){
       +'</div>'
       +'<div class="chat-main">'
       +'<div id="chat-header" class="chat-header">'
+      +'<button class="chat-mobile-menu-btn" onclick="window._chatToggleSidebar()" title="Menu"><i class="ti ti-menu-2"></i></button>'
       +(currentRoomId?'':'<div class="chat-header-name" style="color:var(--text3)">Chọn phòng để bắt đầu</div>')
       +'</div>'
       +'<div id="chat-messages" class="chat-messages">'
@@ -4613,7 +4654,11 @@ function render(){
     if(currentRoomId)loadMessages(currentRoomId);
   }
 
-  window._chatSelectRoom=function(roomId){currentRoomId=roomId;unreadCounts[roomId]=0;updateChatBadge();renderRoomList();renderChatHeader();const msgs=document.getElementById('chat-messages');if(msgs)msgs.innerHTML='<div class="chat-empty"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i><span>Đang tải...</span></div>';loadMessages(roomId);startPolling();};
+  window._chatToggleSidebar=function(){
+    const sb=document.getElementById('chat-sidebar');
+    if(sb)sb.classList.toggle('show');
+  };
+  window._chatSelectRoom=function(roomId){currentRoomId=roomId;unreadCounts[roomId]=0;updateChatBadge();renderRoomList();renderChatHeader();const msgs=document.getElementById('chat-messages');if(msgs)msgs.innerHTML='<div class="chat-empty"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i><span>Đang tải...</span></div>';loadMessages(roomId);startPolling();const sb=document.getElementById('chat-sidebar');if(sb)sb.classList.remove('show');};
   window._chatSend=sendMessage;
   window._chatReply=function(msgId){const msgs=chatMessages[currentRoomId]||[];const m=msgs.find(function(x){return String(x.id)===String(msgId);});if(m)setReply(m);};
   window._chatRecall=function(msgId){recallMessage(msgId);};
@@ -4632,15 +4677,15 @@ function render(){
     startPolling();
   };
 
+  // Background badge poll — only when rooms loaded, every 30s to reduce calls
   setInterval(async function(){
-    if(window.page==='chat'||!window.currentUser)return;
+    if(window.page==='chat'||!window.currentUser||chatRooms.length===0)return;
     const roomIds=chatRooms.map(function(r){return r.id;});
-    if(roomIds.length===0)return;
     const lastRead={};
     roomIds.forEach(function(rid){try{lastRead[rid]=localStorage.getItem('chat_last_read_'+rid)||new Date(0).toISOString();}catch(e){}});
     const res=await chatCall({action:'poll_all_rooms',room_ids:roomIds,last_read:lastRead});
     if(res.unread_counts){unreadCounts=res.unread_counts;updateChatBadge();}
-  },15000);
+  },30000);
 
 })();
 </script>
