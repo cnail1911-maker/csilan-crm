@@ -1586,27 +1586,37 @@ async function approveInvoice(id,status){
         deposit:        inv.deposit||0,
         tax:            inv.tax||0,
         items:          (items||[]).map(function(it){
-          // Auto-detect vendor from product_name
-          var pname=(it.product_name||'').toLowerCase();
-          var vendor='Bolsa'; // default
-          if(pname.includes('ons')||pname.includes(' ons')||pname.includes('spa chair')||pname.includes('pedicure'))vendor='ONS';
-          else if(pname.includes('tspa')||pname.includes('t-spa')||pname.includes('nail table'))vendor='TSPA';
-          else vendor='Bolsa'; // All Headspa/Bed/other = Bolsa
-          // Also check from products list if available
-          var prodRecord=PRODUCTS_ALL&&PRODUCTS_ALL.find(function(p){
-            return (it.product_id&&p.id===it.product_id)||(it.sku&&p.sku===it.sku);
-          });
-          if(prodRecord&&prodRecord.vendor){
-            var v=prodRecord.vendor.toLowerCase();
-            if(v.includes('ons'))vendor='ONS';
-            else if(v.includes('tspa'))vendor='TSPA';
-            else vendor='Bolsa';
-          }
-          var giaBanGoc=prodRecord?prodRecord.vendor_cost||0:0;
+          // Use vendor & chenh_lech saved in invoice_items (set at invoice creation)
+          // Fallback: detect from product name or products table
+          var vendor=it.vendor||null;
+          var giaBanGoc=it.vendor_cost||0;
           var giaBanThuc=it.unit_price||0;
           var qty=it.qty||1;
           var amount=it.amount||(giaBanThuc*qty);
-          var chenhLech=(giaBanThuc-giaBanGoc)*qty;
+          // chenh_lech: use saved value if exists, else recalculate
+          var chenhLech=it.chenh_lech!=null?it.chenh_lech:(giaBanThuc-giaBanGoc)*qty;
+
+          // If vendor not set in invoice_items, detect from products table
+          if(!vendor){
+            var prodRecord=PRODUCTS_ALL&&PRODUCTS_ALL.find(function(p){
+              return (it.product_id&&p.id===it.product_id)||(it.sku&&p.sku===it.sku);
+            });
+            if(prodRecord&&prodRecord.vendor){
+              var v=prodRecord.vendor.toLowerCase();
+              if(v.includes('ons'))vendor='ONS';
+              else if(v.includes('tspa'))vendor='TSPA';
+              else vendor='Bolsa';
+              if(!giaBanGoc)giaBanGoc=prodRecord.vendor_cost||0;
+              chenhLech=(giaBanThuc-giaBanGoc)*qty;
+            } else {
+              // Last resort: detect from product name
+              var pname=(it.product_name||'').toLowerCase();
+              if(pname.includes('ons')||pname.includes('spa chair')||pname.includes('pedicure'))vendor='ONS';
+              else if(pname.includes('tspa')||pname.includes('t-spa')||pname.includes('nail table'))vendor='TSPA';
+              else vendor='Bolsa';
+            }
+          }
+
           return{
             product_id:   it.product_id||null,
             sku:          it.sku||null,
@@ -1619,7 +1629,8 @@ async function approveInvoice(id,status){
             vendor:       vendor,
             gia_ban_goc:  giaBanGoc,
             gia_ban_thuc: giaBanThuc,
-            chenh_lech:   chenhLech
+            chenh_lech:   chenhLech,
+            is_shipping:  it.is_shipping||false
           };
         }),
       };
