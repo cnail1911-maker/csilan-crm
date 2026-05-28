@@ -608,6 +608,28 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 .chat-act-btn{width:24px;height:24px;border-radius:5px;border:none;background:none;cursor:pointer;color:var(--text3);display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.12s;}
 .chat-act-btn:hover{background:rgba(108,92,231,0.2);color:var(--brand2);}
 .chat-ts{font-size:10px;color:var(--text3);padding:0 4px;margin-top:1px;}
+/* Search bar */
+.chat-search-bar{padding:8px 14px;border-bottom:1px solid var(--chat-border);display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.02);}
+.chat-search-inp{flex:1;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none;}
+.chat-search-inp:focus{border-color:rgba(108,92,231,0.5);}
+.chat-search-nav{display:flex;gap:4px;align-items:center;font-size:11px;color:var(--text3);}
+/* Pin banner */
+.chat-pin-banner{padding:6px 14px;background:rgba(108,92,231,0.08);border-bottom:1px solid rgba(108,92,231,0.15);display:flex;align-items:center;gap:8px;cursor:pointer;transition:background 0.15s;}
+.chat-pin-banner:hover{background:rgba(108,92,231,0.14);}
+.chat-pin-icon{color:var(--brand2);font-size:13px;flex-shrink:0;}
+.chat-pin-text{font-size:12px;color:var(--text2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chat-pin-close{background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 2px;}
+/* Highlight search match */
+.chat-msg-group.search-match .chat-bubble{outline:2px solid rgba(108,92,231,0.6);outline-offset:2px;}
+.chat-msg-group.search-focus .chat-bubble{outline:2px solid var(--brand2);background:rgba(108,92,231,0.15) !important;}
+mark.chat-hl{background:rgba(253,203,110,0.35);color:inherit;border-radius:2px;}
+.chat-bubble.pinned-msg{border-left:2px solid var(--brand2) !important;}
+/* Timestamp inline with bubble */
+.chat-msg-row-wrap{display:flex;align-items:flex-end;gap:4px;}
+.chat-msg-group.mine .chat-msg-row-wrap{flex-direction:row-reverse;}
+/* Reply scrollto highlight */
+@keyframes replyFlash{0%,100%{background:transparent}50%{background:rgba(108,92,231,0.2)}}
+.chat-msg-group.reply-flash{animation:replyFlash 1s ease;}
 .chat-reply-block{background:rgba(255,255,255,0.07);border-left:2px solid var(--brand2);border-radius:4px;padding:4px 8px;margin-bottom:6px;font-size:11px;}
 .chat-reply-block .rb-name{font-weight:600;color:var(--brand2);margin-bottom:1px;}
 .chat-bubble.mine .chat-reply-block{background:rgba(255,255,255,0.15);border-left-color:rgba(255,255,255,0.6);}
@@ -4845,6 +4867,8 @@ var realtimeChannel=null;
 
 // ── State ──
 var rooms=[],curRoom=null,msgs={},replyTo=null;
+var searchMode=false,searchQ='',searchMatches=[],searchIdx=0;
+var pinnedMsgs={}; // {room_id: [{id,content,sender_name}]}
 var pollT=null,lastTs={},unread={},muted=[],notifOn=true,sending=false;
 
 try{muted=JSON.parse(localStorage.getItem('c_muted')||'[]');
@@ -5283,6 +5307,7 @@ function renderHead(){
     +'<button class="chat-icon-btn'+(muted_?' active':'')+'" data-rid="'+rid+'" onclick="window._cmute(this.dataset.rid)" title="'+(muted_?'Bật':'Tắt')+' thông báo"><i class="ti ti-bell'+(muted_?'-off':'')+'"></i></button>'
     +(mgr()?'<button class="chat-icon-btn" onclick="showRecalledModal()" title="Lịch sử thu hồi"><i class="ti ti-history"></i></button>':'')
     +'<button class="chat-icon-btn'+(notifOn?'':' active')+'" onclick="window._cnotif()" title="'+(notifOn?'Tắt':'Bật')+' thông báo tổng"><i class="ti ti-'+(notifOn?'volume':'volume-off')+'"></i></button>'
+    +'<button class="chat-icon-btn" onclick="window._csearch()" title="Tìm kiếm"><i class="ti ti-search"></i></button>'
     +'</div>';
 }
 
@@ -5312,7 +5337,14 @@ function renderMsgs(prepend,append){
   list.forEach(function(m){
     var day=new Date(m.created_at).toDateString();
     if(day!==lastDay){h+='<div class="chat-day-divider"><span class="chat-day-label">'+dayLabel(m.created_at)+'</span></div>';lastDay=day;}
-    h+=buildMsgHtml(m,list);
+    var mHtml=buildMsgHtml(m,list);
+    // Search highlight
+    if(searchQ&&(m.content||'').toLowerCase().includes(searchQ)){
+      mHtml=mHtml.replace(new RegExp('('+searchQ.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark class="chat-hl">$1</mark>');
+      var isMatch=searchMatches.includes(m.id);
+      if(isMatch)mHtml=mHtml.replace('class="chat-msg-group','class="chat-msg-group search-match');
+    }
+    h+=mHtml;
   });
   c.innerHTML=h;
   if(prepend)c.scrollTop=c.scrollHeight-savedScrollBottom;
@@ -5325,28 +5357,47 @@ function buildMsgHtml(m,list){
   var showSender=!mine&&(!prev||prev.user_id!==m.user_id||new Date(m.created_at)-new Date(prev.created_at)>180000);
   var ini=initials(m.sender_name||'?');
 
+  // Reply: full content + clickable scroll to original
   var replyH='';
-  if(m.reply_to_id){var orig=list.find(function(x){return x.id===m.reply_to_id;});
-    if(orig)replyH='<div class="chat-reply-block"><div class="rb-name">'+esc(orig.sender_name||'?')+'</div><div>'+esc((orig.content||'').slice(0,80))+'</div></div>';}
+  if(m.reply_to_id){
+    var orig=list.find(function(x){return x.id===m.reply_to_id;});
+    if(orig){
+      var origContent=orig.is_recalled?'Tin nhắn đã được thu hồi':(orig.content||'');
+      replyH='<div class="chat-reply-block" data-goto="'+orig.id+'" onclick="window._cgoto(this.dataset.goto)" style="cursor:pointer">'
+        +'<div class="rb-name">'+esc(orig.sender_name||'?')+'</div>'
+        +'<div>'+esc(origContent.slice(0,120))+(origContent.length>120?'\u2026':'')+'</div>'
+        +'</div>';
+    }else{
+      replyH='<div class="chat-reply-block" style="opacity:0.5"><div class="rb-name">?</div><div>Tin nh\u1eafn g\u1ed1c kh\xf4ng t\xecm th\u1ea5y</div></div>';
+    }
+  }
+
+  // Pin status
+  var pinned=(pinnedMsgs[curRoom]||[]).find(function(p){return p.id===m.id;});
 
   var acts='';
   if(!recalled){acts='<div class="chat-actions">'
     +'<button class="chat-act-btn" data-mid="'+m.id+'" onclick="window._crep(this.dataset.mid)" title="Reply"><i class="ti ti-corner-up-left"></i></button>'
-    +(mine||mgr()?'<button class="chat-act-btn" data-mid="'+m.id+'" onclick="window._crecall(this.dataset.mid)" title="Thu hồi"><i class="ti ti-trash"></i></button>':'')
+    +(mgr()?'<button class="chat-act-btn" data-mid="'+m.id+'" onclick="window._cpin(this.dataset.mid)" title="'+(pinned?'B\u1ecf ghim':'Ghim')+'" style="'+(pinned?'color:var(--brand2)':'')+'"><i class="ti ti-pin'+(pinned?'-filled':'')+'"></i></button>':'')
+    +(mine||mgr()?'<button class="chat-act-btn" data-mid="'+m.id+'" onclick="window._crecall(this.dataset.mid)" title="Thu h\u1ed3i"><i class="ti ti-trash"></i></button>':'')
     +'</div>';}
 
+  var timeStr=ts(m.created_at);
+  var timeEl='<span class="chat-ts" style="white-space:nowrap;align-self:flex-end;padding-bottom:2px;flex-shrink:0">'+timeStr+'</span>';
+
   return '<div class="chat-msg-group'+(mine?' mine':'')+'" data-mid="'+m.id+'">'
-    +(mine?'':'<div class="chat-avatar">'+ini+'</div>')
+    +(mine?'':'<div class="chat-avatar" style="background:'+avColor(m.sender_name||'')+';color:#fff">'+ini+'</div>')
     +'<div class="chat-msg-col">'
     +(showSender?'<div class="chat-sender" style="color:var(--brand2);font-weight:600">'+esc(m.sender_name||'?')+'</div>':'')
-    +'<div class="chat-bubble'+(recalled?' recalled':mine?' mine':' theirs')+'">'
-    +acts+replyH
+    +'<div class="chat-msg-row-wrap">'
+    +(mine?timeEl:'')
+    +'<div class="chat-bubble'+(recalled?' recalled':mine?' mine':' theirs')+(pinned?' pinned-msg':'')+'">'+acts+replyH
     +(m.image_url?'<img class="chat-img" src="'+esc(m.image_url)+'" onclick="window.open(this.src)" loading="lazy">':'')
     +'<div>'+markup(m.content||'')+'</div></div>'
-    +'<div class="chat-ts">'+ts(m.created_at)+'</div>'
+    +(!mine?timeEl:'')
+    +'</div>'
     +'</div></div>';
 }
-
 function buildMsgEl(m,list){var d=document.createElement('div');d.outerHTML=buildMsgHtml(m,list);var tmp=document.createElement('div');tmp.innerHTML=buildMsgHtml(m,list);return tmp.firstChild;}
 
 function renderMain(){
@@ -5379,6 +5430,8 @@ function renderMain(){
 
       +'</div>'
       +'<div class="chat-main">'
+        +'<div id="cpinbanner"></div>'
+        +'<div id="csearchbar"></div>'
         +'<div class="chat-head" id="chead">'
           +'<button class="chat-mobile-tog" id="chat-mob-tog" onclick="window._ctog()"><i class="ti ti-menu-2"></i></button>'
           +(curRoom?'':'<div class="chat-head-name" style="color:var(--text3)">Chọn phòng để bắt đầu</div>')
@@ -5401,7 +5454,7 @@ function renderMain(){
       +'</div>'
     +'</div>';
 
-  renderRoomList();renderHead();
+  renderRoomList();renderHead();renderPinBanner();
   var inp=document.getElementById('ci');
   if(inp){
     inp.addEventListener('keydown',function(e){
@@ -5430,12 +5483,16 @@ function renderMain(){
 
 function selectRoom(id){
   curRoom=id;unread[id]=0;badge();
+  // Load pinned messages from room data
+  var r=rooms.find(function(x){return x.id===id;});
+  if(r&&r.pinned_messages){pinnedMsgs[id]=r.pinned_messages;}
+  else pinnedMsgs[id]=[];
   var sb=document.getElementById('csb'),ov=document.getElementById('chat-mob-overlay');
   if(sb)sb.classList.remove('open');if(ov)ov.classList.remove('show');
   renderRoomList();renderHead();
   var c=document.getElementById('cmsgs');
   if(c)c.innerHTML='<div class="chat-empty-state"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i><p>Đang tải...</p></div>';
-  loadMsgs(id);startPoll();
+  renderPinBanner();loadMsgs(id);startPoll();
 }
 
 // ── Global bindings ──
@@ -5603,6 +5660,119 @@ window._crep=function(mid){var m=(msgs[curRoom]||[]).find(function(x){return Str
 window._crecall=recall;
 window._ccreply=clearReply;
 window._cmore=function(){var list=msgs[curRoom]||[];if(list.length)loadMsgs(curRoom,list[0].created_at);};
+// ── PIN MESSAGE ──
+async function pinMsg(msgId){
+  var list=msgs[curRoom]||[];
+  var m=list.find(function(x){return x.id==msgId;});if(!m)return;
+  if(!pinnedMsgs[curRoom])pinnedMsgs[curRoom]=[];
+  var pins=pinnedMsgs[curRoom];
+  var existing=pins.findIndex(function(p){return p.id==msgId;});
+  if(existing>=0){
+    // Unpin
+    pins.splice(existing,1);
+  }else{
+    if(pins.length>=3){showNotif('\u26a0\ufe0f T\u1ed1i \u0111a 3 tin \u0111\u01b0\u1ee3c ghim',true);return;}
+    pins.unshift({id:m.id,content:m.content||'',sender_name:m.sender_name||'?',image_url:m.image_url||null});
+  }
+  // Save to chat_rooms
+  try{
+    await api({action:'update_room',room_id:curRoom,pinned_messages:pins});
+    var r=rooms.find(function(x){return x.id===curRoom;});if(r)r.pinned_messages=pins;
+  }catch(e){console.warn('pin save error',e);}
+  renderPinBanner();renderMsgs();
+}
+
+function renderPinBanner(){
+  var el=document.getElementById('cpinbanner');if(!el)return;
+  var pins=pinnedMsgs[curRoom]||[];
+  if(!pins.length){el.innerHTML='';return;}
+  var p=pins[0];
+  var txt=p.image_url?'\ud83d\uddbc\ufe0f \u1ea2nh':(p.content||'').slice(0,80);
+  el.innerHTML='<div class="chat-pin-banner" onclick="window._cgoto(\''+p.id+'\')">'
+    +'<span class="chat-pin-icon"><i class="ti ti-pin-filled"></i></span>'
+    +'<span class="chat-pin-text"><b>'+esc(p.sender_name)+':</b> '+esc(txt)+'</span>'
+    +(pins.length>1?'<span style="font-size:10px;color:var(--text3);margin-left:4px">+' +(pins.length-1)+'</span>':'')
+    +(mgr()?'<button class="chat-pin-close" onclick="event.stopPropagation();window._cpin(\''+p.id+'\')" title="B\u1ecf ghim">\xd7</button>':'')
+    +'</div>';
+}
+
+// ── SEARCH ──
+function toggleSearch(){
+  searchMode=!searchMode;
+  var bar=document.getElementById('csearchbar');
+  if(!bar)return;
+  if(searchMode){
+    bar.innerHTML='<div class="chat-search-bar">'
+      +'<i class="ti ti-search" style="color:var(--text3);font-size:14px"></i>'
+      +'<input id="csearch-inp" class="chat-search-inp" placeholder="T\xecm ki\u1ebfm tin nh\u1eafn..." oninput="window._csearchRun(this.value)">'
+      +'<div class="chat-search-nav">'
+        +'<span id="csearch-count" style="margin-right:4px">0/0</span>'
+        +'<button class="chat-icon-btn" onclick="window._csearchNav(-1)"><i class="ti ti-chevron-up"></i></button>'
+        +'<button class="chat-icon-btn" onclick="window._csearchNav(1)"><i class="ti ti-chevron-down"></i></button>'
+      +'</div>'
+      +'<button class="chat-icon-btn" onclick="window._csearchClose()"><i class="ti ti-x"></i></button>'
+    +'</div>';
+    setTimeout(function(){var i=document.getElementById('csearch-inp');if(i)i.focus();},50);
+  }else{
+    bar.innerHTML='';
+    searchQ='';searchMatches=[];searchIdx=0;
+    renderMsgs(); // remove highlights
+  }
+}
+
+window._csearch=toggleSearch;
+window._csearchClose=function(){searchMode=false;toggleSearch();};
+window._csearchRun=function(q){
+  searchQ=(q||'').toLowerCase().trim();
+  searchMatches=[];searchIdx=0;
+  var list=msgs[curRoom]||[];
+  if(searchQ){
+    list.forEach(function(m,i){
+      if((m.content||'').toLowerCase().includes(searchQ)||(m.sender_name||'').toLowerCase().includes(searchQ))
+        searchMatches.push(m.id);
+    });
+  }
+  renderMsgs();
+  updateSearchCount();
+  if(searchMatches.length)scrollToSearchMatch(0);
+};
+window._csearchNav=function(dir){
+  if(!searchMatches.length)return;
+  searchIdx=(searchIdx+dir+searchMatches.length)%searchMatches.length;
+  updateSearchCount();
+  scrollToSearchMatch(searchIdx);
+};
+function updateSearchCount(){
+  var el=document.getElementById('csearch-count');
+  if(el)el.textContent=searchMatches.length?(searchIdx+1)+'/'+searchMatches.length:'0/0';
+}
+function scrollToSearchMatch(idx){
+  var id=searchMatches[idx];if(!id)return;
+  var el=document.querySelector('[data-mid="'+id+'"]');
+  if(el){el.scrollIntoView({behavior:'smooth',block:'center'});
+    el.classList.remove('search-focus');
+    setTimeout(function(){el.classList.add('search-focus');},100);
+    setTimeout(function(){el.classList.remove('search-focus');},2000);}
+}
+
+// ── GOTO (reply scroll / pin click) ──
+window._cgoto=function(mid){
+  // Try in current loaded messages
+  var el=document.querySelector('[data-mid="'+mid+'"]');
+  if(el){
+    el.scrollIntoView({behavior:'smooth',block:'center'});
+    el.classList.remove('reply-flash');
+    void el.offsetWidth; // force reflow
+    el.classList.add('reply-flash');
+    setTimeout(function(){el.classList.remove('reply-flash');},1500);
+  }else{
+    showNotif('Tin nh\u1eafn g\u1ed1c ch\u01b0a \u0111\u01b0\u1ee3c t\u1ea3i. H\xe3y scroll l\xean \u0111\u1ec3 t\u1ea3i th\xeam.',false);
+  }
+};
+
+// ── PIN binding ──
+window._cpin=function(mid){pinMsg(mid);};
+
 window._ctog=function(){var sb=document.getElementById('csb'),ov=document.getElementById('chat-mob-overlay');if(sb)sb.classList.toggle('open');if(ov)ov.classList.toggle('show');};
 window._cmute=function(id){if(muted.includes(id))muted=muted.filter(function(x){return x!==id;});else muted.push(id);try{localStorage.setItem('c_muted',JSON.stringify(muted));}catch(e){}renderHead();};
 window._cnotif=function(){notifOn=!notifOn;try{localStorage.setItem('c_notif',notifOn?'on':'off');}catch(e){}renderHead();};
