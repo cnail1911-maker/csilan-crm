@@ -521,6 +521,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 <script>
 const {createClient}=supabase;
 const sb=createClient(SUPABASE_URL,SUPABASE_ANON);
+window.sb=sb; // expose for AI chatbox
 
 // DROPDOWN DATA
 const POTENTIAL_OPTS=['Pedicure Spa & Package','Massage Chair','Furniture','Padset','HeadSpa Bed','Part & Accessories'];
