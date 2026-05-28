@@ -631,6 +631,8 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 .chat-mobile-tog{display:none;width:32px;height:32px;border-radius:8px;border:none;background:none;cursor:pointer;color:var(--text3);align-items:center;justify-content:center;font-size:18px;margin-right:4px;}
 .chat-mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:199;}
 .chat-mobile-overlay.show{display:block;}
+.chat-chip.sel{background:rgba(108,92,231,0.2) !important;border-color:var(--brand) !important;}
+.chat-chip.sel span{color:var(--brand2) !important;}
 
 /* ════════════════════════════════════════
    AI CHATBOX — C-Silan Assistant
@@ -4736,59 +4738,143 @@ async function recall(id){
 
 // ── Room create modal ──
 function showCreateRoom(){
-  var selected=[];
+  var ICONS=['💼','🎯','📊','🔥','⭐','📌','🚀','💡','🛠️','📣'];
+  var selIcon='💼';
   var profiles=(window.PROFILES||[]).filter(function(p){return p.id!==uid();});
+  function getProfileCode(p,idx){return p.code||(p.role==='manager'?'C01':'C0'+(idx+2));}
   var box=document.createElement('div');box.className='chat-modal';
   box.onclick=function(e){if(e.target===box)box.remove();};
-  box.innerHTML='<div class="chat-modal-box">'
-    +'<div class="chat-modal-head"><span class="chat-modal-title"><i class="ti ti-plus" style="margin-right:6px"></i>Tạo phòng chat</span>'
-    +'<button class="chat-modal-close" onclick="this.closest(\'.chat-modal\').remove()">×</button></div>'
-    +'<div class="chat-modal-body">'
-    +'<div class="chat-field"><label>Tên phòng</label><input id="room-name-inp" placeholder="VD: Shipping Team, Sales Q2..." /></div>'
-    +'<div class="chat-field"><label>Thêm thành viên</label>'
-    +'<div class="chat-member-list" id="member-pick">'
-    +profiles.map(function(p){
-      return '<div class="chat-member-row" data-id="'+esc(p.id)+'" data-name="'+esc(p.full_name||'')+'" onclick="window._chatToggleMember(this)">'
-        +'<div class="chat-member-av">'+initials(p.full_name)+'</div>'
-        +'<div class="chat-member-name">'+esc(p.full_name||p.email||'?')+'</div>'
-        +'<div class="chat-member-check"><i class="ti ti-check"></i></div>'
-        +'</div>';
-    }).join('')
-    +'</div></div></div>'
-    +'<div class="chat-modal-foot">'
-    +'<button class="btn" onclick="this.closest(\'.chat-modal\').remove()">Hủy</button>'
-    +'<button class="btn btn-primary" onclick="window._chatDoCreate()"><i class="ti ti-send"></i> Tạo phòng</button>'
-    +'</div></div>';
+  function buildInner(){
+    return '<div class="chat-modal-box" style="width:460px">'
+      +'<div class="chat-modal-head">'
+        +'<div style="display:flex;align-items:center;gap:10px">'
+          +'<div id="room-icon-preview" style="width:40px;height:40px;border-radius:10px;background:rgba(108,92,231,0.2);display:flex;align-items:center;justify-content:center;font-size:22px">'+selIcon+'</div>'
+          +'<div><div class="chat-modal-title">Tạo phòng chat mới</div><div style="font-size:11px;color:var(--text3)">Phòng riêng cho nhóm nhỏ</div></div>'
+        +'</div>'
+        +'<button class="chat-modal-close" onclick="this.closest(\'.chat-modal\').remove()">×</button>'
+      +'</div>'
+      +'<div class="chat-modal-body">'
+        +'<div class="chat-field"><label>Tên phòng</label>'
+          +'<input id="room-name-inp" placeholder="VD: Dự án X, Ca nhóm A..." style="font-size:14px"/>'
+        +'</div>'
+        +'<div class="chat-field"><label>Icon phòng</label>'
+          +'<div style="display:flex;flex-wrap:wrap;gap:8px">'
+          +ICONS.map(function(ic){
+            var active=ic===selIcon;
+            return '<button class="room-icon-pick" data-ic="'+ic+'" onclick="window._cSelIcon(this)" style="width:44px;height:44px;border-radius:10px;border:2px solid '+(active?'var(--brand)':'rgba(255,255,255,0.1)')+';background:'+(active?'rgba(108,92,231,0.2)':'rgba(255,255,255,0.04)')+';cursor:pointer;font-size:22px;display:flex;align-items:center;justify-content:center;transition:all 0.15s">'+ic+'</button>';
+          }).join('')
+          +'</div>'
+        +'</div>'
+        +'<div class="chat-field"><label>Thêm thành viên</label>'
+          +'<div style="display:flex;flex-wrap:wrap;gap:8px">'
+          +profiles.map(function(p,i){
+            var code=getProfileCode(p,i);
+            var col=['#6c5ce7','#00b894','#e17055','#0984e3','#fdcb6e','#e84393'][i%6];
+            return '<div class="chat-chip" data-id="'+esc(p.id)+'" onclick="this.classList.toggle(\'sel\')" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1.5px solid rgba(255,255,255,0.15);cursor:pointer;background:rgba(255,255,255,0.04);transition:all 0.15s;user-select:none">'
+              +'<div style="width:22px;height:22px;border-radius:50%;background:'+col+';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">'+initials(p.full_name)+'</div>'
+              +'<span style="font-size:12px;color:var(--text)">'+esc(p.full_name||'?')+'</span>'
+              +'<span style="font-size:10px;color:var(--text3)">('+esc(code)+')</span>'
+              +'</div>';
+          }).join('')
+          +'</div>'
+        +'</div>'
+      +'</div>'
+      +'<div class="chat-modal-foot">'
+        +'<button class="btn" onclick="this.closest(\'.chat-modal\').remove()">Hủy</button>'
+        +'<button class="btn btn-primary" onclick="window._chatDoCreate()" style="gap:6px;display:inline-flex;align-items:center"><span>🚀</span> Tạo phòng</button>'
+      +'</div>'
+    +'</div>';
+  }
+  box.innerHTML=buildInner();
   document.body.appendChild(box);
-  setTimeout(function(){var i=document.getElementById('room-name-inp');if(i)i.focus();},100);
+  setTimeout(function(){var i=document.getElementById('room-name-inp');if(i)i.focus();},80);
+
+  window._cSelIcon=function(btn){
+    selIcon=btn.dataset.ic;
+    box.querySelectorAll('.room-icon-pick').forEach(function(b){
+      b.style.borderColor='rgba(255,255,255,0.1)';b.style.background='rgba(255,255,255,0.04)';
+    });
+    btn.style.borderColor='var(--brand)';btn.style.background='rgba(108,92,231,0.2)';
+    var prev=document.getElementById('room-icon-preview');if(prev)prev.textContent=selIcon;
+  };
+  window._chatDoCreate=async function(){
+    var n=document.getElementById('room-name-inp');
+    if(!n||!n.value.trim()){if(n)n.focus();return;}
+    var chips=box.querySelectorAll('.chat-chip.sel');
+    var members=Array.from(chips).map(function(e){return e.dataset.id;});
+    var res=await api({action:'create_room',name:selIcon+' '+n.value.trim(),members:members,created_by:uid(),is_direct:false});
+    if(res.room){rooms.unshift(res.room);box.remove();renderMain();selectRoom(res.room.id);}
+    else alert(res.error||'Lỗi tạo phòng');
+  };
 }
 
 function showMemberModal(roomId){
   var room=rooms.find(function(r){return r.id===roomId;});if(!room)return;
-  var currentMembers=room.members||[];
-  var profiles=(window.PROFILES||[]).filter(function(p){return p.id!==uid();});
+  var allProfiles=window.PROFILES||[];
+  var currentMembers=(room.members||[]).slice();
+  var roomDisplayName=room.name||'Phòng chat';
+  var COLORS=['#6c5ce7','#00b894','#e17055','#0984e3','#fdcb6e','#e84393','#00cec9'];
+  function ac(s){return COLORS[(s||'').charCodeAt(0)%COLORS.length];}
+  function roleBadge(p){var r=p.role||'sale';return r==='manager'?'<span style="font-size:10px;color:#e17055">manager</span>':r==='leader'?'<span style="font-size:10px;color:#fdcb6e">leader</span>':'<span style="font-size:10px;color:#74b9ff">sale</span>';}
+
   var box=document.createElement('div');box.className='chat-modal';
   box.onclick=function(e){if(e.target===box)box.remove();};
-  box.innerHTML='<div class="chat-modal-box">'
-    +'<div class="chat-modal-head"><span class="chat-modal-title"><i class="ti ti-users" style="margin-right:6px"></i>Quản lý thành viên</span>'
-    +'<button class="chat-modal-close" onclick="this.closest(\'.chat-modal\').remove()">×</button></div>'
-    +'<div class="chat-modal-body">'
-    +'<div class="chat-field"><label>Thành viên trong phòng</label>'
-    +'<div class="chat-member-list" id="member-pick">'
-    +profiles.map(function(p){
-      var sel=currentMembers.includes(p.id);
-      return '<div class="chat-member-row'+(sel?' selected':'')+'" data-id="'+esc(p.id)+'" data-name="'+esc(p.full_name||'')+'" onclick="window._chatToggleMember(this)">'
-        +'<div class="chat-member-av">'+initials(p.full_name)+'</div>'
-        +'<div class="chat-member-name">'+esc(p.full_name||p.email||'?')+'</div>'
-        +'<div class="chat-member-check"><i class="ti ti-check"></i></div>'
+
+  function buildInner(){
+    var members=allProfiles.filter(function(p){return currentMembers.includes(p.id)||p.id===uid();});
+    var non=allProfiles.filter(function(p){return !currentMembers.includes(p.id)&&p.id!==uid();});
+    var memberRows=members.map(function(p){
+      var isMe=p.id===uid();
+      return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
+        +'<div style="width:38px;height:38px;border-radius:50%;background:'+ac(p.full_name)+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0">'+initials(p.full_name)+'</div>'
+        +'<div style="flex:1;min-width:0">'
+          +'<span style="font-size:13px;font-weight:500;color:var(--text)">'+esc(p.full_name||'?')+'</span> '
+          +roleBadge(p)+' '
+          +'<span style="font-size:11px;color:var(--text3)">('+esc(p.code||p.role==='manager'?'C01':'')+')</span>'
+        +'</div>'
+        +(isMe?'':'<button data-pid="'+esc(p.id)+'" onclick="window._cRem(this.dataset.pid)" style="padding:4px 12px;border-radius:6px;border:none;background:var(--danger);color:#fff;font-size:11px;cursor:pointer;font-weight:600;flex-shrink:0">Xóa</button>')
         +'</div>';
-    }).join('')
-    +'</div></div></div>'
-    +'<div class="chat-modal-foot">'
-    +'<button class="btn" onclick="this.closest(\'.chat-modal\').remove()">Đóng</button>'
-    +'<button class="btn btn-primary" onclick="window._chatSaveMembers(\''+esc(roomId)+'\')"><i class="ti ti-device-floppy"></i> Lưu</button>'
-    +'</div></div>';
+    }).join('');
+
+    var addSection=non.length===0
+      ?'<p style="font-size:12px;color:var(--text3);margin:0">Tất cả đã trong phòng ✓</p>'
+      :'<div style="display:flex;flex-wrap:wrap;gap:6px">'
+        +non.map(function(p){
+          return '<button data-pid="'+esc(p.id)+'" onclick="window._cAdd(this.dataset.pid)" style="padding:5px 12px;border-radius:20px;border:1.5px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.04);color:var(--text2);font-size:12px;cursor:pointer;white-space:nowrap">+ '+esc(p.full_name||'?')+'</button>';
+        }).join('')
+        +'</div>';
+
+    return '<div class="chat-modal-box" style="width:440px">'
+      +'<div class="chat-modal-head">'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+          +'<i class="ti ti-users" style="font-size:18px;color:var(--brand2)"></i>'
+          +'<span class="chat-modal-title">Thành viên — '+esc(roomDisplayName)+'</span>'
+        +'</div>'
+        +'<button class="chat-modal-close" onclick="this.closest(\'.chat-modal\').remove()">×</button>'
+      +'</div>'
+      +'<div class="chat-modal-body" style="max-height:360px;overflow-y:auto">'
+        +memberRows
+        +'<div style="margin-top:16px">'
+          +'<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Thêm thành viên</div>'
+          +addSection
+        +'</div>'
+      +'</div>'
+      +'<div class="chat-modal-foot">'
+        +'<button class="btn btn-primary" onclick="window._cSaveNow(\''+esc(roomId)+'\')">Đóng</button>'
+      +'</div>'
+    +'</div>';
+  }
+
+  box.innerHTML=buildInner();
   document.body.appendChild(box);
+
+  window._cRem=function(pid){currentMembers=currentMembers.filter(function(x){return x!==pid;});box.innerHTML=buildInner();};
+  window._cAdd=function(pid){if(!currentMembers.includes(pid))currentMembers.push(pid);box.innerHTML=buildInner();};
+  window._cSaveNow=async function(rid){
+    var res=await api({action:'update_room',room_id:rid,members:currentMembers});
+    if(res.room){var r=rooms.find(function(x){return x.id===rid;});if(r)r.members=currentMembers;}
+    box.remove();renderHead();showNotif('Đã cập nhật thành viên');
+  };
 }
 
 function showRecalledModal(){
@@ -5041,6 +5127,14 @@ function selectRoom(id){
 
 // ── Global bindings ──
 window._cs=selectRoom;
+window.showCreateRoom=showCreateRoom;
+window.showMemberModal=showMemberModal;
+window.showRecalledModal=showRecalledModal;
+window.renameRoom=renameRoom;
+window.showCreateRoom=showCreateRoom;
+window.showMemberModal=showMemberModal;
+window.showRecalledModal=showRecalledModal;
+window.renameRoom=renameRoom;
 window._crep=function(mid){var m=(msgs[curRoom]||[]).find(function(x){return String(x.id)===String(mid);});if(m)setReply(m);};
 window._crecall=recall;
 window._ccreply=clearReply;
