@@ -4274,10 +4274,14 @@ function render(){
   async function getToken(){const{data:{session}}=await window.sb.auth.getSession();return session?session.access_token:'';}
   async function chatCall(body){
     const token=await getToken();
-    const r=await fetch(CHAT_EDGE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(body)});
-    return r.json();
+    try{
+      const r=await fetch(CHAT_EDGE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(body)});
+      const data=await r.json();
+      if(!r.ok)console.error('[team-chat] Error '+r.status+':',data);
+      return data;
+    }catch(e){console.error('[team-chat] Network error:',e);return{error:e.message};}
   }
-  function isManager(){return window.currentProfile&&(window.currentProfile.role==='manager'||window.currentProfile.role==='leader');}
+  function isManager(){return window.currentProfile&&(window.currentProfile.role==='manager'||window.currentProfile.role==='leader'||window.currentProfile.role==='admin');}
   function myId(){return window.currentUser?window.currentUser.id:'';}
   function myName(){return(window.currentProfile&&window.currentProfile.full_name)||'Sale';}
   function fmtTime(ts){
@@ -4385,6 +4389,12 @@ function render(){
       chatMessages[currentRoomId].push(res.message);
       lastMsgTime[currentRoomId]=res.message.created_at;
       renderMessages();scrollChatBottom();
+    }else if(res.error){
+      console.error('[send_message] failed:',res.error,res.detail||'');
+      alert('Lỗi gửi tin: '+(res.error||'Unknown'));
+      // Restore input
+      const inp=document.getElementById('chat-inp');
+      if(inp)inp.value=payload.content;
     }
   }
 
