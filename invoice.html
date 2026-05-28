@@ -739,7 +739,7 @@ async function generateInvoiceNo(){
 function buildVarianceBox(items){
   const totalVariance=items.reduce(function(s,it){
     if(it.vendor_cost===null||it.vendor_cost===undefined)return s;
-    return s+(it.unit_price-it.vendor_cost)*it.qty;
+    return s+(it.amount-(it.vendor_cost||0)*it.qty);
   },0);
   const hasAny=items.some(function(it){return it.vendor_cost!==null&&it.vendor_cost!==undefined;});
   if(!hasAny)return '';
@@ -775,9 +775,9 @@ function renderPreview(){
             const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='leader'||currentProfile.role==='admin');
       let chenh=null;
       if(it.is_shipping){
-        if(it.vendor_cost!==null&&it.vendor_cost!==undefined)chenh=it.unit_price-it.vendor_cost;
+        if(it.vendor_cost!==null&&it.vendor_cost!==undefined)chenh=(it.amount/it.qty)-(it.vendor_cost||0);
       } else if(isManager){
-        if(it.vendor_cost!==null&&it.vendor_cost!==undefined)chenh=it.unit_price-it.vendor_cost;
+        if(it.vendor_cost!==null&&it.vendor_cost!==undefined)chenh=(it.amount/it.qty)-(it.vendor_cost||0);
       } else {
         const base=(it.crm_price!==undefined&&it.crm_price!==null)?it.crm_price:it.unit_price;
         chenh=it.unit_price-base;
@@ -800,7 +800,7 @@ function renderPreview(){
       const isManagerPrev=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='leader'||currentProfile.role==='admin');
       if(isManagerPrev){
         shippingItems.forEach(function(it){
-          const chenhDon=(it.unit_price-(it.vendor_cost||0));
+          const chenhDon=(it.amount/it.qty)-(it.vendor_cost||0);
           const chenhAmt=chenhDon*it.qty;
           const chColor=chenhDon<0?'#e74c3c':'#27ae60';
           prodRows+='<tr style="background:rgba(231,76,60,0.05)">'
@@ -973,15 +973,15 @@ async function saveAndDownload(action){
   // Save items — include vendor_cost, is_shipping, vendor, chenh_lech
   const isManagerRole=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='leader'||currentProfile.role==='admin');
   const invItems=items.map(function(it){
-    // chenh_lech: manager uses vendor_cost, sale uses crm_price
+    // chenh_lech = amount - (vendor_cost × qty) — correctly accounts for discount
     let chenhDon=0;
     if(it.is_shipping){
-      chenhDon=it.unit_price-(it.vendor_cost||0);
+      chenhDon=(it.amount/it.qty)-(it.vendor_cost||0);
     } else if(isManagerRole){
-      chenhDon=it.vendor_cost!=null?it.unit_price-it.vendor_cost:0;
+      chenhDon=it.vendor_cost!=null?(it.amount/it.qty)-(it.vendor_cost||0):0;
     } else {
-      const base=(it.crm_price!=null)?it.crm_price:it.unit_price;
-      chenhDon=it.unit_price-base;
+      const base=(it.crm_price!=null)?it.crm_price:(it.amount/it.qty);
+      chenhDon=(it.amount/it.qty)-base;
     }
     return {
       invoice_id:   inv.id,
