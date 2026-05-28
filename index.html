@@ -3985,12 +3985,61 @@ function render(){
   function detectCustomerInText(text){
     if(!window.CUSTOMERS)return null;
     const lower=text.toLowerCase();
-    const found=window.CUSTOMERS.find(function(c){
+    // Try exact match first (business name or customer name)
+    let found=window.CUSTOMERS.find(function(c){
       const bn=(c.business_name||'').toLowerCase();
       const cn=(c.customer_name||'').toLowerCase();
-      return (bn.length>3&&lower.includes(bn))||(cn.length>3&&lower.includes(cn));
+      return (bn.length>2&&lower.includes(bn))||(cn.length>2&&lower.includes(cn));
     });
+    // Try KH code match e.g. KH0001259
+    if(!found){
+      const khMatch=text.match(/KH\d+/i);
+      if(khMatch){
+        const code=khMatch[0].toUpperCase();
+        found=window.CUSTOMERS.find(function(c){return (c.customer_code||'').toUpperCase()===code;});
+      }
+    }
     return found?found.id:null;
+  }
+
+  // ── Build sale summary for AI context ──
+  function buildSaleSummary(){
+    const custs=window.CUSTOMERS||[];
+    const isManager=window.currentProfile&&(window.currentProfile.role==='manager'||window.currentProfile.role==='leader');
+    const uid=window.currentUser&&window.currentUser.id;
+    const myCusts=isManager?custs:custs.filter(function(c){return c.assigned_to===uid||c.sale_id===uid;});
+
+    const total=myCusts.length;
+    const byStatus={};
+    const byPotential={};
+    const overdue=[];
+    const noContact=[];
+    const now=new Date();
+
+    myCusts.forEach(function(c){
+      // Status breakdown
+      const st=c.status||'Unknown';
+      byStatus[st]=(byStatus[st]||0)+1;
+      // Potential breakdown
+      if(c.potential){byPotential[c.potential]=(byPotential[c.potential]||0)+1;}
+      // Overdue deadline
+      if(c.assigned_deadline){
+        const d=new Date(c.assigned_deadline);
+        if(d<now)overdue.push((c.business_name||c.customer_name||'?')+' ('+c.assigned_deadline.slice(0,10)+')');
+      }
+    });
+
+    const statusStr=Object.entries(byStatus).map(function(e){return e[0]+':'+e[1];}).join(', ');
+    const potentialStr=Object.entries(byPotential).sort(function(a,b){return b[1]-a[1];}).slice(0,5).map(function(e){return e[0]+'('+e[1]+')';}).join(', ');
+    const overdueStr=overdue.slice(0,5).join('; ')||'Không có';
+
+    return {
+      total_customers: total,
+      status_breakdown: statusStr,
+      potential_breakdown: potentialStr,
+      overdue_customers: overdueStr,
+      is_manager: isManager
+    };
   }
 
   // ── Main send ──
@@ -4046,7 +4095,11 @@ function render(){
         body:JSON.stringify({
           messages:historyToSend,
           context:context,
-          sale_name:(window.currentProfile&&window.currentProfile.full_name)||'Sale'
+          query_text:text,
+          sale_id:window.currentUser?window.currentUser.id:null,
+          sale_name:(window.currentProfile&&window.currentProfile.full_name)||'Sale',
+          is_manager:!!(window.currentProfile&&(window.currentProfile.role==='manager'||window.currentProfile.role==='leader')),
+          sale_summary:buildSaleSummary()
         })
       });
 
