@@ -634,6 +634,7 @@ const PAGE_SIZE=50;
 
 // STATE
 let currentUser=null,currentProfile=null,CUSTOMERS=[],PROFILES=[],PRODUCTS_ALL=[],INVOICES=[];
+window.currentUser=null;window.currentProfile=null;window.CUSTOMERS=CUSTOMERS;window.PROFILES=PROFILES;
 let page='customers',fStatus='all',fSale='all',fPotential='all',fBrand='all',fCampaign='all',fReason='all',fOverdue='all',search='',selId=null,addOpen=false;
 if(!window._custSelected)window._custSelected=new Set();
 let cdSearchInv='';
@@ -717,12 +718,12 @@ async function doLogout(){await sb.auth.signOut();document.getElementById('app-s
 
 // INIT
 async function initApp(user){
-  showLoading(true);currentUser=user;
+  showLoading(true);currentUser=user;window.currentUser=user;
   const {data:profile}=await sb.from('profiles').select('*').eq('id',user.id).single();
-  currentProfile=profile;
+  currentProfile=profile;window.currentProfile=profile;
   await loadCustomers();
   const {data:profs}=await sb.from('profiles').select('*,openphone_number,openphone_phone_id').eq('is_active',true).order('full_name');
-  PROFILES=profs||[];
+  PROFILES=profs||[];window.PROFILES=PROFILES;
   // Load invoices after auth is confirmed
   await loadInvoices();
   // Load products for all users (only in_stock for sale)
