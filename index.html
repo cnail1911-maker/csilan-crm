@@ -5145,22 +5145,29 @@ window._cShowDMList=function(){
   var profiles=(window.PROFILES||[]).filter(function(p){return p.id!==uid();});
   var box=document.createElement('div');box.className='chat-modal';
   box.onclick=function(e){if(e.target===box)box.remove();};
-  box.innerHTML='<div class="chat-modal-box" style="width:380px">'
-    +'<div class="chat-modal-head">'
-      +'<div style="display:flex;align-items:center;gap:8px"><i class="ti ti-message" style="color:var(--brand2);font-size:18px"></i><span class="chat-modal-title">Nhắn tin riêng</span></div>'
-      +'<button class="chat-modal-close" onclick="this.closest('.chat-modal').remove()">×</button>'
-    +'</div>'
-    +'<div class="chat-modal-body" style="padding:10px 16px">'
-      +profiles.map(function(p){
-        return '<div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:9px;cursor:pointer;transition:background 0.12s" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='none'" data-uid="'+esc(p.id)+'" data-un="'+esc(p.full_name||'')+'" onclick="this.closest('.chat-modal').remove();window.openDM(this.dataset.uid,this.dataset.un)">'
-          +'<div style="width:36px;height:36px;border-radius:50%;background:'+avColor(p.full_name)+';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0">'+initials(p.full_name)+'</div>'
-          +'<div><div style="font-size:13px;font-weight:500;color:var(--text)">'+esc(p.full_name||'?')+'</div>'
-            +'<div style="font-size:11px;color:var(--text3)">'+esc(p.role||'sale')+'</div>'
-          +'</div>'
-        +'</div>';
-      }).join('')
-    +'</div>'
-  +'</div>';
+  // Build using DOM to avoid quote escaping hell
+  var mbx=document.createElement('div');mbx.className='chat-modal-box';mbx.style.width='380px';
+  var head=document.createElement('div');head.className='chat-modal-head';
+  head.innerHTML='<div style="display:flex;align-items:center;gap:8px"><i class="ti ti-message" style="color:var(--brand2);font-size:18px"></i><span class="chat-modal-title">Nhắn tin riêng</span></div>';
+  var closeBtn=document.createElement('button');closeBtn.className='chat-modal-close';closeBtn.textContent='×';
+  closeBtn.onclick=function(){box.remove();};
+  head.appendChild(closeBtn);
+  var body=document.createElement('div');body.className='chat-modal-body';body.style.cssText='padding:10px 16px;max-height:360px;overflow-y:auto';
+  profiles.forEach(function(p){
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px;border-radius:9px;cursor:pointer;transition:background 0.12s';
+    row.onmouseover=function(){this.style.background='rgba(255,255,255,0.05)';};
+    row.onmouseout=function(){this.style.background='none';};
+    row.onclick=function(){box.remove();openDMfn(p.id,p.full_name||'?');};
+    var av=document.createElement('div');
+    av.style.cssText='width:36px;height:36px;border-radius:50%;background:'+avColor(p.full_name)+';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0';
+    av.textContent=initials(p.full_name);
+    var info=document.createElement('div');
+    info.innerHTML='<div style="font-size:13px;font-weight:500;color:var(--text)">'+esc(p.full_name||'?')+'</div>'
+      +'<div style="font-size:11px;color:var(--text3)">'+esc(p.role||'sale')+'</div>';
+    row.appendChild(av);row.appendChild(info);body.appendChild(row);
+  });
+  mbx.appendChild(head);mbx.appendChild(body);box.appendChild(mbx);
   document.body.appendChild(box);
 };
 
