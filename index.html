@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <link rel="icon" href="logo-192.svg" type="image/svg+xml">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover.0, maximum-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -309,39 +309,80 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     [style*="repeat(3,1fr)"]{grid-template-columns:1fr 1fr !important}
     /* Campaign action bar */
     #camp-action-bar{flex-wrap:wrap !important;gap:6px !important;padding:8px !important}
-    /* Hide less critical columns in campaign table on mobile */
+    /* Campaign table: horizontal scroll on mobile */
     .camp-table th:nth-child(n+4),
-    .camp-table td:nth-child(n+4){display:none !important}
+    .camp-table td:nth-child(n+4){display:table-cell !important}
+    .camp-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%}
+    .camp-table{min-width:600px;font-size:10px}
+    /* Campaign cards: full width on mobile */
+    #camp-cards{grid-template-columns:1fr !important}
+    .camp-card{padding:12px !important}
+    /* Campaign filter bar */
+    #camp-filter-bar{flex-wrap:wrap;gap:6px}
+    /* Campaign pagination: compress */
+    .pg-bar{flex-wrap:wrap;gap:4px;justify-content:center}
 
-    /* ── Detail Modal: stack 2-col to 1-col on mobile ── */
-    #detail-modal .modal-overlay > div{max-height:100vh !important;border-radius:0 !important;}
-    [id^="detail-modal"] [style*="grid-template-columns:1fr 300px"]{
-      grid-template-columns:1fr !important;
+    /* ── Detail Modal: full mobile ── */
+    /* Modal container: full screen on mobile */
+    .modal-overlay{align-items:stretch !important;padding:0 !important;}
+    #detail-modal > div:first-child{
+      width:100vw !important;max-width:100vw !important;
+      height:100vh !important;max-height:100vh !important;
+      border-radius:0 !important;margin:0 !important;
     }
-    /* Hide history sidebar in modal on mobile — show inline instead */
+    /* 2-col → 1 col */
+    [id^="detail-modal"] [style*="grid-template-columns:1fr 300px"],
+    [style*="grid-template-columns:1fr 300px"]{
+      grid-template-columns:1fr !important;
+      overflow-y:auto !important;
+    }
+    /* Hide history sidebar — too much space on mobile */
     [style*="grid-template-columns:1fr 300px"] > div:last-child{
       display:none !important;
     }
-    /* Detail modal rows: stack to single col */
-    [style*="display:grid"][style*="repeat"]{
-      grid-template-columns:1fr 1fr !important;
-    }
-    [style*="2fr 2fr 1fr 1fr 1fr"]{grid-template-columns:1fr 1fr !important;}
+    /* All grid rows → 2 col max */
+    [style*="display:grid"][style*="repeat(5,1fr)"],
+    [style*="2fr 2fr 1fr 1fr 1fr"],
     [style*="1fr 1fr 1fr 1fr 1fr"]{grid-template-columns:1fr 1fr !important;}
+    [style*="repeat(4,1fr)"]{grid-template-columns:1fr 1fr !important;}
+    [style*="repeat(3,1fr)"]{grid-template-columns:1fr 1fr !important;}
+    [style*="2fr 1fr 1fr"]{grid-template-columns:1fr 1fr !important;}
+    [style*="1fr 2fr"]{grid-template-columns:1fr !important;}
+    [style*="1fr 1fr 2fr"]{grid-template-columns:1fr 1fr !important;}
+    /* Footer: wrap buttons */
+    #detail-modal [style*="position:sticky;bottom:0"]{
+      flex-wrap:wrap !important;
+      gap:6px !important;
+      padding:10px 12px !important;
+      justify-content:flex-end !important;
+    }
+    #detail-modal [style*="position:sticky;bottom:0"] > div:first-child{
+      width:100% !important;min-width:unset !important;
+      margin-bottom:4px !important;
+    }
 
-    /* ── Chat: show sidebar on mobile via toggle ── */
+    /* ── Chat: mobile ── */
     .chat-layout{grid-template-columns:1fr !important;}
     .chat-sidebar{
       display:none !important;
       position:fixed !important;left:0;top:52px;bottom:60px;
       width:75vw !important;max-width:280px;z-index:200;
       background:#1a1240 !important;border-right:1px solid var(--border);
+      box-shadow:4px 0 20px rgba(0,0,0,0.4) !important;
     }
     .chat-sidebar.show{display:flex !important;}
     .chat-mobile-menu-btn{display:flex !important;}
+    /* Chat input area: stay above bottom nav */
+    .chat-input-wrap{padding-bottom:8px !important;}
+    .chat-msgs{padding-bottom:8px !important;}
+    /* Chat send button: ensure visible */
+    .chat-send{flex-shrink:0 !important;}
+    .chat-inp{font-size:14px !important;} /* prevent iOS zoom */
 
     /* ── AI FAB: above bottom nav ── */
-    #ai-fab{bottom:70px !important;right:12px !important;}
+    #ai-fab{bottom:70px !important;right:auto !important;left:12px !important;}
+  /* Ensure chat input above bottom nav */
+  .chat-wrap{height:calc(100vh - 52px - 56px) !important;}
     #ai-panel{bottom:120px !important;right:4px !important;left:4px !important;}
   }
 
@@ -628,10 +669,17 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 
 /* Mobile */
 @media(max-width:600px){
-  .chat-sb{position:fixed;left:0;top:52px;bottom:60px;z-index:200;transform:translateX(-100%);width:75vw !important;min-width:unset;}
-  .chat-sb.open{transform:translateX(0);}
+  .chat-sb{position:fixed;left:0;top:52px;bottom:60px;z-index:200;transform:translateX(-100%);width:80vw !important;min-width:unset;box-shadow:4px 0 20px rgba(0,0,0,0.5);}
+  .chat-sb.open{transform:translateX(0);box-shadow:4px 0 20px rgba(0,0,0,0.5);}
   .chat-mobile-tog{display:flex !important;}
-  #ai-fab{bottom:70px !important;right:12px !important;}
+  .chat-head{padding:0 10px !important;}
+  .chat-head-name{font-size:13px !important;}
+  .chat-msgs{padding:10px !important;}
+  .chat-bubble{font-size:12px !important;padding:7px 10px !important;}
+  .chat-input-wrap{padding:8px 10px !important;}
+  .chat-inp{font-size:14px !important;min-height:36px !important;}
+  /* AI FAB: above bottom nav, left side to not cover send */
+  #ai-fab{bottom:70px !important;right:auto !important;left:12px !important;}
   #ai-panel{bottom:120px !important;right:4px !important;left:4px !important;}
 }
 .chat-mobile-tog{display:none;width:32px;height:32px;border-radius:8px;border:none;background:none;cursor:pointer;color:var(--text3);align-items:center;justify-content:center;font-size:18px;margin-right:4px;}
@@ -2023,10 +2071,10 @@ function renderCampaign(){
         :'')
       +'</div></div>'
       +(displayData.length===0?'<div class="empty-state"><i class="ti ti-users"></i>Không có khách nào khớp</div>'
-        :'<table class="camp-table"><colgroup><col width="30"><col width="90"><col width="130"><col width="110"><col width="90"><col width="100"><col width="80"><col width="70"><col width="80"></colgroup>'
+        :'<div class="camp-table-wrap"><table class="camp-table"><colgroup><col width="30"><col width="90"><col width="130"><col width="110"><col width="90"><col width="100"><col width="80"><col width="70"><col width="80"></colgroup>'
         +'<thead><tr><th><input type="checkbox" onchange="window._campSelectAll(this.checked)" style="accent-color:var(--brand)"></th>'
         +'<th>Mã KH</th><th>Business</th><th>Customer</th><th>Potential</th><th>Campaign</th><th>Deadline</th><th>Sale</th><th></th></tr></thead>'
-        +'<tbody>'+custRows+'</tbody></table>'+pgHtml)
+        +'<tbody>'+custRows+'</tbody></table></div>'+pgHtml)
       +'</div>';
   }
 
@@ -2673,7 +2721,7 @@ async function renderDetailModal(customerId){
   html+='<div style="display:grid;grid-template-columns:1fr 300px;gap:0;flex:1;min-height:0;overflow:hidden">';
 
   // ── LEFT MAIN ──
-  html+='<div style="padding:16px 20px;border-right:1px solid rgba(255,255,255,0.07);overflow-y:auto;max-height:calc(95vh - 130px)">';
+  html+='<div id="detail-left-pane" style="padding:16px 20px;border-right:1px solid rgba(255,255,255,0.07);overflow-y:auto;max-height:calc(95vh - 130px)">';
 
   // ROW 1: Biz Name (2fr) | Address (2fr) | City | State | Zip
   html+=row('2fr 2fr 1fr 1fr 1fr',
