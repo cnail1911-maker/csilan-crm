@@ -820,8 +820,11 @@ async function saveAndDownload(action){
   if(items.length===0){alert('Vui lòng thêm ít nhất 1 sản phẩm!');return;}
 
   showLoading(true);
-  // Safety timeout: hide loading if stuck after 15s
-  const _loadTimeout=setTimeout(function(){showLoading(false);},15000);
+  const _loadTimeout=setTimeout(function(){
+    showLoading(false);
+    alert('Quá thời gian chờ (30s). Kiểm tra kết nối và thử lại.');
+  },30000);
+  try{
 
   // Generate invoice number
   const invNo=await generateInvoiceNo();
@@ -946,15 +949,22 @@ async function saveAndDownload(action){
       try{
         await html2pdf().set(opt).from(element).save();
       }finally{
-        // Hiện lại sau khi xuất xong
         noPrintEls.forEach(function(el){el.style.display='';});
+        clearTimeout(_loadTimeout);
         showLoading(false);
         alert(successMsg+' PDF đã tải!');
       }
     },300);
   } else {
+    clearTimeout(_loadTimeout);
     showLoading(false);
     alert(successMsg);
+  }
+  }catch(e){
+    clearTimeout(_loadTimeout);
+    showLoading(false);
+    console.error('[saveInvoice]',e);
+    alert('Lỗi: '+e.message);
   }
 }
 
