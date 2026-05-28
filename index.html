@@ -493,6 +493,293 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 }
 
 /* ════════════════════════════════════════
+   TEAM CHAT — Redesigned
+   ════════════════════════════════════════ */
+:root{--chat-bg:#0f0c2a;--chat-surface:#16123a;--chat-border:rgba(162,155,254,0.12);--chat-hover:rgba(108,92,231,0.12);}
+
+/* Layout */
+.chat-wrap{display:flex;height:calc(100vh - 52px);overflow:hidden;background:var(--chat-bg);}
+
+/* Sidebar */
+.chat-sb{width:260px;min-width:260px;display:flex;flex-direction:column;background:var(--chat-surface);border-right:1px solid var(--chat-border);transition:transform 0.25s ease;}
+.chat-sb-top{padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--chat-border);flex-shrink:0;}
+.chat-sb-title{font-size:13px;font-weight:700;color:var(--text);letter-spacing:0.3px;}
+.chat-sb-btn{width:28px;height:28px;border-radius:7px;border:none;background:none;cursor:pointer;color:var(--text3);display:flex;align-items:center;justify-content:center;font-size:15px;transition:all 0.15s;}
+.chat-sb-btn:hover{background:var(--chat-hover);color:var(--brand2);}
+.chat-sb-list{flex:1;overflow-y:auto;padding:8px;}
+.chat-sb-list::-webkit-scrollbar{width:3px;}
+.chat-sb-list::-webkit-scrollbar-thumb{background:rgba(162,155,254,0.15);border-radius:3px;}
+.chat-section-lbl{font-size:10px;font-weight:700;color:var(--text3);padding:8px 8px 4px;letter-spacing:0.6px;text-transform:uppercase;}
+.chat-room-row{padding:8px 10px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background 0.12s;position:relative;}
+.chat-room-row:hover{background:rgba(255,255,255,0.05);}
+.chat-room-row.active{background:rgba(108,92,231,0.18);border:1px solid rgba(162,155,254,0.2);}
+.chat-room-icon{width:34px;height:34px;border-radius:9px;background:rgba(108,92,231,0.2);color:var(--brand2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+.chat-room-icon.dm{border-radius:50%;background:rgba(255,255,255,0.08);color:var(--text2);}
+.chat-room-meta{flex:1;min-width:0;}
+.chat-room-name{font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chat-room-preview{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+.chat-unread{background:var(--danger);color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0;}
+
+/* Main area */
+.chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+.chat-head{padding:0 16px;height:52px;border-bottom:1px solid var(--chat-border);display:flex;align-items:center;gap:10px;flex-shrink:0;background:rgba(255,255,255,0.01);}
+.chat-head-icon{width:32px;height:32px;border-radius:8px;background:rgba(108,92,231,0.2);color:var(--brand2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+.chat-head-icon.dm{border-radius:50%;}
+.chat-head-info{flex:1;min-width:0;}
+.chat-head-name{font-size:14px;font-weight:600;color:var(--text);}
+.chat-head-sub{font-size:11px;color:var(--text3);margin-top:1px;}
+.chat-head-actions{display:flex;gap:4px;}
+.chat-icon-btn{width:32px;height:32px;border-radius:8px;border:none;background:none;cursor:pointer;color:var(--text3);display:flex;align-items:center;justify-content:center;font-size:15px;transition:all 0.15s;}
+.chat-icon-btn:hover{background:rgba(255,255,255,0.07);color:var(--text);}
+.chat-icon-btn.active{color:var(--warn);}
+
+/* Messages */
+.chat-msgs{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:1px;}
+.chat-msgs::-webkit-scrollbar{width:4px;}
+.chat-msgs::-webkit-scrollbar-thumb{background:rgba(162,155,254,0.15);border-radius:4px;}
+.chat-day-divider{text-align:center;margin:12px 0;position:relative;}
+.chat-day-divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:var(--chat-border);}
+.chat-day-label{position:relative;background:var(--chat-bg);padding:0 12px;font-size:11px;color:var(--text3);}
+.chat-msg-group{display:flex;gap:10px;align-items:flex-end;margin-bottom:4px;}
+.chat-msg-group.mine{flex-direction:row-reverse;}
+.chat-avatar{width:30px;height:30px;border-radius:50%;background:rgba(108,92,231,0.25);color:var(--brand2);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:flex-end;}
+.chat-msg-col{display:flex;flex-direction:column;max-width:65%;gap:2px;}
+.chat-msg-group.mine .chat-msg-col{align-items:flex-end;}
+.chat-sender{font-size:10px;color:var(--text3);padding:0 4px;margin-bottom:2px;}
+.chat-bubble{padding:9px 13px;border-radius:16px;font-size:13px;line-height:1.55;word-break:break-word;white-space:pre-wrap;position:relative;cursor:default;transition:opacity 0.15s;}
+.chat-bubble.theirs{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.06);color:var(--text);border-bottom-left-radius:4px;}
+.chat-bubble.mine{background:linear-gradient(135deg,#6c5ce7,#7c3aed);color:#fff;border-bottom-right-radius:4px;border:none;}
+.chat-bubble.recalled{background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.1);color:var(--text3);font-style:italic;}
+.chat-bubble:hover .chat-actions{opacity:1;pointer-events:all;}
+.chat-actions{position:absolute;top:-32px;right:4px;opacity:0;pointer-events:none;transition:opacity 0.15s;display:flex;gap:2px;background:#1e1550;border:1px solid var(--chat-border);border-radius:8px;padding:3px;}
+.chat-msg-group.mine .chat-actions{right:auto;left:4px;}
+.chat-act-btn{width:24px;height:24px;border-radius:5px;border:none;background:none;cursor:pointer;color:var(--text3);display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.12s;}
+.chat-act-btn:hover{background:rgba(108,92,231,0.2);color:var(--brand2);}
+.chat-ts{font-size:10px;color:var(--text3);padding:0 4px;margin-top:1px;}
+.chat-reply-block{background:rgba(255,255,255,0.07);border-left:2px solid var(--brand2);border-radius:4px;padding:4px 8px;margin-bottom:6px;font-size:11px;}
+.chat-reply-block .rb-name{font-weight:600;color:var(--brand2);margin-bottom:1px;}
+.chat-bubble.mine .chat-reply-block{background:rgba(255,255,255,0.15);border-left-color:rgba(255,255,255,0.6);}
+.chat-bubble.mine .chat-reply-block .rb-name{color:#fff;}
+.chat-mention{color:var(--brand2);font-weight:600;}
+.chat-bubble.mine .chat-mention{color:#e0d9ff;text-decoration:underline;}
+.chat-img{max-width:200px;border-radius:10px;margin-top:4px;cursor:pointer;}
+.chat-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--text3);}
+.chat-empty-state i{font-size:48px;opacity:0.2;}
+.chat-empty-state p{font-size:13px;}
+.chat-load-more{text-align:center;padding:6px;font-size:11px;color:var(--text3);cursor:pointer;margin-bottom:8px;}
+.chat-load-more:hover{color:var(--brand2);}
+
+/* Input */
+.chat-input-wrap{padding:12px 16px;border-top:1px solid var(--chat-border);flex-shrink:0;}
+.chat-reply-bar{background:rgba(108,92,231,0.1);border:1px solid rgba(162,155,254,0.2);border-radius:8px;padding:6px 10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;font-size:12px;}
+.chat-reply-bar .rb-label{color:var(--brand2);font-weight:600;font-size:11px;margin-bottom:1px;}
+.chat-reply-bar .rb-text{color:var(--text2);}
+.chat-reply-close{background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:0 4px;line-height:1;}
+.chat-input-row{display:flex;gap:8px;align-items:flex-end;}
+.chat-inp{flex:1;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--text);font-family:'Be Vietnam Pro',sans-serif;outline:none;resize:none;max-height:120px;min-height:40px;line-height:1.45;transition:border-color 0.15s;}
+.chat-inp:focus{border-color:rgba(108,92,231,0.5);}
+.chat-inp::placeholder{color:var(--text3);}
+.chat-send{width:40px;height:40px;border-radius:12px;border:none;background:linear-gradient(135deg,#6c5ce7,#7c3aed);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s,transform 0.1s;}
+.chat-send:hover{opacity:0.88;transform:scale(1.05);}
+.chat-send:disabled{opacity:0.3;cursor:not-allowed;transform:none;}
+
+/* Toast */
+.chat-toast{position:fixed;bottom:90px;right:20px;background:#1e1550;border:1px solid rgba(162,155,254,0.25);border-radius:12px;padding:10px 14px;max-width:300px;box-shadow:0 8px 30px rgba(0,0,0,0.5);z-index:9997;cursor:pointer;animation:slideInRight 0.25s ease;}
+@keyframes slideInRight{from{transform:translateX(110%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+.chat-toast-sender{font-size:12px;font-weight:600;color:var(--brand2);margin-bottom:2px;}
+.chat-toast-content{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* Modal (create room / add member) */
+.chat-modal{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;}
+.chat-modal-box{background:#1a1240;border:1px solid rgba(162,155,254,0.2);border-radius:16px;width:420px;max-width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.6);}
+.chat-modal-head{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between;}
+.chat-modal-title{font-size:15px;font-weight:600;color:var(--text);}
+.chat-modal-close{background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px;line-height:1;padding:0;}
+.chat-modal-body{padding:20px;overflow-y:auto;flex:1;}
+.chat-modal-foot{padding:12px 20px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:flex-end;gap:8px;}
+.chat-field{margin-bottom:16px;}
+.chat-field label{display:block;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;}
+.chat-field input,.chat-field textarea{width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:9px;padding:9px 12px;font-size:13px;color:var(--text);font-family:'Be Vietnam Pro',sans-serif;outline:none;transition:border-color 0.15s;}
+.chat-field input:focus,.chat-field textarea:focus{border-color:rgba(108,92,231,0.6);}
+.chat-member-list{display:flex;flex-direction:column;gap:4px;max-height:220px;overflow-y:auto;}
+.chat-member-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background 0.12s;}
+.chat-member-row:hover{background:rgba(255,255,255,0.05);}
+.chat-member-row.selected{background:rgba(108,92,231,0.15);border:1px solid rgba(162,155,254,0.2);}
+.chat-member-av{width:32px;height:32px;border-radius:50%;background:rgba(108,92,231,0.2);color:var(--brand2);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.chat-member-name{font-size:13px;color:var(--text);flex:1;}
+.chat-member-check{width:18px;height:18px;border-radius:5px;border:1.5px solid rgba(162,155,254,0.3);display:flex;align-items:center;justify-content:center;font-size:11px;color:transparent;transition:all 0.15s;}
+.chat-member-row.selected .chat-member-check{background:var(--brand);border-color:var(--brand);color:#fff;}
+
+/* Recalled history modal */
+.recalled-modal{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;}
+.recalled-modal-inner{background:#1a1240;border:1px solid var(--chat-border);border-radius:16px;width:480px;max-width:100%;max-height:70vh;overflow:hidden;display:flex;flex-direction:column;}
+.recalled-modal-header{padding:14px 18px;border-bottom:1px solid var(--chat-border);display:flex;align-items:center;justify-content:space-between;}
+.recalled-modal-body{overflow-y:auto;padding:14px;}
+.recalled-item{padding:10px 12px;border:1px solid rgba(255,255,255,0.07);border-radius:9px;margin-bottom:8px;}
+.recalled-item .ri-sender{font-size:11px;font-weight:600;color:var(--brand2);}
+.recalled-item .ri-content{font-size:12px;color:var(--text);margin:4px 0;}
+.recalled-item .ri-time{font-size:10px;color:var(--text3);}
+
+/* Mobile */
+@media(max-width:600px){
+  .chat-sb{position:fixed;left:0;top:52px;bottom:60px;z-index:200;transform:translateX(-100%);width:75vw !important;min-width:unset;}
+  .chat-sb.open{transform:translateX(0);}
+  .chat-mobile-tog{display:flex !important;}
+  #ai-fab{bottom:70px !important;right:12px !important;}
+  #ai-panel{bottom:120px !important;right:4px !important;left:4px !important;}
+}
+.chat-mobile-tog{display:none;width:32px;height:32px;border-radius:8px;border:none;background:none;cursor:pointer;color:var(--text3);align-items:center;justify-content:center;font-size:18px;margin-right:4px;}
+.chat-mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:199;}
+.chat-mobile-overlay.show{display:block;}
+
+/* ════════════════════════════════════════
+   AI CHATBOX — C-Silan Assistant
+   ════════════════════════════════════════ */
+#ai-fab{
+  position:fixed;bottom:20px;right:20px;z-index:9999;
+  width:52px;height:52px;border-radius:50%;
+  background:linear-gradient(135deg,var(--brand),#a855f7);
+  border:none;cursor:pointer;
+  box-shadow:0 4px 20px rgba(108,92,231,0.5);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform 0.2s,box-shadow 0.2s;
+}
+#ai-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(108,92,231,0.7);}
+#ai-fab svg{width:24px;height:24px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+#ai-fab .ai-badge{
+  position:absolute;top:-2px;right:-2px;
+  width:14px;height:14px;border-radius:50%;
+  background:var(--danger);border:2px solid #0f0c24;
+  display:none;
+}
+
+#ai-panel{
+  position:fixed;bottom:82px;right:20px;z-index:9998;
+  width:380px;max-width:98vw;height:500px;
+  background:#1a1240;
+  border:1px solid rgba(162,155,254,0.25);
+  border-radius:16px;
+  display:flex;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,0.6);
+  overflow:hidden;
+  transform:scale(0.92) translateY(12px);
+  opacity:0;pointer-events:none;
+  transition:transform 0.22s cubic-bezier(.34,1.56,.64,1),opacity 0.18s ease;
+}
+#ai-panel.open{
+  transform:scale(1) translateY(0);
+  opacity:1;pointer-events:all;
+}
+.ai-header{
+  padding:12px 14px;
+  background:rgba(108,92,231,0.15);
+  border-bottom:1px solid rgba(162,155,254,0.15);
+  display:flex;align-items:center;gap:10px;
+  flex-shrink:0;
+}
+.ai-header-avatar{
+  width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,var(--brand),#a855f7);
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;
+}
+.ai-header-info{flex:1;}
+.ai-header-title{font-size:13px;font-weight:600;color:var(--text);}
+.ai-header-sub{font-size:10px;color:var(--text3);margin-top:1px;}
+.ai-ctx-pill{
+  font-size:10px;padding:2px 8px;border-radius:20px;
+  background:rgba(108,92,231,0.2);color:var(--brand2);
+  border:1px solid rgba(162,155,254,0.2);
+  max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.ai-header-btn{
+  background:none;border:none;cursor:pointer;
+  color:var(--text3);padding:4px;border-radius:6px;
+  transition:color 0.15s,background 0.15s;
+  font-size:16px;line-height:1;
+}
+.ai-header-btn:hover{color:var(--text);background:rgba(255,255,255,0.08);}
+
+#ai-messages{
+  flex:1;overflow-y:auto;padding:12px 14px;
+  display:flex;flex-direction:column;gap:10px;
+  scroll-behavior:smooth;
+}
+#ai-messages::-webkit-scrollbar{width:4px;}
+#ai-messages::-webkit-scrollbar-track{background:transparent;}
+#ai-messages::-webkit-scrollbar-thumb{background:rgba(162,155,254,0.2);border-radius:4px;}
+
+.ai-msg{display:flex;gap:8px;align-items:flex-end;max-width:100%;}
+.ai-msg.user{flex-direction:row-reverse;}
+.ai-bubble{
+  padding:9px 12px;border-radius:14px;
+  font-size:13px;line-height:1.5;
+  max-width:82%;word-break:break-word;white-space:pre-wrap;
+}
+.ai-msg.ai .ai-bubble{
+  background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.08);
+  color:var(--text);border-bottom-left-radius:4px;
+}
+.ai-msg.user .ai-bubble{
+  background:linear-gradient(135deg,var(--brand),#7c3aed);
+  color:#fff;border-bottom-right-radius:4px;
+}
+.ai-avatar-sm{
+  width:26px;height:26px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;
+}
+.ai-avatar-sm.ai-av{background:linear-gradient(135deg,var(--brand),#a855f7);color:#fff;}
+.ai-avatar-sm.user-av{background:rgba(255,255,255,0.1);color:var(--text2);}
+
+.ai-typing{display:flex;gap:5px;align-items:center;padding:10px 14px 6px;}
+.ai-dot{width:7px;height:7px;border-radius:50%;background:var(--brand);opacity:0.6;animation:aiDotBounce 1.2s infinite;}
+.ai-dot:nth-child(2){animation-delay:0.2s;}
+.ai-dot:nth-child(3){animation-delay:0.4s;}
+@keyframes aiDotBounce{0%,80%,100%{transform:translateY(0);}40%{transform:translateY(-6px);}}
+
+.ai-ctx-banner{
+  margin:0 14px;padding:7px 10px;
+  background:rgba(108,92,231,0.1);
+  border:1px solid rgba(162,155,254,0.15);
+  border-radius:8px;font-size:11px;
+  color:var(--brand2);flex-shrink:0;
+  display:flex;align-items:center;gap:6px;
+}
+.ai-ctx-banner i{color:var(--brand);}
+
+.ai-footer{
+  padding:10px 12px;border-top:1px solid rgba(255,255,255,0.07);
+  display:flex;gap:8px;align-items:flex-end;flex-shrink:0;
+}
+#ai-input{
+  flex:1;background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:10px;padding:9px 12px;
+  font-size:13px;color:var(--text);
+  font-family:'Be Vietnam Pro',sans-serif;
+  outline:none;resize:none;max-height:100px;
+  min-height:38px;line-height:1.4;
+  transition:border-color 0.15s;
+}
+#ai-input:focus{border-color:var(--brand);}
+#ai-input::placeholder{color:var(--text3);}
+#ai-send{
+  width:36px;height:36px;border-radius:9px;border:none;
+  background:linear-gradient(135deg,var(--brand),#7c3aed);
+  color:#fff;cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:opacity 0.15s,transform 0.15s;
+}
+#ai-send:hover{opacity:0.88;transform:scale(1.05);}
+#ai-send:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
+@media(max-width:480px){
+  #ai-panel{right:4px;left:4px;width:auto;bottom:76px;}
+  #ai-fab{bottom:70px;right:12px;width:44px;height:44px;}
+}
+
+/* ════════════════════════════════════════
    TEAM CHAT
    ════════════════════════════════════════ */
 .chat-layout{display:grid;grid-template-columns:220px 1fr;height:calc(100vh - 52px);overflow:hidden;}
@@ -4293,399 +4580,509 @@ function render(){
 </script>
 
 <script>
+/* ═══════════════════════════════════════════════════
+   TEAM CHAT v2 — C-Silan
+   Performance: debounced poll, cached messages, lazy load
+   ═══════════════════════════════════════════════════ */
 (function(){
-  'use strict';
-  const CHAT_EDGE='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/team-chat';
-  const GENERAL_ROOM_ID='bf042f74-2339-4d01-afd0-1bfae9c1033f';
+'use strict';
+const EDGE='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/team-chat';
+const GEN_ROOM='bf042f74-2339-4d01-afd0-1bfae9c1033f';
+const POLL_MS=4000, BG_POLL_MS=30000, PAGE_SIZE=50;
 
-  var chatRooms=[],currentRoomId=null,chatMessages={},replyTo=null;
-  var pollTimer=null,lastMsgTime={},unreadCounts={},mutedRooms=[],notifEnabled=true;
+// ── State ──
+var rooms=[],curRoom=null,msgs={},replyTo=null;
+var pollT=null,lastTs={},unread={},muted=[],notifOn=true,sending=false;
 
-  try{mutedRooms=JSON.parse(localStorage.getItem('chat_muted')||'[]');
-    notifEnabled=localStorage.getItem('chat_notif')!=='off';}catch(e){}
+try{muted=JSON.parse(localStorage.getItem('c_muted')||'[]');
+  notifOn=localStorage.getItem('c_notif')!=='off';}catch(e){}
 
-  async function getToken(){const{data:{session}}=await window.sb.auth.getSession();return session?session.access_token:'';}
-  async function chatCall(body){
-    const token=await getToken();
-    try{
-      const r=await fetch(CHAT_EDGE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(body)});
-      const data=await r.json();
-      if(!r.ok)console.error('[team-chat] Error '+r.status+':',data);
-      return data;
-    }catch(e){console.error('[team-chat] Network error:',e);return{error:e.message};}
-  }
-  function isManager(){return window.currentProfile&&(window.currentProfile.role==='manager'||window.currentProfile.role==='leader'||window.currentProfile.role==='admin');}
-  function myId(){return window.currentUser?window.currentUser.id:'';}
-  function myName(){return(window.currentProfile&&window.currentProfile.full_name)||'Sale';}
-  function fmtTime(ts){
-    if(!ts)return'';
-    const d=new Date(ts),now=new Date(),diff=now-d;
-    if(diff<60000)return'vừa xong';
-    if(diff<3600000)return Math.floor(diff/60000)+'p';
-    if(d.toDateString()===now.toDateString())return d.toLocaleTimeString('vi',{hour:'2-digit',minute:'2-digit'});
-    return d.toLocaleDateString('vi',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('vi',{hour:'2-digit',minute:'2-digit'});
-  }
-  function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-  function renderContent(text){
-    if(!text)return'';
-    return esc(text).replace(/@([\w\s\u00C0-\u1EF9]+?)(?=\s|$|[,.])/g,'<span class="chat-mention">@$1</span>');
-  }
+// ── Utils ──
+function tok(){return window.sb.auth.getSession().then(function(r){return r.data.session?r.data.session.access_token:'';});}
+async function api(body){
+  var t=await tok();
+  try{
+    var r=await fetch(EDGE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+t},body:JSON.stringify(body)});
+    var d=await r.json();
+    if(!r.ok)console.error('[chat]',body.action,r.status,d);
+    return d;
+  }catch(e){console.error('[chat] network',e);return{error:e.message};}
+}
+function mgr(){return window.currentProfile&&['manager','leader','admin'].includes(window.currentProfile.role);}
+function uid(){return window.currentUser?window.currentUser.id:'';}
+function uname(){return(window.currentProfile&&window.currentProfile.full_name)||'Sale';}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function markup(t){
+  return esc(t).replace(/@([\w\s\u00C0-\u1EF9]{2,30}?)(?=[\s,.]|$)/g,'<span class="chat-mention">@$1</span>');
+}
+function ts(d){
+  if(!d)return'';
+  var dt=new Date(d),now=new Date(),diff=now-dt;
+  if(diff<60000)return'vừa xong';
+  if(diff<3600000)return Math.floor(diff/60000)+'p';
+  if(dt.toDateString()===now.toDateString())return dt.toLocaleTimeString('vi',{hour:'2-digit',minute:'2-digit'});
+  return dt.toLocaleDateString('vi',{day:'2-digit',month:'2-digit'})+' '+dt.toLocaleTimeString('vi',{hour:'2-digit',minute:'2-digit'});
+}
+function dayLabel(d){
+  var dt=new Date(d),now=new Date();
+  if(dt.toDateString()===now.toDateString())return'Hôm nay';
+  var y=new Date(now);y.setDate(y.getDate()-1);
+  if(dt.toDateString()===y.toDateString())return'Hôm qua';
+  return dt.toLocaleDateString('vi',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function initials(s){return(s||'?').split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();}
+function ping(){try{var c=new(window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.setValueAtTime(0.2,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.25);o.start();o.stop(c.currentTime+0.25);}catch(e){}}
 
-  function showToast(senderName,content,roomId,isMention,isReply){
-    if(!notifEnabled||mutedRooms.includes(roomId))return;
-    const existing=document.querySelector('.chat-notif-toast');if(existing)existing.remove();
-    const toast=document.createElement('div');toast.className='chat-notif-toast';
-    toast.innerHTML='<div class="toast-sender">'+(isMention?'🔔 ':isReply?'↩️ ':'💬 ')+esc(senderName)+'</div>'
-      +'<div class="toast-content">'+esc((content||'').slice(0,60))+'</div>';
-    toast.onclick=function(){
-      currentRoomId=roomId;
-      if(window.page!=='chat')window.setPage('chat');
-      else{renderChatUI();loadMessages(roomId);}
-      toast.remove();
-    };
-    document.body.appendChild(toast);
-    if(isMention||isReply){try{
-      const ctx=new(window.AudioContext||window.webkitAudioContext)();
-      const o=ctx.createOscillator(),g=ctx.createGain();
-      o.connect(g);g.connect(ctx.destination);
-      o.frequency.value=880;g.gain.setValueAtTime(0.3,ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.3);
-      o.start();o.stop(ctx.currentTime+0.3);
-    }catch(e){}}
-    setTimeout(function(){if(toast.parentNode)toast.remove();},4000);
-  }
+function toast(sender,text,roomId,mention,reply){
+  if(!notifOn||muted.includes(roomId))return;
+  var old=document.querySelector('.chat-toast');if(old)old.remove();
+  var el=document.createElement('div');el.className='chat-toast';
+  el.innerHTML='<div class="chat-toast-sender">'+(mention?'🔔 ':reply?'↩️ ':'💬 ')+esc(sender)+'</div>'
+    +'<div class="chat-toast-content">'+esc((text||'').slice(0,60))+'</div>';
+  el.onclick=function(){curRoom=roomId;if(window.page!=='chat')window.setPage('chat');else selectRoom(roomId);el.remove();};
+  document.body.appendChild(el);
+  if(mention||reply)ping();
+  setTimeout(function(){if(el.parentNode)el.remove();},4000);
+}
 
-  function updateChatBadge(){
-    const total=Object.values(unreadCounts).reduce(function(a,b){return a+b;},0);
-    const badge=document.getElementById('badge-chat');
-    if(badge){badge.textContent=total;badge.style.display=total>0?'inline':'none';}
-  }
+function badge(){
+  var n=Object.values(unread).reduce(function(a,b){return a+b;},0);
+  var b=document.getElementById('badge-chat');
+  if(b){b.textContent=n;b.style.display=n>0?'inline':'none';}
+}
 
-  function startPolling(){
-    stopPolling();
-    pollTimer=setInterval(async function(){
-      if(!currentRoomId)return;
-      const since=lastMsgTime[currentRoomId]||new Date(Date.now()-30000).toISOString();
-      const res=await chatCall({action:'poll_new_messages',room_id:currentRoomId,after:since});
-      if(res.messages&&res.messages.length>0){
-        if(!chatMessages[currentRoomId])chatMessages[currentRoomId]=[];
-        res.messages.forEach(function(m){
-          if(!chatMessages[currentRoomId].find(function(x){return x.id===m.id;})){
-            chatMessages[currentRoomId].push(m);
-            lastMsgTime[currentRoomId]=m.created_at;
-            if(m.user_id!==myId()){
-              const isMention=m.content&&m.content.includes('@'+myName());
-              const isReply=m.reply_to_id&&(chatMessages[currentRoomId]||[]).find(function(x){return x.id===m.reply_to_id&&x.user_id===myId();});
-              showToast(m.sender_name||'?',m.content||'',m.room_id,!!isMention,!!isReply);
-              unreadCounts[currentRoomId]=(unreadCounts[currentRoomId]||0)+1;
-              updateChatBadge();
-            }
-          }
-        });
-        renderMessages();
+// ── Polling ──
+function startPoll(){
+  stopPoll();
+  pollT=setInterval(async function(){
+    if(!curRoom)return;
+    var since=lastTs[curRoom]||new Date(Date.now()-60000).toISOString();
+    var res=await api({action:'poll_new_messages',room_id:curRoom,after:since});
+    if(!res.messages||!res.messages.length)return;
+    if(!msgs[curRoom])msgs[curRoom]=[];
+    var newOnes=[];
+    res.messages.forEach(function(m){
+      if(!msgs[curRoom].find(function(x){return x.id===m.id;})){
+        msgs[curRoom].push(m);lastTs[curRoom]=m.created_at;newOnes.push(m);
       }
-    },3000);
-  }
-  function stopPolling(){if(pollTimer){clearInterval(pollTimer);pollTimer=null;}}
-
-  async function loadRooms(){
-    const res=await chatCall({action:'get_rooms',sale_id:myId(),is_manager:isManager()});
-    chatRooms=res.rooms||[];
-    if(!chatRooms.find(function(r){return r.id===GENERAL_ROOM_ID;})){
-      chatRooms.unshift({id:GENERAL_ROOM_ID,name:'General',is_direct:false,members:[]});
-    }
-    renderRoomList();
-  }
-
-  async function loadMessages(roomId,before){
-    const res=await chatCall({action:'get_messages',room_id:roomId,before:before,limit:50});
-    if(!chatMessages[roomId])chatMessages[roomId]=[];
-    if(before){chatMessages[roomId]=(res.messages||[]).concat(chatMessages[roomId]);}
-    else{chatMessages[roomId]=res.messages||[];}
-    if(res.messages&&res.messages.length>0)lastMsgTime[roomId]=res.messages[res.messages.length-1].created_at;
-    unreadCounts[roomId]=0;
-    try{localStorage.setItem('chat_last_read_'+roomId,new Date().toISOString());}catch(e){}
-    updateChatBadge();
-    renderMessages(!!before);
-  }
-
-  async function sendMessage(){
-    const inp=document.getElementById('chat-inp');
-    const text=inp?inp.value.trim():'';
-    if(!text||!currentRoomId)return;
-    inp.value='';inp.style.height='auto';
-    const payload={action:'send_message',room_id:currentRoomId,user_id:myId(),sender_name:myName(),content:text,reply_to_id:replyTo?replyTo.id:null};
-    clearReply();
-    const res=await chatCall(payload);
-    if(res.message){
-      if(!chatMessages[currentRoomId])chatMessages[currentRoomId]=[];
-      chatMessages[currentRoomId].push(res.message);
-      lastMsgTime[currentRoomId]=res.message.created_at;
-      renderMessages();scrollChatBottom();
-    }else if(res.error){
-      console.error('[send_message] failed:',res.error,res.detail||'');
-      alert('Lỗi gửi tin: '+(res.error||'Unknown'));
-      // Restore input
-      const inp=document.getElementById('chat-inp');
-      if(inp)inp.value=payload.content;
-    }
-  }
-
-  async function recallMessage(msgId){
-    if(!confirm('Thu hồi tin nhắn này?'))return;
-    const res=await chatCall({action:'recall_message',message_id:msgId,user_id:myId(),is_manager:isManager()});
-    if(res.success){
-      const msgs=chatMessages[currentRoomId]||[];
-      const m=msgs.find(function(x){return x.id===msgId;});
-      if(m){m.is_recalled=true;m.content='Tin nhắn đã được thu hồi';}
-      renderMessages();
-    }else{alert(res.error||'Không thể thu hồi');}
-  }
-
-  async function showRecalledHistory(){
-    const res=await chatCall({action:'get_recalled_history',room_id:currentRoomId,is_manager:true});
-    const items=res.recalled||[];
-    const modal=document.createElement('div');modal.className='recalled-modal';
-    modal.onclick=function(e){if(e.target===modal)modal.remove();};
-    modal.innerHTML='<div class="recalled-modal-inner">'
-      +'<div class="recalled-modal-header"><span style="font-weight:600">Lịch sử thu hồi</span>'
-      +'<button onclick="this.closest(\'.recalled-modal\').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px">x</button></div>'
-      +'<div class="recalled-modal-body">'
-      +(items.length===0?'<div style="text-align:center;color:var(--text3);padding:20px">Không có tin nào bị thu hồi</div>'
-        :items.map(function(i){return'<div class="recalled-item"><div class="ri-sender">'+esc(i.sender_name||'?')+'</div>'
-          +'<div class="ri-content">'+esc(i.recalled_content||'')+'</div>'
-          +'<div class="ri-time">Thu hồi: '+fmtTime(i.recalled_at)+' · Gửi: '+fmtTime(i.created_at)+'</div></div>';}).join(''))
-      +'</div></div>';
-    document.body.appendChild(modal);
-  }
-
-  function setReply(msg){
-    replyTo=msg;
-    const p=document.getElementById('chat-reply-preview');
-    if(p){p.style.display='flex';p.querySelector('.rp-sender').textContent=msg.sender_name||'?';p.querySelector('.rp-content').textContent=(msg.content||'').slice(0,80);}
-    const inp=document.getElementById('chat-inp');if(inp)inp.focus();
-  }
-  function clearReply(){
-    replyTo=null;
-    const p=document.getElementById('chat-reply-preview');if(p)p.style.display='none';
-  }
-
-  async function openDMfn(targetId,targetName){
-    const res=await chatCall({action:'get_or_create_dm',user_a:myId(),user_b:targetId});
-    if(res.room){
-      if(!chatRooms.find(function(r){return r.id===res.room.id;}))chatRooms.unshift(res.room);
-      currentRoomId=res.room.id;renderChatUI();loadMessages(res.room.id);
-    }
-  }
-  window.openDM=openDMfn;
-
-  async function createRoom(){
-    const name=prompt('Tên phòng chat:');if(!name)return;
-    const res=await chatCall({action:'create_room',name:name,members:[],created_by:myId(),is_direct:false});
-    if(res.room){chatRooms.unshift(res.room);renderRoomList();currentRoomId=res.room.id;renderChatUI();}
-  }
-
-  async function renameRoom(roomId){
-    const room=chatRooms.find(function(r){return r.id===roomId;});
-    const newName=prompt('Đổi tên phòng:',room?room.name:'');if(!newName)return;
-    const res=await chatCall({action:'update_room',room_id:roomId,name:newName});
-    if(res.room){const r=chatRooms.find(function(x){return x.id===roomId;});if(r)r.name=newName;renderRoomList();renderChatHeader();}
-  }
-
-  function toggleMute(roomId){
-    if(mutedRooms.includes(roomId))mutedRooms=mutedRooms.filter(function(x){return x!==roomId;});
-    else mutedRooms.push(roomId);
-    try{localStorage.setItem('chat_muted',JSON.stringify(mutedRooms));}catch(e){}
-    renderChatHeader();
-  }
-  function toggleNotif(){
-    notifEnabled=!notifEnabled;
-    try{localStorage.setItem('chat_notif',notifEnabled?'on':'off');}catch(e){}
-    renderChatHeader();
-  }
-
-  function renderRoomList(){
-    const list=document.getElementById('chat-room-list');if(!list)return;
-    const groups=chatRooms.filter(function(r){return !r.is_direct;});
-    const dms=chatRooms.filter(function(r){return r.is_direct;});
-    var html='';
-    if(groups.length){
-      html+='<div class="chat-section-label">Phòng chung</div>';
-      groups.forEach(function(r){
-        const unread=unreadCounts[r.id]||0;
-        const active=r.id===currentRoomId?' active':'';
-        html+='<div class="chat-room-item'+active+'" data-rid="'+esc(r.id)+'" onclick="window._chatSelectRoom(this.dataset.rid)">'
-          +'<div class="chat-room-icon">#</div>'
-          +'<div class="chat-room-info"><div class="chat-room-name">'+esc(r.name)+'</div></div>'
-          +(unread>0?'<span class="chat-unread-badge">'+unread+'</span>':'')
-          +'</div>';
-      });
-    }
-    if(dms.length){
-      html+='<div class="chat-section-label">Tin nhắn riêng</div>';
-      dms.forEach(function(r){
-        const unread=unreadCounts[r.id]||0;
-        const active=r.id===currentRoomId?' active':'';
-        // For DM: find the other member's name from PROFILES
-        let otherName=r.dm_name||'DM';
-        if(r.is_direct&&r.members){
-          const otherId=(r.members||[]).find(function(id){return id!==myId();});
-          if(otherId&&window.PROFILES){
-            const p=window.PROFILES.find(function(x){return x.id===otherId;});
-            if(p)otherName=p.full_name||p.email||'DM';
-          }
-        }
-        const initials=otherName.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
-        html+='<div class="chat-room-item'+active+'" data-rid="'+esc(r.id)+'" onclick="window._chatSelectRoom(this.dataset.rid)">'
-          +'<div class="chat-room-icon dm">'+initials+'</div>'
-          +'<div class="chat-room-info"><div class="chat-room-name">'+esc(otherName)+'</div></div>'
-          +(unread>0?'<span class="chat-unread-badge">'+unread+'</span>':'')
-          +'</div>';
-      });
-    }
-    list.innerHTML=html;
-  }
-
-  function renderChatHeader(){
-    const header=document.getElementById('chat-header');
-    if(!header||!currentRoomId)return;
-    const room=chatRooms.find(function(r){return r.id===currentRoomId;});
-    if(!room)return;
-    const isMuted=mutedRooms.includes(currentRoomId);
-    const memberCount=(room.members||[]).length;
-    const rid=esc(currentRoomId);
-    header.innerHTML='<div class="chat-header-name">'+(room.is_direct?'💬 ':'# ')+esc(room.name)+'</div>'
-      +(memberCount>0?'<span class="chat-header-members">'+memberCount+' thành viên</span>':'')
-      +'<button class="chat-header-btn'+(isMuted?' muted':'')+'" data-rid="'+rid+'" onclick="window._chatToggleMute(this.dataset.rid)" title="'+(isMuted?'Bật':'Tắt')+' thông báo">'
-      +'<i class="ti ti-bell'+(isMuted?'-off':'')+'"></i></button>'
-      +(isManager()?'<button class="chat-header-btn" data-rid="'+rid+'" onclick="window._chatRename(this.dataset.rid)" title="Đổi tên"><i class="ti ti-pencil"></i></button>':'')
-      +(isManager()?'<button class="chat-header-btn" onclick="window._chatRecalledHistory()" title="Lịch sử thu hồi"><i class="ti ti-history"></i></button>':'')
-      +'<button class="chat-header-btn" onclick="window._chatToggleNotif()" title="'+(notifEnabled?'Tắt':'Bật')+' thông báo"><i class="ti ti-'+(notifEnabled?'volume':'volume-off')+'"></i></button>';
-  }
-
-  function renderMessages(prepend){
-    const container=document.getElementById('chat-messages');
-    if(!container||!currentRoomId)return;
-    const msgs=chatMessages[currentRoomId]||[];
-    if(msgs.length===0){container.innerHTML='<div class="chat-empty"><i class="ti ti-messages"></i><span>Chưa có tin nhắn nào</span></div>';return;}
-    const scrollBottom=container.scrollHeight-container.scrollTop;
-    var html=msgs.length>=50?'<div class="chat-load-more" onclick="window._chatLoadMore()"><i class="ti ti-chevron-up"></i> Tải thêm tin cũ hơn</div>':'';
-    msgs.forEach(function(m,idx){
-      const isMine=m.user_id===myId();
-      const isRecalled=m.is_recalled;
-      const prev=msgs[idx-1];
-      const showSender=!isMine&&(!prev||prev.user_id!==m.user_id);
-      var replyHtml='';
-      if(m.reply_to_id){
-        const orig=msgs.find(function(x){return x.id===m.reply_to_id;});
-        if(orig)replyHtml='<div class="chat-reply-quote"><div class="quote-sender">'+esc(orig.sender_name||'?')+'</div><div>'+esc((orig.content||'').slice(0,80))+'</div></div>';
-      }
-      const bubbleClass='chat-bubble '+(isRecalled?'recalled':isMine?'mine':'theirs');
-      const initials=((m.sender_name||'?').split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase());
-      var actionsHtml='';
-      if(!isRecalled){
-        actionsHtml='<div class="chat-msg-actions">'
-          +'<button class="chat-action-btn" data-mid="'+m.id+'" onclick="window._chatReply(this.dataset.mid)" title="Reply"><i class="ti ti-corner-up-left"></i></button>'
-          +(isMine||isManager()?'<button class="chat-action-btn" data-mid="'+m.id+'" onclick="window._chatRecall(this.dataset.mid)" title="Thu hồi"><i class="ti ti-trash"></i></button>':'')
-          +'</div>';
-      }
-      html+='<div class="chat-msg-row'+(isMine?' mine':'')+'"">'
-        +(isMine?'':'<div class="chat-msg-avatar">'+initials+'</div>')
-        +'<div class="chat-msg-col">'
-        +(showSender?'<div class="chat-sender-name">'+esc(m.sender_name||'')+'</div>':'')
-        +'<div class="'+bubbleClass+'">'+actionsHtml+replyHtml
-        +(m.image_url?'<img class="chat-img" src="'+esc(m.image_url)+'" onclick="window.open(this.src)">':'')
-        +'<div>'+renderContent(m.content||'')+'</div></div>'
-        +'<div class="chat-msg-time">'+fmtTime(m.created_at)+'</div>'
-        +'</div></div>';
     });
-    container.innerHTML=html;
-    if(!prepend)scrollChatBottom();
-    else container.scrollTop=container.scrollHeight-scrollBottom;
+    if(!newOnes.length)return;
+    renderMsgs(false,true); // append only
+    newOnes.forEach(function(m){
+      if(m.user_id!==uid()){
+        var isMention=m.content&&m.content.includes('@'+uname());
+        var isReply=m.reply_to_id&&(msgs[curRoom]||[]).find(function(x){return x.id===m.reply_to_id&&x.user_id===uid();});
+        toast(m.sender_name||'?',m.content,m.room_id,!!isMention,!!isReply);
+        unread[m.room_id]=(unread[m.room_id]||0)+1;badge();
+        renderRoomList();
+      }
+    });
+  },POLL_MS);
+}
+function stopPoll(){if(pollT){clearInterval(pollT);pollT=null;}}
+
+// ── API calls ──
+async function loadRooms(){
+  var res=await api({action:'get_rooms',sale_id:uid(),is_manager:mgr()});
+  rooms=res.rooms||[];
+  if(!rooms.find(function(r){return r.id===GEN_ROOM;}))
+    rooms.unshift({id:GEN_ROOM,name:'General',is_direct:false,members:[]});
+  renderRoomList();
+}
+
+async function loadMsgs(roomId,before){
+  var res=await api({action:'get_messages',room_id:roomId,before:before,limit:PAGE_SIZE});
+  if(!msgs[roomId])msgs[roomId]=[];
+  if(before)msgs[roomId]=(res.messages||[]).concat(msgs[roomId]);
+  else msgs[roomId]=res.messages||[];
+  if(res.messages&&res.messages.length)lastTs[roomId]=res.messages[res.messages.length-1].created_at;
+  unread[roomId]=0;
+  try{localStorage.setItem('c_lr_'+roomId,new Date().toISOString());}catch(e){}
+  badge();renderMsgs(!!before);
+}
+
+async function send(){
+  if(sending)return;
+  var inp=document.getElementById('ci');
+  var text=(inp?inp.value.trim():'');
+  if(!text||!curRoom)return;
+  sending=true;
+  var btn=document.getElementById('csend');if(btn)btn.disabled=true;
+  inp.value='';inp.style.height='auto';
+  var payload={action:'send_message',room_id:curRoom,user_id:uid(),sender_name:uname(),content:text,reply_to_id:replyTo?replyTo.id:null};
+  clearReply();
+  var res=await api(payload);
+  sending=false;if(btn)btn.disabled=false;
+  if(res.message){
+    if(!msgs[curRoom])msgs[curRoom]=[];
+    msgs[curRoom].push(res.message);lastTs[curRoom]=res.message.created_at;
+    renderMsgs(false,false);scrollBottom();
+  }else{
+    console.error('[send]',res.error);
+    inp.value=payload.content;
+    showNotif('⚠️ Gửi thất bại: '+(res.error||'Lỗi không xác định'),true);
+  }
+}
+
+async function recall(id){
+  if(!confirm('Thu hồi tin này?'))return;
+  var res=await api({action:'recall_message',message_id:id,user_id:uid(),is_manager:mgr()});
+  if(res.success){
+    var m=(msgs[curRoom]||[]).find(function(x){return x.id===id;});
+    if(m){m.is_recalled=true;m.content='Tin nhắn đã được thu hồi';}
+    renderMsgs();
+  }else alert(res.error||'Không thể thu hồi');
+}
+
+// ── Room create modal ──
+function showCreateRoom(){
+  var selected=[];
+  var profiles=(window.PROFILES||[]).filter(function(p){return p.id!==uid();});
+  var box=document.createElement('div');box.className='chat-modal';
+  box.onclick=function(e){if(e.target===box)box.remove();};
+  box.innerHTML='<div class="chat-modal-box">'
+    +'<div class="chat-modal-head"><span class="chat-modal-title"><i class="ti ti-plus" style="margin-right:6px"></i>Tạo phòng chat</span>'
+    +'<button class="chat-modal-close" onclick="this.closest(\'.chat-modal\').remove()">×</button></div>'
+    +'<div class="chat-modal-body">'
+    +'<div class="chat-field"><label>Tên phòng</label><input id="room-name-inp" placeholder="VD: Shipping Team, Sales Q2..." /></div>'
+    +'<div class="chat-field"><label>Thêm thành viên</label>'
+    +'<div class="chat-member-list" id="member-pick">'
+    +profiles.map(function(p){
+      return '<div class="chat-member-row" data-id="'+esc(p.id)+'" data-name="'+esc(p.full_name||'')+'" onclick="window._chatToggleMember(this)">'
+        +'<div class="chat-member-av">'+initials(p.full_name)+'</div>'
+        +'<div class="chat-member-name">'+esc(p.full_name||p.email||'?')+'</div>'
+        +'<div class="chat-member-check"><i class="ti ti-check"></i></div>'
+        +'</div>';
+    }).join('')
+    +'</div></div></div>'
+    +'<div class="chat-modal-foot">'
+    +'<button class="btn" onclick="this.closest(\'.chat-modal\').remove()">Hủy</button>'
+    +'<button class="btn btn-primary" onclick="window._chatDoCreate()"><i class="ti ti-send"></i> Tạo phòng</button>'
+    +'</div></div>';
+  document.body.appendChild(box);
+  setTimeout(function(){var i=document.getElementById('room-name-inp');if(i)i.focus();},100);
+}
+
+function showMemberModal(roomId){
+  var room=rooms.find(function(r){return r.id===roomId;});if(!room)return;
+  var currentMembers=room.members||[];
+  var profiles=(window.PROFILES||[]).filter(function(p){return p.id!==uid();});
+  var box=document.createElement('div');box.className='chat-modal';
+  box.onclick=function(e){if(e.target===box)box.remove();};
+  box.innerHTML='<div class="chat-modal-box">'
+    +'<div class="chat-modal-head"><span class="chat-modal-title"><i class="ti ti-users" style="margin-right:6px"></i>Quản lý thành viên</span>'
+    +'<button class="chat-modal-close" onclick="this.closest(\'.chat-modal\').remove()">×</button></div>'
+    +'<div class="chat-modal-body">'
+    +'<div class="chat-field"><label>Thành viên trong phòng</label>'
+    +'<div class="chat-member-list" id="member-pick">'
+    +profiles.map(function(p){
+      var sel=currentMembers.includes(p.id);
+      return '<div class="chat-member-row'+(sel?' selected':'')+'" data-id="'+esc(p.id)+'" data-name="'+esc(p.full_name||'')+'" onclick="window._chatToggleMember(this)">'
+        +'<div class="chat-member-av">'+initials(p.full_name)+'</div>'
+        +'<div class="chat-member-name">'+esc(p.full_name||p.email||'?')+'</div>'
+        +'<div class="chat-member-check"><i class="ti ti-check"></i></div>'
+        +'</div>';
+    }).join('')
+    +'</div></div></div>'
+    +'<div class="chat-modal-foot">'
+    +'<button class="btn" onclick="this.closest(\'.chat-modal\').remove()">Đóng</button>'
+    +'<button class="btn btn-primary" onclick="window._chatSaveMembers(\''+esc(roomId)+'\')"><i class="ti ti-device-floppy"></i> Lưu</button>'
+    +'</div></div>';
+  document.body.appendChild(box);
+}
+
+function showRecalledModal(){
+  api({action:'get_recalled_history',room_id:curRoom,is_manager:true}).then(function(res){
+    var items=res.recalled||[];
+    var box=document.createElement('div');box.className='recalled-modal';
+    box.onclick=function(e){if(e.target===box)box.remove();};
+    box.innerHTML='<div class="recalled-modal-inner">'
+      +'<div class="recalled-modal-header"><span style="font-weight:600;color:var(--text)">Lịch sử tin thu hồi</span>'
+      +'<button onclick="this.closest(\'.recalled-modal\').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px">×</button></div>'
+      +'<div class="recalled-modal-body">'
+      +(items.length?items.map(function(i){return'<div class="recalled-item">'
+        +'<div class="ri-sender">'+esc(i.sender_name||'?')+'</div>'
+        +'<div class="ri-content">'+esc(i.recalled_content||'—')+'</div>'
+        +'<div class="ri-time">Thu hồi: '+ts(i.recalled_at)+' · Gửi: '+ts(i.created_at)+'</div>'
+        +'</div>';}).join('')
+        :'<div style="text-align:center;padding:24px;color:var(--text3)">Chưa có tin nào bị thu hồi</div>')
+      +'</div></div>';
+    document.body.appendChild(box);
+  });
+}
+
+function showNotif(msg,isErr){
+  var el=document.createElement('div');
+  el.style.cssText='position:fixed;top:16px;right:16px;z-index:9999;padding:10px 16px;border-radius:10px;font-size:13px;'
+    +(isErr?'background:#c0392b;color:#fff;':'background:#27ae60;color:#fff;');
+  el.textContent=msg;document.body.appendChild(el);
+  setTimeout(function(){if(el.parentNode)el.remove();},3000);
+}
+
+// ── Reply ──
+function setReply(m){
+  replyTo=m;
+  var bar=document.getElementById('creply');
+  if(bar){
+    bar.style.display='flex';
+    bar.querySelector('.rb-name').textContent=m.sender_name||'?';
+    bar.querySelector('.rb-text').textContent=(m.content||'').slice(0,80);
+  }
+  var inp=document.getElementById('ci');if(inp)inp.focus();
+}
+function clearReply(){
+  replyTo=null;
+  var bar=document.getElementById('creply');if(bar)bar.style.display='none';
+}
+
+// ── DM ──
+async function openDMfn(targetId,targetName){
+  var ex=rooms.find(function(r){return r.is_direct&&r.members&&r.members.includes(targetId)&&r.members.includes(uid())&&r.members.length===2;});
+  if(ex){selectRoom(ex.id);return;}
+  var res=await api({action:'get_or_create_dm',user_a:uid(),user_b:targetId});
+  if(res.room){if(!rooms.find(function(r){return r.id===res.room.id;}))rooms.unshift(res.room);selectRoom(res.room.id);}
+}
+window.openDM=openDMfn;
+
+// ── Room helpers ──
+async function renameRoom(roomId){
+  var r=rooms.find(function(x){return x.id===roomId;});
+  var n=prompt('Đổi tên phòng:',r?r.name:'');if(!n)return;
+  var res=await api({action:'update_room',room_id:roomId,name:n});
+  if(res.room){if(r)r.name=n;renderRoomList();renderHead();}
+}
+
+// ── RENDER ──
+function roomName(r){
+  if(r.is_direct&&r.members){
+    var oid=r.members.find(function(id){return id!==uid();});
+    if(oid&&window.PROFILES){var p=window.PROFILES.find(function(x){return x.id===oid;});if(p)return p.full_name||p.email||'DM';}
+  }
+  return r.name||'?';
+}
+
+function renderRoomList(){
+  var el=document.getElementById('crooms');if(!el)return;
+  var groups=rooms.filter(function(r){return !r.is_direct;});
+  var dms=rooms.filter(function(r){return r.is_direct;});
+  var h='';
+  if(groups.length){
+    h+='<div class="chat-section-lbl">Phòng chung</div>';
+    groups.forEach(function(r){
+      var n=unread[r.id]||0,active=r.id===curRoom?' active':'';
+      h+='<div class="chat-room-row'+active+'" data-rid="'+esc(r.id)+'" onclick="window._cs(this.dataset.rid)">'
+        +'<div class="chat-room-icon">#</div>'
+        +'<div class="chat-room-meta"><div class="chat-room-name">'+esc(r.name)+'</div></div>'
+        +(n?'<div class="chat-unread">'+n+'</div>':'')
+        +'</div>';
+    });
+  }
+  if(dms.length){
+    h+='<div class="chat-section-lbl">Tin nhắn riêng</div>';
+    dms.forEach(function(r){
+      var n=unread[r.id]||0,active=r.id===curRoom?' active':'',nm=roomName(r),ini=initials(nm);
+      h+='<div class="chat-room-row'+active+'" data-rid="'+esc(r.id)+'" onclick="window._cs(this.dataset.rid)">'
+        +'<div class="chat-room-icon dm">'+ini+'</div>'
+        +'<div class="chat-room-meta"><div class="chat-room-name">'+esc(nm)+'</div></div>'
+        +(n?'<div class="chat-unread">'+n+'</div>':'')
+        +'</div>';
+    });
+  }
+  el.innerHTML=h;
+}
+
+function renderHead(){
+  var el=document.getElementById('chead');if(!el||!curRoom)return;
+  var r=rooms.find(function(x){return x.id===curRoom;});if(!r)return;
+  var nm=roomName(r),mc=(r.members||[]).length,muted_=muted.includes(curRoom),rid=esc(curRoom);
+  el.innerHTML='<button class="chat-mobile-tog" id="chat-mob-tog" onclick="window._ctog()"><i class="ti ti-menu-2"></i></button>'
+    +'<div class="chat-head-icon'+(r.is_direct?' dm':'')+'">'+initials(nm)+'</div>'
+    +'<div class="chat-head-info"><div class="chat-head-name">'+esc(nm)+'</div>'
+    +(mc>0?'<div class="chat-head-sub">'+mc+' thành viên</div>':'')+'</div>'
+    +'<div class="chat-head-actions">'
+    +(mgr()&&!r.is_direct?'<button class="chat-icon-btn" data-rid="'+rid+'" onclick="showMemberModal(this.dataset.rid)" title="Thành viên"><i class="ti ti-users"></i></button>':'')
+    +(mgr()&&!r.is_direct?'<button class="chat-icon-btn" data-rid="'+rid+'" onclick="renameRoom(this.dataset.rid)" title="Đổi tên"><i class="ti ti-pencil"></i></button>':'')
+    +'<button class="chat-icon-btn'+(muted_?' active':'')+'" data-rid="'+rid+'" onclick="window._cmute(this.dataset.rid)" title="'+(muted_?'Bật':'Tắt')+' thông báo"><i class="ti ti-bell'+(muted_?'-off':'')+'"></i></button>'
+    +(mgr()?'<button class="chat-icon-btn" onclick="showRecalledModal()" title="Lịch sử thu hồi"><i class="ti ti-history"></i></button>':'')
+    +'<button class="chat-icon-btn'+(notifOn?'':' active')+'" onclick="window._cnotif()" title="'+(notifOn?'Tắt':'Bật')+' thông báo tổng"><i class="ti ti-'+(notifOn?'volume':'volume-off')+'"></i></button>'
+    +'</div>';
+}
+
+function scrollBottom(){var c=document.getElementById('cmsgs');if(c)c.scrollTop=c.scrollHeight;}
+
+function renderMsgs(prepend,append){
+  var c=document.getElementById('cmsgs');if(!c||!curRoom)return;
+  var list=msgs[curRoom]||[];
+  if(!list.length){c.innerHTML='<div class="chat-empty-state"><i class="ti ti-messages"></i><p>Chưa có tin nhắn nào</p></div>';return;}
+
+  if(append){
+    // Only append new messages at bottom
+    var lastEl=c.querySelector('[data-mid]:last-of-type');
+    var lastId=lastEl?parseInt(lastEl.dataset.mid):0;
+    var newMsgs=list.filter(function(m){return m.id>lastId;});
+    newMsgs.forEach(function(m){
+      var div=buildMsgEl(m,list);
+      c.appendChild(div);
+    });
+    scrollBottom();return;
   }
 
-  function scrollChatBottom(){const c=document.getElementById('chat-messages');if(c)c.scrollTop=c.scrollHeight;}
+  var savedScrollBottom=c.scrollHeight-c.scrollTop;
+  var h=list.length>=PAGE_SIZE?'<div class="chat-load-more" onclick="window._cmore()"><i class="ti ti-chevron-up"></i> Tải thêm</div>':'';
 
-  function renderChatUI(){
-    const root=document.getElementById('chat-root');if(!root)return;
-    var profilesHtml='';
-    if(isManager()&&window.PROFILES){
-      profilesHtml='<div style="padding:6px;border-top:1px solid var(--border)"><div class="chat-section-label">Nhắn tin riêng</div>';
-      (window.PROFILES||[]).filter(function(p){return p.id!==myId();}).forEach(function(p){
-        const initials=((p.full_name||'?').split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase());
-        profilesHtml+='<div class="chat-room-item" data-uid="'+esc(p.id)+'" data-uname="'+esc(p.full_name||'?')+'" onclick="window.openDM(this.dataset.uid,this.dataset.uname)" style="cursor:pointer">'
-          +'<div class="chat-room-icon dm">'+initials+'</div>'
-          +'<div class="chat-room-info"><div class="chat-room-name">'+esc(p.full_name||p.email||'?')+'</div></div></div>';
-      });
-      profilesHtml+='</div>';
-    }
-    root.innerHTML='<div class="chat-layout">'
-      +'<div class="chat-sidebar" id="chat-sidebar">'
-      +'<div class="chat-sidebar-header"><span class="chat-sidebar-title">Chat</span>'
-      +(isManager()?'<button class="chat-header-btn" onclick="window._chatCreateRoom()" title="Tạo phòng"><i class="ti ti-plus"></i></button>':'')
-      +'</div>'
-      +'<div id="chat-room-list" class="chat-room-list"></div>'
-      +profilesHtml
+  var lastDay='';
+  list.forEach(function(m){
+    var day=new Date(m.created_at).toDateString();
+    if(day!==lastDay){h+='<div class="chat-day-divider"><span class="chat-day-label">'+dayLabel(m.created_at)+'</span></div>';lastDay=day;}
+    h+=buildMsgHtml(m,list);
+  });
+  c.innerHTML=h;
+  if(prepend)c.scrollTop=c.scrollHeight-savedScrollBottom;
+  else scrollBottom();
+}
+
+function buildMsgHtml(m,list){
+  var mine=m.user_id===uid(),recalled=m.is_recalled;
+  var prev=list[list.indexOf(m)-1];
+  var showSender=!mine&&(!prev||prev.user_id!==m.user_id||new Date(m.created_at)-new Date(prev.created_at)>300000);
+  var ini=initials(m.sender_name||'?');
+
+  var replyH='';
+  if(m.reply_to_id){var orig=list.find(function(x){return x.id===m.reply_to_id;});
+    if(orig)replyH='<div class="chat-reply-block"><div class="rb-name">'+esc(orig.sender_name||'?')+'</div><div>'+esc((orig.content||'').slice(0,80))+'</div></div>';}
+
+  var acts='';
+  if(!recalled){acts='<div class="chat-actions">'
+    +'<button class="chat-act-btn" data-mid="'+m.id+'" onclick="window._crep(this.dataset.mid)" title="Reply"><i class="ti ti-corner-up-left"></i></button>'
+    +(mine||mgr()?'<button class="chat-act-btn" data-mid="'+m.id+'" onclick="window._crecall(this.dataset.mid)" title="Thu hồi"><i class="ti ti-trash"></i></button>':'')
+    +'</div>';}
+
+  return '<div class="chat-msg-group'+(mine?' mine':'')+'" data-mid="'+m.id+'">'
+    +(mine?'':'<div class="chat-avatar">'+ini+'</div>')
+    +'<div class="chat-msg-col">'
+    +(showSender?'<div class="chat-sender">'+esc(m.sender_name||'')+'</div>':'')
+    +'<div class="chat-bubble'+(recalled?' recalled':mine?' mine':' theirs')+'">'
+    +acts+replyH
+    +(m.image_url?'<img class="chat-img" src="'+esc(m.image_url)+'" onclick="window.open(this.src)" loading="lazy">':'')
+    +'<div>'+markup(m.content||'')+'</div></div>'
+    +'<div class="chat-ts">'+ts(m.created_at)+'</div>'
+    +'</div></div>';
+}
+
+function buildMsgEl(m,list){var d=document.createElement('div');d.outerHTML=buildMsgHtml(m,list);var tmp=document.createElement('div');tmp.innerHTML=buildMsgHtml(m,list);return tmp.firstChild;}
+
+function renderMain(){
+  var root=document.getElementById('chat-root');if(!root)return;
+
+  // Build DM list for manager
+  var dmList='';
+  if(mgr()&&window.PROFILES){
+    dmList='<div class="chat-section-lbl">Nhắn tin riêng</div>'
+      +(window.PROFILES||[]).filter(function(p){return p.id!==uid();}).map(function(p){
+        return '<div class="chat-room-row" data-uid="'+esc(p.id)+'" data-un="'+esc(p.full_name||'')+'" onclick="window.openDM(this.dataset.uid,this.dataset.un)">'
+          +'<div class="chat-room-icon dm">'+initials(p.full_name)+'</div>'
+          +'<div class="chat-room-meta"><div class="chat-room-name">'+esc(p.full_name||'?')+'</div></div>'
+          +'</div>';
+      }).join('');
+  }
+
+  root.innerHTML=
+    '<div id="chat-mob-overlay" class="chat-mobile-overlay" onclick="window._ctog()"></div>'
+    +'<div class="chat-wrap">'
+      +'<div class="chat-sb" id="csb">'
+        +'<div class="chat-sb-top">'
+          +'<span class="chat-sb-title"><i class="ti ti-messages" style="margin-right:6px;color:var(--brand2)"></i>Chat</span>'
+          +(mgr()?'<button class="chat-sb-btn" onclick="showCreateRoom()" title="Tạo phòng"><i class="ti ti-plus"></i></button>':'')
+        +'</div>'
+        +'<div class="chat-sb-list" id="crooms"></div>'
+        +(dmList?'<div class="chat-sb-list" style="border-top:1px solid var(--chat-border);padding-top:4px">'+dmList+'</div>':'')
       +'</div>'
       +'<div class="chat-main">'
-      +'<div id="chat-header" class="chat-header">'
-      +'<button class="chat-mobile-menu-btn" onclick="window._chatToggleSidebar()" title="Menu"><i class="ti ti-menu-2"></i></button>'
-      +(currentRoomId?'':'<div class="chat-header-name" style="color:var(--text3)">Chọn phòng để bắt đầu</div>')
-      +'</div>'
-      +'<div id="chat-messages" class="chat-messages">'
-      +(currentRoomId?'<div class="chat-empty"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i><span>Đang tải...</span></div>':'<div class="chat-empty"><i class="ti ti-messages"></i><span>Chọn phòng chat bên trái</span></div>')
-      +'</div>'
-      +(currentRoomId?'<div class="chat-input-area">'
-        +'<div id="chat-reply-preview" class="chat-reply-preview" style="display:none">'
-        +'<div><div class="rp-sender" style="font-weight:600;color:var(--brand2);font-size:11px"></div><div class="rp-content" style="font-size:11px;color:var(--text2)"></div></div>'
-        +'<button class="chat-reply-preview-close" onclick="window._chatClearReply()">x</button>'
+        +'<div class="chat-head" id="chead">'
+          +'<button class="chat-mobile-tog" id="chat-mob-tog" onclick="window._ctog()"><i class="ti ti-menu-2"></i></button>'
+          +(curRoom?'':'<div class="chat-head-name" style="color:var(--text3)">Chọn phòng để bắt đầu</div>')
         +'</div>'
-        +'<div class="chat-input-row">'
-        +'<textarea id="chat-inp" class="chat-input" placeholder="Nhập tin nhắn... (@tên để mention)" rows="1"></textarea>'
-        +'<button class="chat-send-btn" onclick="window._chatSend()" title="Gửi"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
-        +'</div></div>':'')
-      +'</div></div>';
-    renderRoomList();renderChatHeader();
-    const inp=document.getElementById('chat-inp');
-    if(inp){
-      inp.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();window._chatSend();}});
-      inp.addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';});
-    }
-    if(currentRoomId)loadMessages(currentRoomId);
+        +'<div class="chat-msgs" id="cmsgs">'
+          +(curRoom?'<div class="chat-empty-state"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i><p>Đang tải...</p></div>':'<div class="chat-empty-state"><i class="ti ti-messages"></i><p>Chọn phòng chat bên trái</p></div>')
+        +'</div>'
+        +(curRoom?
+          '<div class="chat-input-wrap">'
+            +'<div id="creply" class="chat-reply-bar" style="display:none">'
+              +'<div><div class="rb-name"></div><div class="rb-text"></div></div>'
+              +'<button class="chat-reply-close" onclick="window._ccreply()">×</button>'
+            +'</div>'
+            +'<div class="chat-input-row">'
+              +'<textarea id="ci" class="chat-inp" placeholder="Nhập tin nhắn... (@tên để mention)" rows="1"></textarea>'
+              +'<button id="csend" class="chat-send" onclick="send()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
+            +'</div>'
+          +'</div>'
+        :'')
+      +'</div>'
+    +'</div>';
+
+  renderRoomList();renderHead();
+  var inp=document.getElementById('ci');
+  if(inp){
+    inp.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
+    inp.addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';});
   }
+  if(curRoom)loadMsgs(curRoom);
+}
 
-  window._chatToggleSidebar=function(){
-    const sb=document.getElementById('chat-sidebar');
-    if(sb)sb.classList.toggle('show');
-  };
-  window._chatSelectRoom=function(roomId){currentRoomId=roomId;unreadCounts[roomId]=0;updateChatBadge();renderRoomList();renderChatHeader();const msgs=document.getElementById('chat-messages');if(msgs)msgs.innerHTML='<div class="chat-empty"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i><span>Đang tải...</span></div>';loadMessages(roomId);startPolling();const sb=document.getElementById('chat-sidebar');if(sb)sb.classList.remove('show');};
-  window._chatSend=sendMessage;
-  window._chatReply=function(msgId){const msgs=chatMessages[currentRoomId]||[];const m=msgs.find(function(x){return String(x.id)===String(msgId);});if(m)setReply(m);};
-  window._chatRecall=function(msgId){recallMessage(msgId);};
-  window._chatClearReply=clearReply;
-  window._chatLoadMore=function(){const msgs=chatMessages[currentRoomId]||[];if(msgs.length>0)loadMessages(currentRoomId,msgs[0].created_at);};
-  window._chatCreateRoom=createRoom;
-  window._chatRename=renameRoom;
-  window._chatToggleMute=toggleMute;
-  window._chatToggleNotif=toggleNotif;
-  window._chatRecalledHistory=showRecalledHistory;
+function selectRoom(id){
+  curRoom=id;unread[id]=0;badge();
+  var sb=document.getElementById('csb'),ov=document.getElementById('chat-mob-overlay');
+  if(sb)sb.classList.remove('open');if(ov)ov.classList.remove('show');
+  renderRoomList();renderHead();
+  var c=document.getElementById('cmsgs');
+  if(c)c.innerHTML='<div class="chat-empty-state"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i><p>Đang tải...</p></div>';
+  loadMsgs(id);startPoll();
+}
 
-  window.initChatPage=async function(){
-    if(!currentRoomId)currentRoomId=GENERAL_ROOM_ID;
-    await loadRooms();
-    renderChatUI();
-    startPolling();
-  };
+// ── Global bindings ──
+window._cs=selectRoom;
+window._crep=function(mid){var m=(msgs[curRoom]||[]).find(function(x){return String(x.id)===String(mid);});if(m)setReply(m);};
+window._crecall=recall;
+window._ccreply=clearReply;
+window._cmore=function(){var list=msgs[curRoom]||[];if(list.length)loadMsgs(curRoom,list[0].created_at);};
+window._ctog=function(){var sb=document.getElementById('csb'),ov=document.getElementById('chat-mob-overlay');if(sb)sb.classList.toggle('open');if(ov)ov.classList.toggle('show');};
+window._cmute=function(id){if(muted.includes(id))muted=muted.filter(function(x){return x!==id;});else muted.push(id);try{localStorage.setItem('c_muted',JSON.stringify(muted));}catch(e){}renderHead();};
+window._cnotif=function(){notifOn=!notifOn;try{localStorage.setItem('c_notif',notifOn?'on':'off');}catch(e){}renderHead();};
+window._chatToggleMember=function(el){el.classList.toggle('selected');};
+window._chatDoCreate=async function(){
+  var n=document.getElementById('room-name-inp');
+  if(!n||!n.value.trim()){alert('Nhập tên phòng!');return;}
+  var sel=document.querySelectorAll('#member-pick .chat-member-row.selected');
+  var members=Array.from(sel).map(function(e){return e.dataset.id;});
+  var res=await api({action:'create_room',name:n.value.trim(),members:members,created_by:uid(),is_direct:false});
+  if(res.room){rooms.unshift(res.room);document.querySelector('.chat-modal')&&document.querySelector('.chat-modal').remove();selectRoom(res.room.id);}
+  else alert(res.error||'Lỗi tạo phòng');
+};
+window._chatSaveMembers=async function(roomId){
+  var sel=document.querySelectorAll('#member-pick .chat-member-row.selected');
+  var members=Array.from(sel).map(function(e){return e.dataset.id;});
+  var res=await api({action:'update_room',room_id:roomId,members:members});
+  if(res.room){var r=rooms.find(function(x){return x.id===roomId;});if(r)r.members=members;document.querySelector('.chat-modal')&&document.querySelector('.chat-modal').remove();renderHead();showNotif('Đã cập nhật thành viên');}
+  else alert(res.error||'Lỗi');
+};
 
-  // Background badge poll — only when rooms loaded, every 30s to reduce calls
-  setInterval(async function(){
-    if(window.page==='chat'||!window.currentUser||chatRooms.length===0)return;
-    const roomIds=chatRooms.map(function(r){return r.id;});
-    const lastRead={};
-    roomIds.forEach(function(rid){try{lastRead[rid]=localStorage.getItem('chat_last_read_'+rid)||new Date(0).toISOString();}catch(e){}});
-    const res=await chatCall({action:'poll_all_rooms',room_ids:roomIds,last_read:lastRead});
-    if(res.unread_counts){unreadCounts=res.unread_counts;updateChatBadge();}
-  },30000);
+// ── Init ──
+window.initChatPage=async function(){
+  if(!curRoom)curRoom=GEN_ROOM;
+  renderMain();
+  await loadRooms();
+  if(curRoom)loadMsgs(curRoom);
+  startPoll();
+};
+
+// Background badge check
+setInterval(async function(){
+  if(window.page==='chat'||!window.currentUser||!rooms.length)return;
+  var ids=rooms.map(function(r){return r.id;});
+  var lr={};ids.forEach(function(id){try{lr[id]=localStorage.getItem('c_lr_'+id)||new Date(0).toISOString();}catch(e){}});
+  var res=await api({action:'poll_all_rooms',room_ids:ids,last_read:lr});
+  if(res.unread_counts){unread=res.unread_counts;badge();}
+},BG_POLL_MS);
 
 })();
 </script>
