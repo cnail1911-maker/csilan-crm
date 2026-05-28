@@ -288,7 +288,10 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     .topbar-title{font-size:16px}
     .search-wrap{width:100%;order:3}
     .search-wrap input{width:100%}
-    .content{padding:10px 10px 16px}
+    .content{padding:10px 10px 16px;padding-bottom:env(safe-area-inset-bottom,16px);}
+    /* Campaign tab: fill full height, no extra gap */
+    #main-content{display:flex;flex-direction:column;}
+    .content{box-sizing:border-box;}
     .stats-row{grid-template-columns:1fr 1fr !important;gap:8px}
     .stat-card{padding:10px 12px}
     .stat-val{font-size:24px}
@@ -315,7 +318,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     .camp-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%}
     .camp-table{min-width:600px;font-size:10px}
     /* Campaign cards: full width on mobile */
-    #camp-cards{grid-template-columns:1fr !important}
+    #camp-cards{grid-template-columns:1fr !important;padding-bottom:env(safe-area-inset-bottom,8px) !important}
     .camp-card{padding:12px !important}
     /* Campaign filter bar */
     #camp-filter-bar{flex-wrap:wrap;gap:6px}
@@ -323,12 +326,20 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     .pg-bar{flex-wrap:wrap;gap:4px;justify-content:center}
 
     /* ── Detail Modal: full mobile ── */
-    /* Modal container: full screen on mobile */
     .modal-overlay{align-items:stretch !important;padding:0 !important;}
     #detail-modal > div:first-child{
       width:100vw !important;max-width:100vw !important;
-      height:100vh !important;max-height:100vh !important;
+      height:100dvh !important;max-height:100dvh !important;
       border-radius:0 !important;margin:0 !important;
+      overflow:hidden !important;
+      display:flex !important;flex-direction:column !important;
+    }
+    /* Fix inner scroll area — takes remaining space between header and footer */
+    #detail-modal [style*="grid-template-columns:1fr 300px"],
+    #detail-modal [style*="grid-template-columns:1fr"]{
+      flex:1 !important;overflow-y:auto !important;
+      -webkit-overflow-scrolling:touch !important;
+      min-height:0 !important;
     }
     /* 2-col → 1 col */
     [id^="detail-modal"] [style*="grid-template-columns:1fr 300px"],
@@ -2747,7 +2758,7 @@ async function renderDetailModal(customerId){
   function inp(id,val,ph){return '<input id="'+id+'" value="'+(val||'')+'" '+(ph?'placeholder="'+ph+'"':'')+' style="height:34px">';}
   function ta(id,val,ph,h){return '<textarea id="'+id+'" '+(ph?'placeholder="'+ph+'"':'')+' style="min-height:'+(h||60)+'px;resize:vertical">'+(val||'')+'</textarea>';}
 
-  var html='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:12px;width:98vw;max-width:1200px;margin:auto;max-height:95vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5)">';
+  var html='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:12px;width:98vw;max-width:1200px;margin:auto;max-height:95vh;height:auto;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5)">';
 
   // HEADER
   html+='<div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);position:sticky;top:0;background:var(--bg2);z-index:1;border-radius:12px 12px 0 0">';
@@ -2761,7 +2772,7 @@ async function renderDetailModal(customerId){
   html+='<div style="display:grid;grid-template-columns:1fr 300px;gap:0;flex:1;min-height:0;overflow:hidden">';
 
   // ── LEFT MAIN ──
-  html+='<div id="detail-left-pane" style="padding:16px 20px;border-right:1px solid rgba(255,255,255,0.07);overflow-y:auto;max-height:calc(95vh - 130px)">';
+  html+='<div id="detail-left-pane" style="padding:16px 20px;border-right:1px solid rgba(255,255,255,0.07);overflow-y:auto;flex:1;min-height:0">';
 
   // ROW 1: Biz Name (2fr) | Address (2fr) | City | State | Zip
   html+=row('2fr 2fr 1fr 1fr 1fr',
