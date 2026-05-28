@@ -1518,24 +1518,57 @@ async function approveInvoice(id,status){
 async function openInvEdit(id){
   const inv=INVOICES.find(function(i){return i.id===id;});
   if(!inv)return;
+  const existing=document.getElementById('inv-edit-modal');
+  if(existing)existing.remove();
+
   const modal=document.createElement('div');
   modal.className='modal-overlay';modal.id='inv-edit-modal';
   modal.onclick=function(e){if(e.target===modal)modal.remove();};
-  modal.innerHTML='<div class="modal" onclick="event.stopPropagation()" style="width:480px">'
-    +'<div class="modal-header"><h3>Cập nhật đơn hàng</h3>'
-    +'<div style="font-size:11px;color:var(--text3);font-family:monospace">'+inv.invoice_no+'</div>'
-    +'<button class="btn" style="padding:4px 8px" onclick="document.getElementById(\"inv-edit-modal\").remove()"><i class="ti ti-x"></i></button></div>'
-    +'<div class="modal-body">'
-    +'<div class="field-row">'
-    +'<div class="field"><label>Payment Status</label><select id="ie-pay"><option value="">-- Chọn --</option>'+['Paid in Full','Deposit Paid','Partially Paid','Cancelled'].map(function(s){return '<option value="'+s+'"'+(inv.payment_status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></div>'
-    +'<div class="field"><label>Order Status</label><select id="ie-ord"><option value="">-- Chọn --</option>'+['Đang sản xuất','Đang giao','Đã nhận hàng'].map(function(s){return '<option value="'+s+'"'+(inv.order_status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></div>'
-    +'</div>'
-    +'<div class="field"><label>Tracking Number</label><input id="ie-track" value="'+(inv.tracking_number||'')+'" placeholder="Nhập tracking number..."></div>'
-    +'</div>'
-    +'<div class="modal-footer">'
-    +'<button class="btn" onclick="document.getElementById(\"inv-edit-modal\").remove()">Đóng</button>'
-    +'<button class="btn btn-primary" onclick="saveInvEdit('+id+')"><i class="ti ti-device-floppy"></i> Lưu</button>'
-    +'</div></div>';
+
+  const box=document.createElement('div');
+  box.className='modal';box.style.width='480px';
+  box.onclick=function(e){e.stopPropagation();};
+
+  const header=document.createElement('div');header.className='modal-header';
+  const h3=document.createElement('h3');h3.textContent='Cập nhật đơn hàng';
+  const invNo=document.createElement('div');
+  invNo.style.cssText='font-size:11px;color:var(--text3);font-family:monospace';
+  invNo.textContent=inv.invoice_no||'';
+  const closeX=document.createElement('button');
+  closeX.className='btn';closeX.style.cssText='padding:4px 8px';
+  closeX.innerHTML='<i class="ti ti-x"></i>';
+  closeX.onclick=function(){modal.remove();};
+  header.appendChild(h3);header.appendChild(invNo);header.appendChild(closeX);
+
+  const body=document.createElement('div');body.className='modal-body';
+  const row=document.createElement('div');row.className='field-row';
+  const f1=document.createElement('div');f1.className='field';
+  f1.innerHTML='<label>Payment Status</label><select id="ie-pay"><option value="">-- Chọn --</option>'
+    +['Paid in Full','Deposit Paid','Partially Paid','Cancelled'].map(function(s){
+      return '<option value="'+s+'"'+(inv.payment_status===s?' selected':'')+'>'+s+'</option>';
+    }).join('')+'</select>';
+  const f2=document.createElement('div');f2.className='field';
+  f2.innerHTML='<label>Order Status</label><select id="ie-ord"><option value="">-- Chọn --</option>'
+    +['Đang sản xuất','Đang giao','Đã nhận hàng'].map(function(s){
+      return '<option value="'+s+'"'+(inv.order_status===s?' selected':'')+'>'+s+'</option>';
+    }).join('')+'</select>';
+  const f3=document.createElement('div');f3.className='field';
+  f3.innerHTML='<label>Tracking Number</label><input id="ie-track" value="'+(inv.tracking_number||'')+'" placeholder="Nhập tracking number...">';
+  row.appendChild(f1);row.appendChild(f2);
+  body.appendChild(row);body.appendChild(f3);
+
+  const footer=document.createElement('div');footer.className='modal-footer';
+  const closeBtn=document.createElement('button');
+  closeBtn.className='btn';closeBtn.textContent='Đóng';
+  closeBtn.onclick=function(){modal.remove();};
+  const saveBtn=document.createElement('button');
+  saveBtn.className='btn btn-primary';
+  saveBtn.innerHTML='<i class="ti ti-device-floppy"></i> Lưu';
+  saveBtn.onclick=function(){saveInvEdit(id);};
+  footer.appendChild(closeBtn);footer.appendChild(saveBtn);
+
+  box.appendChild(header);box.appendChild(body);box.appendChild(footer);
+  modal.appendChild(box);
   document.body.appendChild(modal);
 }
 
@@ -2900,7 +2933,21 @@ async function doAdd(){
     approval_status:isDup?'pending':'approved',
     is_duplicate:isDup,
   };
-  const {data:inserted,error}=await sb.from('customers').insert(newCust).select('*, assigned_profile:profiles!assigned_to(id,full_name,role)').single();
+  // Retry up to 5 times on duplicate ma_kh conflict
+  let inserted=null,error=null;
+  for(let attempt=0;attempt<5;attempt++){
+    const res=await sb.from('customers').insert(newCust).select('*, assigned_profile:profiles!assigned_to(id,full_name,role)').single();
+    inserted=res.data;error=res.error;
+    if(!error)break;
+    if(error.message&&error.message.includes('duplicate key')&&error.message.includes('ma_kh')){
+      // Increment ma_kh and retry
+      nextNum++;
+      newCust.ma_kh='KH'+String(nextNum).padStart(7,'0');
+      console.warn('[addCustomer] ma_kh conflict, retrying with',newCust.ma_kh);
+    } else {
+      break; // other error, don't retry
+    }
+  }
   if(error){showLoading(false);alert('Lỗi: '+error.message);return;}
   // Local insert - không reload 26k rows
   if(inserted)CUSTOMERS.unshift(inserted);
