@@ -962,7 +962,7 @@ const PAGE_SIZE=50;
 // STATE
 let currentUser=null,currentProfile=null,CUSTOMERS=[],PROFILES=[],PRODUCTS_ALL=[],INVOICES=[];
 window.currentUser=null;window.currentProfile=null;window.CUSTOMERS=CUSTOMERS;window.PROFILES=PROFILES;
-let page='customers',fStatus='all',fSale='all',fPotential='all',fBrand='all',fCampaign='all',fReason='all',fOverdue='all',search='',selId=null,addOpen=false;
+let page='customers',fStatus='all',fSale='all',fLead='all',fPotential='all',fBrand='all',fCampaign='all',fReason='all',fOverdue='all',search='',selId=null,addOpen=false;
 if(!window._custSelected)window._custSelected=new Set();
 let cdSearchInv='';
 let _searchTimer=null;
@@ -1199,7 +1199,11 @@ function renderCustomers(){
       if(c.approval_status==='pending'&&!isCreatedBy)return false;
     }
     if(fStatus!=='all'&&c.status!==fStatus)return false;
-    if(fSale!=='all'&&c.assigned_to!==fSale)return false;
+    if(fLead!=='all'){if(fLead==='__none__'){if(c.lead_status&&c.lead_status.trim())return false;}else if(c.lead_status!==fLead)return false;}
+    if(fSale!=='all'){
+      if(fSale==='__none__'){if(c.assigned_to)return false;}
+      else if(c.assigned_to!==fSale)return false;
+    }
     if(fPotential!=='all'&&c.potential!==fPotential)return false;
     if(fBrand!=='all'&&c.brand!==fBrand)return false;
     if(fReason!=='all'&&c.reason!==fReason)return false;
@@ -1222,11 +1226,12 @@ function renderCustomers(){
 
   let filterHtml='<select class="fsel" onchange="fStatus=this.value;curPage=1;render()"><option value="all">Tất cả Status</option>'+STATUS_OPTS.map(function(s){return '<option value="'+s+'"'+(fStatus===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fPotential=this.value;curPage=1;render()"><option value="all">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'"'+(fPotential===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select>';
+  filterHtml+='<select class="fsel" onchange="fLead=this.value;curPage=1;render()"><option value="all">Tất cả Lead</option>'+'<option value="__none__"'+(fLead==='__none__'?' selected':'')+'>Chưa có Lead Status</option>'+LEAD_OPTS.map(function(l){return '<option value="'+l+'"'+(fLead===l?' selected':'')+'>'+l+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fBrand=this.value;curPage=1;render()"><option value="all">Tất cả Brand</option>'+BRAND_OPTS.map(function(b){return '<option value="'+b+'"'+(fBrand===b?' selected':'')+'>'+b+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fReason=this.value;curPage=1;render()"><option value="all">Tất cả Reason</option>'+REASON_OPTS.map(function(r){return '<option value="'+r+'"'+(fReason===r?' selected':'')+'>'+r+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fOverdue=this.value;curPage=1;render()"><option value="all">Tất cả quá hạn</option><option value="3-7"'+(fOverdue==='3-7'?' selected':'')+'>3-7 ngày</option><option value="8-14"'+(fOverdue==='8-14'?' selected':'')+'>8-14 ngày</option><option value="15-30"'+(fOverdue==='15-30'?' selected':'')+'>15-30 ngày</option><option value="30+"'+(fOverdue==='30+'?' selected':'')+'>30+ ngày</option></select>';
   if(isManager){
-    filterHtml+='<select class="fsel" onchange="fSale=this.value;curPage=1;render()"><option value="all">Tất cả Sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
+    filterHtml+='<select class="fsel" onchange="fSale=this.value;curPage=1;render()"><option value="all">Tất cả Sale</option><option value="__none__"'+(fSale==="__none__"?' selected':'')+'>Not Assigned</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
     filterHtml+='<select class="fsel" onchange="fCampaign=this.value;curPage=1;render()"><option value="all">Tất cả Campaign</option><option value="__none__"'+(fCampaign==='__none__'?' selected':'')+'>Chưa thuộc chiến dịch nào</option>'+campNames.map(function(n){return '<option value="'+n+'"'+(fCampaign===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select>';
   }
 
