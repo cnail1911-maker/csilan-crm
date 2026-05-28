@@ -313,6 +313,153 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     .camp-table th:nth-child(n+4),
     .camp-table td:nth-child(n+4){display:none !important}
   }
+
+/* ════════════════════════════════════════
+   AI CHATBOX — C-Silan Assistant
+   ════════════════════════════════════════ */
+#ai-fab{
+  position:fixed;bottom:20px;right:20px;z-index:9999;
+  width:52px;height:52px;border-radius:50%;
+  background:linear-gradient(135deg,var(--brand),#a855f7);
+  border:none;cursor:pointer;
+  box-shadow:0 4px 20px rgba(108,92,231,0.5);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform 0.2s,box-shadow 0.2s;
+}
+#ai-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(108,92,231,0.7);}
+#ai-fab svg{width:24px;height:24px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+#ai-fab .ai-badge{
+  position:absolute;top:-2px;right:-2px;
+  width:14px;height:14px;border-radius:50%;
+  background:var(--danger);border:2px solid #0f0c24;
+  display:none;
+}
+
+#ai-panel{
+  position:fixed;bottom:82px;right:20px;z-index:9998;
+  width:380px;max-width:98vw;height:500px;
+  background:#1a1240;
+  border:1px solid rgba(162,155,254,0.25);
+  border-radius:16px;
+  display:flex;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,0.6);
+  overflow:hidden;
+  transform:scale(0.92) translateY(12px);
+  opacity:0;pointer-events:none;
+  transition:transform 0.22s cubic-bezier(.34,1.56,.64,1),opacity 0.18s ease;
+}
+#ai-panel.open{
+  transform:scale(1) translateY(0);
+  opacity:1;pointer-events:all;
+}
+.ai-header{
+  padding:12px 14px;
+  background:rgba(108,92,231,0.15);
+  border-bottom:1px solid rgba(162,155,254,0.15);
+  display:flex;align-items:center;gap:10px;
+  flex-shrink:0;
+}
+.ai-header-avatar{
+  width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,var(--brand),#a855f7);
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;
+}
+.ai-header-info{flex:1;}
+.ai-header-title{font-size:13px;font-weight:600;color:var(--text);}
+.ai-header-sub{font-size:10px;color:var(--text3);margin-top:1px;}
+.ai-ctx-pill{
+  font-size:10px;padding:2px 8px;border-radius:20px;
+  background:rgba(108,92,231,0.2);color:var(--brand2);
+  border:1px solid rgba(162,155,254,0.2);
+  max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.ai-header-btn{
+  background:none;border:none;cursor:pointer;
+  color:var(--text3);padding:4px;border-radius:6px;
+  transition:color 0.15s,background 0.15s;
+  font-size:16px;line-height:1;
+}
+.ai-header-btn:hover{color:var(--text);background:rgba(255,255,255,0.08);}
+
+#ai-messages{
+  flex:1;overflow-y:auto;padding:12px 14px;
+  display:flex;flex-direction:column;gap:10px;
+  scroll-behavior:smooth;
+}
+#ai-messages::-webkit-scrollbar{width:4px;}
+#ai-messages::-webkit-scrollbar-track{background:transparent;}
+#ai-messages::-webkit-scrollbar-thumb{background:rgba(162,155,254,0.2);border-radius:4px;}
+
+.ai-msg{display:flex;gap:8px;align-items:flex-end;max-width:100%;}
+.ai-msg.user{flex-direction:row-reverse;}
+.ai-bubble{
+  padding:9px 12px;border-radius:14px;
+  font-size:13px;line-height:1.5;
+  max-width:82%;word-break:break-word;white-space:pre-wrap;
+}
+.ai-msg.ai .ai-bubble{
+  background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.08);
+  color:var(--text);border-bottom-left-radius:4px;
+}
+.ai-msg.user .ai-bubble{
+  background:linear-gradient(135deg,var(--brand),#7c3aed);
+  color:#fff;border-bottom-right-radius:4px;
+}
+.ai-avatar-sm{
+  width:26px;height:26px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;
+}
+.ai-avatar-sm.ai-av{background:linear-gradient(135deg,var(--brand),#a855f7);color:#fff;}
+.ai-avatar-sm.user-av{background:rgba(255,255,255,0.1);color:var(--text2);}
+
+.ai-typing{display:flex;gap:5px;align-items:center;padding:10px 14px 6px;}
+.ai-dot{width:7px;height:7px;border-radius:50%;background:var(--brand);opacity:0.6;animation:aiDotBounce 1.2s infinite;}
+.ai-dot:nth-child(2){animation-delay:0.2s;}
+.ai-dot:nth-child(3){animation-delay:0.4s;}
+@keyframes aiDotBounce{0%,80%,100%{transform:translateY(0);}40%{transform:translateY(-6px);}}
+
+.ai-ctx-banner{
+  margin:0 14px;padding:7px 10px;
+  background:rgba(108,92,231,0.1);
+  border:1px solid rgba(162,155,254,0.15);
+  border-radius:8px;font-size:11px;
+  color:var(--brand2);flex-shrink:0;
+  display:flex;align-items:center;gap:6px;
+}
+.ai-ctx-banner i{color:var(--brand);}
+
+.ai-footer{
+  padding:10px 12px;border-top:1px solid rgba(255,255,255,0.07);
+  display:flex;gap:8px;align-items:flex-end;flex-shrink:0;
+}
+#ai-input{
+  flex:1;background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:10px;padding:9px 12px;
+  font-size:13px;color:var(--text);
+  font-family:'Be Vietnam Pro',sans-serif;
+  outline:none;resize:none;max-height:100px;
+  min-height:38px;line-height:1.4;
+  transition:border-color 0.15s;
+}
+#ai-input:focus{border-color:var(--brand);}
+#ai-input::placeholder{color:var(--text3);}
+#ai-send{
+  width:36px;height:36px;border-radius:9px;border:none;
+  background:linear-gradient(135deg,var(--brand),#7c3aed);
+  color:#fff;cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:opacity 0.15s,transform 0.15s;
+}
+#ai-send:hover{opacity:0.88;transform:scale(1.05);}
+#ai-send:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
+@media(max-width:480px){
+  #ai-panel{right:4px;left:4px;width:auto;bottom:76px;}
+  #ai-fab{bottom:16px;right:16px;}
+}
 </style>
 <script>
   // Register Service Worker for PWA - only on GitHub Pages
@@ -3598,5 +3745,366 @@ function render(){
   };
 })();
 </script></div></div>
+
+<!-- ══ AI CHATBOX ══ -->
+<button id="ai-fab" onclick="toggleAIChat()" title="Trợ lý AI C-Silan">
+  <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="9" cy="10" r="1" fill="#fff" stroke="none"/><circle cx="12" cy="10" r="1" fill="#fff" stroke="none"/><circle cx="15" cy="10" r="1" fill="#fff" stroke="none"/></svg>
+  <span class="ai-badge" id="ai-notif"></span>
+</button>
+
+<div id="ai-panel">
+  <div class="ai-header">
+    <div class="ai-header-avatar">🤖</div>
+    <div class="ai-header-info">
+      <div class="ai-header-title">Trợ lý AI — C-Silan</div>
+      <div class="ai-header-sub" id="ai-status-text">Sẵn sàng hỗ trợ bạn</div>
+    </div>
+    <span class="ai-ctx-pill" id="ai-ctx-pill" style="display:none"></span>
+    <button class="ai-header-btn" onclick="clearAIChat()" title="Xoá lịch sử"><i class="ti ti-trash"></i></button>
+    <button class="ai-header-btn" onclick="toggleAIChat()" title="Đóng"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="ai-ctx-banner" id="ai-ctx-banner" style="display:none">
+    <i class="ti ti-user-circle"></i>
+    <span id="ai-ctx-text">Đang xem: —</span>
+  </div>
+  <div id="ai-messages">
+    <div class="ai-msg ai">
+      <div class="ai-avatar-sm ai-av">AI</div>
+      <div class="ai-bubble">Xin chào! Tôi là trợ lý AI của C-Silan 👋<br>Bạn có thể hỏi tôi về:<br>• Thông tin khách hàng đang xem<br>• Kịch bản gọi điện, xử lý từ chối<br>• Kỹ năng bán hàng & CRM<br><br>Hãy mở chi tiết một khách hàng để tôi đọc lịch sử và tư vấn cụ thể hơn nhé!</div>
+    </div>
+  </div>
+  <div class="ai-footer">
+    <textarea id="ai-input" placeholder="Nhập câu hỏi... (Enter gửi, Shift+Enter xuống dòng)" rows="1"></textarea>
+    <button id="ai-send" onclick="sendAIMessage()" title="Gửi">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
+</div>
+<!-- ══ END AI CHATBOX ══ -->
+<script>
+
+/* ════════════════════════════════════════════════════════════
+   AI CHATBOX — C-Silan Assistant
+   - Lịch sử chat: sessionStorage (không tốn DB)
+   - Context: tự động từ selId khi mở modal, hoặc detect tên KH
+   ════════════════════════════════════════════════════════════ */
+(function(){
+  const EDGE_URL='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/crm-ai-assistant';
+  const MAX_HISTORY=20; // giữ tối đa 20 turns để tiết kiệm token
+
+  // ── State ──
+  let aiOpen=false;
+  let aiTyping=false;
+  // Load history từ sessionStorage
+  let aiHistory=[];
+  try{
+    const saved=sessionStorage.getItem('csilan_ai_history');
+    if(saved)aiHistory=JSON.parse(saved);
+  }catch(e){}
+
+  // ── Sync selId → currentCustomerId để chatbox nhận ngữ cảnh ──
+  window.currentCustomerId=null;
+  // Patch renderDetailModal để track customerId
+  const _origRender=window.renderDetailModal;
+  if(typeof _origRender==='function'){
+    window.renderDetailModal=async function(id){
+      window.currentCustomerId=id;
+      updateAIContext();
+      return _origRender.apply(this,arguments);
+    };
+  }
+  // Patch modal close
+  document.addEventListener('click',function(e){
+    if(e.target&&e.target.id==='detail-modal'){
+      window.currentCustomerId=null;
+      updateAIContext();
+    }
+  });
+
+  // ── UI helpers ──
+  function el(id){return document.getElementById(id);}
+
+  function updateAIContext(){
+    const cid=window.currentCustomerId;
+    const pill=el('ai-ctx-pill');
+    const banner=el('ai-ctx-banner');
+    const ctxText=el('ai-ctx-text');
+    if(!cid){
+      if(pill)pill.style.display='none';
+      if(banner)banner.style.display='none';
+      return;
+    }
+    const cust=window.CUSTOMERS&&window.CUSTOMERS.find(function(c){return c.id===cid;});
+    const name=cust?(cust.business_name||cust.customer_name||'KH #'+cid):'KH #'+cid;
+    if(pill){pill.textContent=name;pill.style.display='inline-block';}
+    if(banner){
+      banner.style.display='flex';
+      if(ctxText)ctxText.textContent='Đang xem: '+name+' — AI có thể đọc lịch sử cuộc gọi';
+    }
+  }
+
+  window.toggleAIChat=function(){
+    aiOpen=!aiOpen;
+    const panel=el('ai-panel');
+    if(panel)panel.classList.toggle('open',aiOpen);
+    if(aiOpen){
+      updateAIContext();
+      // Render saved history
+      if(aiHistory.length>1)renderHistory();
+      setTimeout(function(){
+        const inp=el('ai-input');
+        if(inp)inp.focus();
+        scrollAI();
+      },250);
+    }
+  };
+
+  window.clearAIChat=function(){
+    aiHistory=[];
+    sessionStorage.removeItem('csilan_ai_history');
+    const msgs=el('ai-messages');
+    if(msgs){
+      msgs.innerHTML='<div class="ai-msg ai"><div class="ai-avatar-sm ai-av">AI</div>'
+        +'<div class="ai-bubble">Lịch sử đã được xóa. Tôi sẵn sàng hỗ trợ bạn! 🙌</div></div>';
+    }
+  };
+
+  function renderHistory(){
+    const msgs=el('ai-messages');
+    if(!msgs)return;
+    msgs.innerHTML='';
+    aiHistory.forEach(function(m){
+      appendBubble(m.role==='user'?'user':'ai', m.content, false);
+    });
+    scrollAI();
+  }
+
+  function appendBubble(role, text, animate){
+    const msgs=el('ai-messages');
+    if(!msgs)return null;
+    const wrap=document.createElement('div');
+    wrap.className='ai-msg '+role;
+    const av=document.createElement('div');
+    av.className='ai-avatar-sm '+(role==='ai'?'ai-av':'user-av');
+    av.textContent=role==='ai'?'AI':(window.currentProfile&&window.currentProfile.full_name
+      ?window.currentProfile.full_name.split(' ').pop().charAt(0).toUpperCase():'U');
+    const bubble=document.createElement('div');
+    bubble.className='ai-bubble';
+    if(!animate){bubble.textContent=text;}
+    wrap.appendChild(av);
+    wrap.appendChild(bubble);
+    msgs.appendChild(wrap);
+    scrollAI();
+    return bubble;
+  }
+
+  function showTyping(){
+    const msgs=el('ai-messages');
+    if(!msgs)return null;
+    const wrap=document.createElement('div');
+    wrap.className='ai-msg ai';wrap.id='ai-typing-wrap';
+    wrap.innerHTML='<div class="ai-avatar-sm ai-av">AI</div>'
+      +'<div class="ai-bubble" style="padding:10px 14px"><div class="ai-typing">'
+      +'<div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div></div>';
+    msgs.appendChild(wrap);
+    scrollAI();
+    return wrap;
+  }
+  function removeTyping(){
+    const t=el('ai-typing-wrap');
+    if(t)t.remove();
+  }
+
+  // Typewriter effect
+  function typeWrite(bubble, text, cb){
+    let i=0;
+    bubble.textContent='';
+    function tick(){
+      if(i<text.length){
+        bubble.textContent+=text.charAt(i);
+        i++;
+        scrollAI();
+        setTimeout(tick, i<50?18:8); // nhanh dần
+      } else {
+        if(cb)cb();
+      }
+    }
+    tick();
+  }
+
+  function scrollAI(){
+    const msgs=el('ai-messages');
+    if(msgs)msgs.scrollTop=msgs.scrollHeight;
+  }
+
+  function saveHistory(){
+    try{
+      const trimmed=aiHistory.slice(-MAX_HISTORY);
+      sessionStorage.setItem('csilan_ai_history',JSON.stringify(trimmed));
+    }catch(e){}
+  }
+
+  // ── Build context gọn nhẹ ──
+  async function buildContext(customerId){
+    if(!customerId)return null;
+    const cust=window.CUSTOMERS&&window.CUSTOMERS.find(function(c){return c.id===customerId;});
+    if(!cust)return null;
+
+    // Fetch 10 call logs gần nhất
+    let logs=[];
+    try{
+      const {data}=await window.sb.from('call_logs')
+        .select('sub_status,note,created_at,sale_name')
+        .eq('customer_id',customerId)
+        .order('created_at',{ascending:false})
+        .limit(10);
+      logs=data||[];
+    }catch(e){console.warn('AI context fetch error:',e);}
+
+    return {
+      customer:{
+        id:cust.id,
+        business_name:cust.business_name||'',
+        customer_name:cust.customer_name||'',
+        status:cust.status||'',
+        sub_status:cust.sub_status||'',
+        lead_status:cust.lead_status||'',
+        potential:cust.potential||'',
+        phone:cust.cellphone||cust.business_phone||'',
+        description:cust.description||'',
+        city:cust.city||'',state:cust.state||''
+      },
+      call_logs:logs.map(function(l){
+        return '['+fmtDate(l.created_at)+'] '+l.sub_status+(l.note?' — '+l.note:'')+(l.sale_name?' ('+l.sale_name+')':'');
+      })
+    };
+  }
+
+  // ── Detect tên KH trong câu hỏi ──
+  function detectCustomerInText(text){
+    if(!window.CUSTOMERS)return null;
+    const lower=text.toLowerCase();
+    const found=window.CUSTOMERS.find(function(c){
+      const bn=(c.business_name||'').toLowerCase();
+      const cn=(c.customer_name||'').toLowerCase();
+      return (bn.length>3&&lower.includes(bn))||(cn.length>3&&lower.includes(cn));
+    });
+    return found?found.id:null;
+  }
+
+  // ── Main send ──
+  window.sendAIMessage=async function(){
+    if(aiTyping)return;
+    const inp=el('ai-input');
+    const text=(inp?inp.value.trim():'');
+    if(!text)return;
+
+    // Clear input
+    if(inp){inp.value='';inp.style.height='auto';}
+    el('ai-send').disabled=true;
+    aiTyping=true;
+
+    // Render user bubble
+    appendBubble('user',text,false);
+    aiHistory.push({role:'user',content:text});
+
+    // Determine customerId
+    let cid=window.currentCustomerId||detectCustomerInText(text);
+    // Update context banner if detected from text
+    if(cid&&cid!==window.currentCustomerId){
+      const cust=window.CUSTOMERS&&window.CUSTOMERS.find(function(c){return c.id===cid;});
+      if(cust){
+        const banner=el('ai-ctx-banner');
+        const ctxText=el('ai-ctx-text');
+        if(banner)banner.style.display='flex';
+        if(ctxText)ctxText.textContent='Tìm thấy: '+(cust.business_name||cust.customer_name)+' — Đang tải lịch sử...';
+      }
+    }
+
+    // Show typing
+    showTyping();
+
+    // Build context if needed
+    let context=null;
+    if(cid)context=await buildContext(cid);
+
+    // Build messages for Edge Function (trimmed history)
+    const historyToSend=aiHistory.slice(-MAX_HISTORY).filter(function(m){return m.role!=='system';});
+
+    try{
+      // Get Supabase session token for auth
+      const {data:{session}}=await window.sb.auth.getSession();
+      const token=session?session.access_token:'';
+
+      const resp=await fetch(EDGE_URL,{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':'Bearer '+token
+        },
+        body:JSON.stringify({
+          messages:historyToSend,
+          context:context,
+          sale_name:(window.currentProfile&&window.currentProfile.full_name)||'Sale'
+        })
+      });
+
+      if(!resp.ok){
+        const err=await resp.text();
+        throw new Error('Edge error '+resp.status+': '+err);
+      }
+
+      const result=await resp.json();
+      const aiText=result.reply||result.content||'Xin lỗi, tôi chưa thể trả lời lúc này.';
+
+      removeTyping();
+      const bubble=appendBubble('ai','',true);
+      typeWrite(bubble,aiText,function(){
+        aiHistory.push({role:'assistant',content:aiText});
+        saveHistory();
+      });
+
+    }catch(err){
+      removeTyping();
+      const errMsg='⚠️ Lỗi kết nối: '+err.message+'. Vui lòng thử lại sau.';
+      appendBubble('ai',errMsg,false);
+      console.error('AI Chat error:',err);
+    }finally{
+      aiTyping=false;
+      el('ai-send').disabled=false;
+      setTimeout(function(){if(inp)inp.focus();},100);
+    }
+  };
+
+  // ── Enter to send ──
+  document.addEventListener('DOMContentLoaded',function(){
+    const inp=el('ai-input');
+    if(inp){
+      inp.addEventListener('keydown',function(e){
+        if(e.key==='Enter'&&!e.shiftKey){
+          e.preventDefault();
+          window.sendAIMessage();
+        }
+      });
+      // Auto-resize textarea
+      inp.addEventListener('input',function(){
+        this.style.height='auto';
+        this.style.height=Math.min(this.scrollHeight,100)+'px';
+      });
+    }
+  });
+
+  // ── Sync selId watcher (fallback nếu patch renderDetailModal không catch được) ──
+  let _lastSelId=null;
+  setInterval(function(){
+    if(typeof window.selId!=='undefined'&&window.selId!==_lastSelId){
+      _lastSelId=window.selId;
+      window.currentCustomerId=window.selId;
+      if(aiOpen)updateAIContext();
+    }
+  },400);
+
+})();
+</script>
 </body>
 </html>
