@@ -1183,8 +1183,24 @@ async function initApp(user){
 
   // ── REALTIME: Customers ──
   sb.channel('crm-customers-rt')
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'customers'},function(payload){
-      if(!CUSTOMERS.find(function(c){return c.id===payload.new.id;}))CUSTOMERS.unshift(payload.new);
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'customers'},async function(payload){
+      if(!CUSTOMERS.find(function(c){return c.id===payload.new.id;})){
+        // Fetch full customer with joins (payload.new lacks assigned_profile etc.)
+        try{
+          const {data:full}=await sb.from('customers')
+            .select('*, assigned_profile:profiles!assigned_to(id,full_name,role), last_contacted, campaign_name')
+            .eq('id',payload.new.id).single();
+          CUSTOMERS.unshift(full||payload.new);
+        }catch(e){CUSTOMERS.unshift(payload.new);}
+        // Notify manager about new pending customer
+        const isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
+        if(isM&&payload.new.approval_status==='pending'){
+          window.showNotifToast&&window.showNotifToast('👤 KH mới chờ duyệt',
+            (payload.new.business_name||payload.new.customer_name||'?')+' — '+( payload.new.cellphone||''),
+            'pending');
+          updateBadges();
+        }
+      }
       render();
     })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'customers'},function(payload){
@@ -2894,6 +2910,17 @@ async function renderDetailModal(customerId){
   document.body.appendChild(modal);
 }
 
+function validatePhone(phone,fieldName){
+  if(!phone)return null;
+  var digits=phone.replace(/\D/g,'');
+  if(!digits)return null;
+  if(digits[0]==='0'||digits[0]==='1'){
+    alert((fieldName||'Số điện thoại')+' không được bắt đầu bằng số 0 hoặc số 1.\nVí dụ đúng: 9153134165');
+    return false;
+  }
+  return digits;
+}
+
 async function saveDetail(customerId){
   showLoading(true);
   const note=document.getElementById('d-note')&&document.getElementById('d-note').value.trim();
@@ -2919,6 +2946,16 @@ async function saveDetail(customerId){
     document.getElementById('d-timeline')&&document.getElementById('d-timeline').focus();
     return;
   }
+  // Validate phone fields
+  var rawBph=(document.getElementById('d-bphone')&&document.getElementById('d-bphone').value)||'';
+  var rawCel=(document.getElementById('d-cell')&&document.getElementById('d-cell').value)||'';
+  var rawCel2=(document.getElementById('d-cell2')&&document.getElementById('d-cell2').value)||'';
+  var vBph=rawBph?validatePhone(rawBph,'Business Phone'):null;
+  if(vBph===false){showLoading(false);return;}
+  var vCel=rawCel?validatePhone(rawCel,'Cellphone'):null;
+  if(vCel===false){showLoading(false);return;}
+  var vCel2=rawCel2?validatePhone(rawCel2,'Cellphone 2'):null;
+  if(vCel2===false){showLoading(false);return;}
   const update={
     status:document.getElementById('d-status')&&document.getElementById('d-status').value||null,
     sub_status:subStatus||null,
@@ -2934,6 +2971,9 @@ async function saveDetail(customerId){
     times_of_use:document.getElementById('d-times')&&document.getElementById('d-times').value||null,
     reason:document.getElementById('d-reason')&&document.getElementById('d-reason').value||null,
     description:document.getElementById('d-desc')&&document.getElementById('d-desc').value||null,
+    business_phone:vBph||null,
+    cellphone:vCel||null,
+    cellphone_2:vCel2||null,
     customer_name_2:document.getElementById('d-name2')&&document.getElementById('d-name2').value.trim()||null,
     assigned_deadline:deadline||null,
     timeline_follow:timeline||null,
@@ -3032,8 +3072,15 @@ async function doAdd(){
   const name=document.getElementById('a-name')&&document.getElementById('a-name').value.trim();
   if(!name){alert('Vui lòng nhập Customer Name');return;}
   showLoading(true);
-  const cell=(document.getElementById('a-cell')&&document.getElementById('a-cell').value.trim())||'';
-  const bphone=(document.getElementById('a-bphone')&&document.getElementById('a-bphone').value.trim())||'';
+  const cellRaw=(document.getElementById('a-cell')&&document.getElementById('a-cell').value.trim())||'';
+  const bphoneRaw=(document.getElementById('a-bphone')&&document.getElementById('a-bphone').value.trim())||'';
+  // Validate phones - no leading 0 or 1, digits only
+  var cellV=cellRaw?validatePhone(cellRaw,'Cellphone'):null;
+  if(cellV===false){showLoading(false);return;}
+  var bphoneV=bphoneRaw?validatePhone(bphoneRaw,'Business Phone'):null;
+  if(bphoneV===false){showLoading(false);return;}
+  const cell=cellV||'';
+  const bphone=bphoneV||'';
   let isDup=false;
   if(cell||bphone){
     const orParts=[];
@@ -3059,7 +3106,12 @@ async function doAdd(){
     customer_name:name,
     business_phone:bphone||null,
     cellphone:cell||null,
-    cellphone_2:(document.getElementById('a-cell2')&&document.getElementById('a-cell2').value||'').trim()||null,
+    cellphone_2:(function(){
+      var v=(document.getElementById('a-cell2')&&document.getElementById('a-cell2').value||'').trim();
+      if(!v)return null;
+      var d=v.replace(/\D/g,'');
+      return(d&&d[0]!=='0'&&d[0]!=='1')?d:null;
+    })(),
     state:document.getElementById('a-state')&&document.getElementById('a-state').value||null,
     zipcode:document.getElementById('a-zip')&&document.getElementById('a-zip').value||null,
     address:document.getElementById('a-address')&&document.getElementById('a-address').value.trim()||null,
