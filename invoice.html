@@ -198,6 +198,14 @@ table.inv-table tr:last-child td{border-bottom:none}
   .field input,.field select,.field textarea{font-size:13px;padding:9px 10px}
   .product-item{flex-wrap:wrap;gap:6px}
 }
+.no-print{display:none !important;}
+.ship-detail-row{display:table-row;}
+.print-only{display:none;}
+@media print{
+  .no-print{display:none !important;}
+  .ship-detail-row{display:none !important;}
+  .print-only{display:table-row !important;}
+}
 </style>
 </head>
 <body>
@@ -803,7 +811,7 @@ function renderPreview(){
           const chenhDon=(it.amount/it.qty)-(it.vendor_cost||0);
           const chenhAmt=chenhDon*it.qty;
           const chColor=chenhDon<0?'#e74c3c':'#27ae60';
-          prodRows+='<tr style="background:rgba(231,76,60,0.05)">'
+          prodRows+='<tr class="ship-detail-row" style="background:rgba(231,76,60,0.05)">'
             +'<td><div style="font-size:20px;text-align:center">🚚</div></td>'
             +'<td>'+it.name+'<div class="no-print" style="font-size:10px;color:'+chColor+'">Cost: $'+(it.vendor_cost||0)+' | Chênh: $'+chenhDon.toFixed(2)+'/unit | Tổng: $'+chenhAmt.toFixed(2)+'</div></td>'
             +'<td style="text-align:center">'+it.qty+'</td>'
@@ -818,7 +826,7 @@ function renderPreview(){
           const base=it.crm_price!=null?it.crm_price:it.unit_price;
           const chenhDon=it.unit_price-base;
           const chColor=chenhDon<0?'#e74c3c':'#27ae60';
-          prodRows+='<tr style="background:rgba(231,76,60,0.05)">'
+          prodRows+='<tr class="ship-detail-row" style="background:rgba(231,76,60,0.05)">'
             +'<td><div style="font-size:20px;text-align:center">🚚</div></td>'
             +'<td>'+it.name+(chenhDon!==0?'<div class="no-print" style="font-size:10px;color:'+chColor+'">+$'+chenhDon.toFixed(2)+'/unit</div>':'')+'</td>'
             +'<td style="text-align:center">'+it.qty+'</td>'
