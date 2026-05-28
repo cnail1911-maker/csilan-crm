@@ -718,16 +718,16 @@ async function generateInvoiceNo(){
   const dateStr=String(today.getFullYear()).slice(2)+String(today.getMonth()+1).padStart(2,'0')+String(today.getDate()).padStart(2,'0');
   const prefix=docType==='invoice'?'INV':'BG';
   
-  // Đếm theo invoice_no pattern để tránh lỗi timezone UTC vs VN
-  const prefix2=docType==='invoice'?'INVC01':'BGC01';
+  // Count only THIS user's invoices for today (using empCode-specific prefix)
+  const myPrefix=prefix+'C'+empCode+dateStr;
   const {data:todayInvs}=await sb.from('invoices')
     .select('invoice_no')
-    .like('invoice_no',`${prefix2}${dateStr}%`)
+    .like('invoice_no',`${myPrefix}%`)
     .eq('type',docType);
   const count=(todayInvs||[]).length;
   
   const seq=String((count||0)+1).padStart(2,'0');
-  return prefix+'C'+empCode+dateStr+'-'+seq;
+  return myPrefix+'-'+seq;
 }
 
 // PREVIEW RENDER
@@ -887,10 +887,10 @@ async function saveAndDownload(action){
     if(!invErr)break;
     if(invErr.message&&invErr.message.includes('duplicate key')&&invErr.message.includes('invoice_no')){
       retryCount++;
-      const prefix2b=docType==='invoice'?'INVC01':'BGC01';
       const today2=new Date();
       const ds2=String(today2.getFullYear()).slice(2)+String(today2.getMonth()+1).padStart(2,'0')+String(today2.getDate()).padStart(2,'0');
-      const {data:fresh}=await sb.from('invoices').select('invoice_no').like('invoice_no',prefix2b+ds2+'%').eq('type',docType);
+      const prefixRetry=(docType==='invoice'?'INV':'BG')+'C'+empCodeR+ds2;
+      const {data:fresh}=await sb.from('invoices').select('invoice_no').like('invoice_no',prefixRetry+'%').eq('type',docType);
       const newCount=(fresh||[]).length;
       const prefix=docType==='invoice'?'INV':'BG';
       // Use same empCode logic as generateInvoiceNo
@@ -908,7 +908,7 @@ async function saveAndDownload(action){
         else if(emailR==='salecnail04@gmail.com')empCodeR='07';
         else if(currentUser.id)empCodeR=String(parseInt(currentUser.id.replace(/-/g,'').slice(-4),16)%99+1).padStart(2,'0');
       }
-      retryNo=prefix+'C'+empCodeR+ds2+'-'+String(newCount+1).padStart(2,'0');
+      retryNo=prefixRetry+'-'+String(newCount+1).padStart(2,'0');
       console.warn('[invoice] duplicate, retrying with',retryNo);
     }else{break;}
   }
