@@ -689,19 +689,30 @@ function calcTotals(){
 // GENERATE INVOICE NO
 async function generateInvoiceNo(){
   if(!currentProfile)return'INV000000-01';
-  // Get employee code from email pattern or use profile
+  // Use profile.code first (most reliable), fallback to email pattern
   const email=currentUser.email;
-  const match=email.match(/salecnail0*(\d+)@/)||email.match(/C0*(\d+)@/)||null;
-  let empCode=match?match[1].padStart(2,'0'):'00';
-  
-  // Special cases
-  if(email==='baonam120202@gmail.com')empCode='02';
-  else if(email==='cnail1911@gmail.com')empCode='01';
-  else if(email==='salecnail@gmail.com')empCode='03';
-  else if(email==='salecnail01@gmail.com')empCode='04';
-  else if(email==='salecnail02@gmail.com')empCode='05';
-  else if(email==='salecnail03@gmail.com')empCode='06';
-  else if(email==='salecnail04@gmail.com')empCode='07';
+  let empCode='00';
+  // 1. Try profile.code field (e.g. "C02", "02")
+  if(currentProfile.code){
+    empCode=currentProfile.code.replace(/^C/i,'').padStart(2,'0');
+  } else {
+    // 2. Fallback: email pattern matching
+    const match=email.match(/salecnail0*(\d+)@/)||email.match(/C0*(\d+)@/)||null;
+    if(match)empCode=match[1].padStart(2,'0');
+    // 3. Fallback: known emails
+    if(email==='baonam120202@gmail.com')empCode='02';
+    else if(email==='cnail1911@gmail.com')empCode='01';
+    else if(email==='salecnail@gmail.com')empCode='03';
+    else if(email==='salecnail01@gmail.com')empCode='04';
+    else if(email==='salecnail02@gmail.com')empCode='05';
+    else if(email==='salecnail03@gmail.com')empCode='06';
+    else if(email==='salecnail04@gmail.com')empCode='07';
+  }
+  // 4. Last resort: use last 2 chars of user UUID to ensure uniqueness
+  if(empCode==='00'&&currentUser.id){
+    empCode=currentUser.id.replace(/-/g,'').slice(-4,);
+    empCode=String(parseInt(empCode,16)%99+1).padStart(2,'0');
+  }
 
   const today=new Date();
   const dateStr=String(today.getFullYear()).slice(2)+String(today.getMonth()+1).padStart(2,'0')+String(today.getDate()).padStart(2,'0');
@@ -882,15 +893,21 @@ async function saveAndDownload(action){
       const {data:fresh}=await sb.from('invoices').select('invoice_no').like('invoice_no',prefix2b+ds2+'%').eq('type',docType);
       const newCount=(fresh||[]).length;
       const prefix=docType==='invoice'?'INV':'BG';
-      const emailR=currentUser.email;
+      // Use same empCode logic as generateInvoiceNo
       let empCodeR='00';
-      if(emailR==='baonam120202@gmail.com')empCodeR='02';
-      else if(emailR==='cnail1911@gmail.com')empCodeR='01';
-      else if(emailR==='salecnail@gmail.com')empCodeR='03';
-      else if(emailR==='salecnail01@gmail.com')empCodeR='04';
-      else if(emailR==='salecnail02@gmail.com')empCodeR='05';
-      else if(emailR==='salecnail03@gmail.com')empCodeR='06';
-      else if(emailR==='salecnail04@gmail.com')empCodeR='07';
+      if(currentProfile&&currentProfile.code){
+        empCodeR=currentProfile.code.replace(/^C/i,'').padStart(2,'0');
+      } else {
+        const emailR=currentUser.email;
+        if(emailR==='baonam120202@gmail.com')empCodeR='02';
+        else if(emailR==='cnail1911@gmail.com')empCodeR='01';
+        else if(emailR==='salecnail@gmail.com')empCodeR='03';
+        else if(emailR==='salecnail01@gmail.com')empCodeR='04';
+        else if(emailR==='salecnail02@gmail.com')empCodeR='05';
+        else if(emailR==='salecnail03@gmail.com')empCodeR='06';
+        else if(emailR==='salecnail04@gmail.com')empCodeR='07';
+        else if(currentUser.id)empCodeR=String(parseInt(currentUser.id.replace(/-/g,'').slice(-4),16)%99+1).padStart(2,'0');
+      }
       retryNo=prefix+'C'+empCodeR+ds2+'-'+String(newCount+1).padStart(2,'0');
       console.warn('[invoice] duplicate, retrying with',retryNo);
     }else{break;}
