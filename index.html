@@ -2647,7 +2647,7 @@ async function renderDetailModal(customerId){
     return '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;min-height:34px"><span style="font-size:12px;font-family:monospace;color:var(--text)">'+(p2||'—')+'</span>'+btn1+btn2+'</div>';
   }
 
-  const saleOpts=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(c.assigned_to===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('');
+  const saleOpts='<option value=""'+((!c.assigned_to||c.assigned_to===''||c.assigned_to===null)?' selected':'')+'>Not Assign</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(c.assigned_to===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('');
 
   // Helpers
   const f='display:flex;flex-direction:column;gap:4px';
@@ -5172,17 +5172,19 @@ function renderMain(){
       +'<div class="chat-sb" id="csb">'
         +'<div class="chat-sb-top">'
           +'<span class="chat-sb-title"><i class="ti ti-messages" style="margin-right:6px;color:var(--brand2)"></i>Chat</span>'
-          +'<div style="position:relative">'
-          +'<button class="chat-sb-btn" id="chat-plus-btn" onclick="window._cToggleMenu()" title="Tạo mới"><i class="ti ti-plus"></i></button>'
-          +'<div id="chat-plus-menu" style="display:none;position:absolute;top:32px;right:0;background:#1e1550;border:1px solid var(--chat-border);border-radius:10px;padding:6px;min-width:180px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.5)">'
-            +'<button onclick="window._cToggleMenu();showCreateRoom()" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;cursor:pointer;color:var(--text);font-size:12px;text-align:left" onmouseover="this.style.background=\'rgba(108,92,231,0.15)\'" onmouseout="this.style.background=\'none\'">'
-              +'<i class="ti ti-hash" style="color:var(--brand2)"></i> Tạo phòng mới'
-            +'</button>'
-            +'<button onclick="window._cToggleMenu();window._cShowDMList()" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;cursor:pointer;color:var(--text);font-size:12px;text-align:left" onmouseover="this.style.background=\'rgba(108,92,231,0.15)\'" onmouseout="this.style.background=\'none\'">'
-              +'<i class="ti ti-message" style="color:var(--brand2)"></i> Nhắn tin riêng'
-            +'</button>'
-          +'</div>'
-          +'</div>'
+          +(mgr()?
+            '<div style="position:relative">'
+            +'<button class="chat-sb-btn" id="chat-plus-btn" onclick="window._cToggleMenu()" title="Tạo mới"><i class="ti ti-plus"></i></button>'
+            +'<div id="chat-plus-menu" style="display:none;position:absolute;top:32px;right:0;background:#1e1550;border:1px solid var(--chat-border);border-radius:10px;padding:6px;min-width:180px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.5)">'
+              +'<button onclick="window._cToggleMenu();showCreateRoom()" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;cursor:pointer;color:var(--text);font-size:12px;text-align:left" onmouseover="this.style.background=\'rgba(108,92,231,0.15)\'" onmouseout="this.style.background=\'none\'">'
+                +'<i class="ti ti-hash" style="color:var(--brand2)"></i> Tạo phòng mới'
+              +'</button>'
+              +'<button onclick="window._cToggleMenu();window._cShowDMList()" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;cursor:pointer;color:var(--text);font-size:12px;text-align:left" onmouseover="this.style.background=\'rgba(108,92,231,0.15)\'" onmouseout="this.style.background=\'none\'">'
+                +'<i class="ti ti-message" style="color:var(--brand2)"></i> Nhắn tin riêng'
+              +'</button>'
+            +'</div>'
+            +'</div>'
+          :'')
         +'</div>'
         +'<div class="chat-sb-list" id="crooms"></div>'
 
