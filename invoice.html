@@ -820,9 +820,14 @@ async function saveAndDownload(action){
   if(items.length===0){alert('Vui lòng thêm ít nhất 1 sản phẩm!');return;}
 
   showLoading(true);
+  // Safety timeout: hide loading if stuck after 15s
+  const _loadTimeout=setTimeout(function(){showLoading(false);},15000);
 
   // Generate invoice number
   const invNo=await generateInvoiceNo();
+
+  // Retry state — must be declared before use
+  let retryNo=invNo,retryCount=0;
 
   // Update PO number display
   document.getElementById('inv-po').value=retryNo;
@@ -837,12 +842,10 @@ async function saveAndDownload(action){
   const balance=total-deposit;
 
   // Save to Supabase
-  // Invoice cần admin duyệt, báo giá thì không
   const approvalStatus=docType==='invoice'?'pending':'approved';
   
   // Retry up to 5 times on duplicate invoice_no
   let inv=null,invErr=null;
-  let retryNo=invNo,retryCount=0;
   while(retryCount<5){
     const res=await sb.from('invoices').insert({
     invoice_no:retryNo,
@@ -851,7 +854,7 @@ async function saveAndDownload(action){
     customer_id:selectedCustomer.id,
     sale_id:currentUser.id,
     date:document.getElementById('inv-date').value,
-    po_number:invNo,
+    po_number:retryNo,
     location:document.getElementById('inv-location').value,
     requested_delivery:document.getElementById('inv-delivery').value,
     tax_pct:taxPct,
@@ -890,6 +893,7 @@ async function saveAndDownload(action){
     }else{break;}
   }
 
+  clearTimeout(_loadTimeout);
   if(invErr){showLoading(false);alert('Lỗi lưu đơn: '+invErr.message);return;}
 
   // Save items
