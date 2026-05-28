@@ -1585,16 +1585,43 @@ async function approveInvoice(id,status){
         total:          inv.total||0,
         deposit:        inv.deposit||0,
         tax:            inv.tax||0,
-        items:          (items||[]).map(function(it){return{
-          product_id:   it.product_id||null,
-          sku:          it.sku||null,
-          image_url:    it.image_url||null,
-          product_name: it.product_name||'',
-          qty:          it.qty||1,
-          unit_price:   it.unit_price||0,
-          discount:     it.discount||0,
-          amount:       it.amount||0
-        };}),
+        items:          (items||[]).map(function(it){
+          // Auto-detect vendor from product_name
+          var pname=(it.product_name||'').toLowerCase();
+          var vendor='Bolsa'; // default
+          if(pname.includes('ons')||pname.includes(' ons')||pname.includes('spa chair')||pname.includes('pedicure'))vendor='ONS';
+          else if(pname.includes('tspa')||pname.includes('t-spa')||pname.includes('nail table'))vendor='TSPA';
+          else vendor='Bolsa'; // All Headspa/Bed/other = Bolsa
+          // Also check from products list if available
+          var prodRecord=PRODUCTS_ALL&&PRODUCTS_ALL.find(function(p){
+            return (it.product_id&&p.id===it.product_id)||(it.sku&&p.sku===it.sku);
+          });
+          if(prodRecord&&prodRecord.vendor){
+            var v=prodRecord.vendor.toLowerCase();
+            if(v.includes('ons'))vendor='ONS';
+            else if(v.includes('tspa'))vendor='TSPA';
+            else vendor='Bolsa';
+          }
+          var giaBanGoc=prodRecord?prodRecord.vendor_cost||0:0;
+          var giaBanThuc=it.unit_price||0;
+          var qty=it.qty||1;
+          var amount=it.amount||(giaBanThuc*qty);
+          var chenhLech=(giaBanThuc-giaBanGoc)*qty;
+          return{
+            product_id:   it.product_id||null,
+            sku:          it.sku||null,
+            image_url:    it.image_url||null,
+            product_name: it.product_name||'',
+            qty:          qty,
+            unit_price:   giaBanThuc,
+            discount:     it.discount||0,
+            amount:       amount,
+            vendor:       vendor,
+            gia_ban_goc:  giaBanGoc,
+            gia_ban_thuc: giaBanThuc,
+            chenh_lech:   chenhLech
+          };
+        }),
       };
       const EDGE_URL='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/sync-invoice-to-finance';
       const r=await fetch(EDGE_URL,{
