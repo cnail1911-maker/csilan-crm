@@ -577,6 +577,12 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 .chat-reply-close{background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:0 4px;line-height:1;}
 .chat-input-row{display:flex;gap:8px;align-items:flex-end;}
 .chat-inp{flex:1;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:8px 12px;font-size:12px;color:var(--text);font-family:'Be Vietnam Pro',sans-serif;outline:none;resize:none;max-height:120px;min-height:40px;line-height:1.45;transition:border-color 0.15s;}
+.mention-drop{position:absolute;bottom:100%;left:0;right:60px;background:#1e1550;border:1px solid rgba(162,155,254,0.25);border-radius:10px;overflow:hidden;box-shadow:0 -8px 24px rgba(0,0,0,0.4);z-index:200;margin-bottom:4px;max-height:200px;overflow-y:auto;}
+.mention-item{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;transition:background 0.12s;font-size:12px;}
+.mention-item:hover,.mention-item.active{background:rgba(108,92,231,0.2);}
+.mention-item .mi-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;}
+.mention-item .mi-name{color:var(--text);font-weight:500;}
+.mention-item .mi-role{color:var(--text3);font-size:10px;margin-left:4px;}
 .chat-inp:focus{border-color:rgba(108,92,231,0.5);}
 .chat-inp::placeholder{color:var(--text3);}
 .chat-send{width:40px;height:40px;border-radius:12px;border:none;background:linear-gradient(135deg,#6c5ce7,#7c3aed);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s,transform 0.1s;}
@@ -3248,7 +3254,7 @@ async function renderDailyData(){
       const dtPotStr=potByDate[dt]?Object.entries(potByDate[dt].breakdown).filter(function(e){return e[1]>0;}).map(function(e){return e[0]+': '+e[1];}).join(' | '):'';
       const dtInvs=(invs||[]).filter(function(inv){return (inv.submitted_by===sale.id||inv.sale_id===sale.id)&&inv.created_at&&inv.created_at.slice(0,10)===dt&&(inv.type==='invoice'||!inv.type);}).length;
       const dtQuotes=(invs||[]).filter(function(inv){return (inv.submitted_by===sale.id||inv.sale_id===sale.id)&&inv.created_at&&inv.created_at.slice(0,10)===dt&&inv.type==='quotation';}).length;
-      dayRows+='<tr style="font-size:11px;color:var(--text3)">'        +'<td style="padding-left:32px">'+dt+'</td>'        +'<td style="color:'+(cnt>0?'var(--accent2)':'var(--text3)')+'">'+cnt+'</td>'        +'<td style="color:'+(dtPot>0?'var(--warn)':'var(--text3)')+'">'+dtPot+'</td>'        +'<td style="font-size:10px">'+dtPotStr+'</td>'        +'<td>'+dtQuotes+'</td>'        +'<td>'+dtInvs+'</td></tr>';
+      dayRows+='<tr style="font-size:11px;color:var(--text3)">'        +'<td style="padding-left:32px">'+dt+'</td>'        +'<td style="color:'+(cnt>0?'var(--accent2)':'var(--text3)')+'">'+cnt+'</td>'        +'<td style="color:'+(dtPot>0?'var(--warn)':'var(--text3)')+'">'+dtPot+'</td>'        +'<td style="font-size:10px">'+dtPotStr+'</td>'        +'<td style="text-align:center">'+dtQuotes+'</td>'        +'<td style="text-align:center">'+dtInvs+'</td></tr>';
     })
 
     const potBreakStr=Object.entries(potentialBreakdown).filter(function(e){return e[1]>0;}).map(function(e){return e[0]+': '+e[1];}).join(' | ')||'—';
@@ -3260,8 +3266,8 @@ async function renderDailyData(){
       +'<td style="font-weight:700;color:var(--accent2)">'+allUnique.size+'</td>'
       +'<td style="color:var(--warn)">'+potKpiIds.size+'</td>'
       +'<td style="font-size:10px;color:var(--text3)">'+potBreakStr+'</td>'
-      +'<td style="font-weight:600;color:#4fc3f7">'+quoteCount+'</td>'
-      +'<td style="font-weight:600;color:var(--brand2)">'+realInvCount+'</td>'
+      +'<td style="font-weight:600;color:#4fc3f7;text-align:center">'+quoteCount+'</td>'
+      +'<td style="font-weight:600;color:var(--brand2);text-align:center">'+realInvCount+'</td>'
       +'</tr>'+dayRows;
   });
 
@@ -3269,7 +3275,7 @@ async function renderDailyData(){
   if(dc){
     dc.innerHTML='<div class="panel"><div class="panel-header"><h2>Daily Report <span style="font-size:11px;color:var(--text3);font-weight:400">'+fFrom+' → '+fTo+'</span></h2></div>'
       +'<table><colgroup><col width="160"><col width="120"><col width="80"><col><col width="70"><col width="80"></colgroup>'
-      +'<thead><tr><th>Sale / Ngày</th><th>Data thao tác (unique)</th><th>Potential</th><th>Potential chi tiết</th><th>Quotation</th><th style="padding-left:16px">Invoice</th></tr></thead>'
+      +'<thead><tr><th>Sale / Ngày</th><th>Data thao tác (unique)</th><th>Potential</th><th>Potential chi tiết</th><th style="text-align:center">Quotation</th><th style="text-align:center">Invoice</th></tr></thead>'
       +'<tbody>'+tableRows+'</tbody></table></div>';
   }
 }
@@ -4591,6 +4597,10 @@ function render(){
 const EDGE='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/team-chat';
 const GEN_ROOM='bf042f74-2339-4d01-afd0-1bfae9c1033f';
 const POLL_MS=4000, BG_POLL_MS=30000, PAGE_SIZE=50;
+const CHAT_URL='https://jggfmpihfisbusnbzyoi.supabase.co';
+const CHAT_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZ2ZtcGloZmlzYnVzbmJ6eW9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NTkxMzcsImV4cCI6MjA5NDQzNTEzN30.r4OAbgoMdJXyBpIZJaBstn_a1YRg9cR4SPDVvSrXV6M';
+var chatSb=null; // timekeeping supabase client for realtime
+var realtimeChannel=null;
 
 // ── State ──
 var rooms=[],curRoom=null,msgs={},replyTo=null;
@@ -4656,6 +4666,61 @@ function badge(){
 }
 
 // ── Polling ──
+// ── Handle new message (used by both realtime and poll) ──
+function handleNewMsg(m){
+  if(!msgs[m.room_id])msgs[m.room_id]=[];
+  if(msgs[m.room_id].find(function(x){return x.id===m.id;}))return; // dedup
+  msgs[m.room_id].push(m);
+  lastTs[m.room_id]=m.created_at;
+  if(m.room_id===curRoom){renderMsgs(false,true);}
+  if(m.user_id!==uid()){
+    var isMention=m.content&&m.content.includes('@'+uname());
+    var isReply=m.reply_to_id&&(msgs[m.room_id]||[]).find(function(x){return x.id===m.reply_to_id&&x.user_id===uid();});
+    toast(m.sender_name||'?',m.content||'',m.room_id,!!isMention,!!isReply);
+    unread[m.room_id]=(unread[m.room_id]||0)+1;badge();
+    renderRoomList();
+  }
+}
+
+// ── Supabase Realtime subscription ──
+function startRealtime(){
+  stopRealtime();
+  try{
+    if(!chatSb){chatSb=window.supabase.createClient(CHAT_URL,CHAT_ANON);}
+    realtimeChannel=chatSb.channel('public:messages')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},function(payload){
+        var m=payload.new;
+        if(!m||!m.room_id)return;
+        // Only handle rooms we're in
+        var inRoom=rooms.find(function(r){return r.id===m.room_id;});
+        if(!inRoom)return;
+        handleNewMsg(m);
+      })
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages'},function(payload){
+        var m=payload.new;
+        if(!m||!m.room_id)return;
+        // Handle recall updates
+        var list=msgs[m.room_id]||[];
+        var existing=list.find(function(x){return x.id===m.id;});
+        if(existing){Object.assign(existing,m);if(m.room_id===curRoom)renderMsgs();}
+      })
+      .subscribe(function(status){
+        console.log('[chat realtime]',status);
+        if(status==='SUBSCRIBED'){console.log('[chat] Realtime connected ✓');}
+        if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+          console.warn('[chat] Realtime failed, falling back to poll');
+          startPoll(); // fallback
+        }
+      });
+  }catch(e){
+    console.warn('[chat] Realtime init error:',e);
+    startPoll(); // fallback to polling
+  }
+}
+function stopRealtime(){
+  if(realtimeChannel){try{chatSb&&chatSb.removeChannel(realtimeChannel);}catch(e){}realtimeChannel=null;}
+}
+
 function startPoll(){
   stopPoll();
   pollT=setInterval(async function(){
@@ -4663,24 +4728,7 @@ function startPoll(){
     var since=lastTs[curRoom]||new Date(Date.now()-60000).toISOString();
     var res=await api({action:'poll_new_messages',room_id:curRoom,after:since});
     if(!res.messages||!res.messages.length)return;
-    if(!msgs[curRoom])msgs[curRoom]=[];
-    var newOnes=[];
-    res.messages.forEach(function(m){
-      if(!msgs[curRoom].find(function(x){return x.id===m.id;})){
-        msgs[curRoom].push(m);lastTs[curRoom]=m.created_at;newOnes.push(m);
-      }
-    });
-    if(!newOnes.length)return;
-    renderMsgs(false,true); // append only
-    newOnes.forEach(function(m){
-      if(m.user_id!==uid()){
-        var isMention=m.content&&m.content.includes('@'+uname());
-        var isReply=m.reply_to_id&&(msgs[curRoom]||[]).find(function(x){return x.id===m.reply_to_id&&x.user_id===uid();});
-        toast(m.sender_name||'?',m.content,m.room_id,!!isMention,!!isReply);
-        unread[m.room_id]=(unread[m.room_id]||0)+1;badge();
-        renderRoomList();
-      }
-    });
+    res.messages.forEach(function(m){handleNewMsg(m);});
   },POLL_MS);
 }
 function stopPoll(){if(pollT){clearInterval(pollT);pollT=null;}}
@@ -4690,7 +4738,7 @@ async function loadRooms(){
   var res=await api({action:'get_rooms',sale_id:uid(),is_manager:mgr()});
   rooms=res.rooms||[];
   if(!rooms.find(function(r){return r.id===GEN_ROOM;}))
-    rooms.unshift({id:GEN_ROOM,name:'General',is_direct:false,members:[]});
+    rooms.unshift({id:GEN_ROOM,name:'🚀 SHIPPING COST',is_direct:false,members:[]});
   renderRoomList();
 }
 
@@ -5102,7 +5150,7 @@ function renderMain(){
               +'<button class="chat-reply-close" onclick="window._ccreply()">×</button>'
             +'</div>'
             +'<div class="chat-input-row">'
-              +'<textarea id="ci" class="chat-inp" placeholder="Nhập tin nhắn... (@tên để mention)" rows="1"></textarea>'
+              +'<label class="chat-attach-btn" title="Gửi ảnh" style="cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="ti ti-photo"></i><input type="file" id="chat-file-inp" accept="image/*" style="display:none" onchange="window._cUpload(this)"></label>'              +'<textarea id="ci" class="chat-inp" placeholder="Nhập tin nhắn... (@tên để mention)" rows="1"></textarea>'
               +'<button id="csend" class="chat-send" onclick="send()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
             +'</div>'
           +'</div>'
@@ -5113,8 +5161,26 @@ function renderMain(){
   renderRoomList();renderHead();
   var inp=document.getElementById('ci');
   if(inp){
-    inp.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
-    inp.addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';});
+    inp.addEventListener('keydown',function(e){
+      var drop=document.getElementById('mention-drop');
+      if(drop&&drop.style.display!=='none'){
+        var items=drop.querySelectorAll('.mention-item');
+        var active=drop.querySelector('.mention-item.active');
+        var idx=active?Array.from(items).indexOf(active):-1;
+        if(e.key==='ArrowDown'){e.preventDefault();if(idx<items.length-1){if(active)active.classList.remove('active');items[idx+1].classList.add('active');}return;}
+        if(e.key==='ArrowUp'){e.preventDefault();if(idx>0){if(active)active.classList.remove('active');items[idx-1].classList.add('active');}return;}
+        if(e.key==='Enter'||e.key==='Tab'){
+          var sel=drop.querySelector('.mention-item.active')||items[0];
+          if(sel){e.preventDefault();insertMention(sel.dataset.name);return;}
+        }
+        if(e.key==='Escape'){drop.style.display='none';return;}
+      }
+      if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}
+    });
+    inp.addEventListener('input',function(){
+      this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';
+      checkMentionTrigger(this);
+    });
   }
   if(curRoom)loadMsgs(curRoom);
 }
@@ -5130,6 +5196,92 @@ function selectRoom(id){
 }
 
 // ── Global bindings ──
+// ── Image upload to timekeeping Storage ──
+window._cUpload=async function(input){
+  var file=input.files&&input.files[0];
+  input.value=''; // reset
+  if(!file||!curRoom)return;
+  if(file.size>5*1024*1024){showNotif('⚠️ File phải nhỏ hơn 5MB',true);return;}
+  // Show uploading indicator
+  var inp=document.getElementById('ci');
+  var oldPlaceholder=inp?inp.placeholder:'';
+  if(inp)inp.placeholder='Đang upload...';
+  try{
+    // Init chat supabase client if needed
+    if(!chatSb)chatSb=window.supabase.createClient('https://jggfmpihfisbusnbzyoi.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZ2ZtcGloZmlzYnVzbmJ6eW9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NTkxMzcsImV4cCI6MjA5NDQzNTEzN30.r4OAbgoMdJXyBpIZJaBstn_a1YRg9cR4SPDVvSrXV6M');
+    var ext=file.name.split('.').pop()||'jpg';
+    var fname='chat/'+Date.now()+'_'+uid().slice(0,8)+'.'+ext;
+    var uploadRes=await chatSb.storage.from('chat-images').upload(fname,file,{upsert:false,contentType:file.type});
+    if(uploadRes.error)throw new Error(uploadRes.error.message);
+    var publicUrl='https://jggfmpihfisbusnbzyoi.supabase.co/storage/v1/object/public/chat-images/'+fname;
+    // Send message with image
+    var res=await api({action:'send_message',room_id:curRoom,user_id:uid(),sender_name:uname(),content:'',image_url:publicUrl,reply_to_id:replyTo?replyTo.id:null});
+    clearReply();
+    if(res.message){
+      if(!msgs[curRoom])msgs[curRoom]=[];
+      msgs[curRoom].push(res.message);lastTs[curRoom]=res.message.created_at;
+      renderMsgs(false,false);scrollBottom();
+    }
+  }catch(e){
+    console.error('[upload]',e);
+    showNotif('⚠️ Upload thất bại: '+e.message,true);
+  }finally{
+    if(inp)inp.placeholder=oldPlaceholder;
+  }
+};
+
+// ── @mention autocomplete ──
+function checkMentionTrigger(inp){
+  var val=inp.value,pos=inp.selectionStart;
+  var before=val.slice(0,pos);
+  var m=before.match(/@([\w\sÀ-ỹ]*)$/);
+  if(!m){hideMentionDrop();return;}
+  var query=m[1].toLowerCase();
+  var profiles=(window.PROFILES||[]).filter(function(p){
+    return p.id!==uid()&&(p.full_name||'').toLowerCase().includes(query);
+  });
+  if(!profiles.length){hideMentionDrop();return;}
+  showMentionDrop(profiles,query);
+}
+function showMentionDrop(profiles){
+  var wrap=document.querySelector('.chat-input-wrap');if(!wrap)return;
+  var existing=document.getElementById('mention-drop');
+  if(existing)existing.remove();
+  var drop=document.createElement('div');
+  drop.id='mention-drop';drop.className='mention-drop';
+  drop.style.position='absolute';drop.style.display='block';
+  profiles.slice(0,6).forEach(function(p,i){
+    var item=document.createElement('div');
+    item.className='mention-item'+(i===0?' active':'');
+    item.dataset.name=p.full_name||'?';
+    item.innerHTML='<div class="mi-av" style="background:'+avColor(p.full_name)+'">'+initials(p.full_name)+'</div>'
+      +'<span class="mi-name">'+esc(p.full_name||'?')+'</span>'
+      +'<span class="mi-role">'+esc(p.role||'')+'</span>';
+    item.onclick=function(){insertMention(this.dataset.name);};
+    drop.appendChild(item);
+  });
+  wrap.style.position='relative';
+  wrap.appendChild(drop);
+}
+function hideMentionDrop(){
+  var d=document.getElementById('mention-drop');if(d)d.remove();
+}
+function insertMention(name){
+  var inp=document.getElementById('ci');if(!inp)return;
+  var val=inp.value,pos=inp.selectionStart;
+  var before=val.slice(0,pos);
+  var after=val.slice(pos);
+  var newBefore=before.replace(/@[\w\sÀ-ỹ]*$/,'@'+name+' ');
+  inp.value=newBefore+after;
+  inp.selectionStart=inp.selectionEnd=newBefore.length;
+  hideMentionDrop();
+  inp.focus();
+}
+// Close mention drop on outside click
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#mention-drop')&&e.target.id!=='ci')hideMentionDrop();
+});
+
 window._cs=selectRoom;
 
 window._cToggleMenu=function(){
@@ -5224,7 +5376,8 @@ window.initChatPage=async function(){
   renderMain();
   await loadRooms();
   if(curRoom)loadMsgs(curRoom);
-  startPoll();
+  startRealtime(); // primary
+  startPoll();     // fallback + bg refresh
 };
 
 // Background badge check
