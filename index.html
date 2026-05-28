@@ -4258,548 +4258,378 @@ function render(){
 
 })();
 </script>
+
 <script>
-
-/* ════════════════════════════════════════════════════════════
-   TEAM CHAT — C-Silan Internal
-   - Storage: timekeeping project (jggfmpihfisbusnbzyoi)
-   - Realtime: polling 3s
-   - Features: rooms, DM, reply, recall, mentions, notifications
-   ════════════════════════════════════════════════════════════ */
 (function(){
-  const CHAT_EDGE = 'https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/team-chat';
-  const GENERAL_ROOM_ID = 'bf042f74-2339-4d01-afd0-1bfae9c1033f';
+  'use strict';
+  const CHAT_EDGE='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/team-chat';
+  const GENERAL_ROOM_ID='bf042f74-2339-4d01-afd0-1bfae9c1033f';
 
-  // ── State ──
-  let chatRooms = [];
-  let currentRoomId = null;
-  let chatMessages = {};   // {room_id: [messages]}
-  let replyTo = null;      // message being replied to
-  let pollTimer = null;
-  let lastMsgTime = {};    // {room_id: timestamp}
-  let unreadCounts = {};   // {room_id: count}
-  let mutedRooms = [];
-  let notifEnabled = true;
-  let chatInited = false;
+  var chatRooms=[],currentRoomId=null,chatMessages={},replyTo=null;
+  var pollTimer=null,lastMsgTime={},unreadCounts={},mutedRooms=[],notifEnabled=true;
 
-  // Load muted/notif from localStorage
-  try {
-    mutedRooms = JSON.parse(localStorage.getItem('chat_muted') || '[]');
-    notifEnabled = localStorage.getItem('chat_notif') !== 'off';
-  } catch(e) {}
+  try{mutedRooms=JSON.parse(localStorage.getItem('chat_muted')||'[]');
+    notifEnabled=localStorage.getItem('chat_notif')!=='off';}catch(e){}
 
-  // ── Auth helper ──
-  async function getToken() {
-    const { data: { session } } = await window.sb.auth.getSession();
-    return session ? session.access_token : '';
-  }
-
-  async function chatCall(body) {
-    const token = await getToken();
-    const r = await fetch(CHAT_EDGE, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify(body),
-    });
+  async function getToken(){const{data:{session}}=await window.sb.auth.getSession();return session?session.access_token:'';}
+  async function chatCall(body){
+    const token=await getToken();
+    const r=await fetch(CHAT_EDGE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(body)});
     return r.json();
   }
-
-  // ── Helpers ──
-  function isManager() {
-    return window.currentProfile && (window.currentProfile.role === 'manager' || window.currentProfile.role === 'leader');
+  function isManager(){return window.currentProfile&&(window.currentProfile.role==='manager'||window.currentProfile.role==='leader');}
+  function myId(){return window.currentUser?window.currentUser.id:'';}
+  function myName(){return(window.currentProfile&&window.currentProfile.full_name)||'Sale';}
+  function fmtTime(ts){
+    if(!ts)return'';
+    const d=new Date(ts),now=new Date(),diff=now-d;
+    if(diff<60000)return'vừa xong';
+    if(diff<3600000)return Math.floor(diff/60000)+'p';
+    if(d.toDateString()===now.toDateString())return d.toLocaleTimeString('vi',{hour:'2-digit',minute:'2-digit'});
+    return d.toLocaleDateString('vi',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('vi',{hour:'2-digit',minute:'2-digit'});
   }
-  function myId() { return window.currentUser ? window.currentUser.id : ''; }
-  function myName() { return (window.currentProfile && window.currentProfile.full_name) || 'Sale'; }
-  function fmtTime(ts) {
-    if (!ts) return '';
-    const d = new Date(ts);
-    const now = new Date();
-    const diff = now - d;
-    if (diff < 60000) return 'vừa xong';
-    if (diff < 3600000) return Math.floor(diff/60000) + 'p';
-    if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString('vi',{hour:'2-digit',minute:'2-digit'});
-    return d.toLocaleDateString('vi',{day:'2-digit',month:'2-digit'}) + ' ' + d.toLocaleTimeString('vi',{hour:'2-digit',minute:'2-digit'});
-  }
-
-  // Highlight @mentions
-  function renderContent(text) {
-    if (!text) return '';
-    return text
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/@([\w\sÀ-ỹ]+?)(?=\s|$|[,.])/g, '<span class="chat-mention">@$1</span>');
+  function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function renderContent(text){
+    if(!text)return'';
+    return esc(text).replace(/@([\w\s\u00C0-\u1EF9]+?)(?=\s|$|[,.])/g,'<span class="chat-mention">@$1</span>');
   }
 
-  // ── Notification ──
-  function showToast(senderName, content, roomId, isMention, isReply) {
-    if (!notifEnabled || mutedRooms.includes(roomId)) return;
-    const existing = document.querySelector('.chat-notif-toast');
-    if (existing) existing.remove();
-    const toast = document.createElement('div');
-    toast.className = 'chat-notif-toast';
-    toast.innerHTML = '<div class="toast-sender">' + (isMention ? '🔔 ' : isReply ? '↩️ ' : '💬 ') + senderName + '</div>'
-      + '<div class="toast-content">' + content.slice(0, 60) + '</div>';
-    toast.onclick = function() {
-      currentRoomId = roomId;
-      if (window.page !== 'chat') window.setPage('chat');
-      else { renderChatUI(); loadMessages(roomId); }
+  function showToast(senderName,content,roomId,isMention,isReply){
+    if(!notifEnabled||mutedRooms.includes(roomId))return;
+    const existing=document.querySelector('.chat-notif-toast');if(existing)existing.remove();
+    const toast=document.createElement('div');toast.className='chat-notif-toast';
+    toast.innerHTML='<div class="toast-sender">'+(isMention?'🔔 ':isReply?'↩️ ':'💬 ')+esc(senderName)+'</div>'
+      +'<div class="toast-content">'+esc((content||'').slice(0,60))+'</div>';
+    toast.onclick=function(){
+      currentRoomId=roomId;
+      if(window.page!=='chat')window.setPage('chat');
+      else{renderChatUI();loadMessages(roomId);}
       toast.remove();
     };
     document.body.appendChild(toast);
-    // Ping sound for mentions
-    if (isMention || isReply) {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const o = ctx.createOscillator(); const g = ctx.createGain();
-        o.connect(g); g.connect(ctx.destination);
-        o.frequency.value = 880; g.gain.setValueAtTime(0.3, ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-        o.start(); o.stop(ctx.currentTime + 0.3);
-      } catch(e) {}
-    }
-    setTimeout(function() { if (toast.parentNode) toast.remove(); }, 4000);
+    if(isMention||isReply){try{
+      const ctx=new(window.AudioContext||window.webkitAudioContext)();
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.value=880;g.gain.setValueAtTime(0.3,ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.3);
+      o.start();o.stop(ctx.currentTime+0.3);
+    }catch(e){}}
+    setTimeout(function(){if(toast.parentNode)toast.remove();},4000);
   }
 
-  // ── Update total unread badge ──
-  function updateChatBadge() {
-    const total = Object.values(unreadCounts).reduce(function(a, b) { return a + b; }, 0);
-    const badge = document.getElementById('badge-chat');
-    if (badge) { badge.textContent = total; badge.style.display = total > 0 ? 'inline' : 'none'; }
+  function updateChatBadge(){
+    const total=Object.values(unreadCounts).reduce(function(a,b){return a+b;},0);
+    const badge=document.getElementById('badge-chat');
+    if(badge){badge.textContent=total;badge.style.display=total>0?'inline':'none';}
   }
 
-  // ── Polling ──
-  function startPolling() {
+  function startPolling(){
     stopPolling();
-    pollTimer = setInterval(async function() {
-      if (!currentRoomId) return;
-      const since = lastMsgTime[currentRoomId] || new Date(Date.now() - 30000).toISOString();
-      const res = await chatCall({ action: 'poll_new_messages', room_id: currentRoomId, after: since });
-      if (res.messages && res.messages.length > 0) {
-        const msgs = res.messages;
-        if (!chatMessages[currentRoomId]) chatMessages[currentRoomId] = [];
-        msgs.forEach(function(m) {
-          if (!chatMessages[currentRoomId].find(function(x) { return x.id === m.id; })) {
+    pollTimer=setInterval(async function(){
+      if(!currentRoomId)return;
+      const since=lastMsgTime[currentRoomId]||new Date(Date.now()-30000).toISOString();
+      const res=await chatCall({action:'poll_new_messages',room_id:currentRoomId,after:since});
+      if(res.messages&&res.messages.length>0){
+        if(!chatMessages[currentRoomId])chatMessages[currentRoomId]=[];
+        res.messages.forEach(function(m){
+          if(!chatMessages[currentRoomId].find(function(x){return x.id===m.id;})){
             chatMessages[currentRoomId].push(m);
-            lastMsgTime[currentRoomId] = m.created_at;
-            // Notify if not from me
-            if (m.user_id !== myId()) {
-              const isMention = m.content && m.content.includes('@' + myName());
-              const isReply = m.reply_to_id && chatMessages[currentRoomId].find(function(x) { return x.id === m.reply_to_id && x.user_id === myId(); });
-              showToast(m.sender_name || '?', m.content || '', m.room_id, isMention, !!isReply);
-              unreadCounts[currentRoomId] = (unreadCounts[currentRoomId] || 0) + 1;
+            lastMsgTime[currentRoomId]=m.created_at;
+            if(m.user_id!==myId()){
+              const isMention=m.content&&m.content.includes('@'+myName());
+              const isReply=m.reply_to_id&&(chatMessages[currentRoomId]||[]).find(function(x){return x.id===m.reply_to_id&&x.user_id===myId();});
+              showToast(m.sender_name||'?',m.content||'',m.room_id,!!isMention,!!isReply);
+              unreadCounts[currentRoomId]=(unreadCounts[currentRoomId]||0)+1;
               updateChatBadge();
             }
           }
         });
         renderMessages();
       }
-    }, 3000);
+    },3000);
   }
+  function stopPolling(){if(pollTimer){clearInterval(pollTimer);pollTimer=null;}}
 
-  function stopPolling() {
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-  }
-
-  // ── Load rooms ──
-  async function loadRooms() {
-    const res = await chatCall({ action: 'get_rooms', sale_id: myId(), is_manager: isManager() });
-    chatRooms = res.rooms || [];
-    // Ensure General room is always present
-    if (!chatRooms.find(function(r) { return r.id === GENERAL_ROOM_ID; })) {
-      chatRooms.unshift({ id: GENERAL_ROOM_ID, name: 'General', is_direct: false, members: [] });
+  async function loadRooms(){
+    const res=await chatCall({action:'get_rooms',sale_id:myId(),is_manager:isManager()});
+    chatRooms=res.rooms||[];
+    if(!chatRooms.find(function(r){return r.id===GENERAL_ROOM_ID;})){
+      chatRooms.unshift({id:GENERAL_ROOM_ID,name:'General',is_direct:false,members:[]});
     }
     renderRoomList();
   }
 
-  // ── Load messages ──
-  async function loadMessages(roomId, before) {
-    const res = await chatCall({ action: 'get_messages', room_id: roomId, before: before, limit: 50 });
-    if (!chatMessages[roomId]) chatMessages[roomId] = [];
-    if (before) {
-      // Prepend older messages
-      chatMessages[roomId] = (res.messages || []).concat(chatMessages[roomId]);
-    } else {
-      chatMessages[roomId] = res.messages || [];
-    }
-    if (res.messages && res.messages.length > 0) {
-      lastMsgTime[roomId] = res.messages[res.messages.length - 1].created_at;
-    }
-    // Mark as read
-    unreadCounts[roomId] = 0;
-    try { localStorage.setItem('chat_last_read_' + roomId, new Date().toISOString()); } catch(e) {}
+  async function loadMessages(roomId,before){
+    const res=await chatCall({action:'get_messages',room_id:roomId,before:before,limit:50});
+    if(!chatMessages[roomId])chatMessages[roomId]=[];
+    if(before){chatMessages[roomId]=(res.messages||[]).concat(chatMessages[roomId]);}
+    else{chatMessages[roomId]=res.messages||[];}
+    if(res.messages&&res.messages.length>0)lastMsgTime[roomId]=res.messages[res.messages.length-1].created_at;
+    unreadCounts[roomId]=0;
+    try{localStorage.setItem('chat_last_read_'+roomId,new Date().toISOString());}catch(e){}
     updateChatBadge();
     renderMessages(!!before);
   }
 
-  // ── Send message ──
-  async function sendMessage() {
-    const inp = document.getElementById('chat-inp');
-    const text = inp ? inp.value.trim() : '';
-    if (!text || !currentRoomId) return;
-    inp.value = '';
-    inp.style.height = 'auto';
-
-    const payload = {
-      action: 'send_message',
-      room_id: currentRoomId,
-      user_id: myId(),
-      sender_name: myName(),
-      content: text,
-      reply_to_id: replyTo ? replyTo.id : null,
-    };
+  async function sendMessage(){
+    const inp=document.getElementById('chat-inp');
+    const text=inp?inp.value.trim():'';
+    if(!text||!currentRoomId)return;
+    inp.value='';inp.style.height='auto';
+    const payload={action:'send_message',room_id:currentRoomId,user_id:myId(),sender_name:myName(),content:text,reply_to_id:replyTo?replyTo.id:null};
     clearReply();
-
-    const res = await chatCall(payload);
-    if (res.message) {
-      if (!chatMessages[currentRoomId]) chatMessages[currentRoomId] = [];
+    const res=await chatCall(payload);
+    if(res.message){
+      if(!chatMessages[currentRoomId])chatMessages[currentRoomId]=[];
       chatMessages[currentRoomId].push(res.message);
-      lastMsgTime[currentRoomId] = res.message.created_at;
-      renderMessages();
-      scrollChatBottom();
+      lastMsgTime[currentRoomId]=res.message.created_at;
+      renderMessages();scrollChatBottom();
     }
   }
 
-  // ── Recall message ──
-  async function recallMessage(msgId) {
-    if (!confirm('Thu hồi tin nhắn này?')) return;
-    const res = await chatCall({ action: 'recall_message', message_id: msgId, user_id: myId(), is_manager: isManager() });
-    if (res.success) {
-      const msgs = chatMessages[currentRoomId] || [];
-      const m = msgs.find(function(x) { return x.id === msgId; });
-      if (m) { m.is_recalled = true; m.content = 'Tin nhắn đã được thu hồi'; }
+  async function recallMessage(msgId){
+    if(!confirm('Thu hồi tin nhắn này?'))return;
+    const res=await chatCall({action:'recall_message',message_id:msgId,user_id:myId(),is_manager:isManager()});
+    if(res.success){
+      const msgs=chatMessages[currentRoomId]||[];
+      const m=msgs.find(function(x){return x.id===msgId;});
+      if(m){m.is_recalled=true;m.content='Tin nhắn đã được thu hồi';}
       renderMessages();
-    } else {
-      alert(res.error || 'Không thể thu hồi');
-    }
+    }else{alert(res.error||'Không thể thu hồi');}
   }
 
-  // ── Show recalled history (manager) ──
-  async function showRecalledHistory() {
-    const res = await chatCall({ action: 'get_recalled_history', room_id: currentRoomId, is_manager: true });
-    const items = res.recalled || [];
-    const modal = document.createElement('div');
-    modal.className = 'recalled-modal';
-    modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
-    modal.innerHTML = '<div class="recalled-modal-inner">'
-      + '<div class="recalled-modal-header"><span style="font-weight:600">Lịch sử thu hồi</span><button onclick="this.closest('.recalled-modal').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px">×</button></div>'
-      + '<div class="recalled-modal-body">'
-      + (items.length === 0 ? '<div style="text-align:center;color:var(--text3);padding:20px">Không có tin nhắn nào bị thu hồi</div>'
-        : items.map(function(i) {
-          return '<div class="recalled-item"><div class="ri-sender">' + (i.sender_name || '?') + '</div>'
-            + '<div class="ri-content">' + (i.recalled_content || '') + '</div>'
-            + '<div class="ri-time">Thu hồi lúc: ' + fmtTime(i.recalled_at) + ' · Gửi lúc: ' + fmtTime(i.created_at) + '</div></div>';
-        }).join(''))
-      + '</div></div>';
+  async function showRecalledHistory(){
+    const res=await chatCall({action:'get_recalled_history',room_id:currentRoomId,is_manager:true});
+    const items=res.recalled||[];
+    const modal=document.createElement('div');modal.className='recalled-modal';
+    modal.onclick=function(e){if(e.target===modal)modal.remove();};
+    modal.innerHTML='<div class="recalled-modal-inner">'
+      +'<div class="recalled-modal-header"><span style="font-weight:600">Lịch sử thu hồi</span>'
+      +'<button onclick="this.closest(\'.recalled-modal\').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px">x</button></div>'
+      +'<div class="recalled-modal-body">'
+      +(items.length===0?'<div style="text-align:center;color:var(--text3);padding:20px">Không có tin nào bị thu hồi</div>'
+        :items.map(function(i){return'<div class="recalled-item"><div class="ri-sender">'+esc(i.sender_name||'?')+'</div>'
+          +'<div class="ri-content">'+esc(i.recalled_content||'')+'</div>'
+          +'<div class="ri-time">Thu hồi: '+fmtTime(i.recalled_at)+' · Gửi: '+fmtTime(i.created_at)+'</div></div>';}).join(''))
+      +'</div></div>';
     document.body.appendChild(modal);
   }
 
-  // ── Reply ──
-  function setReply(msg) {
-    replyTo = msg;
-    const preview = document.getElementById('chat-reply-preview');
-    if (preview) {
-      preview.style.display = 'flex';
-      preview.querySelector('.rp-sender').textContent = msg.sender_name || '?';
-      preview.querySelector('.rp-content').textContent = (msg.content || '').slice(0, 80);
-    }
-    document.getElementById('chat-inp') && document.getElementById('chat-inp').focus();
+  function setReply(msg){
+    replyTo=msg;
+    const p=document.getElementById('chat-reply-preview');
+    if(p){p.style.display='flex';p.querySelector('.rp-sender').textContent=msg.sender_name||'?';p.querySelector('.rp-content').textContent=(msg.content||'').slice(0,80);}
+    const inp=document.getElementById('chat-inp');if(inp)inp.focus();
   }
-  function clearReply() {
-    replyTo = null;
-    const preview = document.getElementById('chat-reply-preview');
-    if (preview) preview.style.display = 'none';
+  function clearReply(){
+    replyTo=null;
+    const p=document.getElementById('chat-reply-preview');if(p)p.style.display='none';
   }
 
-  // ── Open DM ──
-  async function openDM(targetId, targetName) {
-    const res = await chatCall({ action: 'get_or_create_dm', user_a: myId(), user_b: targetId });
-    if (res.room) {
-      if (!chatRooms.find(function(r) { return r.id === res.room.id; })) {
-        chatRooms.unshift(res.room);
-      }
-      currentRoomId = res.room.id;
-      renderChatUI();
-      loadMessages(res.room.id);
+  async function openDMfn(targetId,targetName){
+    const res=await chatCall({action:'get_or_create_dm',user_a:myId(),user_b:targetId});
+    if(res.room){
+      if(!chatRooms.find(function(r){return r.id===res.room.id;}))chatRooms.unshift(res.room);
+      currentRoomId=res.room.id;renderChatUI();loadMessages(res.room.id);
     }
   }
-  window.openDM = openDM;
+  window.openDM=openDMfn;
 
-  // ── Create room ──
-  async function createRoom() {
-    const name = prompt('Tên phòng chat:');
-    if (!name) return;
-    const res = await chatCall({ action: 'create_room', name: name, members: [], created_by: myId(), is_direct: false });
-    if (res.room) { chatRooms.unshift(res.room); renderRoomList(); currentRoomId = res.room.id; renderChatUI(); }
+  async function createRoom(){
+    const name=prompt('Tên phòng chat:');if(!name)return;
+    const res=await chatCall({action:'create_room',name:name,members:[],created_by:myId(),is_direct:false});
+    if(res.room){chatRooms.unshift(res.room);renderRoomList();currentRoomId=res.room.id;renderChatUI();}
   }
 
-  // ── Rename room ──
-  async function renameRoom(roomId) {
-    const room = chatRooms.find(function(r) { return r.id === roomId; });
-    const newName = prompt('Đổi tên phòng:', room ? room.name : '');
-    if (!newName) return;
-    const res = await chatCall({ action: 'update_room', room_id: roomId, name: newName });
-    if (res.room) {
-      const r = chatRooms.find(function(x) { return x.id === roomId; });
-      if (r) r.name = newName;
-      renderRoomList(); renderChatHeader();
-    }
+  async function renameRoom(roomId){
+    const room=chatRooms.find(function(r){return r.id===roomId;});
+    const newName=prompt('Đổi tên phòng:',room?room.name:'');if(!newName)return;
+    const res=await chatCall({action:'update_room',room_id:roomId,name:newName});
+    if(res.room){const r=chatRooms.find(function(x){return x.id===roomId;});if(r)r.name=newName;renderRoomList();renderChatHeader();}
   }
 
-  // ── Toggle mute ──
-  function toggleMute(roomId) {
-    if (mutedRooms.includes(roomId)) mutedRooms = mutedRooms.filter(function(x) { return x !== roomId; });
+  function toggleMute(roomId){
+    if(mutedRooms.includes(roomId))mutedRooms=mutedRooms.filter(function(x){return x!==roomId;});
     else mutedRooms.push(roomId);
-    try { localStorage.setItem('chat_muted', JSON.stringify(mutedRooms)); } catch(e) {}
+    try{localStorage.setItem('chat_muted',JSON.stringify(mutedRooms));}catch(e){}
+    renderChatHeader();
+  }
+  function toggleNotif(){
+    notifEnabled=!notifEnabled;
+    try{localStorage.setItem('chat_notif',notifEnabled?'on':'off');}catch(e){}
     renderChatHeader();
   }
 
-  // ── Toggle global notif ──
-  function toggleNotif() {
-    notifEnabled = !notifEnabled;
-    try { localStorage.setItem('chat_notif', notifEnabled ? 'on' : 'off'); } catch(e) {}
-    renderChatHeader();
-  }
-
-  // ════════════════════════════════════════
-  // RENDER
-  // ════════════════════════════════════════
-  function renderRoomList() {
-    const list = document.getElementById('chat-room-list');
-    if (!list) return;
-    const groups = chatRooms.filter(function(r) { return !r.is_direct; });
-    const dms = chatRooms.filter(function(r) { return r.is_direct; });
-
-    let html = '';
-    if (groups.length) {
-      html += '<div class="chat-section-label">Phòng chung</div>';
-      groups.forEach(function(r) {
-        const unread = unreadCounts[r.id] || 0;
-        const active = r.id === currentRoomId ? ' active' : '';
-        html += '<div class="chat-room-item' + active + '" onclick="window._chatSelectRoom('' + r.id + '')">'
-          + '<div class="chat-room-icon">#</div>'
-          + '<div class="chat-room-info"><div class="chat-room-name">' + r.name + '</div></div>'
-          + (unread > 0 ? '<span class="chat-unread-badge">' + unread + '</span>' : '')
-          + '</div>';
+  function renderRoomList(){
+    const list=document.getElementById('chat-room-list');if(!list)return;
+    const groups=chatRooms.filter(function(r){return !r.is_direct;});
+    const dms=chatRooms.filter(function(r){return r.is_direct;});
+    var html='';
+    if(groups.length){
+      html+='<div class="chat-section-label">Phòng chung</div>';
+      groups.forEach(function(r){
+        const unread=unreadCounts[r.id]||0;
+        const active=r.id===currentRoomId?' active':'';
+        html+='<div class="chat-room-item'+active+'" data-rid="'+esc(r.id)+'" onclick="window._chatSelectRoom(this.dataset.rid)">'
+          +'<div class="chat-room-icon">#</div>'
+          +'<div class="chat-room-info"><div class="chat-room-name">'+esc(r.name)+'</div></div>'
+          +(unread>0?'<span class="chat-unread-badge">'+unread+'</span>':'')
+          +'</div>';
       });
     }
-    if (dms.length) {
-      html += '<div class="chat-section-label">Tin nhắn riêng</div>';
-      dms.forEach(function(r) {
-        const unread = unreadCounts[r.id] || 0;
-        const active = r.id === currentRoomId ? ' active' : '';
-        // Get other person name
-        const otherName = r.dm_name || r.name || 'DM';
-        const initials = otherName.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
-        html += '<div class="chat-room-item' + active + '" onclick="window._chatSelectRoom('' + r.id + '')">'
-          + '<div class="chat-room-icon dm">' + initials + '</div>'
-          + '<div class="chat-room-info"><div class="chat-room-name">' + otherName + '</div></div>'
-          + (unread > 0 ? '<span class="chat-unread-badge">' + unread + '</span>' : '')
-          + '</div>';
+    if(dms.length){
+      html+='<div class="chat-section-label">Tin nhắn riêng</div>';
+      dms.forEach(function(r){
+        const unread=unreadCounts[r.id]||0;
+        const active=r.id===currentRoomId?' active':'';
+        const otherName=r.dm_name||r.name||'DM';
+        const initials=otherName.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
+        html+='<div class="chat-room-item'+active+'" data-rid="'+esc(r.id)+'" onclick="window._chatSelectRoom(this.dataset.rid)">'
+          +'<div class="chat-room-icon dm">'+initials+'</div>'
+          +'<div class="chat-room-info"><div class="chat-room-name">'+esc(otherName)+'</div></div>'
+          +(unread>0?'<span class="chat-unread-badge">'+unread+'</span>':'')
+          +'</div>';
       });
     }
-    list.innerHTML = html;
+    list.innerHTML=html;
   }
 
-  function renderChatHeader() {
-    const header = document.getElementById('chat-header');
-    if (!header || !currentRoomId) return;
-    const room = chatRooms.find(function(r) { return r.id === currentRoomId; });
-    if (!room) return;
-    const isMuted = mutedRooms.includes(currentRoomId);
-    const memberCount = (room.members || []).length;
-    header.innerHTML = '<div class="chat-header-name">'
-      + (room.is_direct ? '💬 ' : '# ') + room.name
-      + '</div>'
-      + (memberCount > 0 ? '<span class="chat-header-members">' + memberCount + ' thành viên</span>' : '')
-      + '<button class="chat-header-btn ' + (isMuted ? 'muted' : '') + '" onclick="window._chatToggleMute('' + currentRoomId + '')" title="' + (isMuted ? 'Bật thông báo' : 'Tắt thông báo') + '">'
-      + '<i class="ti ti-bell' + (isMuted ? '-off' : '') + '"></i></button>'
-      + (isManager() ? '<button class="chat-header-btn" onclick="window._chatRename('' + currentRoomId + '')" title="Đổi tên"><i class="ti ti-pencil"></i></button>' : '')
-      + (isManager() ? '<button class="chat-header-btn" onclick="window._chatRecalledHistory()" title="Lịch sử thu hồi"><i class="ti ti-history"></i></button>' : '')
-      + '<button class="chat-header-btn" onclick="window._chatToggleNotif()" title="' + (notifEnabled ? 'Tắt tất cả thông báo' : 'Bật thông báo') + '">'
-      + '<i class="ti ti-' + (notifEnabled ? 'volume' : 'volume-off') + '"></i></button>';
+  function renderChatHeader(){
+    const header=document.getElementById('chat-header');
+    if(!header||!currentRoomId)return;
+    const room=chatRooms.find(function(r){return r.id===currentRoomId;});
+    if(!room)return;
+    const isMuted=mutedRooms.includes(currentRoomId);
+    const memberCount=(room.members||[]).length;
+    const rid=esc(currentRoomId);
+    header.innerHTML='<div class="chat-header-name">'+(room.is_direct?'💬 ':'# ')+esc(room.name)+'</div>'
+      +(memberCount>0?'<span class="chat-header-members">'+memberCount+' thành viên</span>':'')
+      +'<button class="chat-header-btn'+(isMuted?' muted':'')+'" data-rid="'+rid+'" onclick="window._chatToggleMute(this.dataset.rid)" title="'+(isMuted?'Bật':'Tắt')+' thông báo">'
+      +'<i class="ti ti-bell'+(isMuted?'-off':'')+'"></i></button>'
+      +(isManager()?'<button class="chat-header-btn" data-rid="'+rid+'" onclick="window._chatRename(this.dataset.rid)" title="Đổi tên"><i class="ti ti-pencil"></i></button>':'')
+      +(isManager()?'<button class="chat-header-btn" onclick="window._chatRecalledHistory()" title="Lịch sử thu hồi"><i class="ti ti-history"></i></button>':'')
+      +'<button class="chat-header-btn" onclick="window._chatToggleNotif()" title="'+(notifEnabled?'Tắt':'Bật')+' thông báo"><i class="ti ti-'+(notifEnabled?'volume':'volume-off')+'"></i></button>';
   }
 
-  function renderMessages(prepend) {
-    const container = document.getElementById('chat-messages');
-    if (!container || !currentRoomId) return;
-    const msgs = chatMessages[currentRoomId] || [];
-    if (msgs.length === 0) {
-      container.innerHTML = '<div class="chat-empty"><i class="ti ti-messages"></i><span>Chưa có tin nhắn nào</span></div>';
-      return;
-    }
-    const scrollBottom = container.scrollHeight - container.scrollTop;
-
-    let html = msgs.length >= 50
-      ? '<div class="chat-load-more" onclick="window._chatLoadMore()"><i class="ti ti-chevron-up"></i> Tải thêm tin cũ hơn</div>'
-      : '';
-
-    msgs.forEach(function(m, idx) {
-      const isMine = m.user_id === myId();
-      const isRecalled = m.is_recalled;
-      const prev = msgs[idx - 1];
-      const showSender = !isMine && (!prev || prev.user_id !== m.user_id);
-
-      // Find reply-to message
-      let replyHtml = '';
-      if (m.reply_to_id) {
-        const orig = msgs.find(function(x) { return x.id === m.reply_to_id; });
-        if (orig) {
-          replyHtml = '<div class="chat-reply-quote"><div class="quote-sender">' + (orig.sender_name || '?') + '</div>'
-            + '<div>' + (orig.content || '').slice(0, 80) + '</div></div>';
-        }
+  function renderMessages(prepend){
+    const container=document.getElementById('chat-messages');
+    if(!container||!currentRoomId)return;
+    const msgs=chatMessages[currentRoomId]||[];
+    if(msgs.length===0){container.innerHTML='<div class="chat-empty"><i class="ti ti-messages"></i><span>Chưa có tin nhắn nào</span></div>';return;}
+    const scrollBottom=container.scrollHeight-container.scrollTop;
+    var html=msgs.length>=50?'<div class="chat-load-more" onclick="window._chatLoadMore()"><i class="ti ti-chevron-up"></i> Tải thêm tin cũ hơn</div>':'';
+    msgs.forEach(function(m,idx){
+      const isMine=m.user_id===myId();
+      const isRecalled=m.is_recalled;
+      const prev=msgs[idx-1];
+      const showSender=!isMine&&(!prev||prev.user_id!==m.user_id);
+      var replyHtml='';
+      if(m.reply_to_id){
+        const orig=msgs.find(function(x){return x.id===m.reply_to_id;});
+        if(orig)replyHtml='<div class="chat-reply-quote"><div class="quote-sender">'+esc(orig.sender_name||'?')+'</div><div>'+esc((orig.content||'').slice(0,80))+'</div></div>';
       }
-
-      const bubbleClass = 'chat-bubble ' + (isRecalled ? 'recalled' : isMine ? 'mine' : 'theirs');
-      const rowClass = 'chat-msg-row' + (isMine ? ' mine' : '');
-      const initials = ((m.sender_name || '?').split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase());
-
-      // Actions
-      let actionsHtml = '';
-      if (!isRecalled) {
-        actionsHtml = '<div class="chat-msg-actions">'
-          + '<button class="chat-action-btn" onclick="window._chatReply(' + m.id + ')" title="Reply"><i class="ti ti-corner-up-left"></i></button>'
-          + (isMine || isManager() ? '<button class="chat-action-btn" onclick="window._chatRecall(' + m.id + ')" title="Thu hồi"><i class="ti ti-trash"></i></button>' : '')
-          + (isManager() && m.is_recalled ? '<button class="chat-action-btn" onclick="window._chatViewOriginal('' + m.id + '')" title="Xem nội dung gốc"><i class="ti ti-eye"></i></button>' : '')
-          + '</div>';
+      const bubbleClass='chat-bubble '+(isRecalled?'recalled':isMine?'mine':'theirs');
+      const initials=((m.sender_name||'?').split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase());
+      var actionsHtml='';
+      if(!isRecalled){
+        actionsHtml='<div class="chat-msg-actions">'
+          +'<button class="chat-action-btn" data-mid="'+m.id+'" onclick="window._chatReply(this.dataset.mid)" title="Reply"><i class="ti ti-corner-up-left"></i></button>'
+          +(isMine||isManager()?'<button class="chat-action-btn" data-mid="'+m.id+'" onclick="window._chatRecall(this.dataset.mid)" title="Thu hồi"><i class="ti ti-trash"></i></button>':'')
+          +'</div>';
       }
-
-      html += '<div class="' + rowClass + '">'
-        + (isMine ? '' : '<div class="chat-msg-avatar">' + initials + '</div>')
-        + '<div class="chat-msg-col">'
-        + (showSender ? '<div class="chat-sender-name">' + (m.sender_name || '') + '</div>' : '')
-        + '<div class="' + bubbleClass + '">'
-        + actionsHtml
-        + replyHtml
-        + (m.image_url ? '<img class="chat-img" src="' + m.image_url + '" onclick="window.open(this.src)">' : '')
-        + '<div>' + renderContent(m.content || '') + '</div>'
-        + '</div>'
-        + '<div class="chat-msg-time">' + fmtTime(m.created_at) + '</div>'
-        + '</div>'
-        + '</div>';
+      html+='<div class="chat-msg-row'+(isMine?' mine':'')+'"">'
+        +(isMine?'':'<div class="chat-msg-avatar">'+initials+'</div>')
+        +'<div class="chat-msg-col">'
+        +(showSender?'<div class="chat-sender-name">'+esc(m.sender_name||'')+'</div>':'')
+        +'<div class="'+bubbleClass+'">'+actionsHtml+replyHtml
+        +(m.image_url?'<img class="chat-img" src="'+esc(m.image_url)+'" onclick="window.open(this.src)">':'')
+        +'<div>'+renderContent(m.content||'')+'</div></div>'
+        +'<div class="chat-msg-time">'+fmtTime(m.created_at)+'</div>'
+        +'</div></div>';
     });
-
-    container.innerHTML = html;
-    if (!prepend) scrollChatBottom();
-    else container.scrollTop = container.scrollHeight - scrollBottom;
+    container.innerHTML=html;
+    if(!prepend)scrollChatBottom();
+    else container.scrollTop=container.scrollHeight-scrollBottom;
   }
 
-  function scrollChatBottom() {
-    const c = document.getElementById('chat-messages');
-    if (c) c.scrollTop = c.scrollHeight;
-  }
+  function scrollChatBottom(){const c=document.getElementById('chat-messages');if(c)c.scrollTop=c.scrollHeight;}
 
-  function renderChatUI() {
-    const root = document.getElementById('chat-root');
-    if (!root) return;
-
-    const room = chatRooms.find(function(r) { return r.id === currentRoomId; });
-
-    root.innerHTML = '<div class="chat-layout">'
-      // Sidebar
-      + '<div class="chat-sidebar">'
-      + '<div class="chat-sidebar-header">'
-      + '<span class="chat-sidebar-title">Chat</span>'
-      + (isManager() ? '<button class="chat-header-btn" onclick="window._chatCreateRoom()" title="Tạo phòng"><i class="ti ti-plus"></i></button>' : '')
-      + '</div>'
-      + '<div id="chat-room-list" class="chat-room-list"></div>'
-      // Member list for DM
-      + (isManager() ? '<div style="padding:6px;border-top:1px solid var(--border)"><div class="chat-section-label">Nhắn tin riêng</div>'
-        + (window.PROFILES || []).filter(function(p){return p.id!==myId();}).map(function(p){
-          return '<div class="chat-room-item" onclick="window.openDM('' + p.id + '','' + (p.full_name||'?') + '')" style="cursor:pointer">'
-            + '<div class="chat-room-icon dm" style="font-size:10px">' + (p.full_name||'?').split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase() + '</div>'
-            + '<div class="chat-room-info"><div class="chat-room-name">' + (p.full_name||p.email||'?') + '</div></div></div>';
-        }).join('')
-        + '</div>' : '')
-      + '</div>'
-      // Main
-      + '<div class="chat-main">'
-      + '<div id="chat-header" class="chat-header">'
-      + (currentRoomId ? '' : '<div class="chat-header-name" style="color:var(--text3)">Chọn một phòng để bắt đầu</div>')
-      + '</div>'
-      + '<div id="chat-messages" class="chat-messages">'
-      + (currentRoomId ? '<div class="chat-empty"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i><span>Đang tải...</span></div>' : '<div class="chat-empty"><i class="ti ti-messages"></i><span>Chọn phòng chat bên trái</span></div>')
-      + '</div>'
-      + (currentRoomId ? '<div class="chat-input-area">'
-        + '<div id="chat-reply-preview" class="chat-reply-preview" style="display:none">'
-        + '<div><div class="rp-sender" style="font-weight:600;color:var(--brand2);font-size:11px"></div><div class="rp-content" style="font-size:11px;color:var(--text2)"></div></div>'
-        + '<button class="chat-reply-preview-close" onclick="window._chatClearReply()">×</button>'
-        + '</div>'
-        + '<div class="chat-input-row">'
-        + '<textarea id="chat-inp" class="chat-input" placeholder="Nhập tin nhắn... (@tên để mention)" rows="1"></textarea>'
-        + '<button class="chat-send-btn" onclick="window._chatSend()" title="Gửi"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
-        + '</div></div>' : '')
-      + '</div></div>';
-
-    renderRoomList();
-    renderChatHeader();
-
-    // Input auto-resize + Enter send
-    const inp = document.getElementById('chat-inp');
-    if (inp) {
-      inp.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window._chatSend(); }
+  function renderChatUI(){
+    const root=document.getElementById('chat-root');if(!root)return;
+    var profilesHtml='';
+    if(isManager()&&window.PROFILES){
+      profilesHtml='<div style="padding:6px;border-top:1px solid var(--border)"><div class="chat-section-label">Nhắn tin riêng</div>';
+      (window.PROFILES||[]).filter(function(p){return p.id!==myId();}).forEach(function(p){
+        const initials=((p.full_name||'?').split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase());
+        profilesHtml+='<div class="chat-room-item" data-uid="'+esc(p.id)+'" data-uname="'+esc(p.full_name||'?')+'" onclick="window.openDM(this.dataset.uid,this.dataset.uname)" style="cursor:pointer">'
+          +'<div class="chat-room-icon dm">'+initials+'</div>'
+          +'<div class="chat-room-info"><div class="chat-room-name">'+esc(p.full_name||p.email||'?')+'</div></div></div>';
       });
-      inp.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-      });
+      profilesHtml+='</div>';
     }
-
-    if (currentRoomId) loadMessages(currentRoomId);
+    root.innerHTML='<div class="chat-layout">'
+      +'<div class="chat-sidebar">'
+      +'<div class="chat-sidebar-header"><span class="chat-sidebar-title">Chat</span>'
+      +(isManager()?'<button class="chat-header-btn" onclick="window._chatCreateRoom()" title="Tạo phòng"><i class="ti ti-plus"></i></button>':'')
+      +'</div>'
+      +'<div id="chat-room-list" class="chat-room-list"></div>'
+      +profilesHtml
+      +'</div>'
+      +'<div class="chat-main">'
+      +'<div id="chat-header" class="chat-header">'
+      +(currentRoomId?'':'<div class="chat-header-name" style="color:var(--text3)">Chọn phòng để bắt đầu</div>')
+      +'</div>'
+      +'<div id="chat-messages" class="chat-messages">'
+      +(currentRoomId?'<div class="chat-empty"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i><span>Đang tải...</span></div>':'<div class="chat-empty"><i class="ti ti-messages"></i><span>Chọn phòng chat bên trái</span></div>')
+      +'</div>'
+      +(currentRoomId?'<div class="chat-input-area">'
+        +'<div id="chat-reply-preview" class="chat-reply-preview" style="display:none">'
+        +'<div><div class="rp-sender" style="font-weight:600;color:var(--brand2);font-size:11px"></div><div class="rp-content" style="font-size:11px;color:var(--text2)"></div></div>'
+        +'<button class="chat-reply-preview-close" onclick="window._chatClearReply()">x</button>'
+        +'</div>'
+        +'<div class="chat-input-row">'
+        +'<textarea id="chat-inp" class="chat-input" placeholder="Nhập tin nhắn... (@tên để mention)" rows="1"></textarea>'
+        +'<button class="chat-send-btn" onclick="window._chatSend()" title="Gửi"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
+        +'</div></div>':'')
+      +'</div></div>';
+    renderRoomList();renderChatHeader();
+    const inp=document.getElementById('chat-inp');
+    if(inp){
+      inp.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();window._chatSend();}});
+      inp.addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';});
+    }
+    if(currentRoomId)loadMessages(currentRoomId);
   }
 
-  // ── Global bindings ──
-  window._chatSelectRoom = function(roomId) {
-    currentRoomId = roomId;
-    unreadCounts[roomId] = 0;
-    updateChatBadge();
-    renderRoomList();
-    renderChatHeader();
-    const msgs = document.getElementById('chat-messages');
-    if (msgs) msgs.innerHTML = '<div class="chat-empty"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i><span>Đang tải...</span></div>';
-    loadMessages(roomId);
-    startPolling();
-  };
-  window._chatSend = sendMessage;
-  window._chatReply = function(msgId) {
-    const msgs = chatMessages[currentRoomId] || [];
-    const m = msgs.find(function(x) { return x.id === msgId; });
-    if (m) setReply(m);
-  };
-  window._chatRecall = function(msgId) { recallMessage(msgId); };
-  window._chatClearReply = clearReply;
-  window._chatLoadMore = function() {
-    const msgs = chatMessages[currentRoomId] || [];
-    if (msgs.length > 0) loadMessages(currentRoomId, msgs[0].created_at);
-  };
-  window._chatCreateRoom = createRoom;
-  window._chatRename = renameRoom;
-  window._chatToggleMute = toggleMute;
-  window._chatToggleNotif = toggleNotif;
-  window._chatRecalledHistory = showRecalledHistory;
+  window._chatSelectRoom=function(roomId){currentRoomId=roomId;unreadCounts[roomId]=0;updateChatBadge();renderRoomList();renderChatHeader();const msgs=document.getElementById('chat-messages');if(msgs)msgs.innerHTML='<div class="chat-empty"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i><span>Đang tải...</span></div>';loadMessages(roomId);startPolling();};
+  window._chatSend=sendMessage;
+  window._chatReply=function(msgId){const msgs=chatMessages[currentRoomId]||[];const m=msgs.find(function(x){return String(x.id)===String(msgId);});if(m)setReply(m);};
+  window._chatRecall=function(msgId){recallMessage(msgId);};
+  window._chatClearReply=clearReply;
+  window._chatLoadMore=function(){const msgs=chatMessages[currentRoomId]||[];if(msgs.length>0)loadMessages(currentRoomId,msgs[0].created_at);};
+  window._chatCreateRoom=createRoom;
+  window._chatRename=renameRoom;
+  window._chatToggleMute=toggleMute;
+  window._chatToggleNotif=toggleNotif;
+  window._chatRecalledHistory=showRecalledHistory;
 
-  // ── Init ──
-  window.initChatPage = async function() {
-    if (!currentRoomId) currentRoomId = GENERAL_ROOM_ID;
+  window.initChatPage=async function(){
+    if(!currentRoomId)currentRoomId=GENERAL_ROOM_ID;
     await loadRooms();
     renderChatUI();
     startPolling();
   };
 
-  // Background polling for badge (when not on chat page)
-  setInterval(async function() {
-    if (window.page === 'chat' || !window.currentUser) return;
-    const roomIds = chatRooms.map(function(r) { return r.id; });
-    if (roomIds.length === 0) return;
-    const lastRead = {};
-    roomIds.forEach(function(rid) {
-      try { lastRead[rid] = localStorage.getItem('chat_last_read_' + rid) || new Date(0).toISOString(); } catch(e) {}
-    });
-    const res = await chatCall({ action: 'poll_all_rooms', room_ids: roomIds, last_read: lastRead });
-    if (res.unread_counts) {
-      unreadCounts = res.unread_counts;
-      updateChatBadge();
-    }
-  }, 15000);
+  setInterval(async function(){
+    if(window.page==='chat'||!window.currentUser)return;
+    const roomIds=chatRooms.map(function(r){return r.id;});
+    if(roomIds.length===0)return;
+    const lastRead={};
+    roomIds.forEach(function(rid){try{lastRead[rid]=localStorage.getItem('chat_last_read_'+rid)||new Date(0).toISOString();}catch(e){}});
+    const res=await chatCall({action:'poll_all_rooms',room_ids:roomIds,last_read:lastRead});
+    if(res.unread_counts){unreadCounts=res.unread_counts;updateChatBadge();}
+  },15000);
 
 })();
 </script>
