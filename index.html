@@ -516,7 +516,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 .chat-room-icon{width:34px;height:34px;border-radius:9px;background:rgba(108,92,231,0.2);color:var(--brand2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
 .chat-room-icon.dm{border-radius:50%;background:rgba(255,255,255,0.08);color:var(--text2);}
 .chat-room-meta{flex:1;min-width:0;}
-.chat-room-name{font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chat-room-name{font-size:11px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .chat-room-preview{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
 .chat-unread{background:var(--danger);color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0;}
 
@@ -546,7 +546,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 .chat-msg-col{display:flex;flex-direction:column;max-width:65%;gap:2px;}
 .chat-msg-group.mine .chat-msg-col{align-items:flex-end;}
 .chat-sender{font-size:10px;color:var(--text3);padding:0 4px;margin-bottom:2px;}
-.chat-bubble{padding:9px 13px;border-radius:16px;font-size:13px;line-height:1.55;word-break:break-word;white-space:pre-wrap;position:relative;cursor:default;transition:opacity 0.15s;}
+.chat-bubble{padding:8px 12px;border-radius:14px;font-size:12px;line-height:1.55;word-break:break-word;white-space:pre-wrap;position:relative;cursor:default;transition:opacity 0.15s;}
 .chat-bubble.theirs{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.06);color:var(--text);border-bottom-left-radius:4px;}
 .chat-bubble.mine{background:linear-gradient(135deg,#6c5ce7,#7c3aed);color:#fff;border-bottom-right-radius:4px;border:none;}
 .chat-bubble.recalled{background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.1);color:var(--text3);font-style:italic;}
@@ -576,7 +576,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 .chat-reply-bar .rb-text{color:var(--text2);}
 .chat-reply-close{background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:0 4px;line-height:1;}
 .chat-input-row{display:flex;gap:8px;align-items:flex-end;}
-.chat-inp{flex:1;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--text);font-family:'Be Vietnam Pro',sans-serif;outline:none;resize:none;max-height:120px;min-height:40px;line-height:1.45;transition:border-color 0.15s;}
+.chat-inp{flex:1;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:8px 12px;font-size:12px;color:var(--text);font-family:'Be Vietnam Pro',sans-serif;outline:none;resize:none;max-height:120px;min-height:40px;line-height:1.45;transition:border-color 0.15s;}
 .chat-inp:focus{border-color:rgba(108,92,231,0.5);}
 .chat-inp::placeholder{color:var(--text3);}
 .chat-send{width:40px;height:40px;border-radius:12px;border:none;background:linear-gradient(135deg,#6c5ce7,#7c3aed);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s,transform 0.1s;}
@@ -795,7 +795,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 .chat-room-icon{width:32px;height:32px;border-radius:8px;background:rgba(108,92,231,0.2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
 .chat-room-icon.dm{border-radius:50%;background:rgba(255,255,255,0.1);font-size:12px;font-weight:700;color:var(--text);}
 .chat-room-info{flex:1;min-width:0;}
-.chat-room-name{font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chat-room-name{font-size:11px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .chat-room-last{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
 .chat-unread-badge{background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:10px;min-width:16px;text-align:center;flex-shrink:0;}
 .chat-section-label{font-size:10px;color:var(--text3);padding:8px 10px 4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;}
@@ -4633,6 +4633,8 @@ function dayLabel(d){
   return dt.toLocaleDateString('vi',{day:'2-digit',month:'2-digit',year:'numeric'});
 }
 function initials(s){return(s||'?').split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();}
+var AV_COLORS=['#6c5ce7','#00b894','#e17055','#0984e3','#fd79a8','#00cec9','#fdcb6e','#a29bfe','#55efc4','#fab1a0'];
+function avColor(s){var n=0;for(var i=0;i<(s||'').length;i++)n+=(s||'').charCodeAt(i);return AV_COLORS[n%AV_COLORS.length];}
 function ping(){try{var c=new(window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.setValueAtTime(0.2,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.25);o.start();o.stop(c.currentTime+0.25);}catch(e){}}
 
 function toast(sender,text,roomId,mention,reply){
@@ -4968,7 +4970,7 @@ function renderRoomList(){
     dms.forEach(function(r){
       var n=unread[r.id]||0,active=r.id===curRoom?' active':'',nm=roomName(r),ini=initials(nm);
       h+='<div class="chat-room-row'+active+'" data-rid="'+esc(r.id)+'" onclick="window._cs(this.dataset.rid)">'
-        +'<div class="chat-room-icon dm">'+ini+'</div>'
+        +'<div class="chat-room-icon dm" style="background:'+avColor(nm)+';color:#fff">'+ini+'</div>'
         +'<div class="chat-room-meta"><div class="chat-room-name">'+esc(nm)+'</div></div>'
         +(n?'<div class="chat-unread">'+n+'</div>':'')
         +'</div>';
@@ -4982,11 +4984,12 @@ function renderHead(){
   var r=rooms.find(function(x){return x.id===curRoom;});if(!r)return;
   var nm=roomName(r),mc=(r.members||[]).length,muted_=muted.includes(curRoom),rid=esc(curRoom);
   el.innerHTML='<button class="chat-mobile-tog" id="chat-mob-tog" onclick="window._ctog()"><i class="ti ti-menu-2"></i></button>'
-    +'<div class="chat-head-icon'+(r.is_direct?' dm':'')+'">'+initials(nm)+'</div>'
+    +'<div class="chat-head-icon'+(r.is_direct?' dm':'')+'" style="background:'+avColor(nm)+';color:#fff">'+initials(nm)+'</div>'
     +'<div class="chat-head-info"><div class="chat-head-name">'+esc(nm)+'</div>'
     +(mc>0?'<div class="chat-head-sub">'+mc+' thành viên</div>':'')+'</div>'
     +'<div class="chat-head-actions">'
     +(mgr()&&!r.is_direct?'<button class="chat-icon-btn" data-rid="'+rid+'" onclick="showMemberModal(this.dataset.rid)" title="Thành viên"><i class="ti ti-users"></i></button>':'')
+    +(mgr()?'<button class="chat-icon-btn" data-rid="'+rid+'" onclick="window._cDeleteRoom(this.dataset.rid)" title="Xóa phòng" style="color:var(--danger)"><i class="ti ti-trash"></i></button>':'')
     +(mgr()&&!r.is_direct?'<button class="chat-icon-btn" data-rid="'+rid+'" onclick="renameRoom(this.dataset.rid)" title="Đổi tên"><i class="ti ti-pencil"></i></button>':'')
     +'<button class="chat-icon-btn'+(muted_?' active':'')+'" data-rid="'+rid+'" onclick="window._cmute(this.dataset.rid)" title="'+(muted_?'Bật':'Tắt')+' thông báo"><i class="ti ti-bell'+(muted_?'-off':'')+'"></i></button>'
     +(mgr()?'<button class="chat-icon-btn" onclick="showRecalledModal()" title="Lịch sử thu hồi"><i class="ti ti-history"></i></button>':'')
@@ -5030,7 +5033,7 @@ function renderMsgs(prepend,append){
 function buildMsgHtml(m,list){
   var mine=m.user_id===uid(),recalled=m.is_recalled;
   var prev=list[list.indexOf(m)-1];
-  var showSender=!mine&&(!prev||prev.user_id!==m.user_id||new Date(m.created_at)-new Date(prev.created_at)>300000);
+  var showSender=!mine&&(!prev||prev.user_id!==m.user_id||new Date(m.created_at)-new Date(prev.created_at)>180000);
   var ini=initials(m.sender_name||'?');
 
   var replyH='';
@@ -5046,7 +5049,7 @@ function buildMsgHtml(m,list){
   return '<div class="chat-msg-group'+(mine?' mine':'')+'" data-mid="'+m.id+'">'
     +(mine?'':'<div class="chat-avatar">'+ini+'</div>')
     +'<div class="chat-msg-col">'
-    +(showSender?'<div class="chat-sender">'+esc(m.sender_name||'')+'</div>':'')
+    +(showSender?'<div class="chat-sender" style="color:var(--brand2);font-weight:600">'+esc(m.sender_name||'?')+'</div>':'')
     +'<div class="chat-bubble'+(recalled?' recalled':mine?' mine':' theirs')+'">'
     +acts+replyH
     +(m.image_url?'<img class="chat-img" src="'+esc(m.image_url)+'" onclick="window.open(this.src)" loading="lazy">':'')
@@ -5060,17 +5063,8 @@ function buildMsgEl(m,list){var d=document.createElement('div');d.outerHTML=buil
 function renderMain(){
   var root=document.getElementById('chat-root');if(!root)return;
 
-  // Build DM list for manager
-  var dmList='';
-  if(mgr()&&window.PROFILES){
-    dmList='<div class="chat-section-lbl">Nhắn tin riêng</div>'
-      +(window.PROFILES||[]).filter(function(p){return p.id!==uid();}).map(function(p){
-        return '<div class="chat-room-row" data-uid="'+esc(p.id)+'" data-un="'+esc(p.full_name||'')+'" onclick="window.openDM(this.dataset.uid,this.dataset.un)">'
-          +'<div class="chat-room-icon dm">'+initials(p.full_name)+'</div>'
-          +'<div class="chat-room-meta"><div class="chat-room-name">'+esc(p.full_name||'?')+'</div></div>'
-          +'</div>';
-      }).join('');
-  }
+  // DM list in + menu
+
 
   root.innerHTML=
     '<div id="chat-mob-overlay" class="chat-mobile-overlay" onclick="window._ctog()"></div>'
@@ -5078,10 +5072,20 @@ function renderMain(){
       +'<div class="chat-sb" id="csb">'
         +'<div class="chat-sb-top">'
           +'<span class="chat-sb-title"><i class="ti ti-messages" style="margin-right:6px;color:var(--brand2)"></i>Chat</span>'
-          +(mgr()?'<button class="chat-sb-btn" onclick="showCreateRoom()" title="Tạo phòng"><i class="ti ti-plus"></i></button>':'')
+          +'<div style="position:relative">'
+          +'<button class="chat-sb-btn" id="chat-plus-btn" onclick="window._cToggleMenu()" title="Tạo mới"><i class="ti ti-plus"></i></button>'
+          +'<div id="chat-plus-menu" style="display:none;position:absolute;top:32px;right:0;background:#1e1550;border:1px solid var(--chat-border);border-radius:10px;padding:6px;min-width:180px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.5)">'
+            +'<button onclick="window._cToggleMenu();showCreateRoom()" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;cursor:pointer;color:var(--text);font-size:12px;text-align:left" onmouseover="this.style.background=\'rgba(108,92,231,0.15)\'" onmouseout="this.style.background=\'none\'">'
+              +'<i class="ti ti-hash" style="color:var(--brand2)"></i> Tạo phòng mới'
+            +'</button>'
+            +'<button onclick="window._cToggleMenu();window._cShowDMList()" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;cursor:pointer;color:var(--text);font-size:12px;text-align:left" onmouseover="this.style.background=\'rgba(108,92,231,0.15)\'" onmouseout="this.style.background=\'none\'">'
+              +'<i class="ti ti-message" style="color:var(--brand2)"></i> Nhắn tin riêng'
+            +'</button>'
+          +'</div>'
+          +'</div>'
         +'</div>'
         +'<div class="chat-sb-list" id="crooms"></div>'
-        +(dmList?'<div class="chat-sb-list" style="border-top:1px solid var(--chat-border);padding-top:4px">'+dmList+'</div>':'')
+
       +'</div>'
       +'<div class="chat-main">'
         +'<div class="chat-head" id="chead">'
@@ -5127,6 +5131,53 @@ function selectRoom(id){
 
 // ── Global bindings ──
 window._cs=selectRoom;
+
+window._cToggleMenu=function(){
+  var m=document.getElementById('chat-plus-menu');
+  if(!m)return;
+  m.style.display=m.style.display==='none'?'block':'none';
+  if(m.style.display==='block'){
+    setTimeout(function(){document.addEventListener('click',function h(e){if(!m.contains(e.target)&&e.target.id!=='chat-plus-btn'){m.style.display='none';document.removeEventListener('click',h);}});},10);
+  }
+};
+
+window._cShowDMList=function(){
+  var profiles=(window.PROFILES||[]).filter(function(p){return p.id!==uid();});
+  var box=document.createElement('div');box.className='chat-modal';
+  box.onclick=function(e){if(e.target===box)box.remove();};
+  box.innerHTML='<div class="chat-modal-box" style="width:380px">'
+    +'<div class="chat-modal-head">'
+      +'<div style="display:flex;align-items:center;gap:8px"><i class="ti ti-message" style="color:var(--brand2);font-size:18px"></i><span class="chat-modal-title">Nhắn tin riêng</span></div>'
+      +'<button class="chat-modal-close" onclick="this.closest('.chat-modal').remove()">×</button>'
+    +'</div>'
+    +'<div class="chat-modal-body" style="padding:10px 16px">'
+      +profiles.map(function(p){
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:9px;cursor:pointer;transition:background 0.12s" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='none'" data-uid="'+esc(p.id)+'" data-un="'+esc(p.full_name||'')+'" onclick="this.closest('.chat-modal').remove();window.openDM(this.dataset.uid,this.dataset.un)">'
+          +'<div style="width:36px;height:36px;border-radius:50%;background:'+avColor(p.full_name)+';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0">'+initials(p.full_name)+'</div>'
+          +'<div><div style="font-size:13px;font-weight:500;color:var(--text)">'+esc(p.full_name||'?')+'</div>'
+            +'<div style="font-size:11px;color:var(--text3)">'+esc(p.role||'sale')+'</div>'
+          +'</div>'
+        +'</div>';
+      }).join('')
+    +'</div>'
+  +'</div>';
+  document.body.appendChild(box);
+};
+
+window._cDeleteRoom=async function(roomId){
+  if(!confirm('Xóa phòng này và toàn bộ tin nhắn?'))return;
+  // Delete all messages in room first
+  await api({action:'delete_room_messages',room_id:roomId});
+  // Delete room
+  var res=await api({action:'delete_room',room_id:roomId});
+  if(res.success||!res.error){
+    rooms=rooms.filter(function(r){return r.id!==roomId;});
+    delete msgs[roomId];delete unread[roomId];
+    if(curRoom===roomId){curRoom=null;}
+    renderMain();if(rooms.length>0)selectRoom(rooms[0].id);
+    showNotif('Đã xóa phòng');
+  }else alert(res.error||'Lỗi xóa phòng');
+};
 window.showCreateRoom=showCreateRoom;
 window.showMemberModal=showMemberModal;
 window.showRecalledModal=showRecalledModal;
