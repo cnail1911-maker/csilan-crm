@@ -1146,11 +1146,28 @@ async function initApp(user){
       }else if(payload.eventType==='DELETE'){
         INVOICES=INVOICES.filter(function(i){return i.id!==payload.old.id;});
       }
+      // Update ALL pending badges (badge-pending covers both KH + invoice pending)
       const isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
-      const cnt=isM?INVOICES.filter(function(i){return i.approval_status==='pending';}).length:INVOICES.filter(function(i){return i.approval_status==='pending'&&i.created_by===currentUser.id;}).length;
-      const badge=document.getElementById('pending-badge');
-      if(badge){badge.textContent=cnt;badge.style.display=cnt>0?'inline-flex':'none';}
-      render();
+      const pendingInvCnt=INVOICES.filter(function(i){return i.approval_status==='pending';}).length;
+      const pendingKhCnt=isM
+        ?CUSTOMERS.filter(function(c){return c.approval_status==='pending';}).length
+        :CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&c.created_by===currentUser.id;}).length;
+      const totalPending=pendingInvCnt+pendingKhCnt;
+      // Fix: update correct badge ids
+      ['badge-pending','pending-badge'].forEach(function(id){
+        const b=document.getElementById(id);
+        if(b){b.textContent=totalPending;b.style.display=totalPending>0?'inline':'none';}
+      });
+      // Re-render if on pending tab to show new invoice immediately
+      if(window.page==='pending'||window.page==='customers'){render();}
+      else{
+        // Show toast notification for manager when new invoice arrives
+        if(isM&&payload.eventType==='INSERT'&&payload.new.approval_status==='pending'){
+          const senderName=payload.new.sale_rep||payload.new.submitted_by||'Sale';
+          const invNo=payload.new.invoice_no||'';
+          showNotifToast('📋 Invoice mới cần duyệt',''+senderName+' vừa tạo '+invNo,'pending');
+        }
+      }
     }).subscribe();
 
   // ── REALTIME: Customers ──
@@ -1178,21 +1195,44 @@ async function loadInvoices(){
 }
 
 async function loadCustomers(){
-  // Paginate to load all customers (Supabase default limit is 1000 per request)
-  let allData=[];
-  let from=0;
   const pageSize=1000;
-  while(true){
-    const {data,error}=await sb.from('customers')
-      .select('*, assigned_profile:profiles!assigned_to(id,full_name,role), last_contacted, campaign_name')
-      .order('created_at',{ascending:false})
-      .range(from,from+pageSize-1);
-    if(error||!data||data.length===0)break;
-    allData=allData.concat(data);
-    if(data.length<pageSize)break;
-    from+=pageSize;
+  // ── Load first page immediately so UI renders fast ──
+  const {data:firstPage,error:firstErr}=await sb.from('customers')
+    .select('*, assigned_profile:profiles!assigned_to(id,full_name,role), last_contacted, campaign_name')
+    .order('created_at',{ascending:false})
+    .range(0,pageSize-1);
+  if(firstErr){console.error('Customer load error:',firstErr);CUSTOMERS=[];return;}
+  CUSTOMERS=firstPage||[];
+  window.CUSTOMERS=CUSTOMERS;
+
+  // ── If there might be more, load in background without blocking UI ──
+  if((firstPage||[]).length===pageSize){
+    setTimeout(async function(){
+      let from=pageSize;
+      while(true){
+        const {data,error}=await sb.from('customers')
+          .select('*, assigned_profile:profiles!assigned_to(id,full_name,role), last_contacted, campaign_name')
+          .order('created_at',{ascending:false})
+          .range(from,from+pageSize-1);
+        if(error||!data||data.length===0)break;
+        // Merge: avoid duplicates
+        const existingIds=new Set(CUSTOMERS.map(function(c){return c.id;}));
+        const newOnes=data.filter(function(c){return !existingIds.has(c.id);});
+        CUSTOMERS=CUSTOMERS.concat(newOnes);
+        window.CUSTOMERS=CUSTOMERS;
+        if(data.length<pageSize)break;
+        from+=pageSize;
+        // Small delay to avoid hammering DB
+        await new Promise(function(r){setTimeout(r,200);});
+      }
+      console.log('[CRM] Total customers loaded:',CUSTOMERS.length);
+      // Re-render badges and current page after full load
+      updateBadges();
+      if(window.page==='customers'||window.page==='pending')render();
+    },100); // start after initial render
   }
-  CUSTOMERS=allData;
+
+  CUSTOMERS=CUSTOMERS;
   // Update pending badge
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const pendingCount=isManager
@@ -5384,6 +5424,17 @@ document.addEventListener('click',function(e){
   if(!e.target.closest('#mention-drop')&&e.target.id!=='ci')hideMentionDrop();
 });
 
+// ── Notification toast for realtime events ──
+window.showNotifToast=function(title,body,targetPage){
+  const existing=document.querySelector('.crm-notif-toast');if(existing)existing.remove();
+  const t=document.createElement('div');t.className='crm-notif-toast';
+  t.style.cssText='position:fixed;bottom:90px;right:20px;background:#1a1240;border:1px solid rgba(162,155,254,0.3);border-radius:10px;padding:10px 14px;min-width:260px;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:9998;cursor:pointer;animation:toastIn 0.3s ease;';
+  t.innerHTML='<div style="font-size:12px;font-weight:600;color:var(--brand2);margin-bottom:2px">'+title+'</div>'
+    +'<div style="font-size:12px;color:var(--text2)">'+body+'</div>';
+  t.onclick=function(){if(targetPage)window.setPage(targetPage);t.remove();};
+  document.body.appendChild(t);
+  setTimeout(function(){if(t.parentNode)t.remove();},5000);
+};
 window._cs=selectRoom;
 
 window._cToggleMenu=function(){
