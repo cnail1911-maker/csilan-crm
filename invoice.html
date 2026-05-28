@@ -747,11 +747,29 @@ async function generateInvoiceNo(){
 // PREVIEW RENDER
 
 function buildVarianceBox(items){
-  const totalVariance=items.reduce(function(s,it){
-    if(it.vendor_cost===null||it.vendor_cost===undefined)return s;
-    return s+(it.amount-(it.vendor_cost||0)*it.qty);
-  },0);
-  const hasAny=items.some(function(it){return it.vendor_cost!==null&&it.vendor_cost!==undefined;});
+  const isMgr=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='leader'||currentProfile.role==='admin');
+  let totalVariance=0,hasAny=false;
+  items.forEach(function(it){
+    if(it.is_shipping){
+      // Shipping: always show chenh vs vendor_cost if available
+      if(it.vendor_cost!=null&&it.vendor_cost!==undefined){
+        totalVariance+=(it.amount-(it.vendor_cost||0)*it.qty);
+        hasAny=true;
+      }
+    } else if(isMgr){
+      // Manager: chenh vs vendor_cost
+      if(it.vendor_cost!=null&&it.vendor_cost!==undefined){
+        totalVariance+=(it.amount-(it.vendor_cost||0)*it.qty);
+        hasAny=true;
+      }
+    } else {
+      // Sale: chenh vs crm_price only
+      if(it.crm_price!=null&&it.crm_price!==undefined&&it.crm_price!==it.unit_price){
+        totalVariance+=(it.amount-(it.crm_price||0)*it.qty);
+        hasAny=true;
+      }
+    }
+  });
   if(!hasAny)return '';
   const color=totalVariance>0?'#27ae60':totalVariance<0?'#e74c3c':'#95a5a6';
   return '<div class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:8px 12px;border:2px solid '+color+';border-radius:6px;font-weight:700;color:'+color+'"><span>Variance</span><span>'+fmt(totalVariance)+'</span></div>';
@@ -1032,9 +1050,14 @@ async function saveAndDownload(action){
     // Download PDF
     setTimeout(async function(){
       const element=document.getElementById('invoice-preview');
-      // Ẩn no-print trước khi xuất PDF
+      // Ẩn no-print + ship-detail trước khi xuất PDF
       const noPrintEls=element.querySelectorAll('.no-print');
       noPrintEls.forEach(function(el){el.style.display='none';});
+      // Ẩn từng shipping row, hiện dòng gộp
+      const shipDetailRows=element.querySelectorAll('.ship-detail-row');
+      shipDetailRows.forEach(function(el){el.style.display='none';});
+      const printOnlyRows=element.querySelectorAll('.print-only');
+      printOnlyRows.forEach(function(el){el.style.display='table-row';});
       const opt={
         margin:[8,6,8,6],
         filename:invNo+'.pdf',
@@ -1047,6 +1070,8 @@ async function saveAndDownload(action){
         await html2pdf().set(opt).from(element).save();
       }finally{
         noPrintEls.forEach(function(el){el.style.display='';});
+        shipDetailRows.forEach(function(el){el.style.display='';});
+        printOnlyRows.forEach(function(el){el.style.display='none';});
         clearTimeout(_loadTimeout);
         showLoading(false);
         alert(successMsg+' PDF đã tải!');
