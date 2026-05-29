@@ -2577,7 +2577,8 @@ function renderProducts(){
       +'<td style="font-size:11px">'+(p.brand||'—')+'</td>'
       +'<td style="color:var(--accent2);font-weight:600">$'+(p.price||0)+'</td>'
       +'<td>'+(p.in_stock?'<span class="badge b-won">In Stock</span>':'<span class="badge b-lost">Out</span>')+'</td>'
-      +'<td style="font-size:11px;color:var(--text2);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+(p._note||'')+'">'+(p._note||'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px" title="'+(p.description||'')+'">'+(p.description||'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px" title="'+(p._note||'')+'">'+(p._note||'—')+'</td>'
       +(isManagerProd
         ?'<td onclick="event.stopPropagation()"><div style="display:flex;gap:4px">'
           +'<button class="btn" style="padding:3px 8px;font-size:10px" onclick="openProdForm('+p.id+')"><i class="ti ti-edit"></i> Sửa</button>'
@@ -2601,9 +2602,9 @@ function renderProducts(){
     +'<div class="content">'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+filtered.length+'</span> sản phẩm</h2></div>'
     +(filtered.length===0?'<div class="empty-state"><i class="ti ti-package"></i>Không tìm thấy sản phẩm</div>'
-      :'<table><colgroup><col width="75"><col><col width="65"><col width="70"><col width="70"><col width="140"><col width="130"></colgroup>'
-      +'<thead><tr><th>SKU</th><th>Sản phẩm</th><th>Vendor</th><th>Giá</th><th>Tồn kho</th><th>Note</th>'+(isManagerProd?'<th></th>':'')+'</tr></thead>'
-      +'<tbody>'+rows+'</tbody></table>'
+      :'<div style="overflow-x:auto"><table style="min-width:1100px;width:100%"><colgroup><col width="80"><col width="220"><col width="60"><col width="70"><col width="80"><col width="160"><col width="160">'+(isManagerProd?'<col width="180">':'')+'</colgroup>'
+      +'<thead><tr><th>SKU</th><th>Sản phẩm</th><th>Vendor</th><th>Giá</th><th>Tồn kho</th><th>Mô tả</th><th>Note</th>'+(isManagerProd?'<th></th>':'')+'</tr></thead>'
+      +'<tbody>'+rows+'</tbody></table></div>'
       +pgBar(filtered.length,pgProd,PAGE_SIZE,'setProdMgPage'))
     +'</div></div>';
 }
@@ -2669,11 +2670,14 @@ function openProdZoom(id){
     ['SKU',p.sku||'—'],
     ['Variant',p.variant||'—'],
   ];
+  if(p.description){
+    details.push(['Mô tả','<span style="color:var(--text2);white-space:pre-wrap">'+p.description+'</span>']);
+  }
   if(p._note){
     details.push(['Note','<span style="color:var(--text2);white-space:pre-wrap">'+p._note+'</span>']);
   }
   details.forEach(function(d){
-    var isNote=d[0]==='Note';
+    var isNote=d[0]==='Note'||d[0]==='Mô tả';
     html+='<div'+(isNote?' style="grid-column:1/-1"':'')+'>'+
       '<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px">'+d[0]+'</div>'+
       '<div style="font-size:13px;color:var(--text);font-weight:500">'+d[1]+'</div></div>';
