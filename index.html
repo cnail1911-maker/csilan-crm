@@ -73,8 +73,12 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(108,92,231,0.4)}
 .btn-danger{border-color:rgba(255,118,117,0.4);color:var(--danger)}
 .content{flex:1;overflow:auto;padding:16px 20px}
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;position:sticky;top:0;z-index:10;background:var(--main);padding:10px 0 6px;margin-top:-4px}
 .stat-card{border-radius:14px;padding:14px 16px;position:relative;overflow:hidden;border:1px solid var(--border)}
+.stats-row-compact{gap:7px}
+.stats-row-compact .stat-card{padding:10px 12px;border-radius:10px}
+.stats-row-compact .stat-label{font-size:9px;letter-spacing:0.3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stats-row-compact .stat-val{font-size:18px}
 .sc0{background:linear-gradient(135deg,rgba(108,92,231,0.3),rgba(108,92,231,0.1))}
 .sc1{background:linear-gradient(135deg,rgba(0,206,201,0.25),rgba(0,206,201,0.08))}
 .sc2{background:linear-gradient(135deg,rgba(0,184,148,0.3),rgba(0,184,148,0.1))}
@@ -292,9 +296,10 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     /* Campaign tab: fill full height, no extra gap */
     #main-content{display:flex;flex-direction:column;}
     .content{box-sizing:border-box;}
-    .stats-row{grid-template-columns:1fr 1fr !important;gap:8px}
+    .stats-row{grid-template-columns:1fr 1fr !important;gap:8px;position:static !important;padding:0 !important;margin-top:0 !important}
     .stat-card{padding:10px 12px}
     .stat-val{font-size:24px}
+    .stats-row-compact{grid-template-columns:1fr 1fr !important}
     table{font-size:10px;display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
     th,td{padding:6px 8px}
     .panel-header{flex-direction:column;gap:8px;align-items:flex-start}
@@ -305,7 +310,6 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     .fsel{font-size:11px;padding:5px 8px}
     /* KPI */
     .kpi-grid{grid-template-columns:1fr 1fr !important}
-    .stats-row{grid-template-columns:1fr 1fr !important}
     /* Campaign form grids */
     [style*="grid-template-columns:1fr 1fr auto"]{grid-template-columns:1fr !important}
     [style*="repeat(4,1fr)"]{grid-template-columns:1fr 1fr !important}
@@ -1439,9 +1443,13 @@ function renderPotential(){
   const pageData=potData.slice((potPage-1)*PAGE_SIZE,potPage*PAGE_SIZE);
 
   let statsHtml='<div class="stat-card sc0" style="cursor:pointer;border:'+(fPotential==='all'?'2px solid var(--brand2)':'1px solid var(--border)')+'" onclick="fPotential=\'all\';potPage=1;render()"><div class="stat-label">Tổng tiềm năng</div><div class="stat-val" style="color:var(--brand2)">'+potData.length+'</div>'+(fPotential==='all'?'<div style="font-size:9px;color:var(--brand2)">▼ Tất cả</div>':'')+'</div>';
+  var visiblePotCards=1;
   POTENTIAL_OPTS.forEach(function(p,i){
     const cnt=CUSTOMERS.filter(function(c){return c.potential===p&&(fSale==='all'||c.assigned_to===fSale);}).length;
-    if(cnt>0)statsHtml+='<div class="stat-card sc'+(i+1)+'" style="cursor:pointer;border:'+(fPotential===p?'2px solid var(--accent2)':'1px solid var(--border)')+'" onclick="fPotential=(fPotential===\''+p+'\'?\'all\':\''+p+'\');potPage=1;render()"><div class="stat-label">'+p+'</div><div class="stat-val" style="color:var(--accent2)">'+cnt+'</div>'+(fPotential===p?'<div style="font-size:9px;color:var(--accent2)">▼ Lọc</div>':'')+'</div>';
+    if(cnt>0){
+      visiblePotCards++;
+      statsHtml+='<div class="stat-card sc'+(i+1)+'" style="cursor:pointer;border:'+(fPotential===p?'2px solid var(--accent2)':'1px solid var(--border)')+'" onclick="fPotential=(fPotential===\''+p+'\'?\'all\':\''+p+'\');potPage=1;render()"><div class="stat-label">'+p+'</div><div class="stat-val" style="color:var(--accent2)">'+cnt+'</div>'+(fPotential===p?'<div style="font-size:9px;color:var(--accent2)">▼ Lọc</div>':'')+'</div>';
+    }
   });
 
   let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;potPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
@@ -1471,7 +1479,7 @@ function renderPotential(){
   return '<div class="topbar"><div class="topbar-title">Khách tiềm năng</div>'
     +'<div style="font-size:12px;color:var(--text2)">Khách đã chọn Potential — không bị thu hồi</div>'+saleFilter+'</div>'
     +'<div class="content">'
-    +'<div class="stats-row">'+statsHtml+'</div>'
+    +'<div class="stats-row stats-row-compact" style="grid-template-columns:repeat('+visiblePotCards+',1fr)">'+statsHtml+'</div>'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+potData.length+'</span> khách tiềm năng</h2></div>'
     +(potData.length===0?'<div class="empty-state"><i class="ti ti-star"></i>Chưa có khách tiềm năng</div>'
       :'<table><colgroup><col width="85"><col width="130"><col width="120"><col width="100"><col width="80"><col width="120"><col width="80"><col width="80"><col width="65"><col width="65"></colgroup>'
