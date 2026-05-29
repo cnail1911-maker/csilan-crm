@@ -2921,7 +2921,10 @@ function renderKPI(){
       +'</tr>';
   });
 
-  return '<div class="topbar"><div class="topbar-title">Báo cáo KPI</div></div>'
+  const isManagerKPI=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  return '<div class="topbar"><div class="topbar-title">Báo cáo KPI</div>'
+    +(isManagerKPI?'<button class="btn" onclick="openStaffModal()" style="border-color:rgba(108,92,231,0.4);color:var(--brand2)"><i class="ti ti-users"></i> Quản lý nhân viên</button>':'')
+    +'</div>'
     +'<div class="content">'
     +'<div class="stats-row">'+statsHtml+'</div>'
     +'<div class="kpi-grid">'+kpiCards+'</div>'
@@ -2931,8 +2934,105 @@ function renderKPI(){
 }
 
 // ============================================================
-// DETAIL MODAL
+// STAFF MANAGEMENT MODAL (Manager only)
 // ============================================================
+function openStaffModal(){
+  var existing=document.getElementById('staff-mgmt-modal');
+  if(existing)existing.remove();
+  var m=document.createElement('div');
+  m.className='modal-overlay';m.id='staff-mgmt-modal';
+  m.onclick=function(e){if(e.target===m)m.remove();};
+
+  function buildRows(){
+    var all=PROFILES.slice().sort(function(a,b){return (a.code||'').localeCompare(b.code||'');});
+    // Also include inactive profiles (load separately if needed)
+    return all.map(function(p){
+      var isActive=p.is_active!==false;
+      var init=p.full_name.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
+      var avIdx=PROFILES.indexOf(p);
+      var avCls=AV_CLASSES[Math.max(0,avIdx)%AV_CLASSES.length];
+      return '<tr style="'+(isActive?'':'opacity:0.5')+'">'
+        +'<td><div style="display:flex;align-items:center;gap:8px">'
+        +'<div class="avatar '+avCls+'" style="width:28px;height:28px;font-size:10px">'+init+'</div>'
+        +'<div><div style="font-size:13px;font-weight:500">'+p.full_name+'</div>'
+        +'<div style="font-size:10px;color:var(--text3)">'+p.email+'</div></div></div></td>'
+        +'<td style="font-size:11px;color:var(--text3)">'+(p.code||'—')+'</td>'
+        +'<td><span class="badge '+(p.role==='manager'?'b-manager':p.role==='leader'?'b-leader':'b-sale')+'">'+p.role+'</span></td>'
+        +'<td>'+(isActive?'<span class="badge b-won">Active</span>':'<span class="badge b-lost">Inactive</span>')+'</td>'
+        +'<td onclick="event.stopPropagation()">'
+        +(isActive
+          ?'<button class="btn" style="padding:3px 10px;font-size:11px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="staffDeactivate(\''+p.id+'\',\''+p.full_name+'\')">Deactivate</button>'
+          :'<button class="btn" style="padding:3px 10px;font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)" onclick="staffReactivate(\''+p.id+'\',\''+p.full_name+'\')">Reactivate</button>')
+        +'</td></tr>';
+    }).join('');
+  }
+
+  m.innerHTML='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:16px;width:94vw;max-width:680px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.6);border:1px solid var(--border)">'
+    +'<div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0">'
+    +'<i class="ti ti-users" style="color:var(--brand2);font-size:18px"></i>'
+    +'<div style="font-size:15px;font-weight:700;flex:1">Quản lý nhân viên</div>'
+    +'<button type="button" style="background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text2);cursor:pointer;padding:4px 10px" onclick="document.getElementById(\'staff-mgmt-modal\').remove()"><i class="ti ti-x"></i></button>'
+    +'</div>'
+    +'<div style="overflow-y:auto;flex:1">'
+    +'<table id="staff-table" style="width:100%"><colgroup><col><col width="60"><col width="80"><col width="80"><col width="110"></colgroup>'
+    +'<thead><tr style="background:rgba(255,255,255,0.03)"><th style="padding:8px 14px;font-size:11px;color:var(--text3)">Nhân viên</th><th style="padding:8px 6px;font-size:11px;color:var(--text3)">Mã</th><th style="padding:8px 6px;font-size:11px;color:var(--text3)">Role</th><th style="padding:8px 6px;font-size:11px;color:var(--text3)">Trạng thái</th><th style="padding:8px 6px;font-size:11px;color:var(--text3)"></th></tr></thead>'
+    +'<tbody id="staff-tbody">'+buildRows()+'</tbody></table>'
+    +'</div>'
+    +'<div style="padding:12px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);flex-shrink:0">'
+    +'<i class="ti ti-info-circle"></i> Deactivate ẩn nhân viên khỏi danh sách giao khách. Lịch sử dữ liệu không bị xóa.'
+    +'</div></div>';
+
+  document.body.appendChild(m);
+}
+
+function _staffRefreshTable(){
+  var tbody=document.getElementById('staff-tbody');
+  if(!tbody)return;
+  var all=PROFILES.slice().sort(function(a,b){return (a.code||'').localeCompare(b.code||'');});
+  tbody.innerHTML=all.map(function(p){
+    var isActive=p.is_active!==false;
+    var init=p.full_name.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
+    var avIdx=PROFILES.indexOf(p);
+    var avCls=AV_CLASSES[Math.max(0,avIdx)%AV_CLASSES.length];
+    return '<tr style="'+(isActive?'':'opacity:0.5')+'">'
+      +'<td style="padding:10px 14px"><div style="display:flex;align-items:center;gap:8px">'
+      +'<div class="avatar '+avCls+'" style="width:28px;height:28px;font-size:10px">'+init+'</div>'
+      +'<div><div style="font-size:13px;font-weight:500">'+p.full_name+'</div>'
+      +'<div style="font-size:10px;color:var(--text3)">'+p.email+'</div></div></div></td>'
+      +'<td style="padding:10px 6px;font-size:11px;color:var(--text3)">'+(p.code||'—')+'</td>'
+      +'<td style="padding:10px 6px"><span class="badge '+(p.role==='manager'?'b-manager':p.role==='leader'?'b-leader':'b-sale')+'">'+p.role+'</span></td>'
+      +'<td style="padding:10px 6px">'+(isActive?'<span class="badge b-won">Active</span>':'<span class="badge b-lost">Inactive</span>')+'</td>'
+      +'<td style="padding:10px 6px" onclick="event.stopPropagation()">'
+      +(isActive
+        ?'<button class="btn" style="padding:3px 10px;font-size:11px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="staffDeactivate(\''+p.id+'\',\''+p.full_name+'\')">Deactivate</button>'
+        :'<button class="btn" style="padding:3px 10px;font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)" onclick="staffReactivate(\''+p.id+'\',\''+p.full_name+'\')">Reactivate</button>')
+      +'</td></tr>';
+  }).join('');
+}
+
+async function staffDeactivate(id,name){
+  if(!confirm('Deactivate '+name+'?\nNhân viên sẽ không còn xuất hiện trong danh sách giao khách.'))return;
+  try{
+    var {error}=await sb.from('profiles').update({is_active:false}).eq('id',id);
+    if(error)throw error;
+    var idx=PROFILES.findIndex(function(p){return p.id===id;});
+    if(idx>=0)PROFILES[idx].is_active=false;
+    _staffRefreshTable();
+    showNotif(name+' đã được deactivate');
+  }catch(e){showNotif('Lỗi: '+e.message,true);}
+}
+
+async function staffReactivate(id,name){
+  if(!confirm('Reactivate '+name+'?'))return;
+  try{
+    var {error}=await sb.from('profiles').update({is_active:true}).eq('id',id);
+    if(error)throw error;
+    var idx=PROFILES.findIndex(function(p){return p.id===id;});
+    if(idx>=0)PROFILES[idx].is_active=true;
+    _staffRefreshTable();
+    showNotif(name+' đã được reactivate');
+  }catch(e){showNotif('Lỗi: '+e.message,true);}
+}
 async function renderDetailModal(customerId){
   const c=CUSTOMERS.find(function(x){return x.id===customerId;});
   if(!c)return;
