@@ -73,7 +73,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(108,92,231,0.4)}
 .btn-danger{border-color:rgba(255,118,117,0.4);color:var(--danger)}
 .content{flex:1;overflow:auto;padding:16px 20px}
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;position:sticky;top:0;z-index:10;background:var(--main);padding:8px 0 4px;}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px 20px;background:var(--main);flex-shrink:0;}
 .stat-card{border-radius:14px;padding:14px 16px;position:relative;overflow:hidden;border:1px solid var(--border)}
 .stats-row-compact{gap:7px}
 .stats-row-compact .stat-card{padding:10px 12px;border-radius:10px}
@@ -1438,13 +1438,13 @@ function renderCustomers(){
     +(isManager?'<button class="btn" onclick="doRecall()" style="border-color:rgba(255,118,117,0.4);color:var(--danger)"><i class="ti ti-rotate-clockwise"></i> Thu hồi hết hạn</button>':'')
     +'<button class="btn btn-primary" onclick="addOpen=true;render()"><i class="ti ti-plus"></i> Thêm khách</button>'
     +'</div>'
-    +'<div class="content">'
     +'<div class="stats-row">'
     +'<div class="stat-card sc0" style="cursor:pointer;border:'+(fStatus==='all'&&fLead==='all'?'2px solid var(--brand2)':'1px solid var(--border)')+'" onclick="fStatus=\'all\';fLead=\'all\';curPage=1;render()"><div class="stat-label">Tổng data</div><div class="stat-val" style="color:var(--brand2)">'+data.length+'</div><div class="stat-sub">được giao</div></div>'
     +'<div class="stat-card sc1" style="cursor:pointer;border:'+(fStatus==='Follow Up'?'2px solid var(--accent)':'1px solid var(--border)')+'" onclick="fStatus=(fStatus===\'Follow Up\'?\'all\':\'Follow Up\');fLead=\'all\';curPage=1;render()"><div class="stat-label">Follow Up</div><div class="stat-val" style="color:var(--accent)">'+followup+'</div><div class="stat-sub">'+(fStatus==='Follow Up'?'▼ Lọc':'đang theo dõi')+'</div></div>'
     +'<div class="stat-card sc2" style="cursor:pointer;border:'+(fLead==='Closedeal'?'2px solid var(--accent2)':'1px solid var(--border)')+'" onclick="fLead=(fLead===\'Closedeal\'?\'all\':\'Closedeal\');fStatus=\'all\';curPage=1;render()"><div class="stat-label">Closedeal</div><div class="stat-val" style="color:var(--accent2)">'+won+'</div><div class="stat-sub">'+(fLead==='Closedeal'?'▼ Lọc':'đã chốt')+'</div></div>'
     +'<div class="stat-card sc3"><div class="stat-label">Tỉ lệ chốt</div><div class="stat-val" style="color:var(--warn)">'+(data.length?Math.round(won/data.length*100):0)+'%</div><div class="stat-sub">tháng này</div></div>'
     +'</div>'
+    +'<div class="content">'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+data.length+'</span> khách</h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+'</div></div>'
     +actionBar
     +(data.length===0?'<div class="empty-state"><i class="ti ti-inbox"></i>Không có khách hàng nào</div>'
@@ -1499,8 +1499,8 @@ function renderPotential(){
 
   return '<div class="topbar"><div class="topbar-title">Khách tiềm năng</div>'
     +'<div style="font-size:12px;color:var(--text2)">Khách đã chọn Potential — không bị thu hồi</div>'+saleFilter+'</div>'
-    +'<div class="content">'
     +'<div class="stats-row stats-row-compact" style="grid-template-columns:repeat('+visiblePotCards+',1fr)">'+statsHtml+'</div>'
+    +'<div class="content">'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+potData.length+'</span> khách tiềm năng</h2></div>'
     +(potData.length===0?'<div class="empty-state"><i class="ti ti-star"></i>Chưa có khách tiềm năng</div>'
       :'<table><colgroup><col width="85"><col width="130"><col width="120"><col width="100"><col width="80"><col width="120"><col width="80"><col width="80"><col width="65"><col width="65"></colgroup>'
@@ -1586,7 +1586,6 @@ function renderClosedeal(){
   });
 
   let html='<div class="topbar"><div class="topbar-title">Closedeal</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+'</div></div>'
-    +'<div class="content">'
     +'<div class="stats-row">'
     +'<div class="stat-card sc2" style="cursor:pointer;border:'+(cdFilterOrder==='all'&&cdFilterPayment==='all'?'2px solid var(--accent2)':'1px solid var(--border)')+'" onclick="cdFilterOrder=\'all\';cdFilterPayment=\'all\';cdPage=1;render()"><div class="stat-label">Đơn đã duyệt</div><div class="stat-val" style="color:var(--accent2)">'+enriched.length+'</div>'+(cdFilterOrder==='all'&&cdFilterPayment==='all'?'<div style="font-size:9px;color:var(--accent2)">▼ Tất cả</div>':'')+'</div>'
     +'<div class="stat-card sc0"><div class="stat-label">Doanh thu</div><div class="stat-val" style="color:var(--brand2);font-size:18px">$'+totalRevenue.toLocaleString()+'</div></div>'
@@ -1597,7 +1596,7 @@ function renderClosedeal(){
   // Pending invoices moved to Chờ duyệt tab
 
   // Main table
-  html+='<div class="panel"><div class="panel-header"><h2>Đơn hàng đã duyệt <span style="color:var(--accent2)">'+enriched.length+'</span></h2></div>'
+  html+='<div class="content"><div class="panel"><div class="panel-header"><h2>Đơn hàng đã duyệt <span style="color:var(--accent2)">'+enriched.length+'</span></h2></div>'
     +(enriched.length===0?'<div class="empty-state"><i class="ti ti-trophy"></i>Chưa có đơn hàng nào được duyệt</div>'
       :'<table><colgroup><col width="95"><col width="110"><col width="95"><col width="45"><col width="45"><col width="75"><col width="90"><col width="85"><col width="65"><col width="65"><col width="60">'+(isManager?'<col width="40">':'')+'</colgroup>'
       +'<thead><tr><th>Mã đơn</th><th>Business Name</th><th>Customer</th><th style="text-align:center">Month</th><th style="text-align:center">Year</th><th>Revenue</th><th>Payment Status</th><th>Order Status</th><th>Tracking</th><th>Sale</th>'+(isManager?'<th></th>':'')+'</tr></thead>'
@@ -2014,13 +2013,13 @@ function renderAlert(){
       +'</tr>';
   });
   return '<div class="topbar"><div class="topbar-title">Cảnh báo Potential</div>'+potentialFilter+saleFilter+'</div>'
-    +'<div class="content">'
     +'<div class="stats-row">'
     +'<div class="stat-card sc3" style="cursor:pointer;border:'+(typeof window.alertFGroup==='undefined'||window.alertFGroup==='all'?'2px solid var(--warn)':'1px solid var(--border)')+'" onclick="window.alertFGroup=\'all\';render()"><div class="stat-label">Cần follow up</div><div class="stat-val" style="color:var(--warn)">'+filtered.length+'</div>'+((!window.alertFGroup||window.alertFGroup==='all')?'<div style="font-size:9px;color:var(--warn)">▼ Tất cả</div>':'')+'</div>'
     +'<div class="stat-card sc0" style="cursor:pointer;border:'+(window.alertFGroup==='over30'?'2px solid var(--danger)':'1px solid var(--border)')+'" onclick="window.alertFGroup=(window.alertFGroup===\'over30\'?\'all\':\'over30\');render()"><div class="stat-label">Quá 30 ngày</div><div class="stat-val" style="color:var(--danger)">'+over30+'</div>'+(window.alertFGroup==='over30'?'<div style="font-size:9px;color:var(--danger)">▼ Lọc</div>':'')+'</div>'
     +'<div class="stat-card sc1" style="cursor:pointer;border:'+(window.alertFGroup==='expired'?'2px solid var(--danger)':'1px solid var(--border)')+'" onclick="window.alertFGroup=(window.alertFGroup===\'expired\'?\'all\':\'expired\');render()"><div class="stat-label">Hết deadline</div><div class="stat-val" style="color:var(--danger)">'+expiredDl+'</div>'+(window.alertFGroup==='expired'?'<div style="font-size:9px;color:var(--danger)">▼ Lọc</div>':'')+'</div>'
     +'<div class="stat-card sc2"><div class="stat-label">Tổng Potential</div><div class="stat-val" style="color:var(--brand2)">'+CUSTOMERS.filter(function(c){return c.potential&&c.potential!=='';}).length+'</div></div>'
     +'</div>'
+    +'<div class="content">'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--warn)">'+filtered.length+'</span> cần follow up</h2>'
     +(isManager?'<button class="btn" style="border-color:rgba(255,118,117,0.4);color:var(--danger);font-size:11px" onclick="recallOver30()"><i class="ti ti-rotate-clockwise"></i> Thu hồi 30+ ngày</button>':'')
     +'</div>'
@@ -2598,11 +2597,11 @@ function renderProducts(){
     +vendorFilter
     +(isManagerProd?'<button class="btn btn-primary" onclick="openProdForm(null)"><i class="ti ti-plus"></i> Thêm sản phẩm</button>':'')
     +'</div>'
-    +'<div class="content">'
     +'<div class="stats-row" style="grid-template-columns:repeat('+(VENDOR_OPTS.length+1)+',1fr)">'+statsHtml+'</div>'
+    +'<div class="content">'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+filtered.length+'</span> sản phẩm</h2></div>'
     +(filtered.length===0?'<div class="empty-state"><i class="ti ti-package"></i>Không tìm thấy sản phẩm</div>'
-      :'<table><colgroup><col width="80"><col><col width="70"><col width="80"><col width="80"><col width="160"><col width="150"></colgroup>'
+      :'<table><colgroup><col width="75"><col><col width="65"><col width="70"><col width="70"><col width="140"><col width="130"></colgroup>'
       +'<thead><tr><th>SKU</th><th>Sản phẩm</th><th>Vendor</th><th>Giá</th><th>Tồn kho</th><th>Note</th>'+(isManagerProd?'<th></th>':'')+'</tr></thead>'
       +'<tbody>'+rows+'</tbody></table>'
       +pgBar(filtered.length,pgProd,PAGE_SIZE,'setProdMgPage'))
@@ -3581,7 +3580,7 @@ async function renderDailyData(){
   // Tối ưu: fetch 3 bảng song song
   const [logsRes,invsRes,potHistRes]=await Promise.all([
     sb.from('call_logs').select('customer_id,sale_id,called_at').gte('called_at',fromDt).lte('called_at',toDt),
-    sb.from('invoices').select('submitted_by,sale_id,created_at,date,total,type').or('created_at.gte.'+fromDt+',date.gte.'+fFrom).lte('created_at',toDt),
+    sb.from('invoices').select('sale_id,created_at,date,total,type').or('created_at.gte.'+fromDt+',date.gte.'+fFrom).lte('created_at',toDt),
     sb.from('potential_history').select('customer_id,assigned_to_id,potential,recalled_at').gte('recalled_at',fromDt).lte('recalled_at',toDt)
   ]);
   let logs=logsRes.data||[];
@@ -3601,7 +3600,7 @@ async function renderDailyData(){
 
   salesToShow.forEach(function(sale){
     const saleLogs=(logs||[]).filter(function(l){return l.sale_id===sale.id;});
-    const saleInvs=(invs||[]).filter(function(inv){return inv.submitted_by===sale.id||inv.sale_id===sale.id;});
+    const saleInvs=(invs||[]).filter(function(inv){return inv.sale_id===sale.id;});
 
     // Số khách unique thao tác trong kỳ
     const byDate={};
@@ -3659,11 +3658,11 @@ async function renderDailyData(){
       const dtPotStr=potByDate[dt]?Object.entries(potByDate[dt].breakdown).filter(function(e){return e[1]>0;}).map(function(e){return e[0]+': '+e[1];}).join(' | '):'';
       const dtInvs=(invs||[]).filter(function(inv){
         var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');
-        return (inv.submitted_by===sale.id||inv.sale_id===sale.id)&&d===dt&&(inv.type==='invoice'||!inv.type);
+        return inv.sale_id===sale.id&&d===dt&&(inv.type==='invoice'||!inv.type);
       }).length;
       const dtQuotes=(invs||[]).filter(function(inv){
         var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');
-        return (inv.submitted_by===sale.id||inv.sale_id===sale.id)&&d===dt&&inv.type==='quotation';
+        return inv.sale_id===sale.id&&d===dt&&inv.type==='quotation';
       }).length;
       dayRows+='<tr style="font-size:11px;color:var(--text3)">'        +'<td style="padding-left:32px">'+dt+'</td>'        +'<td style="color:'+(cnt>0?'var(--accent2)':'var(--text3)')+'">'+cnt+'</td>'        +'<td style="color:'+(dtPot>0?'var(--warn)':'var(--text3)')+'">'+dtPot+'</td>'        +'<td style="font-size:10px">'+dtPotStr+'</td>'        +'<td style="text-align:center">'+dtQuotes+'</td>'        +'<td style="text-align:center">'+dtInvs+'</td></tr>';
     })
