@@ -73,7 +73,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(108,92,231,0.4)}
 .btn-danger{border-color:rgba(255,118,117,0.4);color:var(--danger)}
 .content{flex:1;overflow:auto;padding:16px 20px}
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;position:sticky;top:0;z-index:10;background:var(--main);padding:10px 0 6px;margin-top:-4px}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;position:sticky;top:0;z-index:10;background:var(--main);padding:8px 0 4px;}
 .stat-card{border-radius:14px;padding:14px 16px;position:relative;overflow:hidden;border:1px solid var(--border)}
 .stats-row-compact{gap:7px}
 .stats-row-compact .stat-card{padding:10px 12px;border-radius:10px}
@@ -1139,7 +1139,7 @@ async function initApp(user){
   // Load invoices after auth is confirmed
   await loadInvoices();
   // Load products for all users (only in_stock for sale)
-  const isManagerLoad=profile&&(profile.role==='manager'||profile.role==='admin'||profile.role==='leader');
+  const isManagerLoad=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   if(isManagerLoad){
     const {data:allProds}=await sb.from('products').select('*').order('name').limit(1000);
     PRODUCTS_ALL=allProds||[];
@@ -1147,6 +1147,27 @@ async function initApp(user){
     const {data:saleProds}=await sb.from('products').select('*').order('name').limit(1000);
     PRODUCTS_ALL=saleProds||[];
   }
+  // Fetch product notes từ Finance DB (background, không chặn UI)
+  (async function(){
+    try{
+      const FINANCE_URL='https://jggfmpihfisbusnbzyoi.supabase.co';
+      const FINANCE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZ2ZtcGloZmlzYnVzbmJ6eW9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NTkxMzcsImV4cCI6MjA5NDQzNTEzN30.r4OAbgoMdJXyBpIZJaBstn_a1YRg9cR4SPDVvSrXV6M';
+      const res=await fetch(FINANCE_URL+'/rest/v1/products?select=sku,name,note&limit=1000',{
+        headers:{'apikey':FINANCE_ANON,'Authorization':'Bearer '+FINANCE_ANON}
+      });
+      if(!res.ok)return;
+      const finProds=await res.json();
+      if(!Array.isArray(finProds))return;
+      // Merge note vào PRODUCTS_ALL theo sku (case-insensitive)
+      finProds.forEach(function(fp){
+        if(!fp.note)return;
+        var match=PRODUCTS_ALL.find(function(p){return p.sku&&fp.sku&&p.sku.toLowerCase()===fp.sku.toLowerCase();});
+        if(match)match._note=fp.note;
+      });
+      window.PRODUCTS_ALL=PRODUCTS_ALL;
+      if(window.page==='products')render();
+    }catch(e){console.warn('[Finance notes]',e);}
+  })();
   const initials=((profile&&profile.full_name)||user.email).split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
   document.getElementById('user-avatar').textContent=initials;
   document.getElementById('user-name').textContent=(profile&&profile.full_name)||user.email;
@@ -2557,6 +2578,7 @@ function renderProducts(){
       +'<td style="font-size:11px">'+(p.brand||'—')+'</td>'
       +'<td style="color:var(--accent2);font-weight:600">$'+(p.price||0)+'</td>'
       +'<td>'+(p.in_stock?'<span class="badge b-won">In Stock</span>':'<span class="badge b-lost">Out</span>')+'</td>'
+      +'<td style="font-size:11px;color:var(--text2);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+(p._note||'')+'">'+(p._note||'—')+'</td>'
       +(isManagerProd
         ?'<td onclick="event.stopPropagation()"><div style="display:flex;gap:4px">'
           +'<button class="btn" style="padding:3px 8px;font-size:10px" onclick="openProdForm('+p.id+')"><i class="ti ti-edit"></i> Sửa</button>'
@@ -2580,8 +2602,8 @@ function renderProducts(){
     +'<div class="stats-row" style="grid-template-columns:repeat('+(VENDOR_OPTS.length+1)+',1fr)">'+statsHtml+'</div>'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+filtered.length+'</span> sản phẩm</h2></div>'
     +(filtered.length===0?'<div class="empty-state"><i class="ti ti-package"></i>Không tìm thấy sản phẩm</div>'
-      :'<table><colgroup><col width="80"><col><col width="70"><col width="80"><col width="80"><col width="150"></colgroup>'
-      +'<thead><tr><th>SKU</th><th>Sản phẩm</th><th>Vendor</th><th>Giá</th><th>Tồn kho</th>'+(isManagerProd?'<th></th>':'')+'</tr></thead>'
+      :'<table><colgroup><col width="80"><col><col width="70"><col width="80"><col width="80"><col width="160"><col width="150"></colgroup>'
+      +'<thead><tr><th>SKU</th><th>Sản phẩm</th><th>Vendor</th><th>Giá</th><th>Tồn kho</th><th>Note</th>'+(isManagerProd?'<th></th>':'')+'</tr></thead>'
       +'<tbody>'+rows+'</tbody></table>'
       +pgBar(filtered.length,pgProd,PAGE_SIZE,'setProdMgPage'))
     +'</div></div>';
@@ -2647,12 +2669,15 @@ function openProdZoom(id){
     ['Vendor',p.brand||'—'],
     ['SKU',p.sku||'—'],
     ['Variant',p.variant||'—'],
-    ['Commission Rate',p.commission_rate!=null?(p.commission_rate+'%'):'—'],
   ];
-  if(isManagerProd)details.push(['Is Bolsa',p.is_bolsa?'✓ Bolsa':'—']);
+  if(p._note){
+    details.push(['Note','<span style="color:var(--text2);white-space:pre-wrap">'+p._note+'</span>']);
+  }
   details.forEach(function(d){
-    html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px">'+d[0]+'</div>'
-      +'<div style="font-size:13px;color:var(--text);font-weight:500">'+d[1]+'</div></div>';
+    var isNote=d[0]==='Note';
+    html+='<div'+(isNote?' style="grid-column:1/-1"':'')+'>'+
+      '<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px">'+d[0]+'</div>'+
+      '<div style="font-size:13px;color:var(--text);font-weight:500">'+d[1]+'</div></div>';
   });
   html+='</div>';
   html+='</div>';// end info panel
@@ -3556,7 +3581,7 @@ async function renderDailyData(){
   // Tối ưu: fetch 3 bảng song song
   const [logsRes,invsRes,potHistRes]=await Promise.all([
     sb.from('call_logs').select('customer_id,sale_id,called_at').gte('called_at',fromDt).lte('called_at',toDt),
-    sb.from('invoices').select('submitted_by,sale_id,created_at,total,type').gte('created_at',fromDt).lte('created_at',toDt),
+    sb.from('invoices').select('submitted_by,sale_id,created_at,date,total,type').or('created_at.gte.'+fromDt+',date.gte.'+fFrom).lte('created_at',toDt),
     sb.from('potential_history').select('customer_id,assigned_to_id,potential,recalled_at').gte('recalled_at',fromDt).lte('recalled_at',toDt)
   ]);
   let logs=logsRes.data||[];
@@ -3632,8 +3657,14 @@ async function renderDailyData(){
       const cnt=(byDate[dt]&&byDate[dt].size)||0;
       const dtPot=potByDate[dt]?potByDate[dt].ids.size:0;
       const dtPotStr=potByDate[dt]?Object.entries(potByDate[dt].breakdown).filter(function(e){return e[1]>0;}).map(function(e){return e[0]+': '+e[1];}).join(' | '):'';
-      const dtInvs=(invs||[]).filter(function(inv){return (inv.submitted_by===sale.id||inv.sale_id===sale.id)&&inv.created_at&&inv.created_at.slice(0,10)===dt&&(inv.type==='invoice'||!inv.type);}).length;
-      const dtQuotes=(invs||[]).filter(function(inv){return (inv.submitted_by===sale.id||inv.sale_id===sale.id)&&inv.created_at&&inv.created_at.slice(0,10)===dt&&inv.type==='quotation';}).length;
+      const dtInvs=(invs||[]).filter(function(inv){
+        var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');
+        return (inv.submitted_by===sale.id||inv.sale_id===sale.id)&&d===dt&&(inv.type==='invoice'||!inv.type);
+      }).length;
+      const dtQuotes=(invs||[]).filter(function(inv){
+        var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');
+        return (inv.submitted_by===sale.id||inv.sale_id===sale.id)&&d===dt&&inv.type==='quotation';
+      }).length;
       dayRows+='<tr style="font-size:11px;color:var(--text3)">'        +'<td style="padding-left:32px">'+dt+'</td>'        +'<td style="color:'+(cnt>0?'var(--accent2)':'var(--text3)')+'">'+cnt+'</td>'        +'<td style="color:'+(dtPot>0?'var(--warn)':'var(--text3)')+'">'+dtPot+'</td>'        +'<td style="font-size:10px">'+dtPotStr+'</td>'        +'<td style="text-align:center">'+dtQuotes+'</td>'        +'<td style="text-align:center">'+dtInvs+'</td></tr>';
     })
 
