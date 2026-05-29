@@ -2522,10 +2522,26 @@ function renderProducts(){
     return !prodSearch||(p.name||'').toLowerCase().includes(prodSearch.toLowerCase())||(p.sku||'').toLowerCase().includes(prodSearch.toLowerCase());
   });
   const pageData=filtered.slice((pgProd-1)*PAGE_SIZE,pgProd*PAGE_SIZE);
+
+  // ── Vendor stat cards ──
+  const allVisible=PRODUCTS_ALL.filter(function(p){return isManagerProd||p.in_stock;});
+  let statsHtml='<div class="stat-card sc0" style="cursor:pointer;border:'+(fVendor==='all'?'2px solid var(--brand2)':'1px solid var(--border)')+'" onclick="sessionStorage.setItem(\'prodVendor\',\'all\');sessionStorage.setItem(\'prodMgPage\',1);render()"><div class="stat-label">Tất cả</div><div class="stat-val" style="color:var(--brand2)">'+allVisible.length+'</div>'+(fVendor==='all'?'<div style="font-size:9px;color:var(--brand2)">▼ Đang xem</div>':'')+'</div>';
+  var vendorColors=['var(--accent2)','var(--accent)','var(--warn)'];
+  var vendorSc=['sc1','sc2','sc3'];
+  VENDOR_OPTS.forEach(function(v,i){
+    var cnt=allVisible.filter(function(p){return p.brand===v;}).length;
+    var inStock=allVisible.filter(function(p){return p.brand===v&&p.in_stock;}).length;
+    statsHtml+='<div class="stat-card '+vendorSc[i]+'" style="cursor:pointer;border:'+(fVendor===v?'2px solid '+vendorColors[i]:'1px solid var(--border)')+'" onclick="sessionStorage.setItem(\'prodVendor\',\''+v+'\');sessionStorage.setItem(\'prodMgPage\',1);render()">'
+      +'<div class="stat-label">'+v+'</div>'
+      +'<div class="stat-val" style="color:'+vendorColors[i]+'">'+cnt+'</div>'
+      +'<div style="font-size:9px;color:var(--text3)">'+inStock+' in stock'+(fVendor===v?' · <span style="color:'+vendorColors[i]+'">▼ Lọc</span>':'')+'</div>'
+      +'</div>';
+  });
+
   let rows='';
   pageData.forEach(function(p){
     const isActive=p.is_active!==false;
-    rows+='<tr style="'+(isActive?'':'opacity:0.5')+'">'
+    rows+='<tr style="'+(isActive?'':'opacity:0.5')+';cursor:pointer" onclick="openProdZoom('+p.id+')">'
       +'<td style="font-size:10px;font-family:monospace;color:var(--text3)">'+(p.sku||'—')+'</td>'
       +'<td><div style="display:flex;align-items:center;gap:8px">'
       +(p.image_url?'<img src="'+p.image_url+'" style="width:36px;height:36px;border-radius:6px;object-fit:cover;background:var(--surface2)" alt="">':'<div style="width:36px;height:36px;border-radius:6px;background:var(--surface2);display:flex;align-items:center;justify-content:center"><i class=\"ti ti-photo\" style=\"color:var(--text3)\"></i></div>')
@@ -2534,7 +2550,7 @@ function renderProducts(){
       +'<td style="color:var(--accent2);font-weight:600">$'+(p.price||0)+'</td>'
       +'<td>'+(p.in_stock?'<span class="badge b-won">In Stock</span>':'<span class="badge b-lost">Out</span>')+'</td>'
       +(isManagerProd
-        ?'<td><div style="display:flex;gap:4px">'
+        ?'<td onclick="event.stopPropagation()"><div style="display:flex;gap:4px">'
           +'<button class="btn" style="padding:3px 8px;font-size:10px" onclick="openProdForm('+p.id+')"><i class="ti ti-edit"></i> Sửa</button>'
           +'<button class="btn" style="padding:3px 8px;font-size:10px" onclick="toggleStock('+p.id+','+(p.in_stock?'false':'true')+')">'+(p.in_stock?'Ẩn':'Hiện')+'</button>'
           +'<button class="btn" style="padding:3px 8px;font-size:10px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="toggleActive('+p.id+','+(isActive?'false':'true')+')">'+(isActive?'Deactive':'Active')+'</button>'
@@ -2553,6 +2569,7 @@ function renderProducts(){
     +(isManagerProd?'<button class="btn btn-primary" onclick="openProdForm(null)"><i class="ti ti-plus"></i> Thêm sản phẩm</button>':'')
     +'</div>'
     +'<div class="content">'
+    +'<div class="stats-row" style="grid-template-columns:repeat('+(VENDOR_OPTS.length+1)+',1fr)">'+statsHtml+'</div>'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+filtered.length+'</span> sản phẩm</h2></div>'
     +(filtered.length===0?'<div class="empty-state"><i class="ti ti-package"></i>Không tìm thấy sản phẩm</div>'
       :'<table><colgroup><col width="80"><col><col width="70"><col width="80"><col width="80"><col width="150"></colgroup>'
@@ -2563,6 +2580,92 @@ function renderProducts(){
 }
 
 function setProdMgPage(p){sessionStorage.setItem('prodMgPage',p);render();}
+
+function openProdZoom(id){
+  var p=PRODUCTS_ALL.find(function(x){return x.id===id;});
+  if(!p)return;
+  var existing=document.getElementById('prod-zoom-modal');
+  if(existing)existing.remove();
+  var isManagerProd=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
+  var isActive=p.is_active!==false;
+  var vendorColor={'BOLSA':'var(--accent2)','ONS':'var(--accent)','TSPA':'var(--warn)'}[p.brand]||'var(--brand2)';
+
+  var m=document.createElement('div');
+  m.className='modal-overlay';m.id='prod-zoom-modal';
+  m.onclick=function(e){if(e.target===m)m.remove();};
+
+  var html='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:16px;width:94vw;max-width:600px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.6);border:1px solid var(--border)">';
+
+  // Header
+  html+='<div style="display:flex;align-items:center;gap:14px;padding:18px 20px;border-bottom:1px solid var(--border);background:rgba(108,92,231,0.07);border-radius:16px 16px 0 0">';
+  html+='<div style="flex:1;min-width:0">';
+  html+='<div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:2px">'+(p.name||'—')+'</div>';
+  html+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+  html+='<span style="font-family:monospace;font-size:11px;color:var(--text3)">'+(p.sku||'')+'</span>';
+  if(p.brand)html+='<span style="background:rgba(108,92,231,0.15);color:'+vendorColor+';border:1px solid '+vendorColor+';padding:1px 8px;border-radius:20px;font-size:11px;font-weight:600">'+p.brand+'</span>';
+  html+=p.in_stock?'<span class="badge b-won">In Stock</span>':'<span class="badge b-lost">Out of Stock</span>';
+  if(!isActive)html+='<span class="badge b-invalid">Inactive</span>';
+  html+='</div></div>';
+  html+='<button type="button" style="background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px;font-size:14px" onclick="document.getElementById(\'prod-zoom-modal\').remove()"><i class="ti ti-x"></i></button>';
+  html+='</div>';
+
+  // Body
+  html+='<div style="display:grid;grid-template-columns:'+(p.image_url?'200px 1fr':'1fr')+';gap:0">';
+
+  // Image panel
+  if(p.image_url){
+    html+='<div style="padding:20px;border-right:1px solid var(--border);display:flex;align-items:flex-start;justify-content:center">';
+    html+='<img src="'+p.image_url+'" style="width:160px;height:160px;object-fit:contain;border-radius:10px;background:var(--surface2)" alt="'+p.name+'">';
+    html+='</div>';
+  }
+
+  // Info panel
+  html+='<div style="padding:20px">';
+
+  // Price block
+  html+='<div style="background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.15);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;gap:20px;flex-wrap:wrap">';
+  html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">Sale Price</div><div style="font-size:24px;font-weight:700;color:var(--accent2)">$'+(p.price||0)+'</div></div>';
+  if(isManagerProd&&p.vendor_cost){
+    html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">Vendor Cost</div><div style="font-size:24px;font-weight:700;color:var(--warn)">$'+p.vendor_cost+'</div></div>';
+    var margin=((p.price||0)-(p.vendor_cost||0));
+    var marginPct=p.price?Math.round(margin/p.price*100):0;
+    html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">Margin</div><div style="font-size:24px;font-weight:700;color:'+(margin>=0?'var(--success)':'var(--danger)')+'">$'+margin+' <span style="font-size:13px">('+marginPct+'%)</span></div></div>';
+  }
+  html+='</div>';
+
+  // Details grid
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px">';
+  var details=[
+    ['Vendor',p.brand||'—'],
+    ['SKU',p.sku||'—'],
+    ['Variant',p.variant||'—'],
+    ['Commission Rate',p.commission_rate!=null?(p.commission_rate+'%'):'—'],
+  ];
+  if(isManagerProd)details.push(['Is Bolsa',p.is_bolsa?'✓ Bolsa':'—']);
+  details.forEach(function(d){
+    html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px">'+d[0]+'</div>'
+      +'<div style="font-size:13px;color:var(--text);font-weight:500">'+d[1]+'</div></div>';
+  });
+  html+='</div>';
+  html+='</div>';// end info panel
+  html+='</div>';// end grid
+
+  // Footer actions (manager only)
+  if(isManagerProd){
+    html+='<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;border-radius:0 0 16px 16px;background:rgba(255,255,255,0.02)">';
+    html+='<button type="button" class="btn" onclick="document.getElementById(\'prod-zoom-modal\').remove()">Đóng</button>';
+    html+='<button type="button" class="btn" style="border-color:rgba(108,92,231,0.4);color:var(--brand2)" onclick="document.getElementById(\'prod-zoom-modal\').remove();openProdForm('+p.id+')"><i class="ti ti-edit"></i> Sửa sản phẩm</button>';
+    html+='</div>';
+  } else {
+    html+='<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;border-radius:0 0 16px 16px">';
+    html+='<button type="button" class="btn" onclick="document.getElementById(\'prod-zoom-modal\').remove()">Đóng</button>';
+    html+='</div>';
+  }
+
+  html+='</div>';// end container
+  m.innerHTML=html;
+  document.body.appendChild(m);
+}
 function prodMgFilter(v){
   sessionStorage.setItem('prodMgSearch',v);
   sessionStorage.setItem('prodMgPage',1);
