@@ -1277,7 +1277,7 @@ async function loadCustomers(){
       console.log('[CRM] Total customers loaded:',CUSTOMERS.length);
       // Re-render badges and current page after full load
       updateBadges();
-      if(window.page==='customers'||window.page==='pending')render();
+      if(window.page==='customers'||window.page==='pending'||window.page==='cd')render();
     },100); // start after initial render
   }
 
