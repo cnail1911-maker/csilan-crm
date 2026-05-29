@@ -950,6 +950,7 @@ async function saveAndDownload(action){
     company_id:selectedCompany?selectedCompany.id:null,
     customer_id:selectedCustomer.id,
     sale_id:currentUser.id,
+    submitted_by:currentUser.id,
     date:document.getElementById('inv-date').value,
     po_number:retryNo,
     location:document.getElementById('inv-location').value,
