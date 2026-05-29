@@ -1538,8 +1538,9 @@ function renderClosedeal(){
   // Pending approval rows
   // Pending invoice rows - sale can edit their own pending invoices
   let pendingRows='';
+  const _allCustsCD=window.CUSTOMERS||CUSTOMERS;
   pendingInvs.forEach(function(inv){
-    const cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;})||{};
+    const cust=_allCustsCD.find(function(c){return c.id===inv.customer_id;})||{};
     const isMine=currentUser&&inv.sale_id===currentUser.id;
     pendingRows+='<tr>'
       +'<td style="font-size:10px;font-family:monospace;color:var(--warn)">'+(inv.invoice_no||'—')+'</td>'
@@ -1878,8 +1879,10 @@ function renderPending(){
     :INVOICES.filter(function(i){return i.approval_status==='pending'&&(i.sale_id===currentUser.id||i.created_by===currentUser.id);});
 
   let invPendingRows='';
+  // Fix: tìm customer trong toàn bộ CUSTOMERS (kể cả pending/rejected) để hiện đúng tên
+  const _allCusts=window.CUSTOMERS||CUSTOMERS;
   pendingInvoices.forEach(function(inv){
-    const cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;})||{};
+    const cust=_allCusts.find(function(c){return c.id===inv.customer_id;})||{};
     const isMine=currentUser&&(inv.sale_id===currentUser.id||inv.created_by===currentUser.id);
     const saleId=inv.sale_id||inv.created_by;
     let saleName='—';
@@ -2803,7 +2806,7 @@ async function renderDetailModal(customerId){
   // Build log html
   let logHtml='<div style="font-size:12px;color:var(--text3);padding:6px 0">Chưa có ghi chú</div>';
   if(logs.length>0){
-    let lh='<div style="max-height:170px;overflow-y:auto;padding-right:4px">';
+    let lh='<div style="max-height:320px;overflow-y:auto;padding-right:4px">';
     logs.forEach(function(l){
       const res=l.call_result&&l.call_result!=='null'?'<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(108,92,231,0.2);color:var(--brand2);margin-right:5px">'+l.call_result+'</span>':'';
       const note=l.note&&l.note!=='null'&&l.note.trim()!==''?l.note.trim():'';
@@ -3104,11 +3107,16 @@ async function doAdd(){
   const cell=cellV||'';
   const bphone=bphoneV||'';
   let isDup=false;
-  if(cell||bphone){
+  const cell2Raw=(document.getElementById('a-cell2')&&document.getElementById('a-cell2').value.trim())||'';
+  var cell2V=cell2Raw?validatePhone(cell2Raw,'Cellphone 2'):null;
+  if(cell2V===false){showLoading(false);return;}
+  const cell2=cell2V||'';
+  if(cell||bphone||cell2){
     const orParts=[];
-    if(cell){orParts.push('cellphone.eq.'+cell);orParts.push('business_phone.eq.'+cell);}
-    if(bphone){orParts.push('cellphone.eq.'+bphone);orParts.push('business_phone.eq.'+bphone);}
-    const {data:dupCheck}=await sb.from('customers').select('id,customer_name,cellphone,business_phone').or(orParts.join(','));
+    if(cell){orParts.push('cellphone.eq.'+cell);orParts.push('business_phone.eq.'+cell);orParts.push('cellphone_2.eq.'+cell);}
+    if(bphone){orParts.push('cellphone.eq.'+bphone);orParts.push('business_phone.eq.'+bphone);orParts.push('cellphone_2.eq.'+bphone);}
+    if(cell2){orParts.push('cellphone.eq.'+cell2);orParts.push('business_phone.eq.'+cell2);orParts.push('cellphone_2.eq.'+cell2);}
+    const {data:dupCheck}=await sb.from('customers').select('id,customer_name,cellphone,business_phone,cellphone_2').or(orParts.join(','));
     isDup=(dupCheck||[]).length>0;
     if(isDup){
       const dupNames=(dupCheck||[]).map(function(d){return d.customer_name;}).join(', ');
@@ -3128,12 +3136,7 @@ async function doAdd(){
     customer_name:name,
     business_phone:bphone||null,
     cellphone:cell||null,
-    cellphone_2:(function(){
-      var v=(document.getElementById('a-cell2')&&document.getElementById('a-cell2').value||'').trim();
-      if(!v)return null;
-      var d=v.replace(/\D/g,'');
-      return(d&&d[0]!=='0'&&d[0]!=='1')?d:null;
-    })(),
+    cellphone_2:cell2||null,
     state:document.getElementById('a-state')&&document.getElementById('a-state').value||null,
     zipcode:document.getElementById('a-zip')&&document.getElementById('a-zip').value||null,
     address:document.getElementById('a-address')&&document.getElementById('a-address').value.trim()||null,
