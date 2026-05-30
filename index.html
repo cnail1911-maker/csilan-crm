@@ -1173,6 +1173,19 @@ async function initApp(user){
   document.getElementById('user-name').textContent=(profile&&profile.full_name)||user.email;
   document.getElementById('user-role').textContent=profile&&profile.role==='manager'?'Manager':profile&&profile.role==='admin'?'Admin':profile&&profile.role==='leader'?'Leader':'Sale';
   document.getElementById('auth-screen').style.display='none';
+  // Warm-up Edge Function ngay sau login để tránh cold start
+  (async function(){
+    try{
+      const {data:{session}}=await sb.auth.getSession();
+      if(session){
+        fetch('https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/crm-ai-assistant',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+          body:JSON.stringify({ping:true})
+        }).catch(function(){});
+      }
+    }catch(e){}
+  })();
   document.getElementById('app-screen').style.display='block';
   // Show products & campaign nav for manager/admin
   const isManagerInit=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
@@ -4731,7 +4744,7 @@ function render(){
    ════════════════════════════════════════════════════════════ */
 (function(){
   const EDGE_URL='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/crm-ai-assistant';
-  const MAX_HISTORY=20; // giữ tối đa 20 turns để tiết kiệm token
+  const MAX_HISTORY=10; // giữ tối đa 10 turns
 
   // ── State ──
   let aiOpen=false;
@@ -5011,18 +5024,15 @@ function render(){
       }
     }
 
-    // Show typing
+    // Show typing + fetch context SONG SONG — không chờ tuần tự
     showTyping();
+    const historyToSend=aiHistory.slice(-MAX_HISTORY).filter(function(m){return m.role!=='system';});
 
-    // Build context if needed
+    // Build context nếu cần (song song với typing indicator)
     let context=null;
     if(cid)context=await buildContext(cid);
 
-    // Build messages for Edge Function (trimmed history)
-    const historyToSend=aiHistory.slice(-MAX_HISTORY).filter(function(m){return m.role!=='system';});
-
     try{
-      // Get Supabase session token for auth
       const {data:{session}}=await window.sb.auth.getSession();
       const token=session?session.access_token:'';
 
@@ -5039,7 +5049,8 @@ function render(){
           sale_id:window.currentUser?window.currentUser.id:null,
           sale_name:(window.currentProfile&&window.currentProfile.full_name)||'Sale',
           is_manager:!!(window.currentProfile&&(window.currentProfile.role==='manager'||window.currentProfile.role==='leader')),
-          sale_summary:buildSaleSummary()
+          sale_summary:buildSaleSummary(),
+          stream:true
         })
       });
 
@@ -5048,15 +5059,57 @@ function render(){
         throw new Error('Edge error '+resp.status+': '+err);
       }
 
-      const result=await resp.json();
-      const aiText=result.reply||result.content||'Xin lỗi, tôi chưa thể trả lời lúc này.';
-
       removeTyping();
-      const bubble=appendBubble('ai','',true);
-      typeWrite(bubble,aiText,function(){
-        aiHistory.push({role:'assistant',content:aiText});
-        saveHistory();
-      });
+      const bubble=appendBubble('ai','',false);
+      let aiText='';
+
+      // Thử streaming trước, fallback về JSON nếu không support
+      const contentType=resp.headers.get('content-type')||'';
+      if(contentType.includes('text/event-stream')||contentType.includes('text/plain')){
+        // ── Streaming mode ──
+        const reader=resp.body.getReader();
+        const decoder=new TextDecoder();
+        let buffer='';
+        while(true){
+          const {done,value}=await reader.read();
+          if(done)break;
+          buffer+=decoder.decode(value,{stream:true});
+          // Parse SSE lines
+          const lines=buffer.split('\n');
+          buffer=lines.pop()||'';
+          for(var li=0;li<lines.length;li++){
+            var line=lines[li].trim();
+            if(!line||line==='data: [DONE]')continue;
+            if(line.startsWith('data: ')){
+              try{
+                var chunk=JSON.parse(line.slice(6));
+                var delta=chunk.choices&&chunk.choices[0]&&chunk.choices[0].delta&&chunk.choices[0].delta.content;
+                if(delta){aiText+=delta;bubble.textContent=aiText;scrollAI();}
+              }catch(pe){
+                // Plain text chunk
+                var plain=line.slice(6);
+                if(plain){aiText+=plain;bubble.textContent=aiText;scrollAI();}
+              }
+            }
+          }
+        }
+        // Flush buffer còn lại
+        if(buffer&&buffer.startsWith('data: ')&&buffer!=='data: [DONE]'){
+          try{var last=JSON.parse(buffer.slice(6));var d=last.choices&&last.choices[0]&&last.choices[0].delta&&last.choices[0].delta.content;if(d){aiText+=d;bubble.textContent=aiText;}}catch(e){}
+        }
+        if(!aiText)aiText='Xin lỗi, tôi chưa thể trả lời lúc này.';
+        bubble.textContent=aiText;
+        scrollAI();
+      } else {
+        // ── Fallback JSON mode (Edge Function chưa support stream) ──
+        const result=await resp.json();
+        aiText=result.reply||result.content||'Xin lỗi, tôi chưa thể trả lời lúc này.';
+        // Typewriter effect cho JSON mode
+        await new Promise(function(resolve){typeWrite(bubble,aiText,resolve);});
+      }
+
+      aiHistory.push({role:'assistant',content:aiText});
+      saveHistory();
 
     }catch(err){
       removeTyping();
