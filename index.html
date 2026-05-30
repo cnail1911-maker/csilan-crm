@@ -5011,26 +5011,21 @@ function render(){
     appendBubble('user',text,false);
     aiHistory.push({role:'user',content:text});
 
-    // Determine customerId
+    // Determine customerId for context banner only (AI tự fetch qua tools)
     let cid=window.currentCustomerId||detectCustomerInText(text);
-    // Update context banner if detected from text
     if(cid&&cid!==window.currentCustomerId){
       const cust=window.CUSTOMERS&&window.CUSTOMERS.find(function(c){return c.id===cid;});
       if(cust){
         const banner=el('ai-ctx-banner');
         const ctxText=el('ai-ctx-text');
         if(banner)banner.style.display='flex';
-        if(ctxText)ctxText.textContent='Tìm thấy: '+(cust.business_name||cust.customer_name)+' — Đang tải lịch sử...';
+        if(ctxText)ctxText.textContent='Tìm thấy: '+(cust.business_name||cust.customer_name);
       }
     }
 
-    // Show typing + fetch context SONG SONG — không chờ tuần tự
+    // Show typing
     showTyping();
     const historyToSend=aiHistory.slice(-MAX_HISTORY).filter(function(m){return m.role!=='system';});
-
-    // Build context nếu cần (song song với typing indicator)
-    let context=null;
-    if(cid)context=await buildContext(cid);
 
     try{
       const {data:{session}}=await window.sb.auth.getSession();
@@ -5044,12 +5039,7 @@ function render(){
         },
         body:JSON.stringify({
           messages:historyToSend,
-          context:context,
           query_text:text,
-          sale_id:window.currentUser?window.currentUser.id:null,
-          sale_name:(window.currentProfile&&window.currentProfile.full_name)||'Sale',
-          is_manager:!!(window.currentProfile&&(window.currentProfile.role==='manager'||window.currentProfile.role==='leader')),
-          sale_summary:buildSaleSummary(),
           stream:true
         })
       });
