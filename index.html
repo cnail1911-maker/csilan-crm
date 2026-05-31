@@ -4960,9 +4960,10 @@ async function api(body){
 
 async function _apiGetRooms(body){
   var uid=body.sale_id;
-  var {data:allRooms}=await chatSb.from('chat_rooms').select('*').order('updated_at',{ascending:false}).limit(100);
-  var myRooms=(allRooms||[]).filter(function(r){
-    if(!r.is_direct)return true; // phòng chung thấy hết
+  var {data:allRooms,error}=await chatSb.from('chat_rooms').select('*').order('updated_at',{ascending:false}).limit(100);
+  if(error||!allRooms){throw new Error('RLS or network: '+(error&&error.message));}
+  var myRooms=allRooms.filter(function(r){
+    if(!r.is_direct)return true;
     var members=r.members||[];
     return members.includes(uid);
   });
@@ -4972,13 +4973,17 @@ async function _apiGetRooms(body){
 async function _apiGetMessages(body){
   var q=chatSb.from('messages').select('*').eq('room_id',body.room_id).order('created_at',{ascending:false}).limit(body.limit||50);
   if(body.before)q=q.lt('created_at',body.before);
-  var {data:msgs}=await q;
-  return {messages:(msgs||[]).reverse()};
+  var {data:msgData,error}=await q;
+  if(error){throw new Error('RLS or network: '+error.message);}
+  // Nếu null (RLS chặn) thì throw để fallback Edge Function
+  if(!msgData)throw new Error('No data returned - possible RLS block');
+  return {messages:msgData.reverse()};
 }
 
 async function _apiPollNew(body){
-  var {data:msgs}=await chatSb.from('messages').select('*').eq('room_id',body.room_id).gt('created_at',body.after).order('created_at',{ascending:true}).limit(50);
-  return {messages:msgs||[]};
+  var {data:msgData,error}=await chatSb.from('messages').select('*').eq('room_id',body.room_id).gt('created_at',body.after).order('created_at',{ascending:true}).limit(50);
+  if(error||!msgData)throw new Error('Poll failed');
+  return {messages:msgData};
 }
 
 function mgr(){return window.currentProfile&&['manager','leader','admin'].includes(window.currentProfile.role);}
