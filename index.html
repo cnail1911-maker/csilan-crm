@@ -2994,10 +2994,8 @@ async function renderKPIAsync(){
   var toDate=year+'-'+String(month).padStart(2,'0')+'-31T23:59:59.999Z';
   var prevMonth=month===1?12:month-1;
   var prevYear=month===1?year-1:year;
-  var prevFrom=prevYear+'-'+String(prevMonth).padStart(2,'00')+'-01T00:00:00.000Z';
-  var prevTo=prevYear+'-'+String(prevMonth).padStart(2,'00')+'-31T23:59:59.999Z';
-  prevFrom=prevYear+'-'+String(prevMonth).padStart(2,'0')+'-01T00:00:00.000Z';
-  prevTo=prevYear+'-'+String(prevMonth).padStart(2,'0')+'-31T23:59:59.999Z';
+  var prevFrom=prevYear+'-'+String(prevMonth).padStart(2,'0')+'-01T00:00:00.000Z';
+  var prevTo=prevYear+'-'+String(prevMonth).padStart(2,'0')+'-31T23:59:59.999Z';
 
   // Fetch current + prev month + trend in parallel
   var trendMonths=_kpiTrend;
@@ -3420,6 +3418,8 @@ function _kpiOpenListModal(label,customers,type,saleId){
   var m=document.createElement('div');
   m.className='modal-overlay';m.id='kpi-list-modal';
   m.onclick=function(e){if(e.target===m)m.remove();};
+  // Local escape helper
+  function e(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
   var hasInv=['orders','rev','estorders','estrev'].includes(type);
   var monthNames=['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
@@ -3436,8 +3436,8 @@ function _kpiOpenListModal(label,customers,type,saleId){
       // Header
       +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">'
       +'<div style="min-width:0">'
-      +'<div style="font-size:12px;font-weight:700;color:var(--text)">'+esc(c.business_name||c.customer_name||'—')+'</div>'
-      +'<div style="font-size:11px;color:var(--text3)">'+esc(c.ma_kh||'—')+' · '+(c.state||'—')+'</div>'
+      +'<div style="font-size:12px;font-weight:700;color:var(--text)">'+e(c.business_name||c.customer_name||'—')+'</div>'
+      +'<div style="font-size:11px;color:var(--text3)">'+e(c.ma_kh||'—')+' · '+(c.state||'—')+'</div>'
       +'</div>'
       +(inv?'<div style="text-align:right;flex-shrink:0"><div style="font-size:13px;font-weight:700;color:'+(inv.approval_status==='approved'?'var(--accent2)':'var(--warn)')+'">$'+(inv.total||0).toLocaleString()+'</div>'
         +'<div style="font-size:10px;color:var(--text3)">'+inv.invoice_no+'</div></div>':'')
@@ -3445,13 +3445,13 @@ function _kpiOpenListModal(label,customers,type,saleId){
       // Info row
       +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;font-size:11px">'
       +'<span>📞 '+(c.cellphone||c.business_phone||'—')+'</span>'
-      +(c.potential?'<span style="background:rgba(108,92,231,0.12);color:var(--brand2);padding:1px 6px;border-radius:4px">'+esc(c.potential)+'</span>':'')
-      +(c.sub_status?'<span style="background:rgba(255,255,255,0.06);color:var(--text2);padding:1px 6px;border-radius:4px">'+esc(c.sub_status)+'</span>':'')
+      +(c.potential?'<span style="background:rgba(108,92,231,0.12);color:var(--brand2);padding:1px 6px;border-radius:4px">'+e(c.potential)+'</span>':'')
+      +(c.sub_status?'<span style="background:rgba(255,255,255,0.06);color:var(--text2);padding:1px 6px;border-radius:4px">'+e(c.sub_status)+'</span>':'')
       +'<span style="color:var(--text3)">📅 '+lastContact+'</span>'
       +(dlDays!==null?'<span style="color:'+dlColor+'">⏰ '+(dlDays<=0?'Hết hạn':dlDays+'n còn')+'</span>':'')
       +'</div>'
       // Description
-      +(c.description?'<div style="font-size:11px;color:var(--text2);background:rgba(255,255,255,0.04);border-radius:6px;padding:6px 8px;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+esc(c.description)+'</div>':'')
+      +(c.description?'<div style="font-size:11px;color:var(--text2);background:rgba(255,255,255,0.04);border-radius:6px;padding:6px 8px;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+e(c.description)+'</div>':'')
       // Actions
       +'<div style="display:flex;justify-content:flex-end">'
       +'<button class="btn" style="padding:3px 10px;font-size:11px;border-color:rgba(108,92,231,0.4);color:var(--brand2)" onclick="window._kpiOpenCust('+c.id+')">'
@@ -3462,7 +3462,7 @@ function _kpiOpenListModal(label,customers,type,saleId){
 
   m.innerHTML='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:16px;width:94vw;max-width:620px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.6);border:1px solid var(--border)">'
     +'<div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0">'
-    +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+esc(label)+'</div>'
+    +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+e(label)+'</div>'
     +'<div style="font-size:11px;color:var(--text3)">'+monthNames[_kpiMonth-1]+' '+_kpiYear+' · '+customers.length+' khách</div></div>'
     +'<button type="button" style="background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text2);cursor:pointer;padding:4px 10px;font-size:14px" onclick="document.getElementById(\'kpi-list-modal\').remove()"><i class="ti ti-x"></i></button>'
     +'</div>'
