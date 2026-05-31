@@ -30,7 +30,7 @@
   --border:rgba(255,255,255,0.1);
   --bg2:#1a1240;
 }
-body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--text);font-size:13px}
+body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--text);font-size:13px;overflow-x:hidden;overscroll-behavior-x:none}
 #auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--main);position:relative;overflow:hidden}
 #auth-screen::before{content:'';position:absolute;top:-100px;left:-100px;width:400px;height:400px;background:radial-gradient(circle,rgba(108,92,231,0.3),transparent 70%);pointer-events:none}
 .auth-card{background:#1a1240;border:1px solid var(--border);border-radius:20px;padding:36px 40px;width:380px;position:relative;z-index:1}
@@ -375,6 +375,16 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
       width:100% !important;min-width:unset !important;
       margin-bottom:4px !important;
     }
+
+    /* Deadline/timeline/status: 3col → 1col on mobile */
+    .deadline-row{grid-template-columns:1fr !important;}
+    /* Campaign form: prevent horizontal overflow */
+    .panel{max-width:100%;overflow-x:hidden}
+    [style*="grid-template-columns:1fr 1fr auto"]{grid-template-columns:1fr !important}
+    [style*="grid-template-columns:repeat(4,1fr)"]{grid-template-columns:1fr 1fr !important}
+    [style*="grid-template-columns:repeat(3,1fr)"]{grid-template-columns:1fr 1fr !important}
+    /* Prevent horizontal drag/scroll on whole page */
+    html{overflow-x:hidden;overscroll-behavior-x:none}
 
     /* ── Chat: mobile ── */
     .chat-layout{grid-template-columns:1fr !important;}
@@ -3117,7 +3127,7 @@ async function renderDetailModal(customerId){
   const f='display:flex;flex-direction:column;gap:4px';
   const lb='font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;display:block;opacity:0.75';
   function lbl(t){return '<label style="'+lb+'">'+t+'</label>';}
-  function row(cols,items){return '<div style="display:grid;grid-template-columns:'+cols+';gap:8px;margin-bottom:10px;align-items:start">'+items+'</div>';}
+  function row(cols,items,cls){return '<div class="detail-row'+(cls?' '+cls:'')+'" style="display:grid;grid-template-columns:'+cols+';gap:8px;margin-bottom:10px;align-items:start">'+items+'</div>';}
   function fd(label,input){return '<div style="'+f+'">'+lbl(label)+input+'</div>';}
   function sel(id,opts,val){return '<select id="'+id+'" style="height:34px">'+selOpts(opts,val)+'</select>';}
   function inp(id,val,ph){return '<input id="'+id+'" value="'+(val||'')+'" '+(ph?'placeholder="'+ph+'"':'')+' style="height:34px">';}
@@ -3191,7 +3201,8 @@ async function renderDetailModal(customerId){
   html+=row('1fr 1fr 1fr',
     fd('Deadline thu hồi',deadlineInp)+
     '<div style="'+f+'">'+lbl('Ngày hẹn '+tlReq)+timelineInp+'</div>'+
-    fd('Trạng thái data',dataStatus)
+    fd('Trạng thái data',dataStatus),
+    'deadline-row'
   );
 
   html+='</div>'; // end left main
@@ -5505,19 +5516,19 @@ function renderMain(){
       +'<div class="chat-sb" id="csb">'
         +'<div class="chat-sb-top">'
           +'<span class="chat-sb-title"><i class="ti ti-messages" style="margin-right:6px;color:var(--brand2)"></i>Chat</span>'
-          +(mgr()?
-            '<div style="position:relative">'
-            +'<button class="chat-sb-btn" id="chat-plus-btn" onclick="window._cToggleMenu()" title="Tạo mới"><i class="ti ti-plus"></i></button>'
-            +'<div id="chat-plus-menu" style="display:none;position:absolute;top:32px;right:0;background:#1e1550;border:1px solid var(--chat-border);border-radius:10px;padding:6px;min-width:180px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.5)">'
-              +'<button onclick="window._cToggleMenu();showCreateRoom()" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;cursor:pointer;color:var(--text);font-size:12px;text-align:left" onmouseover="this.style.background=\'rgba(108,92,231,0.15)\'" onmouseout="this.style.background=\'none\'">'
+          +'<div style="position:relative">'
+          +'<button class="chat-sb-btn" id="chat-plus-btn" onclick="window._cToggleMenu()" title="Tạo mới"><i class="ti ti-plus"></i></button>'
+          +'<div id="chat-plus-menu" style="display:none;position:absolute;top:32px;right:0;background:#1e1550;border:1px solid var(--chat-border);border-radius:10px;padding:6px;min-width:180px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.5)">'
+            +(mgr()?
+              '<button onclick="window._cToggleMenu();showCreateRoom()" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;cursor:pointer;color:var(--text);font-size:12px;text-align:left" onmouseover="this.style.background=\'rgba(108,92,231,0.15)\'" onmouseout="this.style.background=\'none\'">'
                 +'<i class="ti ti-hash" style="color:var(--brand2)"></i> Tạo phòng mới'
               +'</button>'
-              +'<button onclick="window._cToggleMenu();window._cShowDMList()" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;cursor:pointer;color:var(--text);font-size:12px;text-align:left" onmouseover="this.style.background=\'rgba(108,92,231,0.15)\'" onmouseout="this.style.background=\'none\'">'
-                +'<i class="ti ti-message" style="color:var(--brand2)"></i> Nhắn tin riêng'
-              +'</button>'
-            +'</div>'
-            +'</div>'
-          :'')
+            :'')
+            +'<button onclick="window._cToggleMenu();window._cShowDMList()" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;cursor:pointer;color:var(--text);font-size:12px;text-align:left" onmouseover="this.style.background=\'rgba(108,92,231,0.15)\'" onmouseout="this.style.background=\'none\'">'
+              +'<i class="ti ti-message" style="color:var(--brand2)"></i> Nhắn tin riêng'
+            +'</button>'
+          +'</div>'
+          +'</div>'
         +'</div>'
         +'<div class="chat-sb-list" id="crooms"></div>'
 
@@ -5800,8 +5811,8 @@ function renderPinBanner(){
   el.innerHTML='<div class="chat-pin-banner" onclick="window._cgoto(\''+p.id+'\')">'
     +'<span class="chat-pin-icon"><i class="ti ti-pin-filled"></i></span>'
     +'<span class="chat-pin-text"><b>'+esc(p.sender_name)+':</b> '+esc(txt)+'</span>'
-    +(pins.length>1?'<span style="font-size:10px;color:var(--text3);margin-left:4px">+' +(pins.length-1)+'</span>':'')
-    +(mgr()?'<button class="chat-pin-close" onclick="event.stopPropagation();window._cpin(\''+p.id+'\')" title="B\u1ecf ghim">\xd7</button>':'')
+    +(pins.length>1?'<span style="font-size:10px;color:var(--text3);margin-left:4px">+'+(pins.length-1)+'</span>':'')
+    +(mgr()?'<button class="chat-pin-close" onclick="event.stopPropagation();window._cpin(\''+p.id+'\')" title="Bỏ ghim">×</button>':'')
     +'</div>';
 }
 
