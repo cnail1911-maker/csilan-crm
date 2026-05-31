@@ -5832,7 +5832,9 @@ async function pinMsg(msgId){
   }
   // Save to chat_rooms
   try{
-    await api({action:'update_room',room_id:curRoom,pinned_messages:pins});
+    var pinRes=await api({action:'update_room',room_id:curRoom,pinned_messages:pins});
+    console.log('[pin save] response:',pinRes);
+    if(pinRes.error){showNotif('⚠️ Ghim thất bại: '+pinRes.error,true);return;}
     var r=rooms.find(function(x){return x.id===curRoom;});if(r)r.pinned_messages=pins;
   }catch(e){console.warn('pin save error',e);}
   renderPinBanner();renderMsgs();
