@@ -3903,6 +3903,28 @@ function renderSchedule(){
 }
 
 
+function updateBadges(){
+  var isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
+  var pendingKh=isM
+    ?CUSTOMERS.filter(function(c){return c.approval_status==='pending';}).length
+    :CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&c.created_by===(currentUser&&currentUser.id);}).length;
+  var pendingInv=INVOICES.filter(function(i){return i.approval_status==='pending';}).length;
+  var total=pendingKh+pendingInv;
+  var b=document.getElementById('badge-pending');
+  if(b){b.textContent=total;b.style.display=total>0?'inline':'none';}
+  // Alert badge
+  var today=new Date();today.setHours(0,0,0,0);
+  var alertCnt=CUSTOMERS.filter(function(c){
+    if(c.lead_status==='Closedeal'||c.lead_status==='Lost'||c.lead_status==='Completed')return false;
+    if(!c.assigned_to)return false;
+    if(!isM&&c.assigned_to!==(currentUser&&currentUser.id))return false;
+    if(!c.potential||!c.potential.trim())return false;
+    var lc=c.last_contacted?new Date(c.last_contacted):null;
+    return !lc||(today-lc)/86400000>=3;
+  }).length;
+  var ab=document.getElementById('badge-alert');
+  if(ab){ab.textContent=alertCnt;ab.style.display=alertCnt>0?'inline':'none';}
+}
 function render(){
   const m=document.getElementById('main-area');
   if(!m)return;
@@ -4916,19 +4938,17 @@ try{muted=JSON.parse(localStorage.getItem('c_muted')||'[]');
 // ── Utils ──
 function tok(){return window.sb.auth.getSession().then(function(r){return r.data.session?r.data.session.access_token:'';});}
 async function api(body){
-  // Ưu tiên gọi thẳng chatSb thay vì proxy qua Edge Function
+  // Gọi thẳng chatSb cho READ actions — bypass Edge Function để nhanh hơn
   if(!chatSb){chatSb=window.supabase.createClient(CHAT_URL,CHAT_ANON);}
   try{
     switch(body.action){
       case 'get_rooms': return await _apiGetRooms(body);
       case 'get_messages': return await _apiGetMessages(body);
       case 'poll_new_messages': return await _apiPollNew(body);
-      case 'send_message': return await _apiSendMessage(body);
-      case 'recall_message': return await _apiRecallMessage(body);
-      default: break; // fallback to Edge for complex actions
+      default: break;
     }
   }catch(e){console.warn('[chat] direct api error, fallback edge:',e);}
-  // Fallback sang Edge Function cho các action khác
+  // WRITE actions + complex actions → Edge Function (cần service role key cho RLS)
   var t=await tok();
   try{
     var r=await fetch(EDGE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+t},body:JSON.stringify(body)});
@@ -4961,30 +4981,6 @@ async function _apiPollNew(body){
   return {messages:msgs||[]};
 }
 
-async function _apiSendMessage(body){
-  var payload={
-    room_id:body.room_id,
-    user_id:body.user_id,
-    sender_name:body.sender_name,
-    content:body.content||null,
-    image_url:body.image_url||null,
-    reply_to_id:body.reply_to_id||null,
-    is_recalled:false
-  };
-  var {data,error}=await chatSb.from('messages').insert(payload).select().single();
-  if(error)throw error;
-  // Update room updated_at
-  await chatSb.from('chat_rooms').update({updated_at:new Date().toISOString()}).eq('id',body.room_id);
-  return {message:data};
-}
-
-async function _apiRecallMessage(body){
-  var update={is_recalled:true,recalled_at:new Date().toISOString(),recalled_content:null};
-  if(body.is_manager)update.recalled_content=null;
-  var {error}=await chatSb.from('messages').update(update).eq('id',body.message_id);
-  if(error)throw error;
-  return {ok:true};
-}
 function mgr(){return window.currentProfile&&['manager','leader','admin'].includes(window.currentProfile.role);}
 function uid(){return window.currentUser?window.currentUser.id:'';}
 function uname(){return(window.currentProfile&&window.currentProfile.full_name)||'Sale';}
