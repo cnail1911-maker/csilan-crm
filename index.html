@@ -1293,11 +1293,26 @@ async function initApp(user){
       document.body.classList.remove('ticker-on');
     };
 
+    // Realtime Broadcast channel — đồng bộ manual messages đến tất cả user
+    var tickerChannel=sb.channel('crm-ticker-broadcast',{config:{broadcast:{self:false}}});
+    tickerChannel
+      .on('broadcast',{event:'ticker'},function(payload){
+        if(payload&&payload.payload&&payload.payload.html){
+          _addMsg(payload.payload.html);
+        }
+      })
+      .subscribe();
+
+    // Public: broadcast manual message — gửi đến tất cả user online
     window._tickerSend=function(){
       var ta=document.getElementById('ta-text');
       var txt=ta&&ta.value.trim();
       if(!txt)return;
-      window._tickerMsg('📣 '+txt);
+      var html='📣 <span style="color:rgba(240,238,255,0.85)">'+txt+'</span>';
+      // Hiện ngay cho manager
+      _addMsg(html);
+      // Broadcast đến tất cả user khác
+      tickerChannel.send({type:'broadcast',event:'ticker',payload:{html:html}});
       ta.value='';
       document.getElementById('ticker-announce-modal').style.display='none';
     };
