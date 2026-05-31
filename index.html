@@ -4938,17 +4938,18 @@ try{muted=JSON.parse(localStorage.getItem('c_muted')||'[]');
 // ── Utils ──
 function tok(){return window.sb.auth.getSession().then(function(r){return r.data.session?r.data.session.access_token:'';});}
 async function api(body){
-  // Gọi thẳng chatSb cho READ actions — bypass Edge Function để nhanh hơn
   if(!chatSb){chatSb=window.supabase.createClient(CHAT_URL,CHAT_ANON);}
-  try{
-    switch(body.action){
-      case 'get_rooms': return await _apiGetRooms(body);
-      case 'get_messages': return await _apiGetMessages(body);
-      case 'poll_new_messages': return await _apiPollNew(body);
-      default: break;
-    }
-  }catch(e){console.warn('[chat] direct api error, fallback edge:',e);}
-  // WRITE actions + complex actions → Edge Function (cần service role key cho RLS)
+  // Chỉ bypass Edge Function cho poll — gọi nhiều nhất, không cần auth phức tạp
+  if(body.action==='poll_new_messages'){
+    try{
+      var {data:msgData,error}=await chatSb.from('messages')
+        .select('*').eq('room_id',body.room_id)
+        .gt('created_at',body.after)
+        .order('created_at',{ascending:true}).limit(50);
+      if(!error&&msgData)return {messages:msgData};
+    }catch(e){}
+  }
+  // Tất cả actions khác → Edge Function
   var t=await tok();
   try{
     var r=await fetch(EDGE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+t},body:JSON.stringify(body)});
@@ -4956,34 +4957,6 @@ async function api(body){
     if(!r.ok)console.error('[chat]',body.action,r.status,d);
     return d;
   }catch(e){console.error('[chat] network',e);return{error:e.message};}
-}
-
-async function _apiGetRooms(body){
-  var uid=body.sale_id;
-  var {data:allRooms,error}=await chatSb.from('chat_rooms').select('*').order('updated_at',{ascending:false}).limit(100);
-  if(error||!allRooms){throw new Error('RLS or network: '+(error&&error.message));}
-  var myRooms=allRooms.filter(function(r){
-    if(!r.is_direct)return true;
-    var members=r.members||[];
-    return members.includes(uid);
-  });
-  return {rooms:myRooms};
-}
-
-async function _apiGetMessages(body){
-  var q=chatSb.from('messages').select('*').eq('room_id',body.room_id).order('created_at',{ascending:false}).limit(body.limit||50);
-  if(body.before)q=q.lt('created_at',body.before);
-  var {data:msgData,error}=await q;
-  if(error){throw new Error('RLS or network: '+error.message);}
-  // Nếu null (RLS chặn) thì throw để fallback Edge Function
-  if(!msgData)throw new Error('No data returned - possible RLS block');
-  return {messages:msgData.reverse()};
-}
-
-async function _apiPollNew(body){
-  var {data:msgData,error}=await chatSb.from('messages').select('*').eq('room_id',body.room_id).gt('created_at',body.after).order('created_at',{ascending:true}).limit(50);
-  if(error||!msgData)throw new Error('Poll failed');
-  return {messages:msgData};
 }
 
 function mgr(){return window.currentProfile&&['manager','leader','admin'].includes(window.currentProfile.role);}
