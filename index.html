@@ -383,8 +383,11 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     /* Campaign header grid: stack on mobile */
     .camp-header-grid{grid-template-columns:1fr !important;}
     .camp-header-btns{width:100%}
+    /* Fix tất cả elements box-sizing trên mobile */
+    *{box-sizing:border-box}
     /* Campaign form: prevent horizontal overflow */
-    .panel{max-width:100%;overflow-x:hidden}
+    .panel,.content,.topbar{max-width:100vw;overflow-x:hidden}
+    .content{padding:10px !important}
     /* Prevent horizontal drag/scroll on whole page */
     html{overflow-x:hidden;overscroll-behavior-x:none}
 
@@ -5607,12 +5610,11 @@ function selectRoom(id){
   renderPinBanner();loadMsgs(id);startPoll();
   // Fetch fresh pinned_messages từ DB (background, không block)
   if(!chatSb){chatSb=window.supabase.createClient(CHAT_URL,CHAT_ANON);}
-  chatSb.from('chat_rooms').select('pinned_messages').eq('id',id).single().then(function(res){
-    if(res.data&&res.data.pinned_messages){
-      pinnedMsgs[id]=res.data.pinned_messages;
-      // Cập nhật cache
+  chatSb.from('chat_rooms').select('id,pinned_messages').eq('id',id).limit(1).then(function(res){
+    if(res.data&&res.data.length&&res.data[0].pinned_messages){
+      pinnedMsgs[id]=res.data[0].pinned_messages;
       var room=rooms.find(function(x){return x.id===id;});
-      if(room)room.pinned_messages=res.data.pinned_messages;
+      if(room)room.pinned_messages=res.data[0].pinned_messages;
       renderPinBanner();
     }
   }).catch(function(e){console.warn('[pin fetch]',e);});
