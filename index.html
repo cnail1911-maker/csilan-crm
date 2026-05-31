@@ -1388,6 +1388,8 @@ function renderCustomers(){
   const campNames=[...new Set(CUSTOMERS.map(function(c){return c.campaign_name;}).filter(Boolean))].sort();
   // Sale only sees approved+assigned customers
   let data=CUSTOMERS.filter(function(c){
+    // Khách pending chỉ hiện ở tab Chờ duyệt, không hiện trong tab Khách hàng
+    if(c.approval_status==='pending')return false;
     if(!isManager){
       const uid=currentUser&&currentUser.id;
       if(!uid)return false;
@@ -1395,7 +1397,6 @@ function renderCustomers(){
       const isAssigned=c.assigned_to===uid||c.assigned_to===profId;
       const isCreatedBy=c.created_by===uid||c.created_by===profId;
       if(!isAssigned&&!isCreatedBy)return false;
-      if(c.approval_status==='pending'&&!isCreatedBy)return false;
     }
     if(fStatus!=='all'&&c.status!==fStatus)return false;
     if(fLead!=='all'){if(fLead==='__none__'){if(c.lead_status&&c.lead_status.trim())return false;}else if(c.lead_status!==fLead)return false;}
@@ -1895,10 +1896,10 @@ function renderPipeline(){
 function renderPending(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const pending=isManager
-    ?CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&(fPendingSale==='all'||c.assigned_to===fPendingSale);})
+    ?CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&(fPendingSale==='all'||c.created_by===fPendingSale);})
     :CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&c.created_by===currentUser.id;});
   const rejected=isManager
-    ?CUSTOMERS.filter(function(c){return c.approval_status==='rejected'&&(fPendingSale==='all'||c.assigned_to===fPendingSale);})
+    ?CUSTOMERS.filter(function(c){return c.approval_status==='rejected'&&(fPendingSale==='all'||c.created_by===fPendingSale);})
     :CUSTOMERS.filter(function(c){return c.approval_status==='rejected'&&c.created_by===currentUser.id;});
 
   let saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fPendingSale=this.value;pdPage=1;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fPendingSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
@@ -3241,19 +3242,18 @@ async function saveDetail(customerId){
   const timeline=document.getElementById('d-timeline')&&document.getElementById('d-timeline').value;
   const statusVal=document.getElementById('d-status')&&document.getElementById('d-status').value;
   const leadStatus=document.getElementById('d-leadstatus')&&document.getElementById('d-leadstatus').value;
-  // Rule: Completed yêu cầu Lead Status
-  if(statusVal==='Completed'&&(!leadStatus||!leadStatus.trim())){
-    showLoading(false);
-    alert('Bắt buộc chọn Lead Status khi chuyển sang Completed!\n\nChọn: Closedeal / Lost / Invalid Lead / No Response / Busy');
-    document.getElementById('d-leadstatus')&&document.getElementById('d-leadstatus').focus();
-    return;
-  }
-  // Rule: Closedeal yêu cầu >= 3 lần tương tác
-  if(leadStatus==='Closedeal'){
+  // Rule: Completed yêu cầu Lead Status + >= 3 lần tương tác
+  if(statusVal==='Completed'){
+    if(!leadStatus||!leadStatus.trim()){
+      showLoading(false);
+      alert('Bắt buộc chọn Lead Status khi chuyển sang Completed!\n\nChọn: Closedeal / Lost / Invalid Lead / No Response / Busy');
+      document.getElementById('d-leadstatus')&&document.getElementById('d-leadstatus').focus();
+      return;
+    }
     const {count:logCount}=await sb.from('call_logs').select('id',{count:'exact',head:true}).eq('customer_id',customerId);
     if((logCount||0)<3){
       showLoading(false);
-      alert('Lead Status "Closedeal" yêu cầu ít nhất 3 lần tương tác! Hiện có: '+(logCount||0)+' lần.');
+      alert('Bắt buộc có ít nhất 3 lần tương tác trước khi đóng Completed!\nHiện có: '+(logCount||0)+' lần.');
       return;
     }
   }
