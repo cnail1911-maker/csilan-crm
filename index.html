@@ -5108,18 +5108,31 @@ async function send(){
   inp.value='';inp.style.height='auto';
   var payload={action:'send_message',room_id:curRoom,user_id:uid(),sender_name:uname(),content:text,reply_to_id:replyTo?replyTo.id:null};
   clearReply();
-  var res=await api(payload);
-  sending=false;if(btn)btn.disabled=false;
-  if(res.message){
-    if(!msgs[curRoom])msgs[curRoom]=[];
-    msgs[curRoom].push(res.message);lastTs[curRoom]=res.message.created_at;
-    renderMsgs(false,false);scrollBottom();
-  }else{
-    console.error('[send]',res.error);
+  // Safety timeout: reset sending after 10s in case of network failure
+  var safetyT=setTimeout(function(){
+    sending=false;if(btn)btn.disabled=false;
+  },10000);
+  try{
+    var res=await api(payload);
+    clearTimeout(safetyT);
+    sending=false;if(btn)btn.disabled=false;
+    if(res.message){
+      if(!msgs[curRoom])msgs[curRoom]=[];
+      msgs[curRoom].push(res.message);lastTs[curRoom]=res.message.created_at;
+      renderMsgs(false,false);scrollBottom();
+    }else{
+      console.error('[send]',res.error);
+      inp.value=payload.content;
+      showNotif('⚠️ Gửi thất bại: '+(res.error||'Lỗi không xác định'),true);
+    }
+  }catch(e){
+    clearTimeout(safetyT);
+    sending=false;if(btn)btn.disabled=false;
     inp.value=payload.content;
-    showNotif('⚠️ Gửi thất bại: '+(res.error||'Lỗi không xác định'),true);
+    showNotif('⚠️ Lỗi mạng, thử lại',true);
   }
 }
+window._csend=function(){send();return false;};
 
 async function recall(id){
   if(!confirm('Thu hồi tin này?'))return;
@@ -5527,7 +5540,7 @@ function renderMain(){
             +'</div>'
             +'<div class="chat-input-row">'
               +'<label class="chat-attach-btn" title="Gửi ảnh" style="cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="ti ti-photo"></i><input type="file" id="chat-file-inp" accept="image/*" style="display:none" onchange="window._cUpload(this)"></label>'              +'<textarea id="ci" class="chat-inp" placeholder="Nhập tin nhắn... (@tên để mention)" rows="1"></textarea>'
-              +'<button id="csend" class="chat-send" onclick="send()" ontouchend="event.preventDefault();send()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
+              +'<button id="csend" class="chat-send" onclick="window._csend()" ontouchend="event.preventDefault();window._csend()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
             +'</div>'
           +'</div>'
         :'')
