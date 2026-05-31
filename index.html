@@ -5440,8 +5440,14 @@ function renderRoomList(){
     h+='<div class="chat-section-lbl">Tin nhắn riêng</div>';
     dms.forEach(function(r){
       var n=unread[r.id]||0,active=r.id===curRoom?' active':'',nm=roomName(r),ini=initials(nm);
+      // Lấy avatar của người kia trong DM
+      var otherUid=(r.members||[]).find(function(m){return m!==uid();});
+      var otherProf=otherUid&&window.PROFILES&&window.PROFILES.find(function(p){return p.id===otherUid;});
+      var dmAvHtml=otherProf&&otherProf.avatar_url
+        ?'<img src="'+otherProf.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display=\'none\'">'
+        :ini;
       h+='<div class="chat-room-row'+active+'" data-rid="'+esc(r.id)+'" onclick="window._cs(this.dataset.rid)">'
-        +'<div class="chat-room-icon dm" style="background:'+avColor(nm)+';color:#fff">'+ini+'</div>'
+        +'<div class="chat-room-icon dm" style="background:'+avColor(nm)+';color:#fff;overflow:hidden">'+dmAvHtml+'</div>'
         +'<div class="chat-room-meta"><div class="chat-room-name">'+esc(nm)+'</div></div>'
         +(n?'<div class="chat-unread">'+n+'</div>':'')
         +'</div>';
@@ -5454,8 +5460,19 @@ function renderHead(){
   var el=document.getElementById('chead');if(!el||!curRoom)return;
   var r=rooms.find(function(x){return x.id===curRoom;});if(!r)return;
   var nm=roomName(r),mc=(r.members||[]).length,muted_=muted.includes(curRoom),rid=esc(curRoom);
+  // Avatar cho DM header
+  var headAvHtml;
+  if(r.is_direct){
+    var otherUid2=(r.members||[]).find(function(m){return m!==uid();});
+    var otherProf2=otherUid2&&window.PROFILES&&window.PROFILES.find(function(p){return p.id===otherUid2;});
+    headAvHtml=otherProf2&&otherProf2.avatar_url
+      ?'<img src="'+otherProf2.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display=\'none\'">'
+      :initials(nm);
+  } else {
+    headAvHtml=initials(nm);
+  }
   el.innerHTML='<button class="chat-mobile-tog" id="chat-mob-tog" onclick="window._ctog()"><i class="ti ti-menu-2"></i></button>'
-    +'<div class="chat-head-icon'+(r.is_direct?' dm':'')+'" style="background:'+avColor(nm)+';color:#fff">'+initials(nm)+'</div>'
+    +'<div class="chat-head-icon'+(r.is_direct?' dm':'')+'" style="background:'+avColor(nm)+';color:#fff;overflow:hidden">'+headAvHtml+'</div>'
     +'<div class="chat-head-info"><div class="chat-head-name">'+esc(nm)+'</div>'
     +(mc>0?'<div class="chat-head-sub">'+mc+' thành viên</div>':'')+'</div>'
     +'<div class="chat-head-actions">'
