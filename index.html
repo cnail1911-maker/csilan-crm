@@ -3116,7 +3116,7 @@ async function renderKPIAsync(){
     +'<button class="btn kpi-ftab'+((_kpiFunnelSale==='team')?' btn-primary':'')+'" data-fid="team" style="padding:3px 10px;font-size:11px">Team</button>'
     +salesToShow.map(function(s){
       var av=s.avatar_url?'<img src="'+s.avatar_url+'" style="width:16px;height:16px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:4px">':'';
-      return '<button class="btn kpi-ftab'+((_kpiFunnelSale===s.id)?' btn-primary':'')+'" data-fid="'+s.id+'" style="padding:3px 10px;font-size:11px">'+av+shortName(s.full_name)+'</button>';
+      return '<button class="btn kpi-ftab'+((_kpiFunnelSale===s.id)?' btn-primary':'')+'" data-fid="'+s.id+'" style="padding:3px 10px;font-size:11px">'+av+s.full_name.split(' ').pop()+'</button>';
     }).join('')
     +'</div>';
 
@@ -3144,7 +3144,7 @@ async function renderKPIAsync(){
       var maxRev=Math.max(TARGET_REV,...salesToShow.map(function(x){return (saleStats[x.id].cur.rev||0)+(saleStats[x.id].cur.estRev||0);}),1);
       var revW=Math.round(c.rev/maxRev*100);
       var estW=Math.round(c.estRev/maxRev*100);
-      var nm=shortName(s.full_name);
+      var nm=s.full_name.split(' ').pop();
       var av=s.avatar_url?'<img src="'+s.avatar_url+'" style="width:20px;height:20px;border-radius:50%;object-fit:cover" onerror="this.style.display=\'none\'">':'<div style="width:20px;height:20px;border-radius:50%;background:var(--brand2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff">'+shortName(s.full_name).charAt(0)+'</div>';
       return '<div style="display:flex;align-items:center;gap:8px">'
         +'<div style="display:flex;align-items:center;gap:4px;width:80px;flex-shrink:0">'+av+'<span style="font-size:11px;color:var(--text2);white-space:nowrap">'+nm+'</span></div>'
@@ -3192,7 +3192,7 @@ async function renderKPIAsync(){
       return '<div class="kpi-card" style="cursor:pointer" onclick="window._kpiShowSaleDetail(\''+s.id+'\')">'
         +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
         +avHtml
-        +'<div style="min-width:0"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+s.full_name+'</div>'
+        +'<div style="min-width:0"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+shortName(s.full_name)+'</div>'
         +'<div style="font-size:10px;color:var(--text3)">'+mc.length+' KH · '+potential+' Potential</div>'
         +'</div></div>'
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'
@@ -3243,7 +3243,7 @@ async function renderKPIAsync(){
     var ordPct2=c.estOrders?pct(c.orders,c.estOrders):0;
     var revPct2=c.estRev?pct(c.rev,c.estRev):0;
     return '<tr>'
-      +'<td style="white-space:nowrap"><div style="display:flex;align-items:center;gap:6px">'+avHtml+'<span>'+shortName(s.full_name)+'</span></div></td>'
+      +'<td style="white-space:nowrap"><div style="display:flex;align-items:center;gap:6px">'+avHtml+'<span>'+s.full_name.split(' ').pop()+'</span></div></td>'
       +'<td>'+mc.length+'</td>'
       +'<td style="cursor:pointer" onclick="window._kpiShowList(\'new\',\''+s.id+'\')">'+newC+'<br><span style="font-size:9px;color:var(--text3)">'+pct(newC,tot)+'%</span></td>'
       +'<td style="cursor:pointer" onclick="window._kpiShowList(\'followup\',\''+s.id+'\')">'+fu+'<br><span style="font-size:9px;color:var(--text3)">'+pct(fu,tot)+'%</span></td>'
@@ -3468,7 +3468,7 @@ window._kpiShowList=async function(type,saleId){
   var toDate=year+'-'+String(month).padStart(2,'0')+'-'+String(lastDay).padStart(2,'0')+'T23:59:59.999Z';
   var saleProf=saleId&&PROFILES.find(function(p){return p.id===saleId;});
   var typeLabels={orders:'Orders',rev:'Revenue',estorders:'Est.Ord',estrev:'Est.Rev',new:'New',followup:'Follow Up',completed:'Completed',potential:'Potential'};
-  var label=(saleProf?shortName(saleProf.full_name)+' — ':'')+typeLabels[type];
+  var label=(saleProf?saleProf.full_name.split(' ').pop()+' — ':'')+typeLabels[type];
 
   // Get customers
   var customers=[];
