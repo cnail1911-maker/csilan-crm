@@ -3003,14 +3003,16 @@ async function renderKPIAsync(){
   var isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   var now=new Date();
   var month=_kpiMonth,year=_kpiYear;
-
-  // Date ranges
-  var fromDate=year+'-'+String(month).padStart(2,'0')+'-01T00:00:00.000Z';
-  var toDate=year+'-'+String(month).padStart(2,'0')+'-31T23:59:59.999Z';
   var prevMonth=month===1?12:month-1;
   var prevYear=month===1?year-1:year;
+
+  // Date ranges — dùng ngày cuối tháng thực tế
+  var lastDay=new Date(year,month,0).getDate();
+  var prevLastDay=new Date(prevYear,prevMonth,0).getDate();
+  var fromDate=year+'-'+String(month).padStart(2,'0')+'-01T00:00:00.000Z';
+  var toDate=year+'-'+String(month).padStart(2,'0')+'-'+String(lastDay).padStart(2,'0')+'T23:59:59.999Z';
   var prevFrom=prevYear+'-'+String(prevMonth).padStart(2,'0')+'-01T00:00:00.000Z';
-  var prevTo=prevYear+'-'+String(prevMonth).padStart(2,'0')+'-31T23:59:59.999Z';
+  var prevTo=prevYear+'-'+String(prevMonth).padStart(2,'0')+'-'+String(prevLastDay).padStart(2,'0')+'T23:59:59.999Z';
 
   // Fetch current + prev month + trend in parallel
   var trendMonths=_kpiTrendN;
@@ -3045,6 +3047,9 @@ async function renderKPIAsync(){
   salesToShow.sort(function(a,b){
     return (saleStats[b.id]&&saleStats[b.id].cur.rev||0)-(saleStats[a.id]&&saleStats[a.id].cur.rev||0);
   });
+
+  // Team totals
+  var teamCur={orders:0,rev:0,estOrders:0,estRev:0};
   salesToShow.forEach(function(s){
     var c=saleStats[s.id].cur;
     teamCur.orders+=c.orders;teamCur.rev+=c.rev;
@@ -3400,7 +3405,8 @@ async function _kpiTrendChart(trendInvs,salesToShow,saleStats,trendMonths,curMon
   // Compute per-bucket
   buckets.forEach(function(b){
     var from=b.year+'-'+String(b.month).padStart(2,'0')+'-01T00:00:00.000Z';
-    var to=b.year+'-'+String(b.month).padStart(2,'0')+'-31T23:59:59.999Z';
+    var lastDayB=new Date(b.year,b.month,0).getDate();
+    var to=b.year+'-'+String(b.month).padStart(2,'0')+'-'+String(lastDayB).padStart(2,'0')+'T23:59:59.999Z';
     var bInvs=trendInvs.filter(function(i){return i.created_at>=from&&i.created_at<=to;});
     var approved=[];var custMap={};
     bInvs.forEach(function(i){
@@ -3457,8 +3463,9 @@ window._kpiTrend=function(n){_kpiTrendN=n;_kpiInvCache={};if(window.page==='kpi'
 window._kpiShowList=async function(type,saleId){
   var isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   var month=_kpiMonth,year=_kpiYear;
+  var lastDay=new Date(year,month,0).getDate();
   var fromDate=year+'-'+String(month).padStart(2,'0')+'-01T00:00:00.000Z';
-  var toDate=year+'-'+String(month).padStart(2,'0')+'-31T23:59:59.999Z';
+  var toDate=year+'-'+String(month).padStart(2,'0')+'-'+String(lastDay).padStart(2,'0')+'T23:59:59.999Z';
   var saleProf=saleId&&PROFILES.find(function(p){return p.id===saleId;});
   var typeLabels={orders:'Orders',rev:'Revenue',estorders:'Est.Ord',estrev:'Est.Rev',new:'New',followup:'Follow Up',completed:'Completed',potential:'Potential'};
   var label=(saleProf?saleProf.full_name.split(' ').pop()+' — ':'')+typeLabels[type];
