@@ -3023,6 +3023,13 @@ async function renderKPIAsync(){
     _kpiFetchInvoices(trendFrom,toDate)
   ]);
 
+  // Helper tên tối giản: Họ + Tên cuối (Phạm Thanh Cường → Phạm Cường)
+  function shortName(name){
+    var parts=(name||'').trim().split(' ').filter(Boolean);
+    if(parts.length<=2)return name;
+    return parts[0]+' '+parts[parts.length-1];
+  }
+
   var salesToShow=PROFILES.filter(function(p){
     if(!isM)return p.id===(currentUser&&currentUser.id);
     return p.role==='sale'||p.role==='leader'||p.role==='manager';
@@ -3034,8 +3041,10 @@ async function renderKPIAsync(){
     saleStats[s.id]={cur:_kpiCompute(curInvs,s.id),prev:_kpiCompute(prevInvs,s.id)};
   });
 
-  // Team totals
-  var teamCur={orders:0,rev:0,estOrders:0,estRev:0};
+  // Sort by Rev desc
+  salesToShow.sort(function(a,b){
+    return (saleStats[b.id]&&saleStats[b.id].cur.rev||0)-(saleStats[a.id]&&saleStats[a.id].cur.rev||0);
+  });
   salesToShow.forEach(function(s){
     var c=saleStats[s.id].cur;
     teamCur.orders+=c.orders;teamCur.rev+=c.rev;
@@ -3102,7 +3111,7 @@ async function renderKPIAsync(){
     +'<button class="btn kpi-ftab'+((_kpiFunnelSale==='team')?' btn-primary':'')+'" data-fid="team" style="padding:3px 10px;font-size:11px">Team</button>'
     +salesToShow.map(function(s){
       var av=s.avatar_url?'<img src="'+s.avatar_url+'" style="width:16px;height:16px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:4px">':'';
-      return '<button class="btn kpi-ftab'+((_kpiFunnelSale===s.id)?' btn-primary':'')+'" data-fid="'+s.id+'" style="padding:3px 10px;font-size:11px">'+av+s.full_name.split(' ').pop()+'</button>';
+      return '<button class="btn kpi-ftab'+((_kpiFunnelSale===s.id)?' btn-primary':'')+'" data-fid="'+s.id+'" style="padding:3px 10px;font-size:11px">'+av+shortName(s.full_name)+'</button>';
     }).join('')
     +'</div>';
 
@@ -3234,7 +3243,7 @@ async function renderKPIAsync(){
       +'<td style="cursor:pointer" onclick="window._kpiShowList(\'new\',\''+s.id+'\')">'+newC+'<br><span style="font-size:9px;color:var(--text3)">'+pct(newC,tot)+'%</span></td>'
       +'<td style="cursor:pointer" onclick="window._kpiShowList(\'followup\',\''+s.id+'\')">'+fu+'<br><span style="font-size:9px;color:var(--text3)">'+pct(fu,tot)+'%</span></td>'
       +'<td style="cursor:pointer" onclick="window._kpiShowList(\'completed\',\''+s.id+'\')">'+comp+'<br><span style="font-size:9px;color:var(--text3)">'+pct(comp,tot)+'%</span></td>'
-      +'<td style="cursor:pointer;color:var(--accent)" onclick="window._kpiShowList(\'potential\',\''+s.id+'\')">'+potential+'</td>'
+      +'<td style="cursor:pointer;color:var(--accent)" onclick="window._kpiShowList(\'potential\',\''+s.id+'\')">'+potential+'<br><span style="font-size:9px;color:var(--text3)">'+pct(potential,tot)+'%</span></td>'
       +'<td style="cursor:pointer;color:var(--accent2)" onclick="window._kpiShowList(\'orders\',\''+s.id+'\')">'+c.orders+'<br><span style="font-size:9px;color:var(--text3)">'+ordPct2+'%</span></td>'
       +'<td style="cursor:pointer;color:var(--brand2)" onclick="window._kpiShowList(\'rev\',\''+s.id+'\')">$'+c.rev.toLocaleString()+'<br><span style="font-size:9px;color:var(--text3)">'+revPct2+'%</span></td>'
       +'<td style="color:var(--text2)">$'+c.aov.toLocaleString()+'</td>'
@@ -3280,7 +3289,7 @@ async function renderKPIAsync(){
     +'<th style="color:var(--warn)">Est.Rev</th>'
     +'<th>Target</th>'
     +'</tr></thead>'
-    +'<tbody>'+teamTotalRow+tableRows+'</tbody></table></div></div>';
+    +'<tbody>'+tableRows+'</tbody></table></div></div>';
 
   // ── ASSEMBLE ──
   m.innerHTML=topbar
@@ -3467,7 +3476,8 @@ window._kpiShowList=async function(type,saleId){
   } else {
     // Invoice-based: fetch invoices and map to customers
     var invs=await _kpiFetchInvoices(fromDate,toDate);
-    var targetSales=saleId?[saleId]:PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return p.id;});
+    var targetSales=saleId?[saleId]:PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return p.id;});
+    if(!isM&&!saleId)targetSales=[currentUser&&currentUser.id];
     var mine=invs.filter(function(i){return targetSales.includes(i.sale_id);});
     // Group by customer → latest approved/pending
     var byC={};
@@ -3490,46 +3500,51 @@ window._kpiShowList=async function(type,saleId){
   _kpiOpenListModal(label,customers,type,saleId);
 };
 
-function _kpiOpenListModal(label,customers,type,saleId){
+function _kpiOpenListModal(label,customers,type,saleId,page){
+  page=page||1;
+  var PAGE_SZ=10;
   var ex=document.getElementById('kpi-list-modal');if(ex)ex.remove();
   var m=document.createElement('div');
   m.className='modal-overlay';m.id='kpi-list-modal';
   m.onclick=function(e){if(e.target===m)m.remove();};
-  // Local escape helper
   function e(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-  var hasInv=['orders','rev','estorders','estrev'].includes(type);
+  // Sort: customers with invoice first, then by last_contacted desc
+  var sorted=customers.slice().sort(function(a,b){
+    var aHasInv=a._inv?1:0,bHasInv=b._inv?1:0;
+    if(aHasInv!==bHasInv)return bHasInv-aHasInv;
+    var ad=a.last_contacted?new Date(a.last_contacted):new Date(0);
+    var bd=b.last_contacted?new Date(b.last_contacted):new Date(0);
+    return bd-ad;
+  });
+
+  var totalPages=Math.ceil(sorted.length/PAGE_SZ)||1;
+  var pageData=sorted.slice((page-1)*PAGE_SZ,page*PAGE_SZ);
   var monthNames=['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
 
-  var cards=customers.slice(0,50).map(function(c){
+  var cards=pageData.map(function(c){
     if(!c)return '';
     var inv=c._inv;
     var lastContact=c.last_contacted?Math.floor((Date.now()-new Date(c.last_contacted))/86400000)+'n trước':'Chưa liên hệ';
     var dlDays=c.assigned_deadline?Math.ceil((new Date(c.assigned_deadline)-new Date())/86400000):null;
     var dlColor=dlDays===null?'var(--text3)':dlDays<=0?'var(--danger)':dlDays<=3?'var(--warn)':'var(--accent2)';
-    // Call logs (from CUSTOMERS cache or show placeholder)
-    var logs=[];
     return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px">'
-      // Header
       +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">'
       +'<div style="min-width:0">'
       +'<div style="font-size:12px;font-weight:700;color:var(--text)">'+e(c.business_name||c.customer_name||'—')+'</div>'
       +'<div style="font-size:11px;color:var(--text3)">'+e(c.ma_kh||'—')+' · '+(c.state||'—')+'</div>'
       +'</div>'
       +(inv?'<div style="text-align:right;flex-shrink:0"><div style="font-size:13px;font-weight:700;color:'+(inv.approval_status==='approved'?'var(--accent2)':'var(--warn)')+'">$'+(inv.total||0).toLocaleString()+'</div>'
-        +'<div style="font-size:10px;color:var(--text3)">'+inv.invoice_no+'</div></div>':'')
+        +'<div style="font-size:10px;color:var(--text3)">'+e(inv.invoice_no)+'</div></div>':'')
       +'</div>'
-      // Info row
       +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;font-size:11px">'
-      +'<span>📞 '+(c.cellphone||c.business_phone||'—')+'</span>'
+      +'<span>📞 '+e(c.cellphone||c.business_phone||'—')+'</span>'
       +(c.potential?'<span style="background:rgba(108,92,231,0.12);color:var(--brand2);padding:1px 6px;border-radius:4px">'+e(c.potential)+'</span>':'')
       +(c.sub_status?'<span style="background:rgba(255,255,255,0.06);color:var(--text2);padding:1px 6px;border-radius:4px">'+e(c.sub_status)+'</span>':'')
       +'<span style="color:var(--text3)">📅 '+lastContact+'</span>'
       +(dlDays!==null?'<span style="color:'+dlColor+'">⏰ '+(dlDays<=0?'Hết hạn':dlDays+'n còn')+'</span>':'')
       +'</div>'
-      // Description
       +(c.description?'<div style="font-size:11px;color:var(--text2);background:rgba(255,255,255,0.04);border-radius:6px;padding:6px 8px;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+e(c.description)+'</div>':'')
-      // Actions
       +'<div style="display:flex;justify-content:flex-end">'
       +'<button class="btn" style="padding:3px 10px;font-size:11px;border-color:rgba(108,92,231,0.4);color:var(--brand2)" onclick="window._kpiOpenCust('+c.id+')">'
       +'<i class="ti ti-external-link"></i> Mở KH'
@@ -3537,27 +3552,45 @@ function _kpiOpenListModal(label,customers,type,saleId){
       +'</div>';
   }).join('');
 
+  // Pagination
+  var pgHtml='';
+  if(totalPages>1){
+    pgHtml='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0 2px;flex-shrink:0">'
+      +'<span style="font-size:11px;color:var(--text3)">'+((page-1)*PAGE_SZ+1)+'-'+Math.min(page*PAGE_SZ,sorted.length)+' / '+sorted.length+'</span>'
+      +'<div style="display:flex;gap:4px">'
+      +(page>1?'<button class="btn" style="padding:3px 10px;font-size:11px" onclick="window._kpiListPage(\''+type+'\',\''+saleId+'\','+(page-1)+')">←</button>':'')
+      +'<span style="font-size:11px;color:var(--text2);padding:3px 6px">'+page+'/'+totalPages+'</span>'
+      +(page<totalPages?'<button class="btn" style="padding:3px 10px;font-size:11px" onclick="window._kpiListPage(\''+type+'\',\''+saleId+'\','+(page+1)+')">→</button>':'')
+      +'</div></div>';
+  }
+
   m.innerHTML='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:16px;width:94vw;max-width:620px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.6);border:1px solid var(--border)">'
     +'<div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0">'
     +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+e(label)+'</div>'
-    +'<div style="font-size:11px;color:var(--text3)">'+monthNames[_kpiMonth-1]+' '+_kpiYear+' · '+customers.length+' khách</div></div>'
+    +'<div style="font-size:11px;color:var(--text3)">'+monthNames[_kpiMonth-1]+' '+_kpiYear+' · '+sorted.length+' khách</div></div>'
     +'<button type="button" style="background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text2);cursor:pointer;padding:4px 10px;font-size:14px" onclick="document.getElementById(\'kpi-list-modal\').remove()"><i class="ti ti-x"></i></button>'
     +'</div>'
-    +(customers.length===0?'<div style="padding:40px;text-align:center;color:var(--text3)">Không có dữ liệu</div>'
-      :'<div style="overflow-y:auto;flex:1;padding:14px">'+cards+(customers.length>50?'<div style="text-align:center;font-size:11px;color:var(--text3);padding:8px">Hiển thị 50/'+customers.length+' khách</div>':'')+'</div>')
+    +(sorted.length===0?'<div style="padding:40px;text-align:center;color:var(--text3)">Không có dữ liệu</div>'
+      :'<div style="overflow-y:auto;flex:1;padding:14px 14px 0">'+cards+'</div>'
+        +'<div style="padding:0 14px 12px;flex-shrink:0">'+pgHtml+'</div>')
     +'</div>';
 
   document.body.appendChild(m);
+
+  // Store data for pagination
+  window._kpiListData={type,saleId,customers,label};
 }
 
-// ── Open customer from KPI modal ──
+// Pagination handler
+window._kpiListPage=async function(type,saleId,page){
+  var d=window._kpiListData;
+  if(d)_kpiOpenListModal(d.label,d.customers,d.type,d.saleId,page);
+};
+
+// ── Open customer from KPI modal — opens detail modal alongside ──
 window._kpiOpenCust=function(custId){
-  var modal=document.getElementById('kpi-list-modal');
-  if(modal)modal.dataset.prevOpen='1';
-  // Navigate to customers tab and open detail
-  fStatus='all';fLead='all';fSale='all';search='';
-  setPage('customers');
-  setTimeout(function(){openDetail(custId);},300);
+  // Open detail modal directly without navigating away
+  openDetail(custId);
 };
 
 // ── Sale detail modal ──
