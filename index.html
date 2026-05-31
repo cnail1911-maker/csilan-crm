@@ -2951,9 +2951,12 @@ function renderKPI(){
     const pct=mc.length?Math.round(deal/mc.length*100):0;
     const av=AV_CLASSES[si%AV_CLASSES.length];
     const init=s.full_name.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
+    const cardAvHtml=s.avatar_url
+      ?'<div class="avatar '+av+'" style="width:36px;height:36px;font-size:12px;overflow:hidden;padding:0"><img src="'+s.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.textContent=\''+init+'\'"></div>'
+      :'<div class="avatar '+av+'" style="width:36px;height:36px;font-size:12px">'+init+'</div>';
     kpiCards+='<div class="kpi-card">'
       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
-      +'<div class="avatar '+av+'" style="width:36px;height:36px;font-size:12px">'+init+'</div>'
+      +cardAvHtml
       +'<div><div style="font-size:13px;font-weight:600">'+s.full_name+'</div><div style="font-size:10px;color:var(--text3)">'+mc.length+' khách</div></div>'
       +'</div>'
       +'<div style="display:flex;gap:12px;margin-bottom:8px">'
@@ -2974,8 +2977,11 @@ function renderKPI(){
     const pct=mc.length?Math.round(deal/mc.length*100):0;
     const av=AV_CLASSES[si%AV_CLASSES.length];
     const init=s.full_name.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
+    const avHtml=s.avatar_url
+      ?'<div class="avatar '+av+'" style="overflow:hidden;padding:0"><img src="'+s.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.textContent=\''+init+'\'"></div>'
+      :'<div class="avatar '+av+'">'+init+'</div>';
     tableRows+='<tr>'
-      +'<td><div style="display:flex;align-items:center;gap:8px"><div class="avatar '+av+'">'+init+'</div><span style="color:var(--text)">'+s.full_name+'</span></div></td>'
+      +'<td><div style="display:flex;align-items:center;gap:8px">'+avHtml+'<span style="color:var(--text)">'+s.full_name+'</span></div></td>'
       +'<td>'+mc.length+'</td>'
       +'<td style="color:var(--brand2)">'+mc.filter(function(c){return c.status==='New';}).length+'</td>'
       +'<td style="color:var(--warn)">'+mc.filter(function(c){return c.status==='Follow Up';}).length+'</td>'
@@ -3016,9 +3022,12 @@ function openStaffModal(){
       var init=p.full_name.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
       var avIdx=PROFILES.indexOf(p);
       var avCls=AV_CLASSES[Math.max(0,avIdx)%AV_CLASSES.length];
+      var avHtml=p.avatar_url
+        ?'<div class="avatar '+avCls+'" style="width:28px;height:28px;font-size:10px;overflow:hidden;padding:0"><img src="'+p.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.textContent=\''+init+'\'"></div>'
+        :'<div class="avatar '+avCls+'" style="width:28px;height:28px;font-size:10px">'+init+'</div>';
       return '<tr style="'+(isActive?'':'opacity:0.5')+'">'
         +'<td><div style="display:flex;align-items:center;gap:8px">'
-        +'<div class="avatar '+avCls+'" style="width:28px;height:28px;font-size:10px">'+init+'</div>'
+        +avHtml
         +'<div><div style="font-size:13px;font-weight:500">'+p.full_name+'</div>'
         +'<div style="font-size:10px;color:var(--text3)">'+p.email+'</div></div></div></td>'
         +'<td style="font-size:11px;color:var(--text3)">'+(p.code||'—')+'</td>'
@@ -3059,9 +3068,12 @@ function _staffRefreshTable(){
     var init=p.full_name.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
     var avIdx=PROFILES.indexOf(p);
     var avCls=AV_CLASSES[Math.max(0,avIdx)%AV_CLASSES.length];
+    var avHtml2=p.avatar_url
+      ?'<div class="avatar '+avCls+'" style="width:28px;height:28px;font-size:10px;overflow:hidden;padding:0"><img src="'+p.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.textContent=\''+init+'\'"></div>'
+      :'<div class="avatar '+avCls+'" style="width:28px;height:28px;font-size:10px">'+init+'</div>';
     return '<tr style="'+(isActive?'':'opacity:0.5')+'">'
       +'<td style="padding:10px 14px"><div style="display:flex;align-items:center;gap:8px">'
-      +'<div class="avatar '+avCls+'" style="width:28px;height:28px;font-size:10px">'+init+'</div>'
+      +avHtml2
       +'<div><div style="font-size:13px;font-weight:500">'+p.full_name+'</div>'
       +'<div style="font-size:10px;color:var(--text3)">'+p.email+'</div></div></div></td>'
       +'<td style="padding:10px 6px;font-size:11px;color:var(--text3)">'+(p.code||'—')+'</td>'
