@@ -413,7 +413,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     #ai-fab{bottom:70px !important;right:auto !important;left:12px !important;}
   /* Ensure chat input above bottom nav */
   .chat-wrap{height:calc(100vh - 52px - 56px) !important;}
-    #ai-panel{bottom:120px !important;right:4px !important;left:4px !important;}
+    #ai-panel:not(.dragging){bottom:120px !important;right:4px !important;left:4px !important;}
   }
 
 /* ════════════════════════════════════════
@@ -559,7 +559,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 #ai-send:hover{opacity:0.88;transform:scale(1.05);}
 #ai-send:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
 @media(max-width:480px){
-  #ai-panel{right:4px;left:4px;width:auto;bottom:76px;}
+  #ai-panel:not(.dragging){right:4px;left:4px;width:auto;bottom:76px;}
   #ai-fab{bottom:70px;right:12px;width:44px;height:44px;}
 }
 
@@ -884,7 +884,7 @@ mark.chat-hl{background:rgba(253,203,110,0.35);color:inherit;border-radius:2px;}
 #ai-send:hover{opacity:0.88;transform:scale(1.05);}
 #ai-send:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
 @media(max-width:480px){
-  #ai-panel{right:4px;left:4px;width:auto;bottom:76px;}
+  #ai-panel:not(.dragging){right:4px;left:4px;width:auto;bottom:76px;}
   #ai-fab{bottom:70px;right:12px;width:44px;height:44px;}
 }
 
@@ -2933,7 +2933,7 @@ async function toggleActive(id,val){
 // ── KPI State ──
 var _kpiMonth=new Date().getMonth()+1;
 var _kpiYear=new Date().getFullYear();
-var _kpiTrend=3; // 3|6|9|12
+var _kpiTrendN=3; // 3|6|9|12
 var _kpiInvCache={}; // key: "YYYY-MM"
 var _kpiFunnelSale='team'; // 'team' | sale.id
 
@@ -3013,7 +3013,7 @@ async function renderKPIAsync(){
   var prevTo=prevYear+'-'+String(prevMonth).padStart(2,'0')+'-31T23:59:59.999Z';
 
   // Fetch current + prev month + trend in parallel
-  var trendMonths=_kpiTrend;
+  var trendMonths=_kpiTrendN;
   var trendFromDate=new Date(year,month-1-trendMonths+1,1);
   var trendFrom=trendFromDate.getFullYear()+'-'+String(trendFromDate.getMonth()+1).padStart(2,'0')+'-01T00:00:00.000Z';
 
@@ -3150,7 +3150,7 @@ async function renderKPIAsync(){
   var chartsRow='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px" class="kpi-charts-row">'
     +'<div class="panel" style="padding:14px">'
     +'<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Pipeline Funnel</div>'
-    +funnelTabs+funnelHtml
+    +funnelTabs+'<div id="kpi-funnel-content">'+funnelHtml+'</div>'
     +'</div>'
     +'<div class="panel" style="padding:14px">'
     +'<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Revenue per Sale</div>'
@@ -3307,16 +3307,45 @@ async function renderKPIAsync(){
     +saleCards
     +detailTable
     +'</div>';
+  // Cache saleStats for funnel instant update
+  window._kpiSaleStats=saleStats;
+
   // ── Event delegation for funnel tabs + trend buttons ──
   setTimeout(function(){
     var kpiEl=document.getElementById('main-area');
     if(!kpiEl)return;
-    kpiEl.addEventListener('click',function _kpiEvt(e){
+    kpiEl.addEventListener('click',function(e){
       var ftab=e.target.closest('.kpi-ftab');
-      if(ftab){_kpiFunnelSale=ftab.dataset.fid;renderKPIAsync();return;}
+      if(ftab){
+        _kpiFunnelSale=ftab.dataset.fid;
+        // Update active styles instantly
+        document.querySelectorAll('.kpi-ftab').forEach(function(b){
+          b.classList.toggle('btn-primary',b.dataset.fid===_kpiFunnelSale);
+        });
+        // Re-render funnel chart only (no fetch)
+        var fc=document.getElementById('kpi-funnel-content');
+        if(fc){
+          var isM2=!!(currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader'));
+          var fSale=_kpiFunnelSale,fData;
+          if(fSale==='team'){
+            var mc2=isM2?CUSTOMERS:CUSTOMERS.filter(function(c){return c.assigned_to===(currentUser&&currentUser.id);});
+            var fPot=mc2.filter(function(c){return c.potential&&c.potential.trim();}).length;
+            var fEst=0,fOrd=0;
+            Object.keys(window._kpiSaleStats||{}).forEach(function(k){var s=window._kpiSaleStats[k].cur;fEst+=s.estOrders;fOrd+=s.orders;});
+            fData={data:mc2.length,potential:fPot,estOrders:fEst,orders:fOrd};
+          } else {
+            var smc=CUSTOMERS.filter(function(c){return c.assigned_to===fSale;});
+            var sPot=smc.filter(function(c){return c.potential&&c.potential.trim();}).length;
+            var sc=(window._kpiSaleStats&&window._kpiSaleStats[fSale]&&window._kpiSaleStats[fSale].cur)||{orders:0,estOrders:0};
+            fData={data:smc.length,potential:sPot,estOrders:sc.estOrders,orders:sc.orders};
+          }
+          fc.innerHTML=_kpiFunnelChart(fData);
+        }
+        return;
+      }
       var tbtn=e.target.closest('.kpi-tbtn');
-      if(tbtn){_kpiTrend=parseInt(tbtn.dataset.t);_kpiInvCache={};renderKPIAsync();return;}
-    },{once:false});
+      if(tbtn){_kpiTrendN=parseInt(tbtn.dataset.t);_kpiInvCache={};renderKPIAsync();return;}
+    });
   },50);
 }
 
@@ -3397,9 +3426,9 @@ async function _kpiTrendChart(trendInvs,salesToShow,saleStats,trendMonths,curMon
   var trendFilter='';
   return '<div class="panel" style="padding:14px;margin-bottom:14px">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">'
-    +'<div style="font-size:12px;font-weight:600;color:var(--text2)">Trend '+(isM?_kpiTrend:3)+' tháng gần nhất</div>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--text2)">Trend '+(isM?_kpiTrendN:3)+' tháng gần nhất</div>'
     +'<div style="display:flex;gap:4px">'
-    +(isM?[3,6,9,12].map(function(n){return '<button class="btn kpi-tbtn'+(n===_kpiTrend?' btn-primary':'')+'" data-t="'+n+'" style="padding:2px 8px;font-size:11px">'+n+'T</button>';}).join(''):'')
+    +(isM?[3,6,9,12].map(function(n){return '<button class="btn kpi-tbtn'+(n===_kpiTrendN?' btn-primary':'')+'" data-t="'+n+'" style="padding:2px 8px;font-size:11px">'+n+'T</button>';}).join(''):'')
     +'</div>'
     +'</div>'
     +'<div style="display:flex;align-items:flex-end;gap:2px;height:'+(chartH+28)+'px;padding-top:14px">'+bars+'</div>'
@@ -3413,7 +3442,7 @@ async function _kpiTrendChart(trendInvs,salesToShow,saleStats,trendMonths,curMon
 // ── Navigation ──
 window._kpiNav=function(m,y){_kpiMonth=m;_kpiYear=y;_kpiInvCache={};if(window.page==='kpi'){var el=document.getElementById('main-area');if(el)el.innerHTML='<div class="topbar"><div class="topbar-title">Báo cáo KPI</div></div><div class="content"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--text3)"><i class="ti ti-loader" style="animation:spin 1s linear infinite;font-size:24px"></i></div></div>';renderKPIAsync();}};
 window._kpiFunnelTab=function(id){_kpiFunnelSale=id;if(window.page==='kpi')renderKPIAsync();};
-window._kpiTrend=function(n){_kpiTrend=n;_kpiInvCache={};if(window.page==='kpi')renderKPIAsync();};
+window._kpiTrend=function(n){_kpiTrendN=n;_kpiInvCache={};if(window.page==='kpi')renderKPIAsync();};
 
 // ── KPI List Modal ──
 window._kpiShowList=async function(type,saleId){
@@ -4298,14 +4327,21 @@ async function renderDailyData(){
   const fromDt=fFrom+'T00:00:00';
   const toDt=fTo+'T23:59:59';
 
-  // Tối ưu: fetch 3 bảng song song
-  const [logsRes,invsRes,potHistRes]=await Promise.all([
+  // Tối ưu: fetch song song, invoice tách 2 query để tránh OR chậm
+  const [logsRes,invsRes1,invsRes2,potHistRes]=await Promise.all([
     sb.from('call_logs').select('customer_id,sale_id,called_at').gte('called_at',fromDt).lte('called_at',toDt),
-    sb.from('invoices').select('sale_id,created_at,date,total,type').or('created_at.gte.'+fromDt+',date.gte.'+fFrom).lte('created_at',toDt),
+    sb.from('invoices').select('sale_id,created_at,date,total,type').gte('created_at',fromDt).lte('created_at',toDt).limit(500),
+    sb.from('invoices').select('sale_id,created_at,date,total,type').is('created_at',null).gte('date',fFrom).lte('date',fTo).limit(200),
     sb.from('potential_history').select('customer_id,assigned_to_id,potential,recalled_at').gte('recalled_at',fromDt).lte('recalled_at',toDt)
   ]);
   let logs=logsRes.data||[];
-  const invs=invsRes.data||[];
+  // Merge invoices dedup by sale_id+date
+  const invMap=new Map();
+  [...(invsRes1.data||[]),...(invsRes2.data||[])].forEach(function(i){
+    var k=(i.sale_id||'')+'_'+(i.created_at||i.date||'')+'_'+(i.total||0);
+    if(!invMap.has(k))invMap.set(k,i);
+  });
+  const invs=Array.from(invMap.values());
   const potHist=potHistRes.data||[];
 
   const salesToShow=isManager
@@ -5169,6 +5205,7 @@ function render(){
     function onStart(e){
       if(e.target.closest('button'))return;
       dragging=true;
+      panel.classList.add('dragging');
       var touch=e.touches?e.touches[0]:e;
       startX=touch.clientX;startY=touch.clientY;
       var rect=panel.getBoundingClientRect();
