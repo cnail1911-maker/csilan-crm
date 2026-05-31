@@ -5589,8 +5589,11 @@ function renderMain(){
 
 function selectRoom(id){
   curRoom=id;unread[id]=0;badge();
+  // Debug: expose để kiểm tra
+  window._rooms=rooms;window._chatSb=chatSb;window._pinnedMsgs=pinnedMsgs;
   // Load pinned từ cache trước để hiện ngay
   var r=rooms.find(function(x){return x.id===id;});
+  console.log('[pin debug] room found:',!!r,'pinned_messages:',r&&r.pinned_messages);
   if(r&&r.pinned_messages&&r.pinned_messages.length){
     pinnedMsgs[id]=r.pinned_messages;
   } else {
