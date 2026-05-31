@@ -3185,7 +3185,14 @@ async function renderKPIAsync(){
       var avHtml=s.avatar_url
         ?'<img src="'+s.avatar_url+'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0" onerror="this.style.display=\'none\'">'
         :'<div class="avatar '+av+'" style="width:40px;height:40px;font-size:13px;flex-shrink:0">'+init+'</div>';
-      var mc=CUSTOMERS.filter(function(cust){return cust.assigned_to===s.id||(s.role==='manager'&&cust.created_by===s.id);});
+      // Manager: tính data từ khách có invoice trong tháng thay vì assigned_to
+      var mc;
+      if(s.role==='manager'||s.role==='admin'){
+        var mgrCustIds=new Set((c.approvedInvs||[]).concat(c.pendingInvs||[]).map(function(i){return i.customer_id;}));
+        mc=CUSTOMERS.filter(function(cust){return mgrCustIds.has(cust.id);});
+      } else {
+        mc=CUSTOMERS.filter(function(cust){return cust.assigned_to===s.id;});
+      }
       var potential=mc.filter(function(cust){return cust.potential&&cust.potential.trim();}).length;
       var ordPct=pct(c.orders,TARGET_ORD);
       var revPct=pct(c.rev,TARGET_REV);
@@ -3228,7 +3235,13 @@ async function renderKPIAsync(){
   // ── DETAIL TABLE ──
   var tableRows=salesToShow.map(function(s,si){
     var c=saleStats[s.id].cur;
-    var mc=CUSTOMERS.filter(function(cust){return cust.assigned_to===s.id||(s.role==='manager'&&cust.created_by===s.id);});
+    var mc;
+    if(s.role==='manager'||s.role==='admin'){
+      var mgrIds=new Set((c.approvedInvs||[]).concat(c.pendingInvs||[]).map(function(i){return i.customer_id;}));
+      mc=CUSTOMERS.filter(function(cust){return mgrIds.has(cust.id);});
+    } else {
+      mc=CUSTOMERS.filter(function(cust){return cust.assigned_to===s.id;});
+    }
     var potential=mc.filter(function(cust){return cust.potential&&cust.potential.trim();}).length;
     var newC=mc.filter(function(cust){return cust.status==='New';}).length;
     var fu=mc.filter(function(cust){return cust.status==='Follow Up';}).length;
