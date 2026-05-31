@@ -1185,7 +1185,13 @@ async function initApp(user){
     }catch(e){console.warn('[Finance notes]',e);}
   })();
   const initials=((profile&&profile.full_name)||user.email).split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
-  document.getElementById('user-avatar').textContent=initials;
+  var avatarEl=document.getElementById('user-avatar');
+  if(profile&&profile.avatar_url){
+    avatarEl.innerHTML='<img src="'+profile.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.textContent=\''+initials+'\'">';
+    avatarEl.textContent='';
+  } else {
+    avatarEl.textContent=initials;
+  }
   document.getElementById('user-name').textContent=(profile&&profile.full_name)||user.email;
   document.getElementById('user-role').textContent=profile&&profile.role==='manager'?'Manager':profile&&profile.role==='admin'?'Admin':profile&&profile.role==='leader'?'Leader':'Sale';
   document.getElementById('auth-screen').style.display='none';
@@ -5508,6 +5514,11 @@ function buildMsgHtml(m,list){
   var prev=list[list.indexOf(m)-1];
   var showSender=!mine&&(!prev||prev.user_id!==m.user_id||new Date(m.created_at)-new Date(prev.created_at)>180000);
   var ini=initials(m.sender_name||'?');
+  var senderProf=window.PROFILES&&window.PROFILES.find(function(p){return p.id===m.user_id;});
+  var avBg=avColor(m.sender_name||'');
+  var avContent=senderProf&&senderProf.avatar_url
+    ?'<img src="'+senderProf.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display=\'none\'">'
+    :ini;
 
   // Reply: full content + clickable scroll to original
   var replyH='';
@@ -5538,7 +5549,7 @@ function buildMsgHtml(m,list){
   var timeEl='<span class="chat-ts" style="white-space:nowrap;align-self:flex-end;padding-bottom:2px;flex-shrink:0">'+timeStr+'</span>';
 
   return '<div class="chat-msg-group'+(mine?' mine':'')+'" data-mid="'+m.id+'">'
-    +(mine?'':'<div class="chat-avatar" style="background:'+avColor(m.sender_name||'')+';color:#fff">'+ini+'</div>')
+    +(mine?'':'<div class="chat-avatar" style="background:'+avBg+';color:#fff;overflow:hidden">'+avContent+'</div>')
     +'<div class="chat-msg-col">'
     +(showSender?'<div class="chat-sender" style="color:var(--brand2);font-weight:600">'+esc(m.sender_name||'?')+'</div>':'')
     +'<div class="chat-msg-row-wrap">'
