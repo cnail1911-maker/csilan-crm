@@ -5101,6 +5101,21 @@ async function loadRooms(){
   if(!rooms.find(function(r){return r.id===GEN_ROOM;}))
     rooms.unshift({id:GEN_ROOM,name:'🚀 SHIPPING COST',is_direct:false,members:[]});
   renderRoomList();
+  // Fetch pinned_messages cho tất cả rooms từ chatSb (Edge Function không trả về field này)
+  if(!chatSb){chatSb=window.supabase.createClient(CHAT_URL,CHAT_ANON);}
+  chatSb.from('chat_rooms').select('id,pinned_messages').limit(100).then(function(res){
+    if(!res.data)return;
+    res.data.forEach(function(r){
+      if(!r.pinned_messages)return;
+      var room=rooms.find(function(x){return x.id===r.id;});
+      if(room)room.pinned_messages=r.pinned_messages;
+      // Nếu đang xem room này thì update pinnedMsgs và re-render banner
+      if(r.id===curRoom){
+        pinnedMsgs[curRoom]=r.pinned_messages;
+        renderPinBanner();
+      }
+    });
+  }).catch(function(e){console.warn('[loadRooms pin]',e);});
 }
 
 async function loadMsgs(roomId,before){
