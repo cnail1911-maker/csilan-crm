@@ -1248,21 +1248,21 @@ async function initApp(user){
         ?CUSTOMERS.filter(function(c){return c.approval_status==='pending';}).length
         :CUSTOMERS.filter(function(c){return c.approval_status==='pending'&&c.created_by===currentUser.id;}).length;
       const totalPending=pendingInvCnt+pendingKhCnt;
-      // Fix: update correct badge ids
       ['badge-pending','pending-badge'].forEach(function(id){
         const b=document.getElementById(id);
         if(b){b.textContent=totalPending;b.style.display=totalPending>0?'inline':'none';}
       });
-      // Re-render if on pending tab to show new invoice immediately
-      if(window.page==='pending'||window.page==='customers'){render();}
-      else{
-        // Show toast notification for manager when new invoice arrives
-        if(isM&&payload.eventType==='INSERT'&&payload.new.approval_status==='pending'){
-          const senderName=payload.new.sale_rep||payload.new.submitted_by||'Sale';
-          const invNo=payload.new.invoice_no||'';
-          showNotifToast('📋 Invoice mới cần duyệt',''+senderName+' vừa tạo '+invNo,'pending');
-        }
+      // Luôn show toast khi có invoice pending mới — dù đang ở tab nào
+      if(isM&&payload.eventType==='INSERT'&&payload.new.approval_status==='pending'){
+        const senderName=(function(){
+          var sid=payload.new.sale_id||payload.new.created_by;
+          var prof=sid&&PROFILES.find(function(p){return p.id===sid;});
+          return prof?prof.full_name:(payload.new.sale_rep||'Sale');
+        })();
+        const invNo=payload.new.invoice_no||'';
+        showCrmToast('📋 Invoice mới cần duyệt',senderName+' vừa tạo '+invNo,'pending');
       }
+      if(window.page==='pending'||window.page==='customers'){render();}
     }).subscribe();
 
   // ── REALTIME: Customers ──
@@ -1276,11 +1276,10 @@ async function initApp(user){
             .eq('id',payload.new.id).single();
           CUSTOMERS.unshift(full||payload.new);
         }catch(e){CUSTOMERS.unshift(payload.new);}
-        // Notify manager about new pending customer
         const isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
         if(isM&&payload.new.approval_status==='pending'){
-          window.showNotifToast&&window.showNotifToast('👤 KH mới chờ duyệt',
-            (payload.new.business_name||payload.new.customer_name||'?')+' — '+( payload.new.cellphone||''),
+          showCrmToast('👤 KH mới chờ duyệt',
+            (payload.new.business_name||payload.new.customer_name||'?')+' — '+(payload.new.cellphone||''),
             'pending');
           updateBadges();
         }
@@ -4173,7 +4172,7 @@ function render(){
     <div class="rule"><div class="rule-icon info">2</div><div><div class="rule-title">Liên hệ và ghi nhận kết quả</div><div class="rule-desc">Sau mỗi cuộc gọi: cập nhật Status → Sub-Status → Kết quả gọi → ghi chú Note. Không để qua ngày hôm sau mới cập nhật.</div></div></div>
     <div class="rule"><div class="rule-icon info">3</div><div><div class="rule-title">Đánh dấu Potential khi khách quan tâm</div><div class="rule-desc">Sub-Status đạt Qualified → chọn Potential phù hợp. Khách Potential không bị thu hồi tự động và được theo dõi riêng ở tab Tiềm năng.</div></div></div>
     <div class="rule"><div class="rule-icon info">4</div><div><div class="rule-title">Tạo Báo giá / Invoice khi chốt đơn</div><div class="rule-desc">Vào tab Closedeal → bấm mở invoice.html. Tạo đơn với đầy đủ thông tin. Invoice cần Manager duyệt. Sau khi duyệt hệ thống tự cập nhật Closedeal và sync sang Finance.</div></div></div>
-    <div class="rule"><div class="rule-icon warn">!</div><div><div class="rule-title">Closedeal yêu cầu ≥ 3 call logs</div><div class="rule-desc">Hệ thống sẽ chặn nếu chưa đủ 3 lần ghi log tương tác với khách. Đảm bảo ghi đầy đủ lịch sử làm việc trước khi tạo invoice.</div></div></div>
+    <div class="rule"><div class="rule-icon warn">!</div><div><div class="rule-title">Completed yêu cầu ≥ 3 lần tương tác</div><div class="rule-desc">Khi chuyển Status sang <strong>Completed</strong>, hệ thống bắt buộc phải có ít nhất 3 lần ghi log tương tác với khách. Đảm bảo ghi đầy đủ lịch sử làm việc trước khi đóng data.</div></div></div>
   </div>
 </div>
 
@@ -4977,11 +4976,13 @@ function handleNewMsg(m){
   if(msgs[m.room_id].find(function(x){return x.id===m.id;}))return; // dedup
   msgs[m.room_id].push(m);
   lastTs[m.room_id]=m.created_at;
-  if(m.room_id===curRoom){renderMsgs(false,true);}
+  if(m.room_id===curRoom&&window.page==='chat'){renderMsgs(false,true);}
   if(m.user_id!==uid()){
     var isMention=m.content&&m.content.includes('@'+uname());
     var isReply=m.reply_to_id&&(msgs[m.room_id]||[]).find(function(x){return x.id===m.reply_to_id&&x.user_id===uid();});
-    toast(m.sender_name||'?',m.content||'',m.room_id,!!isMention,!!isReply);
+    // Chỉ suppress toast khi đang xem đúng room đó
+    var isSameRoom=m.room_id===curRoom&&window.page==='chat';
+    if(!isSameRoom)toast(m.sender_name||'?',m.content||'',m.room_id,!!isMention,!!isReply);
     unread[m.room_id]=(unread[m.room_id]||0)+1;badge();
     renderRoomList();
   }
@@ -5623,16 +5624,32 @@ document.addEventListener('click',function(e){
 });
 
 // ── Notification toast for realtime events ──
-window.showNotifToast=function(title,body,targetPage){
-  const existing=document.querySelector('.crm-notif-toast');if(existing)existing.remove();
-  const t=document.createElement('div');t.className='crm-notif-toast';
-  t.style.cssText='position:fixed;bottom:90px;right:20px;background:#1a1240;border:1px solid rgba(162,155,254,0.3);border-radius:10px;padding:10px 14px;min-width:260px;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:9998;cursor:pointer;animation:toastIn 0.3s ease;';
-  t.innerHTML='<div style="font-size:12px;font-weight:600;color:var(--brand2);margin-bottom:2px">'+title+'</div>'
-    +'<div style="font-size:12px;color:var(--text2)">'+body+'</div>';
-  t.onclick=function(){if(targetPage)window.setPage(targetPage);t.remove();};
+// ── CRM Toast Notifications (stackable) ──
+var _crmToastCount=0;
+window.showCrmToast=function(title,body,targetPage,type){
+  var color={'pending':'rgba(253,203,110,0.9)','error':'rgba(255,118,117,0.9)','success':'rgba(0,184,148,0.9)'}[type||'pending']||'rgba(162,155,254,0.9)';
+  var offset=90+(_crmToastCount*72);
+  _crmToastCount++;
+  var t=document.createElement('div');
+  t.className='crm-notif-toast';
+  t.style.cssText='position:fixed;bottom:'+offset+'px;right:20px;background:var(--bg2,#1a1240);border:1px solid '+color+';border-left:3px solid '+color+';border-radius:10px;padding:10px 14px 10px 12px;min-width:260px;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.5);z-index:9999;cursor:pointer;animation:toastIn 0.3s ease;display:flex;align-items:flex-start;gap:8px';
+  t.innerHTML='<div style="flex:1;min-width:0">'
+    +'<div style="font-size:12px;font-weight:700;color:'+color+';margin-bottom:2px">'+title+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+body+'</div>'
+    +'</div>'
+    +'<div style="color:var(--text3);font-size:16px;flex-shrink:0;line-height:1;margin-top:-1px" onclick="event.stopPropagation();this.parentNode.remove();_crmToastCount=Math.max(0,_crmToastCount-1)">×</div>';
+  t.onclick=function(){
+    if(targetPage)window.setPage(targetPage);
+    t.remove();
+    _crmToastCount=Math.max(0,_crmToastCount-1);
+  };
   document.body.appendChild(t);
-  setTimeout(function(){if(t.parentNode)t.remove();},5000);
+  setTimeout(function(){
+    if(t.parentNode){t.remove();_crmToastCount=Math.max(0,_crmToastCount-1);}
+  },6000);
 };
+// backward compat
+window.showNotifToast=window.showCrmToast;
 window._cs=selectRoom;
 
 window._cToggleMenu=function(){
