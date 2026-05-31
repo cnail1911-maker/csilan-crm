@@ -5086,10 +5086,24 @@ function startPoll(){
   stopPoll();
   pollT=setInterval(async function(){
     if(!curRoom)return;
+    // Poll tin nhắn mới cho curRoom
     var since=lastTs[curRoom]||new Date(Date.now()-60000).toISOString();
     var res=await api({action:'poll_new_messages',room_id:curRoom,after:since});
-    if(!res.messages||!res.messages.length)return;
-    res.messages.forEach(function(m){handleNewMsg(m);});
+    if(res.messages&&res.messages.length)res.messages.forEach(function(m){handleNewMsg(m);});
+    // Poll unread count cho tất cả rooms khác (background)
+    var otherRooms=rooms.filter(function(r){return r.id!==curRoom;});
+    if(!otherRooms.length)return;
+    var ids=otherRooms.map(function(r){return r.id;});
+    var lr={};ids.forEach(function(id){try{lr[id]=localStorage.getItem('c_lr_'+id)||new Date(0).toISOString();}catch(e){}});
+    var bgRes=await api({action:'poll_all_rooms',room_ids:ids,last_read:lr});
+    if(bgRes.unread_counts){
+      var changed=false;
+      Object.keys(bgRes.unread_counts).forEach(function(rid){
+        var cnt=bgRes.unread_counts[rid]||0;
+        if(cnt!==(unread[rid]||0)){unread[rid]=cnt;changed=true;}
+      });
+      if(changed){badge();renderRoomList();}
+    }
   },POLL_MS);
 }
 function stopPoll(){if(pollT){clearInterval(pollT);pollT=null;}}
@@ -5098,8 +5112,22 @@ function stopPoll(){if(pollT){clearInterval(pollT);pollT=null;}}
 async function loadRooms(){
   var res=await api({action:'get_rooms',sale_id:uid(),is_manager:mgr()});
   rooms=res.rooms||[];
-  if(!rooms.find(function(r){return r.id===GEN_ROOM;}))
-    rooms.unshift({id:GEN_ROOM,name:'🚀 SHIPPING COST',is_direct:false,members:[]});
+  // Nếu GEN_ROOM chưa có trong list (sale filter) thì thêm vào
+  if(!rooms.find(function(r){return r.id===GEN_ROOM;})){
+    // Fetch trực tiếp từ chatSb
+    if(!chatSb){chatSb=window.supabase.createClient(CHAT_URL,CHAT_ANON);}
+    chatSb.from('chat_rooms').select('*').eq('id',GEN_ROOM).limit(1).then(function(res){
+      if(res.data&&res.data.length){
+        rooms.unshift(res.data[0]);
+      } else {
+        rooms.unshift({id:GEN_ROOM,name:'🚀 SHIPPING COST',is_direct:false,members:[],pinned_messages:[]});
+      }
+      renderRoomList();
+    }).catch(function(){
+      rooms.unshift({id:GEN_ROOM,name:'🚀 SHIPPING COST',is_direct:false,members:[],pinned_messages:[]});
+      renderRoomList();
+    });
+  }
   renderRoomList();
   // Fetch pinned_messages cho tất cả rooms từ chatSb (Edge Function không trả về field này)
   if(!chatSb){chatSb=window.supabase.createClient(CHAT_URL,CHAT_ANON);}
