@@ -1008,6 +1008,39 @@ mark.chat-hl{background:rgba(253,203,110,0.35);color:inherit;border-radius:2px;}
   </div>
 </div>
 <div id="app-screen">
+<!-- ── TICKER BAR ── -->
+<div id="ticker-bar" style="display:none">
+  <div id="ticker-icon">📢</div>
+  <div id="ticker-track"><div id="ticker-inner"></div></div>
+  <button id="ticker-close" onclick="window._tickerClose()" title="Dismiss">×</button>
+</div>
+<style>
+#ticker-bar{position:fixed;top:0;left:0;right:0;z-index:10000;height:32px;background:linear-gradient(90deg,#1a1240,#2d1b69 40%,#0f2a4a 100%);border-bottom:1px solid rgba(162,155,254,0.3);display:flex;align-items:center;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.4)}
+#ticker-icon{flex-shrink:0;padding:0 10px;font-size:14px;background:rgba(162,155,254,0.15);height:100%;display:flex;align-items:center;border-right:1px solid rgba(162,155,254,0.2)}
+#ticker-track{flex:1;overflow:hidden;height:100%;position:relative}
+#ticker-inner{display:inline-flex;align-items:center;height:100%;white-space:nowrap;animation:tickerScroll 30s linear infinite;font-size:12px;font-weight:500;color:rgba(240,238,255,0.9);letter-spacing:0.3px;padding-left:100%}
+#ticker-inner .tick-item{margin-right:80px;display:inline-flex;align-items:center;gap:6px}
+#ticker-inner .tick-item .tick-amt{color:#fdcb6e;font-weight:700}
+#ticker-inner .tick-item .tick-sep{color:rgba(162,155,254,0.4);margin:0 4px}
+#ticker-close{flex-shrink:0;width:32px;height:32px;background:none;border:none;border-left:1px solid rgba(162,155,254,0.2);color:rgba(255,255,255,0.5);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:color 0.15s}
+#ticker-close:hover{color:#fff}
+@keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+body.ticker-on .app{margin-top:32px}
+@media(max-width:768px){body.ticker-on .app{margin-top:32px}}
+#ticker-announce-modal{position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center}
+#ticker-announce-modal .ta-box{background:#1e1550;border:1px solid rgba(162,155,254,0.3);border-radius:16px;padding:24px;width:92vw;max-width:480px}
+</style>
+<div id="ticker-announce-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="ta-box">
+    <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:16px">📢 Broadcast Announcement</div>
+    <textarea id="ta-text" placeholder="Type your message... e.g. Flash sale this weekend! 🔥" style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(162,155,254,0.3);border-radius:10px;padding:10px 14px;font-size:13px;color:#fff;outline:none;resize:vertical;min-height:80px;font-family:inherit;box-sizing:border-box"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+      <button class="btn" onclick="document.getElementById('ticker-announce-modal').style.display='none'" style="font-size:12px">Cancel</button>
+      <button class="btn btn-primary" onclick="window._tickerSend()" style="font-size:12px"><i class="ti ti-send"></i> Broadcast</button>
+    </div>
+  </div>
+</div>
+
   <div class="app">
     <div class="sidebar">
       <div class="logo-wrap">
@@ -1033,6 +1066,7 @@ mark.chat-hl{background:rgba(253,203,110,0.35);color:inherit;border-radius:2px;}
       <div class="user-area">
         <div class="avatar av-0" id="user-avatar">--</div>
         <div><div class="user-name" id="user-name">--</div><div class="user-role" id="user-role">Sale</div></div>
+        <button id="btn-broadcast" onclick="document.getElementById('ticker-announce-modal').style.display='flex'" title="Broadcast Announcement" style="display:none;background:none;border:1px solid rgba(162,155,254,0.3);border-radius:8px;color:rgba(162,155,254,0.8);cursor:pointer;padding:4px 8px;font-size:13px"><i class="ti ti-speakerphone"></i></button>
         <button class="logout-btn" onclick="doLogout()" title="Đăng xuất"><i class="ti ti-logout"></i></button>
       </div>
     </div>
@@ -1195,7 +1229,99 @@ async function initApp(user){
   document.getElementById('user-name').textContent=(profile&&profile.full_name)||user.email;
   document.getElementById('user-role').textContent=profile&&profile.role==='manager'?'Manager':profile&&profile.role==='admin'?'Admin':profile&&profile.role==='leader'?'Leader':'Sale';
   document.getElementById('auth-screen').style.display='none';
-  // Warm-up Edge Function ngay sau login để tránh cold start
+
+  // ── Show broadcast button for manager ──
+  if(currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader')){
+    var bb=document.getElementById('btn-broadcast');
+    if(bb)bb.style.display='inline-flex';
+  }
+
+  // ── TICKER ENGINE ──
+  (function(){
+    var _msgs=[];
+    var _animSpeed=30; // seconds per full cycle
+
+    function shortN(name){
+      var p=(name||'').trim().split(' ').filter(Boolean);
+      return p.length<=1?name:(p[0]+' '+p[p.length-1]);
+    }
+
+    function _render(){
+      var bar=document.getElementById('ticker-bar');
+      var inner=document.getElementById('ticker-inner');
+      if(!bar||!inner)return;
+      if(!_msgs.length){bar.style.display='none';document.body.classList.remove('ticker-on');return;}
+      bar.style.display='flex';
+      document.body.classList.add('ticker-on');
+      // Duplicate messages for seamless loop
+      var html=_msgs.concat(_msgs).map(function(m){
+        return '<span class="tick-item">'+m+'</span>';
+      }).join('');
+      inner.innerHTML=html;
+      // Adjust speed based on content length
+      var totalLen=_msgs.join('').length;
+      var dur=Math.max(20,Math.min(60,totalLen*0.4));
+      inner.style.animation='none';
+      void inner.offsetWidth; // reflow
+      inner.style.animation='tickerScroll '+dur+'s linear infinite';
+    }
+
+    function _addMsg(html){
+      _msgs.push(html);
+      if(_msgs.length>10)_msgs.shift();
+      _render();
+    }
+
+    // Public: add deal closed message
+    window._tickerDeal=function(saleName,amount,custName,potential){
+      var amtFmt='$'+(amount||0).toLocaleString('en-US');
+      var html='🎉 <strong>'+shortN(saleName)+'</strong> just closed a <span class="tick-amt">'+amtFmt+'</span> deal'
+        +(custName?'<span class="tick-sep">·</span>'+custName:'')
+        +(potential?'<span class="tick-sep">·</span>'+potential:'');
+      _addMsg(html);
+    };
+
+    // Public: broadcast manual message
+    window._tickerMsg=function(text){
+      _addMsg('<span style="color:rgba(240,238,255,0.85)">'+text+'</span>');
+    };
+
+    window._tickerClose=function(){
+      _msgs=[];
+      var bar=document.getElementById('ticker-bar');
+      if(bar)bar.style.display='none';
+      document.body.classList.remove('ticker-on');
+    };
+
+    window._tickerSend=function(){
+      var ta=document.getElementById('ta-text');
+      var txt=ta&&ta.value.trim();
+      if(!txt)return;
+      window._tickerMsg('📣 '+txt);
+      ta.value='';
+      document.getElementById('ticker-announce-modal').style.display='none';
+    };
+
+    // Listen for invoice approvals via Supabase Realtime
+    sb.channel('ticker-invoices')
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'invoices'},function(payload){
+        try{
+          var nw=payload.new;
+          if(nw.approval_status!=='approved')return;
+          var old=payload.old;
+          if(old&&old.approval_status==='approved')return; // already approved
+          // Find sale name
+          var saleProf=PROFILES&&PROFILES.find(function(p){return p.id===nw.sale_id;});
+          var saleName=saleProf?saleProf.full_name:'Team';
+          // Find customer
+          var cust=CUSTOMERS&&CUSTOMERS.find(function(c){return c.id===nw.customer_id;});
+          var custName=cust?(cust.business_name||cust.customer_name):null;
+          var potential=cust&&cust.potential?cust.potential:null;
+          window._tickerDeal(saleName,nw.total,custName,potential);
+        }catch(e){console.warn('[ticker]',e);}
+      })
+      .subscribe();
+  })();
   if(currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader')){
     (async function autoRecallExpired(){
       try{
