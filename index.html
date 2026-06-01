@@ -3183,20 +3183,25 @@ function editPhone(customerId, field, currentVal){
 
 async function savePhone(customerId, field){
   var val=(document.getElementById('edit-phone-input').value||'').trim();
+  // dataset.c luôn là string — parse về đúng type để match CUSTOMERS[].id
+  var numId=parseInt(customerId);
+  var realId=isNaN(numId)?customerId:numId;
   showLoading(true);
   try{
     var update={};update[field]=val||null;
-    var {error}=await sb.from('customers').update(update).eq('id',customerId);
+    var {error}=await sb.from('customers').update(update).eq('id',realId);
     if(error)throw error;
-    // Cập nhật local
-    var idx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
+    // Cập nhật local — tìm theo cả string và number
+    var idx=CUSTOMERS.findIndex(function(c){return c.id===realId||String(c.id)===String(customerId);});
     if(idx>=0)CUSTOMERS[idx][field]=val||null;
-    // Đóng edit modal, update DOM trực tiếp — hiển thị ngay lập tức
+    // Đóng edit-phone modal
     document.getElementById('edit-phone-modal')&&document.getElementById('edit-phone-modal').remove();
+    // Update DOM trực tiếp trong detail-modal
     var phoneUpdate={};phoneUpdate[field]=val||null;
-    _updateDetailDOM(customerId, phoneUpdate);
+    _updateDetailDOM(realId, phoneUpdate);
     showCrmToast('✅ Đã lưu số điện thoại','','success');
   }catch(e){
+    console.error('[savePhone]',e);
     showCrmToast('❌ Lỗi lưu số điện thoại',e.message,'error');
   }
   showLoading(false);
@@ -4774,7 +4779,8 @@ function _renderDetailShell(modal,c,isManager,logs){
 // Update DOM trực tiếp sau khi lưu — không re-render toàn bộ modal
 // Nhanh, không gây flicker, không reset input đang nhập
 function _updateDetailDOM(customerId, update){
-  var c=CUSTOMERS.find(function(x){return x.id===customerId;});
+  // So sánh cả string và number để tránh type mismatch từ dataset.*
+  var c=CUSTOMERS.find(function(x){return x.id===customerId||String(x.id)===String(customerId);});
   if(!c)return;
   var dm=document.getElementById('detail-modal');
   if(!dm)return;
@@ -4855,6 +4861,9 @@ function validatePhone(phone,fieldName){
 
 async function saveDetail(customerId){
   showLoading(true);
+  // Đảm bảo customerId đúng type
+  var numId=parseInt(customerId);
+  customerId=isNaN(numId)?customerId:numId;
   var isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const note=document.getElementById('d-note')&&document.getElementById('d-note').value.trim();
   const result=document.getElementById('d-result')&&document.getElementById('d-result').value;
