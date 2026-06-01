@@ -3183,18 +3183,16 @@ function toggleAddToCampDropdown(btn){
 async function addToCampaign(campName){
   const deadline=document.getElementById('camp-deadline')&&document.getElementById('camp-deadline').value;
   if(!deadline){alert('Vui lòng chọn Deadline!');return;}
-  const allSaleCb=document.getElementById('camp-sale-all');
-  let salesList=[];
-  if(allSaleCb&&allSaleCb.checked){
-    salesList=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';});
-  } else {
-    const checked=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all):checked');
-    const ids=Array.from(checked).map(function(cb){return cb.value;});
-    salesList=PROFILES.filter(function(p){return ids.includes(p.id);});
-  }
-  // Agent optional - cho phép tạo campaign không có sale
-  const dataPool=campGetFiltered();
-  if(dataPool.length===0){alert('Không có data nào khớp với bộ lọc!');return;}
+  // Đọc sale từ chip UI (giống createCampaign) thay vì checkbox cũ không còn tồn tại
+  var _chipSales=window._campSelectedSales&&window._campSelectedSales.size>0
+    ?[...window._campSelectedSales]:null;
+  var salesList=_chipSales
+    ?PROFILES.filter(function(p){return _chipSales.includes(p.id);})
+    :PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';});
+  // Dùng KH đã tick checkbox, nếu không có thì dùng filter
+  var _selIds=window._campCreateSelected&&window._campCreateSelected.size>0?window._campCreateSelected:null;
+  const dataPool=_selIds?CUSTOMERS.filter(function(c){return _selIds.has(c.id);}):campGetFiltered();
+  if(dataPool.length===0){alert('Không có KH nào được chọn!');return;}
   if(!confirm('Thêm '+dataPool.length+' khách vào Campaign "'+campName+'" cho '+salesList.length+' sale với deadline '+deadline+'?'))return;
   showLoading(true);
   var mgrName=currentProfile?currentProfile.full_name:'';
