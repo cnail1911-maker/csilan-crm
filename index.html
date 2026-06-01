@@ -386,8 +386,10 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     .camp-header-grid{grid-template-columns:1fr !important;}
     .camp-header-btns{width:100%}
     #camp-slide-panel{top:0 !important;left:0 !important;right:0 !important;bottom:0 !important;width:100% !important;border-left:none !important}
-    #camp-create-grid{grid-template-columns:1fr !important}
-    #camp-create-grid>div:first-child{max-height:45vh;overflow-y:auto}
+    /* Campaign create grid: stack on mobile only */
+    #camp-create-grid{grid-template-columns:1fr !important;height:auto !important}
+    #camp-create-grid>div:first-child{max-height:50vh;overflow-y:auto;border-right:none !important;border-bottom:1px solid var(--border)}
+    #camp-create-grid>div:last-child{height:60vh}
     #notif-panel{left:0 !important;right:0 !important;width:100% !important}
     /* Fix tất cả elements box-sizing trên mobile */
     *{box-sizing:border-box}
@@ -2311,6 +2313,13 @@ async function recallOver30(){
 // ============================================================
 function renderCampaign(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  // Always close slide panel when entering campaign page
+  setTimeout(function(){
+    var sp=document.getElementById('camp-slide-panel');
+    var so=document.getElementById('camp-slide-overlay');
+    if(sp)sp.style.display='none';
+    if(so)so.style.display='none';
+  },0);
   const isLeader=currentProfile&&currentProfile.role==='leader';
   const isMgrOrLeader=isManager||isLeader;
   const uid=currentUser&&currentUser.id;
@@ -2433,7 +2442,40 @@ function renderCampaign(){
     +'</div>';
 }
 
-// ── Campaign Sale View ──
+// Sale chip dropdown
+window._campSaleDropdown=function(btn){
+  var dd=document.getElementById('camp-sale-dd');
+  if(!dd)return;
+  dd.style.display=dd.style.display==='block'?'none':'block';
+};
+
+window._campAddSale=function(id,name){
+  var sel=window._campSelectedSales||(window._campSelectedSales=new Set());
+  var chips=document.getElementById('camp-sale-chips');
+  var noMsg=document.getElementById('camp-no-sale-msg');
+  var checkIcon=document.querySelector('.camp-sale-check-'+id);
+  if(sel.has(id)){
+    // Remove
+    sel.delete(id);
+    var chip=document.getElementById('camp-chip-'+id);
+    if(chip)chip.remove();
+    if(checkIcon)checkIcon.style.display='none';
+  } else {
+    // Add chip
+    sel.add(id);
+    if(noMsg)noMsg.style.display='none';
+    if(chips){
+      var c=document.createElement('div');
+      c.id='camp-chip-'+id;
+      c.style.cssText='display:flex;align-items:center;gap:4px;background:rgba(108,92,231,0.2);border:1px solid rgba(108,92,231,0.3);border-radius:20px;padding:3px 8px 3px 10px;font-size:11px;color:var(--brand2)';
+      c.innerHTML='<i class="ti ti-user" style="font-size:11px"></i>'+name
+        +'<button type="button" onclick="window._campAddSale(\''+id+'\',\''+name+'\')" style="background:none;border:none;color:rgba(162,155,254,0.6);cursor:pointer;padding:0;margin-left:2px;font-size:13px;line-height:1">×</button>';
+      chips.insertBefore(c,chips.firstChild);
+    }
+    if(checkIcon)checkIcon.style.display='block';
+  }
+  if(chips&&sel.size===0&&noMsg)noMsg.style.display='';
+};
 function renderCampaignSale(uid,profId,isLeader){
   var myCampaigns={};
   var activePool=[];
@@ -2543,7 +2585,7 @@ window._campOpenCreate=function(prefillName){
   }
   var curCF=(window._campFilters&&window._campFilters['campaign'])||'all';
 
-  content.innerHTML='<div style="display:grid;grid-template-columns:240px 1fr;gap:0;height:calc(100vh - 120px);overflow:hidden" id="camp-create-grid">'
+  content.innerHTML='<div style="display:grid;grid-template-columns:260px 1fr;gap:0;height:calc(100vh - 56px);overflow:hidden" id="camp-create-grid">'
     // LEFT: Campaign info + filters
     +'<div style="border-right:1px solid var(--border);overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px">'
     +'<div><label style="font-size:10px;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:3px">Tên Campaign *</label>'
@@ -2551,10 +2593,20 @@ window._campOpenCreate=function(prefillName){
     +'<div><label style="font-size:10px;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:3px">Deadline *</label>'
     +'<input type="date" id="camp-deadline" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box"></div>'
     +'<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:6px">Sale tham gia</div>'
-    +'<div style="display:flex;flex-wrap:wrap;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px;max-height:100px;overflow-y:auto" id="camp-sales">'
-    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:20px;white-space:nowrap;flex-shrink:0;color:var(--text2)">'
-    +'<input type="checkbox" id="camp-sale-all" onchange="toggleAllSales(this)" style="accent-color:var(--brand)"> Tất cả</label>'
-    +salesOpts+'</div></div>'
+    +'<div id="camp-sale-chips" style="display:flex;flex-wrap:wrap;gap:5px;min-height:34px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:6px 8px;align-items:center;margin-bottom:6px">'
+    +'<span style="color:var(--text3);font-size:11px;font-style:italic" id="camp-no-sale-msg">Chưa chọn (chia đều khi tạo)</span>'
+    +'</div>'
+    +'<div style="position:relative">'
+    +'<button type="button" onclick="window._campSaleDropdown(this)" style="background:rgba(108,92,231,0.15);border:1px solid rgba(108,92,231,0.3);border-radius:8px;color:var(--brand2);cursor:pointer;padding:5px 12px;font-size:11px;display:flex;align-items:center;gap:5px"><i class="ti ti-plus"></i> Thêm Sale</button>'
+    +'<div id="camp-sale-dd" style="display:none;position:absolute;left:0;top:34px;background:#1e1550;border:1px solid rgba(108,92,231,0.3);border-radius:10px;z-index:200;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.5);overflow:hidden">'
+    +PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){
+      var sn=p.full_name.split(' ').pop();
+      return '<div class="camp-sale-opt" data-id="'+p.id+'" data-name="'+sn+'" onclick="window._campAddSale(\''+p.id+'\',\''+sn+'\')" style="padding:8px 14px;cursor:pointer;font-size:12px;color:#e0deff;display:flex;align-items:center;gap:8px" onmouseover="this.style.background=\'rgba(108,92,231,0.2)\'" onmouseout="this.style.background=\'transparent\'">'
+        +'<i class="ti ti-user" style="font-size:13px;opacity:0.6"></i><span>'+sn+'</span>'
+        +'<i class="ti ti-check camp-sale-check-'+p.id+'" style="margin-left:auto;display:none;color:var(--accent2)"></i>'
+        +'</div>';
+    }).join('')
+    +'</div></div></div>'
     +'<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Sale phụ trách</div>'
     +'<select id="cf-sale" onchange="campSyncFilters();window._campPg=1;_campRefreshList()" style="width:100%;background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;color:#e0deff;outline:none">'
     +'<option value="all" style="background:#1e1550;color:#e0deff">Tất cả</option>'
@@ -2571,10 +2623,10 @@ window._campOpenCreate=function(prefillName){
     +fO(TIMES_OPTS,'cf-timeuse','Time of Use')+fO(REASON_OPTS,'cf-reason','Reason')
     +'</div>'
     +'<div style="margin-top:6px"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;text-transform:uppercase">Thuộc chiến dịch</div>'
-    +'<select id="cf-campaign" onchange="campSyncFilters();window._campPg=1;_campRefreshList()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;color:var(--text);outline:none">'
-    +'<option value="all"'+(curCF==='all'?' selected':'')+'>Tất cả</option>'
-    +'<option value="none"'+(curCF==='none'?' selected':'')+'>Chưa thuộc chiến dịch</option>'
-    +campNames.map(function(n){return '<option value="'+n+'"'+(curCF===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select></div>'
+    +'<select id="cf-campaign" onchange="campSyncFilters();window._campPg=1;_campRefreshList()" style="width:100%;background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;color:#e0deff;outline:none">'
+    +'<option value="all" style="background:#1e1550;color:#e0deff">Tất cả</option>'
+    +'<option value="none" style="background:#1e1550;color:#e0deff">Chưa thuộc chiến dịch</option>'
+    +campNames.map(function(n){return '<option value="'+n+'" style="background:#1e1550;color:#e0deff">'+n+'</option>';}).join('')+'</select></div>'
     +'<div style="display:flex;gap:6px;margin-top:8px;align-items:center">'
     +'<button class="btn" onclick="campResetFilters();_campRefreshList()" style="font-size:11px"><i class="ti ti-refresh"></i> Reset</button>'
     +'<div id="camp-preview-count" style="font-size:12px;color:var(--accent2);font-weight:700"></div>'
@@ -2602,9 +2654,24 @@ window._campOpenCreate=function(prefillName){
 
   // Initialize selected set
   window._campCreateSelected=new Set();
-  panel.style.display='block';
+  panel.style.display='flex';
   if(overlay)overlay.style.display='block';
+  // Reset selected sales
+  window._campSelectedSales=new Set();
   _campRefreshList();
+
+  // Close dropdown on outside click
+  setTimeout(function(){
+    document.addEventListener('click',function _closeSaleDd(e){
+      var dd=document.getElementById('camp-sale-dd');
+      if(dd&&!dd.contains(e.target)&&!e.target.closest('[onclick*="_campSaleDropdown"]')){
+        dd.style.display='none';
+      }
+      if(!document.getElementById('camp-slide-panel')||document.getElementById('camp-slide-panel').style.display==='none'){
+        document.removeEventListener('click',_closeSaleDd);
+      }
+    });
+  },100);
 };
 
 // Refresh customer list in create panel
@@ -3079,15 +3146,13 @@ async function createCampaign(){
   const deadline=document.getElementById('camp-deadline')&&document.getElementById('camp-deadline').value;
   if(!name){alert('Vui lòng nhập tên Campaign!');return;}
   if(!deadline){alert('Vui lòng chọn Deadline!');return;}
-  const allSaleCb=document.getElementById('camp-sale-all');
-  let salesList=[];
-  if(allSaleCb&&allSaleCb.checked){
-    salesList=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';});
-  } else {
-    const checked=document.querySelectorAll('#camp-sales input[type=checkbox]:not(#camp-sale-all):checked');
-    const ids=Array.from(checked).map(function(cb){return cb.value;});
-    salesList=PROFILES.filter(function(p){return ids.includes(p.id);});
-  }
+  // Get sales from chip UI (if none selected → use all)
+  var _chipSales=window._campSelectedSales&&window._campSelectedSales.size>0
+    ?[...window._campSelectedSales]
+    :null;
+  let salesList=_chipSales
+    ?PROFILES.filter(function(p){return _chipSales.includes(p.id);})
+    :PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';});
   // Agent optional - cho phép tạo campaign không có sale
   var _selIds=window._campCreateSelected&&window._campCreateSelected.size>0?window._campCreateSelected:null;
   const dataPool=_selIds?CUSTOMERS.filter(function(c){return _selIds.has(c.id);}):campGetFiltered();
