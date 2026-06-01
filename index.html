@@ -4771,27 +4771,30 @@ async function saveDetail(customerId){
   if(vCel!==undefined)update.cellphone=vCel||null;
   if(vCel2!==undefined)update.cellphone_2=vCel2||null;
   if(saleEl)update.assigned_to=saleEl.value;
-  await sb.from('customers').update(update).eq('id',customerId);
-  // Always log activity - dù không có note vẫn đếm data thao tác
-  if(note||result){
-    await sb.from('call_logs').insert({customer_id:customerId,sale_id:currentUser.id,note:note||null,call_result:result||null,called_at:new Date().toISOString()});
-  } else {
-    // Log thao tác không có note (chuyển status)
-    await sb.from('call_logs').insert({customer_id:customerId,sale_id:currentUser.id,note:null,call_result:null,called_at:new Date().toISOString()});
-  }
-  // Update local CUSTOMERS array instead of reloading all 26k rows
-  const idx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
-  if(idx>=0){
-    Object.assign(CUSTOMERS[idx],update);
-    if(update.assigned_to!==undefined){
-      const prof=PROFILES.find(function(p){return p.id===update.assigned_to;});
-      CUSTOMERS[idx].assigned_profile=prof?{id:prof.id,full_name:prof.full_name,role:prof.role}:null;
+  try{
+    var {error:custErr}=await sb.from('customers').update(update).eq('id',customerId);
+    if(custErr)throw custErr;
+    // Log activity song song với update local — không chặn UI
+    var logPayload={customer_id:customerId,sale_id:currentUser.id,note:note||null,call_result:result||null,called_at:new Date().toISOString()};
+    sb.from('call_logs').insert(logPayload).then(function(){}).catch(function(e){console.warn('[log]',e);});
+    // Cập nhật local CUSTOMERS ngay sau khi DB confirm thành công
+    const idx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
+    if(idx>=0){
+      Object.assign(CUSTOMERS[idx],update);
+      if(update.assigned_to!==undefined){
+        const prof=PROFILES.find(function(p){return p.id===update.assigned_to;});
+        CUSTOMERS[idx].assigned_profile=prof?{id:prof.id,full_name:prof.full_name,role:prof.role}:null;
+      }
     }
+    document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
+    selId=null;
+    if(page==='daily')renderDailyData();
+    else render();
+  }catch(e){
+    console.error('[saveDetail]',e);
+    showCrmToast('❌ Lỗi lưu khách hàng',e.message,'error');
   }
-  document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
-  selId=null;showLoading(false);
-  if(page==='daily')renderDailyData();
-  else render();
+  showLoading(false);
 }
 
 function editInvoicePage(invoiceNo){
