@@ -2428,12 +2428,12 @@ function renderCampaign(){
       :'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">'+campCards+'</div>')
     +'</div>'
     // Slide panel for create
-    +'<div id="camp-slide-panel" style="display:none;position:fixed;top:0;right:0;bottom:0;width:min(860px,96vw);background:var(--bg2,#1a1240);border-left:1px solid var(--border);z-index:1000;overflow:hidden;box-shadow:-8px 0 30px rgba(0,0,0,0.4);display:flex;flex-direction:column">'
+    +'<div id="camp-slide-panel" style="display:none;position:fixed;top:0;right:0;bottom:0;width:min(860px,96vw);background:var(--bg2,#1a1240);border-left:1px solid var(--border);z-index:1000;overflow:hidden;box-shadow:-8px 0 30px rgba(0,0,0,0.4)">'
     +'<div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">'
     +'<div class="camp-slide-title" style="font-size:15px;font-weight:700">Tạo Campaign mới</div>'
     +'<button onclick="document.getElementById(\'camp-slide-panel\').style.display=\'none\';document.getElementById(\'camp-slide-overlay\').style.display=\'none\'" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:4px 10px;font-size:14px">×</button>'
     +'</div>'
-    +'<div id="camp-slide-content" style="flex:1;overflow:hidden;display:flex;flex-direction:column"></div>'
+    +'<div id="camp-slide-content" style="height:calc(100% - 52px);overflow:hidden"></div>'
     +'</div>'
     +'<div id="camp-slide-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999" onclick="document.getElementById(\'camp-slide-panel\').style.display=\'none\';document.getElementById(\'camp-slide-overlay\').style.display=\'none\'"></div>'
     // Detail modal
@@ -2634,11 +2634,13 @@ window._campOpenCreate=function(prefillName){
     +'</div>'
     // RIGHT: Customer list
     +'<div style="display:flex;flex-direction:column;overflow:hidden">'
-    +'<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;background:var(--surface)">'
+    +'<div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;background:var(--surface)">'
     +'<input id="camp-list-search" placeholder="Tìm tên, mã KH, phone..." oninput="_campRefreshList()" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">'
-    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap;flex-shrink:0">'
-    +'<input type="checkbox" id="camp-select-all-list" onchange="_campSelectAllList(this.checked)" style="accent-color:var(--brand)"> <span id="camp-sel-count">Chọn tất cả</span></label>'
-    +'<button onclick="_campSelectAllList(false)" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text3);cursor:pointer;padding:3px 8px;font-size:11px;white-space:nowrap;flex-shrink:0">Bỏ chọn</button>'
+    +'</div>'
+    +'<div style="padding:6px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;background:rgba(108,92,231,0.05)">'
+    +'<button onclick="_campSelectAllList(true)" style="background:rgba(108,92,231,0.2);border:1px solid rgba(108,92,231,0.4);border-radius:7px;color:var(--brand2);cursor:pointer;padding:4px 12px;font-size:11px;font-weight:600"><i class="ti ti-check-all"></i> Chọn tất cả</button>'
+    +'<button onclick="_campSelectAllList(false)" style="background:none;border:1px solid var(--border);border-radius:7px;color:var(--text3);cursor:pointer;padding:4px 12px;font-size:11px">Bỏ chọn</button>'
+    +'<span id="camp-sel-count" style="font-size:11px;color:var(--text2);margin-left:auto"></span>'
     +'</div>'
     +'<div id="camp-cust-list" style="flex:1;overflow-y:auto"></div>'
     +'</div>'
@@ -2656,7 +2658,8 @@ window._campOpenCreate=function(prefillName){
   window._campCreateSelected=new Set();
   panel.style.display='flex';
   if(overlay)overlay.style.display='block';
-  // Reset selected sales
+  // Reset selections on new open
+  window._campCreateSelected=new Set();
   window._campSelectedSales=new Set();
   _campRefreshList();
 
@@ -2688,15 +2691,9 @@ window._campRefreshList=function(){
   var selCountEl=document.getElementById('camp-sel-count');
   var summaryEl=document.getElementById('camp-action-summary');
   if(countEl)countEl.textContent=filtered.length+' khách khớp';
-
-  // Auto-select all by default
-  if(sel.size===0&&filtered.length>0)filtered.forEach(function(c){sel.add(c.id);});
-  if(selCountEl)selCountEl.textContent='Đã chọn '+sel.size+'/'+filtered.length;
+  // NO auto-select — manager chủ động chọn
+  if(selCountEl)selCountEl.textContent='Đã chọn '+sel.size+' / '+filtered.length;
   if(summaryEl)summaryEl.textContent='Đã chọn '+sel.size+' khách';
-
-  if(!listEl)return;
-  var allCheckId=document.getElementById('camp-select-all-list');
-  if(allCheckId)allCheckId.checked=filtered.length>0&&filtered.every(function(c){return sel.has(c.id);});
 
   var PAGE=50;
   var pg=window._campListViewPg||1;
