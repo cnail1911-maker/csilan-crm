@@ -3851,6 +3851,37 @@ async function _kpiFetchInvoices(fromDate,toDate){
       if(!d)return false;
       return d>=fromD&&d<=toD;
     });
+    // Nếu local rỗng và đang xem tháng khác tháng hiện tại
+    // → INVOICES local có thể không đủ → fallback fetch DB
+    var nowM=new Date().getMonth()+1;
+    var nowY=new Date().getFullYear();
+    var reqM=parseInt(fromD.slice(5,7));
+    var reqY=parseInt(fromD.slice(0,4));
+    var isCurrentMonth=(reqM===nowM&&reqY===nowY);
+    if(result.length===0&&!isCurrentMonth){
+      // Fetch DB cho tháng cũ
+      try{
+        var q=sb.from('invoices')
+          .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
+          .eq('type','invoice').gte('created_at',fromDate).lte('created_at',toDate);
+        if(!isM)q=q.eq('sale_id',uid);
+        var {data:d1,error:e1}=await q.limit(2000);
+        if(e1)console.warn('[KPI fallback]',e1.message);
+        var q2=sb.from('invoices')
+          .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
+          .eq('type','invoice').is('created_at',null)
+          .gte('date',fromD).lte('date',toD);
+        if(!isM)q2=q2.eq('sale_id',uid);
+        var {data:d2}=await q2.limit(500);
+        var merged=[...(d1||[])];
+        var ids=new Set(merged.map(function(i){return i.id;}));
+        (d2||[]).forEach(function(i){if(!ids.has(i.id))merged.push(i);});
+        result=merged;
+        console.log('[KPI fallback DB] month='+fromD.slice(0,7)+' count='+result.length);
+      }catch(err){
+        console.warn('[KPI fallback error]',err);
+      }
+    }
   } else {
     // Fallback: fetch DB nếu INVOICES chưa load
     try{
@@ -4294,7 +4325,7 @@ async function renderKPIAsync(){
       var tbtn=e.target.closest('.kpi-tbtn');
       if(tbtn){_kpiTrendN=parseInt(tbtn.dataset.t);_kpiInvCache={};renderKPIAsync();return;}
     });
-  },50);
+  },0);
 }
 
 function _kpiStatCard(label,val,arrow,color,sub,onclick){
