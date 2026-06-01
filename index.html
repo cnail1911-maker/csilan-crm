@@ -4786,8 +4786,17 @@ async function saveDetail(customerId){
         CUSTOMERS[idx].assigned_profile=prof?{id:prof.id,full_name:prof.full_name,role:prof.role}:null;
       }
     }
-    document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
-    selId=null;
+    // Re-render detail modal tại chỗ với data mới — không đóng modal
+    var dm=document.getElementById('detail-modal');
+    var updatedC=CUSTOMERS.find(function(c){return c.id===customerId;});
+    if(dm&&updatedC){
+      _renderDetailShell(dm,updatedC,isManager,[]);
+      showCrmToast('✅ Đã lưu','Thông tin khách hàng đã cập nhật','success');
+    } else {
+      document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
+      selId=null;
+    }
+    // Cập nhật background UI (table, badges...)
     if(page==='daily')renderDailyData();
     else render();
   }catch(e){
