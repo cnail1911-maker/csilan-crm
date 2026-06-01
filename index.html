@@ -2552,10 +2552,22 @@ function renderCampaignSale(uid,profId,isLeader){
       +'<i class="ti ti-chevron-down" id="'+id+'-chevron"></i></div>'
       +'<div id="'+id+'-list" style="display:none">'+_campSaleTable(camp.custs,true,camp.name.replace(/[^a-z0-9]/gi,'_'))+'</div></div>';
   }).join('');
-  return '<div class="topbar"><div class="topbar-title">Campaign</div></div>'
+  var html='<div class="topbar"><div class="topbar-title">Campaign</div></div>'
     +'<div class="content">'+(poolHtml||'')
     +(campSections||'<div class="empty-state"><i class="ti ti-speakerphone"></i>Chưa có data được phân</div>')
     +'</div>';
+  // Restore accordion state sau render
+  setTimeout(function(){
+    var acc=window._campAccOpen||{};
+    Object.keys(acc).forEach(function(id){
+      if(!acc[id])return;
+      var el=document.getElementById(id+'-list');
+      var ch=document.getElementById(id+'-chevron');
+      if(el){el.style.display='block';}
+      if(ch){ch.style.transform='rotate(180deg)';}
+    });
+  },0);
+  return html;
 }
 
 function _campSaleTable(custs,showDeadline,campKey){
@@ -2583,15 +2595,50 @@ function _campSaleTable(custs,showDeadline,campKey){
     +'<span class="csf-count" style="font-size:11px;color:var(--text3)">'+custs.length+' KH</span>'
     +'</div>';
 
-  return '<div class="camp-section-wrap">'
+  // Phân trang 50 KH/trang
+  var totalPg=Math.ceil(custs.length/CAMP_SALE_PAGE_SIZE)||1;
+  var curPg=Math.max(1,Math.min(window._campSalePg[key]||1,totalPg));
+  var pagedCusts=custs.slice((curPg-1)*CAMP_SALE_PAGE_SIZE,curPg*CAMP_SALE_PAGE_SIZE);
+  var pgBarHtml='';
+  if(totalPg>1){
+    var start=(curPg-1)*CAMP_SALE_PAGE_SIZE+1;
+    var end=Math.min(curPg*CAMP_SALE_PAGE_SIZE,custs.length);
+    pgBarHtml='<div class="pgbar" style="border-top:1px solid var(--border);padding:6px 12px">'
+      +'<span class="pgbar-info">'+start+'-'+end+' / '+custs.length+' KH</span>'
+      +'<div class="pgbar-btns">';
+    pgBarHtml+='<button class="btn" style="padding:3px 9px;font-size:11px" onclick="window._campSalePgGo(''+key+'',''+sd+'','+(curPg-1)+')" '+(curPg===1?'disabled':'')+'>&#8249;</button>';
+    for(var _pi=1;_pi<=totalPg;_pi++){
+      if(totalPg>7&&_pi>1&&_pi<totalPg&&Math.abs(_pi-curPg)>2)continue;
+      var _active=_pi===curPg?'background:var(--brand);border-color:var(--brand);color:#fff':'';
+      pgBarHtml+='<button class="btn" style="padding:3px 9px;font-size:11px;'+_active+'" onclick="window._campSalePgGo(''+key+'',''+sd+'','+_pi+')">'+_pi+'</button>';
+    }
+    pgBarHtml+='<button class="btn" style="padding:3px 9px;font-size:11px" onclick="window._campSalePgGo(''+key+'',''+sd+'','+(curPg+1)+')" '+(curPg===totalPg?'disabled':'')+'>&#8250;</button>';
+    pgBarHtml+='</div></div>';
+  }
+  return '<div class="camp-section-wrap" data-key="'+key+'" data-sd="'+sd+'">'
     +filterBar
     +'<div style="overflow-x:auto"><table style="width:100%;min-width:520px">'
     +'<thead><tr style="font-size:10px;position:sticky;top:0;background:var(--bg2);z-index:1">'
     +'<th>Mã KH</th><th>Business</th><th>Tên KH</th><th>Phone</th><th>Status</th><th>Lead</th><th>Sub Status</th><th>Potential</th>'
     +(showDeadline?'<th>Deadline</th>':'')+'<th>Last</th></tr></thead>'
-    +'<tbody class="csf-tbody">'+_campSaleRows(custs,showDeadline)+'</tbody>'
-    +'</table></div></div>';
+    +'<tbody class="csf-tbody">'+_campSaleRows(pagedCusts,showDeadline)+'</tbody>'
+    +'</table></div>'
+    +pgBarHtml
+    +'</div>';
 }
+
+// Helper: chuyển trang campaign sale table
+window._campSalePgGo=function(key,sd,pg){
+  window._campSalePg[key]=pg;
+  // Re-render wrap tương ứng
+  var wrap=document.querySelector('.camp-section-wrap[data-key="'+key+'"]');
+  if(!wrap)return;
+  var custs=window._campSaleCusts&&window._campSaleCusts[key];
+  if(!custs)return;
+  var newHtml=_campSaleTable(custs,sd==='1',key);
+  var tmp=document.createElement('div');tmp.innerHTML=newHtml;
+  wrap.parentNode.replaceChild(tmp.firstChild,wrap);
+};
 
 window._campSaleFilter=function(key,wrap,sd){
   var custs=window._campSaleCusts&&window._campSaleCusts[key];
@@ -2613,6 +2660,9 @@ window._campSaleFilter=function(key,wrap,sd){
   if(cnt)cnt.textContent=filtered.length+' KH';
 };
 
+// Pagination state cho campaign sale table
+if(!window._campSalePg)window._campSalePg={};
+var CAMP_SALE_PAGE_SIZE=50;
 function _campSaleRows(custs,showDeadline){
   if(!custs||!custs.length)return '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">Không có kết quả</td></tr>';
   var today=new Date();today.setHours(0,0,0,0);
@@ -2636,6 +2686,8 @@ function _campSaleRows(custs,showDeadline){
   }).join('');
 }
 
+// Track trạng thái accordion đang mở
+if(!window._campAccOpen)window._campAccOpen={};
 window._campSaleToggle=function(id){
   var el=document.getElementById(id+'-list');
   var ch=document.getElementById(id+'-chevron');
@@ -2643,6 +2695,7 @@ window._campSaleToggle=function(id){
   var open=el.style.display==='block';
   el.style.display=open?'none':'block';
   if(ch)ch.style.transform=open?'':'rotate(180deg)';
+  window._campAccOpen[id]=!open; // lưu trạng thái
 };
 
 window._campOpenCreate=function(prefillName){
@@ -4705,6 +4758,7 @@ function validatePhone(phone,fieldName){
 
 async function saveDetail(customerId){
   showLoading(true);
+  var isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const note=document.getElementById('d-note')&&document.getElementById('d-note').value.trim();
   const result=document.getElementById('d-result')&&document.getElementById('d-result').value;
   const saleEl=document.getElementById('d-sale');
