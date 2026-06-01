@@ -4783,16 +4783,18 @@ async function deleteCustomer(id){
   try{
     // Xóa dữ liệu liên quan song song trước khi xóa khách
     var invIds=INVOICES.filter(function(i){return i.customer_id===id;}).map(function(i){return i.id;});
+    // Xóa tất cả bảng liên quan song song trước khi xóa khách
     var deleteJobs=[
       sb.from('call_logs').delete().eq('customer_id',id),
-      sb.from('invoices').delete().eq('customer_id',id)
+      sb.from('invoices').delete().eq('customer_id',id),
+      sb.from('potential_history').delete().eq('customer_id',id)
     ];
     // Xóa invoice_items nếu có invoice liên quan
     if(invIds.length>0){
       deleteJobs.push(sb.from('invoice_items').delete().in('invoice_id',invIds));
     }
     await Promise.all(deleteJobs);
-    // Xóa khách
+    // Xóa khách sau khi đã dọn sạch foreign keys
     var {error}=await sb.from('customers').delete().eq('id',id);
     if(error)throw error;
     // Cập nhật local state
