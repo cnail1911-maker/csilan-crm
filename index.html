@@ -4999,8 +4999,16 @@ async function saveDetail(customerId){
     } else if(page==='daily')renderDailyData();
     else render();
   }catch(e){
-    console.error('[saveDetail]',e);
-    showCrmToast('❌ Lỗi lưu khách hàng',e.message,'error');
+    console.error('[saveDetail] error:',e.message||e,'code:',e.code,'details:',e.details,'hint:',e.hint);
+    var msg=e.message||JSON.stringify(e);
+    // 400 thường do field không tồn tại trong bảng hoặc RLS
+    if(e.code==='42703'||msg.includes('column')){
+      showCrmToast('❌ Lỗi field không tồn tại',msg,'error');
+    } else if(e.code==='42501'||msg.includes('permission')||msg.includes('policy')){
+      showCrmToast('❌ Không có quyền cập nhật',msg,'error');
+    } else {
+      showCrmToast('❌ Lỗi lưu khách hàng',msg,'error');
+    }
   }
   showLoading(false);
 }
