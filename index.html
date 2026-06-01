@@ -3166,12 +3166,36 @@ async function savePhone(customerId, field){
     // Cập nhật local
     var idx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
     if(idx>=0)CUSTOMERS[idx][field]=val||null;
-    // Đóng edit modal, refresh detail modal tại chỗ (không đóng detail)
+    // Đóng edit modal, refresh detail modal tại chỗ với data mới
     document.getElementById('edit-phone-modal')&&document.getElementById('edit-phone-modal').remove();
     var dm=document.getElementById('detail-modal');
     if(dm){
-      var c=CUSTOMERS.find(function(x){return x.id===customerId;});
-      if(c)_renderDetailShell(dm,c,currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader'),[]);
+      var updC=CUSTOMERS.find(function(x){return x.id===customerId;});
+      var isMgr=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
+      if(updC){
+        _renderDetailShell(dm,updC,isMgr,[]);
+        showCrmToast('✅ Đã lưu số điện thoại','','success');
+        // Fetch logs background để cập nhật sidebar
+        sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)')
+          .eq('customer_id',customerId).order('called_at',{ascending:false}).limit(25)
+          .then(function(res){
+            var logs=res.data||[];
+            if(!logs.length)return;
+            var lc=document.getElementById('detail-log-container');
+            var lb=document.getElementById('detail-log-badge');
+            if(!lc)return;
+            var lh='<div style="max-height:320px;overflow-y:auto;padding-right:4px">';
+            logs.forEach(function(l){
+              var r2=l.call_result&&l.call_result!=='null'?'<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(108,92,231,0.2);color:var(--brand2);margin-right:5px">'+l.call_result+'</span>':'';
+              var n2=l.note&&l.note!=='null'&&l.note.trim()!==''?l.note.trim():'';
+              var line=r2+(n2||(!l.call_result?'<span style="color:var(--text3);font-style:italic">Thao tác</span>':''));
+              lh+='<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--brand);flex-shrink:0;margin-top:5px"></div><div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--text2)">'+line+'</div><div style="font-size:10px;color:var(--text3);margin-top:1px">'+((l.sale&&l.sale.full_name)||'—')+' · '+fmtDateTime(l.called_at)+'</div></div></div>';
+            });
+            lh+='</div>';
+            lc.innerHTML=lh;
+            if(lb)lb.textContent='('+logs.length+')';
+          }).catch(function(){});
+      }
     }
   }catch(e){
     showCrmToast('❌ Lỗi lưu số điện thoại',e.message,'error');
@@ -4831,10 +4855,10 @@ async function saveDetail(customerId){
   try{
     var {error:custErr}=await sb.from('customers').update(update).eq('id',customerId);
     if(custErr)throw custErr;
-    // Log activity song song với update local — không chặn UI
+    // Log activity background — không chặn UI
     var logPayload={customer_id:customerId,sale_id:currentUser.id,note:note||null,call_result:result||null,called_at:new Date().toISOString()};
     sb.from('call_logs').insert(logPayload).then(function(){}).catch(function(e){console.warn('[log]',e);});
-    // Cập nhật local CUSTOMERS ngay sau khi DB confirm thành công
+    // Cập nhật local CUSTOMERS
     const idx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
     if(idx>=0){
       Object.assign(CUSTOMERS[idx],update);
@@ -4843,17 +4867,37 @@ async function saveDetail(customerId){
         CUSTOMERS[idx].assigned_profile=prof?{id:prof.id,full_name:prof.full_name,role:prof.role}:null;
       }
     }
-    // Re-render detail modal tại chỗ với data mới — không đóng modal
-    var dm=document.getElementById('detail-modal');
+    // Re-render detail modal với data đã update — fetch logs background
     var updatedC=CUSTOMERS.find(function(c){return c.id===customerId;});
+    var dm=document.getElementById('detail-modal');
     if(dm&&updatedC){
       _renderDetailShell(dm,updatedC,isManager,[]);
       showCrmToast('✅ Đã lưu','Thông tin khách hàng đã cập nhật','success');
+      // Fetch logs để cập nhật sidebar (background, không chặn)
+      sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)')
+        .eq('customer_id',customerId).order('called_at',{ascending:false}).limit(25)
+        .then(function(res){
+          var logs=res.data||[];
+          if(!logs.length)return;
+          var lc=document.getElementById('detail-log-container');
+          var lb=document.getElementById('detail-log-badge');
+          if(!lc)return;
+          var lh='<div style="max-height:320px;overflow-y:auto;padding-right:4px">';
+          logs.forEach(function(l){
+            var res2=l.call_result&&l.call_result!=='null'?'<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(108,92,231,0.2);color:var(--brand2);margin-right:5px">'+l.call_result+'</span>':'';
+            var note2=l.note&&l.note!=='null'&&l.note.trim()!==''?l.note.trim():'';
+            var line=res2+(note2||(!l.call_result?'<span style="color:var(--text3);font-style:italic">Thao tác</span>':''));
+            lh+='<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--brand);flex-shrink:0;margin-top:5px"></div><div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--text2)">'+line+'</div><div style="font-size:10px;color:var(--text3);margin-top:1px">'+((l.sale&&l.sale.full_name)||'—')+' · '+fmtDateTime(l.called_at)+'</div></div></div>';
+          });
+          lh+='</div>';
+          lc.innerHTML=lh;
+          if(lb)lb.textContent='('+logs.length+')';
+        }).catch(function(){});
     } else {
       document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
       selId=null;
     }
-    // Cập nhật background UI (table, badges...)
+    // Cập nhật background table/badges
     if(page==='daily')renderDailyData();
     else render();
   }catch(e){
