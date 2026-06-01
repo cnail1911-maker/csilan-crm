@@ -4907,7 +4907,7 @@ async function saveDetail(customerId){
   var vCel2=rawCel2?validatePhone(rawCel2,'Cellphone 2'):undefined;
   if(vCel2===false){showLoading(false);return;}
   const update={
-    status:document.getElementById('d-status')&&document.getElementById('d-status').value||null,
+    status:document.getElementById('d-status')&&document.getElementById('d-status').value||'New', // NOT NULL — fallback 'New'
     sub_status:subStatus||null,
     lead_status:document.getElementById('d-leadstatus')&&document.getElementById('d-leadstatus').value||null,
     potential:document.getElementById('d-potential')&&document.getElementById('d-potential').value||null,
