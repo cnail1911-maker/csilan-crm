@@ -2570,30 +2570,6 @@ function _campSaleTable(custs,showDeadline,campKey){
     +'<tbody class="csf-tbody">'+_campSaleRows(custs,showDeadline)+'</tbody>'
     +'</table></div></div>';
 }
-  var today=new Date();today.setHours(0,0,0,0);
-
-  // Filter bar
-  var filterBar='<div style="display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center">'
-    +'<input class="camp-sale-search" placeholder="🔍 Tìm tên, mã KH..." oninput="this.closest(\'.panel\').querySelector(\'.camp-sale-tbody\').innerHTML=_campSaleRows(window._campSaleCusts[this.closest(\'.panel\').dataset.camp],this.value,\''+showDeadline+'\')" style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text);outline:none">'
-    +'<select class="camp-sale-filter-status" onchange="this.closest(\'.panel\').querySelector(\'.camp-sale-search\').dispatchEvent(new Event(\'input\'))" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
-    +'<option value="">Tất cả Status</option>'
-    +STATUS_OPTS.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'</option>';}).join('')
-    +'</select>'
-    +'<select class="camp-sale-filter-pot" onchange="this.closest(\'.panel\').querySelector(\'.camp-sale-search\').dispatchEvent(new Event(\'input\'))" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
-    +'<option value="">Tất cả Potential</option>'
-    +POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'" style="background:#1e1550">'+p+'</option>';}).join('')
-    +'</select>'
-    +'<span style="font-size:11px;color:var(--text3)">'+custs.length+' KH</span>'
-    +'</div>';
-
-  var rows=_campSaleRows(custs,'',showDeadline);
-  return filterBar
-    +'<div style="overflow-x:auto"><table style="width:100%;min-width:500px">'
-    +'<thead><tr style="font-size:10px;position:sticky;top:0;background:var(--bg2);z-index:1">'
-    +'<th>Mã KH</th><th>Business</th><th>Tên KH</th><th>Phone</th><th>Status</th><th>Sub Status</th><th>Potential</th>'
-    +(showDeadline?'<th>Deadline</th>':'')+'<th>Liên hệ</th></tr></thead>'
-    +'<tbody class="camp-sale-tbody">'+rows+'</tbody></table></div>';
-}
 
 window._campSaleFilter=function(key,wrap,sd){
   var custs=window._campSaleCusts&&window._campSaleCusts[key];
