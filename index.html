@@ -2460,12 +2460,12 @@ function renderCampaign(){
     +'</div>'
     // Slide panel for create
     // Slide panel for create
-    +'<div id="camp-slide-panel" style="display:none;position:fixed;top:0;right:0;bottom:0;width:min(860px,96vw);background:var(--bg2,#1a1240);border-left:1px solid var(--border);z-index:1000;overflow:hidden;box-shadow:-8px 0 30px rgba(0,0,0,0.4)">'
+    +'<div id="camp-slide-panel" style="display:none;position:fixed;top:0;right:0;bottom:0;width:min(860px,96vw);background:var(--bg2,#1a1240);border-left:1px solid var(--border);z-index:1000;overflow:hidden;box-shadow:-8px 0 30px rgba(0,0,0,0.4);display:flex;flex-direction:column">'
     +'<div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;height:52px;box-sizing:border-box">'
     +'<div class="camp-slide-title" style="font-size:15px;font-weight:700">Tạo Campaign mới</div>'
     +'<button onclick="document.getElementById(\'camp-slide-panel\').style.display=\'none\';document.getElementById(\'camp-slide-overlay\').style.display=\'none\'" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:4px 10px;font-size:14px">×</button>'
     +'</div>'
-    +'<div id="camp-slide-content" style="position:absolute;top:52px;left:0;right:0;bottom:0;overflow:hidden"></div>'
+    +'<div id="camp-slide-content" style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column"></div>'
     +'</div>'
     +'<div id="camp-slide-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999" onclick="document.getElementById(\'camp-slide-panel\').style.display=\'none\';document.getElementById(\'camp-slide-overlay\').style.display=\'none\'"></div>'
     // Detail modal
@@ -2676,8 +2676,8 @@ window._campOpenCreate=function(prefillName){
   var curCF=(window._campFilters&&window._campFilters['campaign'])||'all';
 
   content.innerHTML=''
-    // Wrapper dùng flex column, toàn bộ chiều cao
-    +'<div style="display:flex;flex-direction:column;height:100%;overflow:hidden">'
+    // Wrapper flex column - content đã là flex:1 nên không cần height:100%
+    +'<div style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">'
     // Body: 2 cột (left filter + right list)
     +'<div style="display:flex;flex-direction:row;flex:1;min-height:0;overflow:hidden" id="camp-create-grid">'
     // LEFT: Campaign info + filters - fixed width
@@ -2754,7 +2754,7 @@ window._campOpenCreate=function(prefillName){
 
   // Initialize selected set
   window._campCreateSelected=new Set();
-  panel.style.display='block';
+  panel.style.display='flex'; // flex để column layout hoạt động
   panel.style.position='fixed';
   if(overlay)overlay.style.display='block';
   // Reset selections on new open
