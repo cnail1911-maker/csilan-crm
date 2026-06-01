@@ -187,6 +187,8 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px}
 .kpi-bar-bg{background:rgba(255,255,255,0.07);border-radius:4px;height:5px;overflow:hidden;margin-top:6px}
 .kpi-bar-fill{height:5px;border-radius:4px;background:linear-gradient(90deg,var(--brand),var(--accent))}
+.camp-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;transition:border-color 0.15s,transform 0.1s}
+.camp-card:hover{border-color:rgba(108,92,231,0.4);transform:translateY(-1px)}
 .camp-header-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;margin-bottom:12px;box-sizing:border-box;width:100%}
 .camp-header-btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
@@ -1061,6 +1063,7 @@ body.ticker-on .app{margin-top:32px}
       <div class="nav-item" onclick="setPage('daily')" id="nav-daily"><i class="ti ti-calendar-stats"></i> Daily</div>
       <div class="nav-item" onclick="setPage('schedule')" id="nav-schedule"><i class="ti ti-calendar-event"></i> Lịch hẹn</div>
       <div class="nav-item" onclick="setPage('guide')" id="nav-guide"><i class="ti ti-book"></i> Hướng dẫn</div>
+      <div class="nav-item" onclick="setPage('system')" id="nav-system" style="display:none"><i class="ti ti-server"></i> System</div>
       <div class="nav-item" onclick="setPage('chat')" id="nav-chat"><i class="ti ti-messages"></i> Chat <span class="nav-badge" id="badge-chat" style="display:none">0</span></div>
       </div>
       <div class="user-area">
@@ -1234,6 +1237,8 @@ async function initApp(user){
   if(currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader')){
     var bb=document.getElementById('btn-broadcast');
     if(bb)bb.style.display='inline-flex';
+    var sysNav=document.getElementById('nav-system');
+    if(sysNav&&(currentProfile.role==='manager'||currentProfile.role==='admin'))sysNav.style.display='flex';
   }
 
   // ── TICKER ENGINE ──
@@ -1561,15 +1566,16 @@ function renderCustomers(){
   const campNames=[...new Set(CUSTOMERS.map(function(c){return c.campaign_name;}).filter(Boolean))].sort();
   // Sale only sees approved+assigned customers
   let data=CUSTOMERS.filter(function(c){
-    // Khách pending chỉ hiện ở tab Chờ duyệt, không hiện trong tab Khách hàng
     if(c.approval_status==='pending')return false;
     if(!isManager){
       const uid=currentUser&&currentUser.id;
       if(!uid)return false;
       const profId=currentProfile&&currentProfile.id;
-      const isAssigned=c.assigned_to===uid||c.assigned_to===profId;
       const isCreatedBy=c.created_by===uid||c.created_by===profId;
-      if(!isAssigned&&!isCreatedBy)return false;
+      const hasPotential=c.potential&&c.potential.trim();
+      const isAssigned=c.assigned_to===uid||c.assigned_to===profId;
+      // Sale thấy: KH tự thêm HOẶC KH có Potential được assign cho mình
+      if(!isCreatedBy&&!(hasPotential&&isAssigned))return false;
     }
     if(fStatus!=='all'&&c.status!==fStatus)return false;
     if(fLead!=='all'){if(fLead==='__none__'){if(c.lead_status&&c.lead_status.trim())return false;}else if(c.lead_status!==fLead)return false;}
@@ -1671,7 +1677,20 @@ function renderCustomers(){
 // ============================================================
 function renderPotential(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
-  const potData=CUSTOMERS.filter(function(c){return c.potential&&c.potential.trim()!==''&&(fSale==='all'||c.assigned_to===fSale)&&(fPotential==='all'||c.potential===fPotential);});
+  const uid=currentUser&&currentUser.id;
+  // KH có invoice hoặc báo giá (bất kỳ status)
+  const custWithInv=new Set(INVOICES.map(function(i){return i.customer_id;}));
+  const potData=CUSTOMERS.filter(function(c){
+    if(!custWithInv.has(c.id))return false;
+    if(c.approval_status==='pending')return false;
+    if(!isManager){
+      const profId=currentProfile&&currentProfile.id;
+      if(c.assigned_to!==uid&&c.assigned_to!==profId&&c.created_by!==uid&&c.created_by!==profId)return false;
+    }
+    if(fSale!=='all'&&c.assigned_to!==fSale)return false;
+    if(fPotential!=='all'&&c.potential!==fPotential)return false;
+    return true;
+  });
   const pageData=potData.slice((potPage-1)*PAGE_SIZE,potPage*PAGE_SIZE);
 
   let statsHtml='<div class="stat-card sc0" style="cursor:pointer;border:'+(fPotential==='all'?'2px solid var(--brand2)':'1px solid var(--border)')+'" onclick="fPotential=\'all\';potPage=1;render()"><div class="stat-label">Tổng tiềm năng</div><div class="stat-val" style="color:var(--brand2)">'+potData.length+'</div>'+(fPotential==='all'?'<div style="font-size:9px;color:var(--brand2)">▼ Tất cả</div>':'')+'</div>';
@@ -1708,12 +1727,12 @@ function renderPotential(){
       +'</tr>';
   });
 
-  return '<div class="topbar"><div class="topbar-title">Khách tiềm năng</div>'
-    +'<div style="font-size:12px;color:var(--text2)">Khách đã chọn Potential — không bị thu hồi</div>'+saleFilter+'</div>'
+  return '<div class="topbar"><div class="topbar-title">Tiềm năng</div>'
+    +'<div style="font-size:12px;color:var(--text2)">Khách đã tạo Invoice / Báo giá</div>'+saleFilter+'</div>'
     +'<div class="stats-row stats-row-compact" style="grid-template-columns:repeat('+visiblePotCards+',1fr)">'+statsHtml+'</div>'
     +'<div class="content">'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+potData.length+'</span> khách tiềm năng</h2></div>'
-    +(potData.length===0?'<div class="empty-state"><i class="ti ti-star"></i>Chưa có khách tiềm năng</div>'
+    +(potData.length===0?'<div class="empty-state"><i class="ti ti-star"></i>Chưa có khách nào có invoice</div>'
       :'<table><colgroup><col width="85"><col width="130"><col width="120"><col width="100"><col width="80"><col width="120"><col width="80"><col width="80"><col width="65"><col width="65"></colgroup>'
       +'<thead><tr><th>Mã KH</th><th>Business Name</th><th>Customer</th><th>Phone</th><th>State</th><th>Potential</th><th>Từ ngày</th><th>Ngày quá hạn</th><th>Lead Status</th><th>Sale</th></tr></thead>'
       +'<tbody>'+rows+'</tbody></table>'
@@ -2273,197 +2292,364 @@ async function recallOver30(){
 // RENDER CAMPAIGN
 // ============================================================
 function renderCampaign(){
-  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
-  const isCampManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
-  const campaigns={};
-  CUSTOMERS.forEach(function(c){
-    const name=c.campaign_name||'Không có campaign';
-    if(!campaigns[name])campaigns[name]={name:name,total:0,followup:0,closedeal:0};
-    campaigns[name].total++;
-    if(c.status==='Follow Up')campaigns[name].followup++;
-    if(c.lead_status==='Closedeal')campaigns[name].closedeal++;
-  });
-  const campList=Object.values(campaigns).filter(function(c){return c.name!=='Không có campaign';}).sort(function(a,b){return b.total-a.total;});
-  let campCards='';
-  campList.forEach(function(camp){
-    const pct=camp.total?Math.round(camp.closedeal/camp.total*100):0;
-    campCards+='<div class="kpi-card">'
-      +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">'+camp.name+'</div>'
-      +'<div style="display:flex;gap:12px;margin-bottom:8px">'
-      +'<div style="text-align:center"><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:700;color:var(--brand2)">'+camp.total+'</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase">Total</div></div>'
-      +'<div style="text-align:center"><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:700;color:var(--accent)">'+camp.followup+'</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase">Follow</div></div>'
-      +'<div style="text-align:center"><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:700;color:var(--accent2)">'+camp.closedeal+'</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase">Closedeal</div></div>'
-      +'<div style="text-align:center"><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:700;color:var(--warn)">'+pct+'%</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase">Tỉ lệ</div></div>'
-      +'</div>'
-      +'<div class="kpi-bar-bg"><div class="kpi-bar-fill" style="width:'+pct+'%"></div></div>'
-      +'</div>';
-  });
-  let assignForm='';
-  if(isCampManager){
-    const salesOptions=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){
-      return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text);cursor:pointer;padding:4px 10px;border:1px solid var(--border);border-radius:20px;white-space:nowrap"><input type="checkbox" value="'+p.id+'" style="accent-color:var(--brand)"> '+p.full_name+'</label>';
-    }).join('');
-    const states=[...new Set(CUSTOMERS.map(function(c){return c.state;}).filter(Boolean))].sort();
-    const campNames=[...new Set(CUSTOMERS.map(function(c){return c.campaign_name;}).filter(Boolean))].sort();
-    function fOpts(arr,id,label){
-      var fkey=id.replace('cf-','');
-      var cur=(window._campFilters&&window._campFilters[fkey])||'all';
-      var extraOpts='';
-      if(id==='cf-potential'){
-        extraOpts='<option value="__none__"'+(cur==='__none__'?' selected':'')+'>Chưa có Potential</option>';
-      }
-      return '<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">'+label+'</div>'
-        +'<select id="'+id+'" onchange="campSyncFilters();window._campPg=1;campPreview();render()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'
-        +'<option value="all"'+(cur==='all'?' selected':'')+'>Tất cả</option>'
-        +extraOpts
-        +arr.map(function(v){return '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+v+'</option>';}).join('')
-        +'</select></div>';
-    }
-    assignForm='<div class="panel" style="margin-bottom:14px;overflow:hidden"><div class="panel-header"><h2>Tạo Campaign mới</h2></div>'
-      +'<div style="padding:14px;overflow-x:hidden">'
-      +'<div class="camp-header-grid">'
-        +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Tên Campaign</div>'
-        +'<input id="camp-name" placeholder="2026_Campaign_T06" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"></div>'
-        +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Deadline</div>'
-        +'<input type="date" id="camp-deadline" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"></div>'
-        +'<div class="camp-header-btns">'
-        +'<button class="btn btn-primary" onclick="createCampaign()" style="white-space:nowrap"><i class="ti ti-speakerphone"></i> Tạo Campaign</button>'
-        +'<div style="position:relative;display:inline-block">'
-        +'<button class="btn" onclick="toggleAddToCampDropdown(this)" style="white-space:nowrap;border-color:rgba(162,155,254,0.4);color:var(--brand2)"><i class="ti ti-folder-plus"></i> Thêm vào Campaign <i class="ti ti-chevron-down" style="font-size:10px"></i></button>'
-        +'</div></div>'
-      +'</div>'
-      +'<div style="margin-bottom:14px"><div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Assign Sale (chọn nhiều)</div>'
-        +'<div id="camp-sales" style="display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:120px;overflow-y:auto">'
-        +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);cursor:pointer;padding:4px 10px;border:1px solid var(--border);border-radius:20px;white-space:nowrap"><input type="checkbox" id="camp-sale-all" onchange="toggleAllSales(this)" style="accent-color:var(--brand)"> Tất cả sale (chia đều)</label>'
-        +salesOptions
-        +'</div></div>'
-      +'<div style="background:var(--surface2,var(--surface));border:1px solid var(--border);border-radius:10px;padding:12px">'
-      +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">🔽 Bộ lọc data</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">'
-        +fOpts(states,'cf-state','State')
-        +fOpts(STATUS_OPTS,'cf-status','Status')
-        +fOpts(SUBSTATUS_OPTS,'cf-substatus','Sub Status')
-        +fOpts(LEAD_OPTS,'cf-leadstatus','Lead Status')
-      +'</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">'
-        +fOpts(BRAND_OPTS,'cf-brand','Brand')
-        +fOpts(POTENTIAL_OPTS,'cf-potential','Potential')
-        +fOpts(TIMES_OPTS,'cf-timeuse','Time of Use')
-        +fOpts(REASON_OPTS,'cf-reason','Reason')
-      +'</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">'
-        +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Thuộc chiến dịch</div>'
-        +(function(){var cur=(window._campFilters&&window._campFilters['campaign'])||'all';
-          return '<select id="cf-campaign" onchange="campSyncFilters();window._campPg=1;campPreview();render()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none" class="fsel">'
-            +'<option value="all"'+(cur==='all'?' selected':'')+'>Tất cả</option>'
-            +'<option value="none"'+(cur==='none'?' selected':'')+'>Chưa thuộc chiến dịch nào</option>'
-            +campNames.map(function(n){return '<option value="'+n+'"'+(cur===n?' selected':'')+'>'+n+'</option>';}).join('')
-            +'</select>';})()
-        +'</select></div>'
-        +'<div style="display:flex;align-items:end;padding-bottom:2px">'
-        +'<button class="btn" onclick="campResetFilters()" style="font-size:11px;width:100%"><i class="ti ti-refresh"></i> Reset bộ lọc</button>'
-        +'</div>'
-        +'<div id="camp-preview-count" style="display:flex;align-items:end;padding-bottom:2px;font-size:13px;color:var(--accent2);font-weight:700"></div>'
-      +'</div>'
-      +'</div>'
-      +'</div></div>';
-  }
-  // Build customer list panel (manager only)
-  let campListPanel='';
-  if(isManager){
-    const fData=campGetFiltered();
-    const selectedIds=window._campSelected||new Set();
-    const overdueDays=parseInt(document.getElementById&&document.getElementById('cf-overdue')&&document.getElementById('cf-overdue').value||'0')||0;
-    const today=new Date();today.setHours(0,0,0,0);
-    // Build sale list từ fData (sale đang có trong kết quả filter)
-    const saleMapCamp={};
-    fData.forEach(function(c){
-      if(c.assigned_to&&c.assigned_profile)saleMapCamp[c.assigned_to]=c.assigned_profile.full_name;
-    });
-    const campSaleFilter=window._campSaleFilter||'all';
-    let displayData=fData;
-    if(overdueDays>0){
-      displayData=displayData.filter(function(c){
-        if(!c.assigned_deadline)return false;
-        const dl=new Date(c.assigned_deadline);dl.setHours(0,0,0,0);
-        return Math.floor((today-dl)/(86400000))>=overdueDays;
-      });
-    }
-    if(campSaleFilter!=='all'){
-      if(campSaleFilter==='__unassigned__'){
-        displayData=displayData.filter(function(c){return !c.assigned_to;});
-      } else {
-        displayData=displayData.filter(function(c){return c.assigned_to===campSaleFilter;});
-      }
-    }
-    const PAGE_CAMP=20;
-    const campPg=window._campPg||1;
-    const paginated=displayData.slice((campPg-1)*PAGE_CAMP,campPg*PAGE_CAMP);
-    let custRows='';
-    paginated.forEach(function(c){
-      const checked=selectedIds.has(c.id);
-      const dl=c.assigned_deadline?new Date(c.assigned_deadline):null;
-      const daysLeft=dl?Math.floor((dl-today)/86400000):null;
-      const dlBadge=daysLeft===null?'—':daysLeft<0?'<span class="badge b-lost">Hết '+Math.abs(daysLeft)+'d</span>':daysLeft===0?'<span class="badge b-lost">Hôm nay</span>':'<span class="badge b-followup">'+daysLeft+'d</span>';
-      custRows+='<tr>'
-        +'<td><input type="checkbox" '+(checked?'checked':'')+'  onchange="window._campToggle('+c.id+',this.checked)" style="accent-color:var(--brand)"></td>'
-        +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(c.ma_kh||'—')+'</td>'
-        +'<td style="color:var(--text)">'+(c.business_name||'—')+'</td>'
-        +'<td>'+(c.customer_name||'—')+'</td>'
-        +'<td style="font-size:11px">'+(c.potential||'—')+'</td>'
-        +'<td style="font-size:11px">'+(c.campaign_name||'—')+'</td>'
-        +'<td>'+dlBadge+'</td>'
-        +'<td style="font-size:11px;color:var(--text2)">'+((c.assigned_profile&&c.assigned_profile.full_name)?c.assigned_profile.full_name.split(' ').pop():'Not Assign')+'</td>'
-        +'<td>'+(isCampManager?'<button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="campRecallOne('+c.id+')">Thu hồi</button>':'')+'</td>'
-        +'</tr>';
-    });
-    const totalPages=Math.ceil(displayData.length/PAGE_CAMP);
-    let pgHtml='';
-    if(totalPages>1){
-      pgHtml='<div style="display:flex;gap:6px;justify-content:center;padding:10px">';
-      for(let i=1;i<=Math.min(totalPages,10);i++){
-        pgHtml+='<button class="btn" style="padding:3px 8px;font-size:11px'+(i===campPg?';background:var(--brand);color:#fff':'')+'" onclick="window._campPg='+i+';render()">'+i+'</button>';
-      }
-      pgHtml+='</div>';
-    }
-    campListPanel='<div class="panel" style="margin-top:14px"><div class="panel-header"><h2>Danh sách khách theo bộ lọc <span style="color:var(--accent2)">'+displayData.length+'</span></h2>'
-      +'<div id="camp-action-bar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-      +'<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Quá hạn ≥</div>'
-      +'<input type="number" id="cf-overdue" value="'+(overdueDays||'')+'" min="0" placeholder="Số ngày" onchange="window._campPg=1;render()" style="width:80px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;color:var(--text);outline:none">'
-      +'<div style="font-size:10px;color:var(--text3)">ngày</div>'
-      +'<button class="btn" style="font-size:11px;padding:4px 10px" onclick="window._campPg=1;document.getElementById(&apos;cf-overdue&apos;).value=0;render()">Reset</button>'
-      +'<div style="width:1px;height:20px;background:var(--border);margin:0 2px"></div>'
-      +'<select style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--text);outline:none" onchange="window._campSaleFilter=this.value;window._campPg=1;window._campSelected=new Set();render()">'
-      +'<option value="all"'+(campSaleFilter==='all'?' selected':'')+' style="color:#fff;background:#1e1e2e">Tất cả Sale</option>'
-      +'<option value="__unassigned__"'+(campSaleFilter==='__unassigned__'?' selected':'')+' style="color:#fff;background:#1e1e2e">Chưa thuộc sale nào</option>'
-      +Object.keys(saleMapCamp).map(function(sid){return '<option value="'+sid+'"'+(campSaleFilter===sid?' selected':'')+' style="color:#fff;background:#1e1e2e">'+saleMapCamp[sid]+'</option>';}).join('')
-      +'</select>'
-      +'<button class="btn" style="font-size:11px;padding:4px 10px" onclick="window._campSelected=new Set();render()"><i class="ti ti-square"></i> Bỏ chọn tất cả</button>'
-      +(isCampManager
-        ?'<button class="btn btn-primary" style="font-size:11px;padding:4px 10px" onclick="campAssignSelected()"><i class="ti ti-user-check"></i> Assign đã chọn</button>'
-        +'<div style="display:inline-flex">'
-        +'<button class="btn" style="font-size:11px;padding:4px 10px;border-color:rgba(255,118,117,0.4);color:var(--danger);border-right:none;border-radius:9px 0 0 9px" onclick="campRecallSelected()"><i class="ti ti-rotate-clockwise"></i> Thu hồi</button>'
-        +'<button class="btn" style="font-size:11px;padding:4px 7px;border-color:rgba(255,118,117,0.4);color:var(--danger);border-radius:0 9px 9px 0;position:relative" onclick="campRecallDropdown(this)" title="Tùy chọn thu hồi"><i class="ti ti-chevron-down"></i></button>'
-        +'</div>'
-        :'')
-      +'</div></div>'
-      +(displayData.length===0?'<div class="empty-state"><i class="ti ti-users"></i>Không có khách nào khớp</div>'
-        :'<div class="camp-table-wrap"><table class="camp-table"><colgroup><col width="30"><col width="90"><col width="130"><col width="110"><col width="90"><col width="100"><col width="80"><col width="70"><col width="80"></colgroup>'
-        +'<thead><tr><th><input type="checkbox" onchange="window._campSelectAll(this.checked)" style="accent-color:var(--brand)"></th>'
-        +'<th>Mã KH</th><th>Business</th><th>Customer</th><th>Potential</th><th>Campaign</th><th>Deadline</th><th>Sale</th><th></th></tr></thead>'
-        +'<tbody>'+custRows+'</tbody></table></div>'+pgHtml)
-      +'</div>';
+  const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  const isLeader=currentProfile&&currentProfile.role==='leader';
+  const isMgrOrLeader=isManager||isLeader;
+  const uid=currentUser&&currentUser.id;
+  const profId=currentProfile&&currentProfile.id;
+
+  // ── SALE/LEADER VIEW ──
+  if(!isManager){
+    return renderCampaignSale(uid,profId,isLeader);
   }
 
-  return '<div class="topbar"><div class="topbar-title">Campaign</div></div>'
+  // ── MANAGER VIEW ──
+  // Build campaign stats from CUSTOMERS
+  const campStats={};
+  CUSTOMERS.forEach(function(c){
+    const name=c.campaign_name;
+    if(!name||name==='__active_pool__')return;
+    if(!campStats[name])campStats[name]={
+      name,total:0,called:0,potential:0,followup:0,closedeal:0,
+      lost:0,rev:0,estRev:0,expired:0,
+      byDate:c.assigned_deadline||'',saleSet:new Set()
+    };
+    var s=campStats[name];
+    s.total++;
+    if(c.assigned_to)s.saleSet.add(c.assigned_to);
+    if(c.status==='Follow Up')s.followup++;
+    if(c.lead_status==='Closedeal')s.closedeal++;
+    if(c.lead_status==='Lost')s.lost++;
+    if(c.potential&&c.potential.trim())s.potential++;
+    // Called = has call logs (approximate via last_contacted)
+    if(c.last_contacted)s.called++;
+    // Expired
+    if(c.assigned_deadline){
+      var dl=new Date(c.assigned_deadline);
+      if(dl<new Date())s.expired++;
+    }
+  });
+  // Add revenue from invoices
+  INVOICES.forEach(function(inv){
+    if(inv.type!=='invoice')return;
+    var cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;});
+    if(!cust||!cust.campaign_name||cust.campaign_name==='__active_pool__')return;
+    var s=campStats[cust.campaign_name];
+    if(!s)return;
+    if(inv.approval_status==='approved')s.rev+=(inv.total||0);
+    else if(inv.approval_status==='pending')s.estRev+=(inv.total||0);
+  });
+
+  const campList=Object.values(campStats).sort(function(a,b){
+    return (b.byDate||'').localeCompare(a.byDate||'');
+  });
+
+  // Active Pool stats
+  const activePool=CUSTOMERS.filter(function(c){
+    return c.campaign_name==='__active_pool__'||(!c.campaign_name&&c.potential&&c.potential.trim());
+  });
+
+  // Campaign cards HTML
+  const campCards=campList.map(function(s){
+    const contactPct=s.total?Math.round(s.called/s.total*100):0;
+    const potPct=s.total?Math.round(s.potential/s.total*100):0;
+    const convPct=s.total?Math.round(s.closedeal/s.total*100):0;
+    const saleCount=s.saleSet.size;
+    return '<div class="camp-card" onclick="window._campShowDetail(\''+encodeURIComponent(s.name)+'\')">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3">'+s.name+'</div>'
+      +(s.expired>0?'<span style="background:rgba(255,118,117,0.15);color:var(--danger);font-size:10px;padding:2px 7px;border-radius:20px;flex-shrink:0;margin-left:6px">'+s.expired+' hết hạn</span>':'')
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">'
+      +'<div style="text-align:center"><div style="font-size:18px;font-weight:700;color:var(--brand2)">'+s.total+'</div><div style="font-size:9px;color:var(--text3)">Data</div></div>'
+      +'<div style="text-align:center"><div style="font-size:18px;font-weight:700;color:var(--accent)">'+s.potential+'</div><div style="font-size:9px;color:var(--text3)">Potential</div></div>'
+      +'<div style="text-align:center"><div style="font-size:18px;font-weight:700;color:var(--accent2)">'+s.closedeal+'</div><div style="font-size:9px;color:var(--text3)">Orders</div></div>'
+      +'<div style="text-align:center"><div style="font-size:18px;font-weight:700;color:var(--warn)">'+saleCount+'</div><div style="font-size:9px;color:var(--text3)">Sale</div></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;font-size:11px;color:var(--text3);margin-bottom:8px;flex-wrap:wrap">'
+      +(s.rev?'<span style="color:var(--accent2)">Rev: $'+s.rev.toLocaleString()+'</span>':'')
+      +(s.estRev?'<span style="color:var(--warn)">Est: $'+s.estRev.toLocaleString()+'</span>':'')
+      +'<span>Contact: '+contactPct+'%</span>'
+      +'<span>Pot: '+potPct+'%</span>'
+      +'</div>'
+      +'<div style="background:rgba(255,255,255,0.06);border-radius:4px;height:4px;overflow:hidden">'
+      +'<div style="width:'+convPct+'%;background:linear-gradient(90deg,var(--brand),var(--accent2));height:4px;border-radius:4px"></div>'
+      +'</div>'
+      +'<div style="font-size:10px;color:var(--text3);text-align:right;margin-top:3px">'+convPct+'% conversion</div>'
+      +'</div>';
+  }).join('');
+
+  return '<div class="topbar"><div class="topbar-title">Campaign</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-primary" onclick="window._campOpenCreate()" style="font-size:12px"><i class="ti ti-plus"></i> Tạo Campaign</button>'
+    +'</div></div>'
     +'<div class="content">'
-    +assignForm
-    +campListPanel
-    +'<div class="kpi-grid">'+campCards+'</div>'
+    // Active Pool
+    +'<div class="panel" style="margin-bottom:14px;cursor:pointer" onclick="window._campShowDetail(\'__active_pool__\')">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between">'
+    +'<div style="display:flex;align-items:center;gap:10px">'
+    +'<div style="width:36px;height:36px;border-radius:10px;background:rgba(0,184,148,0.15);display:flex;align-items:center;justify-content:center;font-size:18px">🌱</div>'
+    +'<div><div style="font-size:14px;font-weight:700;color:var(--text)">Active Pool</div>'
+    +'<div style="font-size:11px;color:var(--text3)">KH Potential giữ lại — không expire</div></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:16px;align-items:center">'
+    +'<div style="text-align:center"><div style="font-size:22px;font-weight:700;color:var(--accent2)">'+activePool.length+'</div><div style="font-size:10px;color:var(--text3)">KH</div></div>'
+    +'<i class="ti ti-chevron-right" style="font-size:18px;color:var(--text3)"></i>'
+    +'</div></div></div>'
+    // Campaign cards grid
+    +(campList.length===0?'<div class="empty-state"><i class="ti ti-speakerphone"></i>Chưa có campaign nào</div>'
+      :'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">'+campCards+'</div>')
+    +'</div>'
+    // Slide panel for create
+    +'<div id="camp-slide-panel" style="display:none;position:fixed;top:0;right:0;bottom:0;width:420px;max-width:100vw;background:var(--bg2,#1a1240);border-left:1px solid var(--border);z-index:1000;overflow-y:auto;box-shadow:-8px 0 30px rgba(0,0,0,0.4)">'
+    +'<div style="padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg2,#1a1240);z-index:1">'
+    +'<div style="font-size:15px;font-weight:700">Tạo Campaign mới</div>'
+    +'<button onclick="document.getElementById(\'camp-slide-panel\').style.display=\'none\'" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:4px 10px;font-size:14px">×</button>'
+    +'</div>'
+    +'<div id="camp-slide-content" style="padding:16px"></div>'
+    +'</div>'
+    +'<div id="camp-slide-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999" onclick="document.getElementById(\'camp-slide-panel\').style.display=\'none\';document.getElementById(\'camp-slide-overlay\').style.display=\'none\'"></div>'
+    // Detail modal
+    +'<div id="camp-detail-modal" style="display:none;position:fixed;inset:0;z-index:1001;background:rgba(0,0,0,0.6);overflow-y:auto">'
+    +'<div onclick="event.stopPropagation()" id="camp-detail-box" style="background:var(--bg2,#1a1240);border-radius:16px;width:96vw;max-width:900px;margin:20px auto;padding:0;border:1px solid var(--border)"></div>'
     +'</div>';
 }
 
-// Store filter state persistently
+}
+
+// ── Campaign Sale View ──
+function renderCampaignSale(uid,profId,isLeader){
+  var myCampaigns={};
+  var activePool=[];
+  CUSTOMERS.forEach(function(c){
+    if(c.approval_status==='pending')return;
+    var isMe=c.assigned_to===uid||c.assigned_to===profId;
+    if(!isMe)return;
+    if(!c.campaign_name&&c.potential&&c.potential.trim()){activePool.push(c);return;}
+    if(!c.campaign_name)return;
+    if(!myCampaigns[c.campaign_name])myCampaigns[c.campaign_name]={name:c.campaign_name,custs:[],deadline:c.assigned_deadline||''};
+    myCampaigns[c.campaign_name].custs.push(c);
+  });
+  var campList=Object.values(myCampaigns).sort(function(a,b){return (b.deadline||'').localeCompare(a.deadline||'');});
+  var today=new Date();today.setHours(0,0,0,0);
+  var poolHtml='';
+  if(activePool.length){
+    poolHtml='<div class="panel" style="margin-bottom:14px;border-left:3px solid var(--accent2)">'
+      +'<div class="panel-header" style="cursor:pointer" onclick="window._campSaleToggle(\'pool\')">'
+      +'<h2>🌱 Active Pool <span style="color:var(--accent2)">'+activePool.length+'</span></h2>'
+      +'<i class="ti ti-chevron-down" id="pool-chevron"></i></div>'
+      +'<div id="pool-list" style="display:none">'+_campSaleTable(activePool,false)+'</div></div>';
+  }
+  var campSections=campList.map(function(camp){
+    var total=camp.custs.length;
+    var called=camp.custs.filter(function(c){return c.last_contacted;}).length;
+    var potential=camp.custs.filter(function(c){return c.potential&&c.potential.trim();}).length;
+    var dl=camp.deadline?new Date(camp.deadline):null;if(dl)dl.setHours(0,0,0,0);
+    var daysLeft=dl?Math.ceil((dl-today)/86400000):null;
+    var dlColor=daysLeft===null?'var(--text3)':daysLeft<0?'var(--danger)':daysLeft<=3?'var(--warn)':'var(--accent2)';
+    var id='camp_'+camp.name.replace(/[^a-zA-Z0-9]/g,'_');
+    return '<div class="panel" style="margin-bottom:14px">'
+      +'<div class="panel-header" style="cursor:pointer" onclick="window._campSaleToggle(\''+id+'\')">'
+      +'<div><h2>'+camp.name+'</h2>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+total+' KH · Called: '+called+' · Potential: '+potential
+      +(daysLeft!==null?'<span style="margin-left:8px;color:'+dlColor+'">'+(daysLeft<0?'Hết hạn '+Math.abs(daysLeft)+'d':daysLeft===0?'Hôm nay':daysLeft+'d còn')+'</span>':'')+'</div></div>'
+      +'<i class="ti ti-chevron-down" id="'+id+'-chevron"></i></div>'
+      +'<div id="'+id+'-list" style="display:none">'+_campSaleTable(camp.custs,true)+'</div></div>';
+  }).join('');
+  return '<div class="topbar"><div class="topbar-title">Campaign</div></div>'
+    +'<div class="content">'+(poolHtml||'')
+    +(campSections||'<div class="empty-state"><i class="ti ti-speakerphone"></i>Chưa có data được phân</div>')
+    +'</div>';
+}
+
+function _campSaleTable(custs,showDeadline){
+  if(!custs.length)return '<div class="empty-state" style="padding:20px"><i class="ti ti-users"></i>Không có khách</div>';
+  var today=new Date();today.setHours(0,0,0,0);
+  var rows=custs.map(function(c){
+    var dl=c.assigned_deadline?new Date(c.assigned_deadline):null;if(dl)dl.setHours(0,0,0,0);
+    var daysLeft=dl?Math.ceil((dl-today)/86400000):null;
+    var dlBadge=daysLeft===null?'—':daysLeft<0?'<span class="badge b-lost">'+Math.abs(daysLeft)+'d</span>':daysLeft===0?'<span class="badge b-lost">Hôm nay</span>':'<span class="badge b-followup">'+daysLeft+'d</span>';
+    return '<tr onclick="renderDetailModal('+c.id+')" style="cursor:pointer">'
+      +'<td style="font-size:10px;color:var(--text3)">'+(c.ma_kh||'—')+'</td>'
+      +'<td>'+(c.business_name||c.customer_name||'—')+'</td>'
+      +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone||'—')+'</td>'
+      +'<td>'+sBadge(c.status)+'</td>'
+      +'<td style="font-size:11px;color:var(--accent)">'+(c.potential||'—')+'</td>'
+      +(showDeadline?'<td>'+dlBadge+'</td>':'')+'</tr>';
+  }).join('');
+  return '<div style="overflow-x:auto"><table style="width:100%;min-width:400px">'
+    +'<thead><tr><th>Mã KH</th><th>Business</th><th>Phone</th><th>Status</th><th>Potential</th>'+(showDeadline?'<th>Deadline</th>':'')+'</tr></thead>'
+    +'<tbody>'+rows+'</tbody></table></div>';
+}
+
+window._campSaleToggle=function(id){
+  var el=document.getElementById(id+'-list');
+  var ch=document.getElementById(id+'-chevron');
+  if(!el)return;
+  var open=el.style.display==='block';
+  el.style.display=open?'none':'block';
+  if(ch)ch.style.transform=open?'':'rotate(180deg)';
+};
+
+window._campOpenCreate=function(){
+  var panel=document.getElementById('camp-slide-panel');
+  var overlay=document.getElementById('camp-slide-overlay');
+  var content=document.getElementById('camp-slide-content');
+  if(!panel||!content)return;
+  var states=[...new Set(CUSTOMERS.map(function(c){return c.state;}).filter(Boolean))].sort();
+  var campNames=[...new Set(CUSTOMERS.map(function(c){return c.campaign_name;}).filter(Boolean))].sort();
+  var salesOptions=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){
+    return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text);cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:20px;white-space:nowrap;flex-shrink:0"><input type="checkbox" value="'+p.id+'" style="accent-color:var(--brand)"> '+p.full_name.split(' ').pop()+'</label>';
+  }).join('');
+  function fO(arr,id,lbl){
+    var cur=(window._campFilters&&window._campFilters[id.replace('cf-','')])||'all';
+    var ex=id==='cf-potential'?'<option value="__none__"'+(cur==='__none__'?' selected':'')+'>Chưa có Potential</option>':'';
+    return '<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px;text-transform:uppercase">'+lbl+'</div>'
+      +'<select id="'+id+'" onchange="campSyncFilters();window._campPg=1;campPreview()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:11px;color:var(--text);outline:none" class="fsel">'
+      +'<option value="all"'+(cur==='all'?' selected':'')+'>Tất cả</option>'+ex
+      +arr.map(function(v){return '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+v+'</option>';}).join('')+'</select></div>';
+  }
+  var curCF=(window._campFilters&&window._campFilters['campaign'])||'all';
+  content.innerHTML='<div style="display:flex;flex-direction:column;gap:12px">'
+    +'<div><label style="font-size:10px;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Tên Campaign</label>'
+    +'<input id="camp-name" placeholder="2026_Campaign_T06" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box"></div>'
+    +'<div><label style="font-size:10px;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Deadline</label>'
+    +'<input type="date" id="camp-deadline" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box"></div>'
+    +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase">Assign Sale</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:120px;overflow-y:auto">'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:20px;flex-shrink:0"><input type="checkbox" id="camp-sale-all" onchange="toggleAllSales(this)" style="accent-color:var(--brand)"> Chia đều</label>'
+    +salesOptions+'</div></div>'
+    +'<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px">'
+    +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Bộ lọc data</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+    +fO(states,'cf-state','State')+fO(STATUS_OPTS,'cf-status','Status')
+    +fO(SUBSTATUS_OPTS,'cf-substatus','Sub Status')+fO(LEAD_OPTS,'cf-leadstatus','Lead Status')
+    +'</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+    +fO(BRAND_OPTS,'cf-brand','Brand')+fO(POTENTIAL_OPTS,'cf-potential','Potential')
+    +fO(TIMES_OPTS,'cf-timeuse','Time of Use')+fO(REASON_OPTS,'cf-reason','Reason')
+    +'</div>'
+    +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px;text-transform:uppercase">Thuộc chiến dịch</div>'
+    +'<select id="cf-campaign" onchange="campSyncFilters();window._campPg=1;campPreview()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:11px;color:var(--text);outline:none" class="fsel">'
+    +'<option value="all"'+(curCF==='all'?' selected':'')+'>Tất cả</option>'
+    +'<option value="none"'+(curCF==='none'?' selected':'')+'>Chưa thuộc chiến dịch nào</option>'
+    +campNames.map(function(n){return '<option value="'+n+'"'+(curCF===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select></div>'
+    +'<div style="display:flex;gap:8px;margin-top:8px;align-items:center">'
+    +'<button class="btn" onclick="campResetFilters()" style="font-size:11px"><i class="ti ti-refresh"></i> Reset</button>'
+    +'<div id="camp-preview-count" style="font-size:13px;color:var(--accent2);font-weight:700"></div>'
+    +'</div></div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-primary" onclick="createCampaign()" style="flex:1"><i class="ti ti-speakerphone"></i> Tạo Campaign</button>'
+    +'<div style="position:relative"><button class="btn" onclick="toggleAddToCampDropdown(this)" style="border-color:rgba(162,155,254,0.4);color:var(--brand2)"><i class="ti ti-folder-plus"></i> Thêm vào <i class="ti ti-chevron-down" style="font-size:10px"></i></button></div>'
+    +'</div></div>';
+  panel.style.display='block';
+  if(overlay)overlay.style.display='block';
+  campPreview();
+};
+
+window._campShowDetail=function(campName){
+  var modal=document.getElementById('camp-detail-modal');
+  var box=document.getElementById('camp-detail-box');
+  if(!modal||!box)return;
+  modal.style.display='block';
+  box.innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)"><i class="ti ti-loader" style="animation:spin 1s linear infinite;font-size:24px"></i></div>';
+  modal.onclick=function(e){if(e.target===modal)modal.style.display='none';};
+  var isPool=campName==='__active_pool__';
+  var decoded=decodeURIComponent(campName);
+  var custs=isPool
+    ?CUSTOMERS.filter(function(c){return !c.campaign_name&&c.potential&&c.potential.trim();})
+    :CUSTOMERS.filter(function(c){return c.campaign_name===decoded;});
+  var custIds=new Set(custs.map(function(c){return c.id;}));
+  var myInvs=INVOICES.filter(function(i){return custIds.has(i.customer_id);});
+  var invMap={};myInvs.forEach(function(i){
+    if(!invMap[i.customer_id]||new Date(i.created_at)>new Date(invMap[i.customer_id].created_at))invMap[i.customer_id]=i;
+  });
+  var today=new Date();today.setHours(0,0,0,0);
+  var total=custs.length;
+  var called=custs.filter(function(c){return c.last_contacted;}).length;
+  var potential=custs.filter(function(c){return c.potential&&c.potential.trim();}).length;
+  var invVals=Object.values(invMap);
+  var orders=invVals.filter(function(i){return i.approval_status==='approved';}).length;
+  var rev=invVals.filter(function(i){return i.approval_status==='approved';}).reduce(function(s,i){return s+(i.total||0);},0);
+  var estOrd=invVals.filter(function(i){return i.approval_status==='pending';}).length;
+  var estRev=invVals.filter(function(i){return i.approval_status==='pending';}).reduce(function(s,i){return s+(i.total||0);},0);
+  var bySale={};
+  custs.forEach(function(c){
+    var sid=c.assigned_to;if(!sid)return;
+    if(!bySale[sid]){var p=PROFILES.find(function(x){return x.id===sid;});bySale[sid]={name:p?p.full_name:'?',data:0,called:0,potential:0,orders:0,rev:0,estOrd:0,estRev:0};}
+    bySale[sid].data++;
+    if(c.last_contacted)bySale[sid].called++;
+    if(c.potential&&c.potential.trim())bySale[sid].potential++;
+    var inv=invMap[c.id];
+    if(inv){if(inv.approval_status==='approved'){bySale[sid].orders++;bySale[sid].rev+=(inv.total||0);}
+    else if(inv.approval_status==='pending'){bySale[sid].estOrd++;bySale[sid].estRev+=(inv.total||0);}}
+  });
+  var saleRows=Object.values(bySale).sort(function(a,b){return b.rev-a.rev;}).map(function(s){
+    return '<tr><td>'+s.name.split(' ').pop()+'</td><td>'+s.data+'</td>'
+      +'<td>'+s.called+' <span style="font-size:9px;color:var(--text3)">('+( s.data?Math.round(s.called/s.data*100):0)+'%)</span></td>'
+      +'<td style="color:var(--accent)">'+s.potential+'</td><td style="color:var(--accent2)">'+s.orders+'</td>'
+      +'<td style="color:var(--brand2)">$'+s.rev.toLocaleString()+'</td>'
+      +'<td style="color:var(--warn)">'+s.estOrd+'</td><td style="color:var(--warn)">$'+s.estRev.toLocaleString()+'</td></tr>';
+  }).join('');
+  var custRows=custs.map(function(c){
+    var inv=invMap[c.id];
+    var dl=c.assigned_deadline?new Date(c.assigned_deadline):null;if(dl)dl.setHours(0,0,0,0);
+    var daysLeft=dl?Math.ceil((dl-today)/86400000):null;
+    var sale=c.assigned_profile?c.assigned_profile.full_name.split(' ').pop():'—';
+    return '<tr onclick="renderDetailModal('+c.id+')" style="cursor:pointer">'
+      +'<td style="font-size:10px;color:var(--text3)">'+(c.ma_kh||'—')+'</td>'
+      +'<td>'+(c.business_name||c.customer_name||'—')+'</td>'
+      +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone||'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--accent)">'+(c.potential||'—')+'</td>'
+      +'<td>'+sBadge(c.status)+'</td>'
+      +(inv?'<td style="font-size:11px;color:'+(inv.approval_status==='approved'?'var(--accent2)':'var(--warn)')+'">$'+(inv.total||0).toLocaleString()+'</td>':'<td style="color:var(--text3)">—</td>')
+      +'<td style="font-size:11px">'+sale+'</td>'
+      +'<td>'+(daysLeft!==null?daysLeft<0?'<span class="badge b-lost">'+Math.abs(daysLeft)+'d</span>':'<span class="badge b-followup">'+daysLeft+'d</span>':'—')+'</td></tr>';
+  }).join('');
+  box.innerHTML='<div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px">'
+    +'<div><div style="font-size:15px;font-weight:700">'+(isPool?'🌱 Active Pool':decoded)+'</div>'
+    +'<div style="font-size:11px;color:var(--text3)">'+total+' khách</div></div>'
+    +'<div style="display:flex;gap:8px"><button class="btn" onclick="window._campExportCSV(\''+campName+'\')" style="font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>'
+    +'<button onclick="document.getElementById(\'camp-detail-modal\').style.display=\'none\'" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px">×</button></div></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;padding:12px">'
+    +'<div class="stat-card"><div class="stat-label">Data</div><div class="stat-val" style="color:var(--brand2)">'+total+'</div></div>'
+    +'<div class="stat-card"><div class="stat-label">Contact</div><div class="stat-val">'+Math.round(called/Math.max(total,1)*100)+'%</div></div>'
+    +'<div class="stat-card"><div class="stat-label">Potential</div><div class="stat-val" style="color:var(--accent)">'+potential+'</div></div>'
+    +'<div class="stat-card"><div class="stat-label">Orders</div><div class="stat-val" style="color:var(--accent2)">'+orders+'</div></div>'
+    +'<div class="stat-card"><div class="stat-label">Revenue</div><div class="stat-val" style="color:var(--brand2);font-size:15px">$'+rev.toLocaleString()+'</div></div>'
+    +'<div class="stat-card"><div class="stat-label">Est.Ord</div><div class="stat-val" style="color:var(--warn)">'+estOrd+'</div></div>'
+    +'<div class="stat-card"><div class="stat-label">Est.Rev</div><div class="stat-val" style="color:var(--warn);font-size:15px">$'+estRev.toLocaleString()+'</div></div>'
+    +'</div>'
+    +'<div style="padding:0 12px 12px"><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px">Hiệu suất theo Sale</div>'
+    +'<div style="overflow-x:auto"><table style="min-width:460px;width:100%">'
+    +'<thead><tr style="font-size:10px"><th>Sale</th><th>Data</th><th>Called</th><th style="color:var(--accent)">Pot.</th><th style="color:var(--accent2)">Ord</th><th style="color:var(--brand2)">Rev</th><th style="color:var(--warn)">EstOrd</th><th style="color:var(--warn)">EstRev</th></tr></thead>'
+    +'<tbody>'+saleRows+'</tbody></table></div></div>'
+    +'<div style="padding:0 12px 12px"><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px">Danh sách khách</div>'
+    +'<div style="overflow-x:auto"><table style="min-width:560px;width:100%">'
+    +'<thead><tr style="font-size:10px"><th>Mã KH</th><th>Business</th><th>Phone</th><th>Potential</th><th>Status</th><th>Invoice</th><th>Sale</th><th>Deadline</th></tr></thead>'
+    +'<tbody>'+custRows+'</tbody></table></div></div>';
+};
+
+window._campExportCSV=function(campName){
+  var isPool=campName==='__active_pool__';
+  var decoded=decodeURIComponent(campName);
+  var custs=isPool?CUSTOMERS.filter(function(c){return !c.campaign_name&&c.potential&&c.potential.trim();}):CUSTOMERS.filter(function(c){return c.campaign_name===decoded;});
+  var custIds=new Set(custs.map(function(c){return c.id;}));
+  var invMap={};INVOICES.filter(function(i){return custIds.has(i.customer_id);}).forEach(function(i){
+    if(!invMap[i.customer_id]||new Date(i.created_at)>new Date(invMap[i.customer_id].created_at))invMap[i.customer_id]=i;
+  });
+  var rows=[['Mã KH','Business Name','Customer Name','Phone','State','Status','Lead Status','Potential','Sale','Deadline','Invoice No','Invoice Status','Amount']];
+  custs.forEach(function(c){
+    var inv=invMap[c.id];
+    rows.push([c.ma_kh||'',c.business_name||'',c.customer_name||'',c.cellphone||'',c.state||'',c.status||'',c.lead_status||'',c.potential||'',c.assigned_profile?c.assigned_profile.full_name:'',c.assigned_deadline||'',inv?inv.invoice_no:'',inv?inv.approval_status:'',inv?inv.total:'']);
+  });
+  var csv=rows.map(function(r){return r.map(function(v){return '"'+(v+'').replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  var blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download=(isPool?'ActivePool':decoded)+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();URL.revokeObjectURL(url);
+  showCrmToast('✅ Exported','File CSV đã được tải về','success');
+};
+
 window._campFilters={state:'all',status:'all',substatus:'all',lead:'all',brand:'all',potential:'all',timeuse:'all',reason:'all',campaign:'all'};
 function campSyncFilters(){
   ['state','status','substatus','leadstatus','brand','potential','timeuse','reason','campaign'].forEach(function(k){
@@ -3620,7 +3806,15 @@ async function _kpiTrendChart(trendInvs,salesToShow,saleStats,trendMonths,curMon
 }
 
 // ── Navigation ──
-window._kpiNav=function(m,y){_kpiMonth=m;_kpiYear=y;_kpiInvCache={};if(window.page==='kpi'){var el=document.getElementById('main-area');if(el)el.innerHTML='<div class="topbar"><div class="topbar-title">Báo cáo KPI</div></div><div class="content"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--text3)"><i class="ti ti-loader" style="animation:spin 1s linear infinite;font-size:24px"></i></div></div>';renderKPIAsync();}};
+window._kpiNav=function(m,y){
+  _kpiMonth=m;_kpiYear=y;
+  // Không clear toàn bộ cache - chỉ re-render
+  if(window.page==='kpi'){
+    var el=document.getElementById('main-area');
+    if(el)el.innerHTML='<div class="topbar"><div class="topbar-title">Báo cáo KPI</div></div><div class="content"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--text3)"><i class="ti ti-loader" style="animation:spin 1s linear infinite;font-size:24px"></i></div></div>';
+    renderKPIAsync();
+  }
+};;
 window._kpiFunnelTab=function(id){_kpiFunnelSale=id;if(window.page==='kpi')renderKPIAsync();};
 window._kpiTrend=function(n){_kpiTrendN=n;_kpiInvCache={};if(window.page==='kpi')renderKPIAsync();};
 
@@ -4317,6 +4511,81 @@ async function doRecall(){
 
 
 
+function renderSystem(){
+  return '<div class="topbar"><div class="topbar-title">System</div>'
+    +'<button class="btn" onclick="renderSystemRefresh()" style="font-size:12px"><i class="ti ti-refresh"></i> Refresh</button>'
+    +'</div>'
+    +'<div class="content">'
+    +'<div class="panel" style="margin-bottom:14px">'
+    +'<div class="panel-header"><h2>Supabase Usage</h2><div style="font-size:11px;color:var(--text3)">Free tier: 500MB DB · 1GB Storage per project</div></div>'
+    +'<div id="sys-usage" style="padding:14px"><div style="color:var(--text3);font-size:13px">Loading...</div></div>'
+    +'</div>'
+    +'</div>';
+}
+
+async function renderSystemRefresh(){
+  var el=document.getElementById('sys-usage');
+  if(!el)return;
+  el.innerHTML='<div style="color:var(--text3);font-size:13px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Loading...</div>';
+  var projects=[
+    {name:'CRM',url:'https://ajsakaddylbpppxlidfe.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqc2FrYWRkeWxicHBweGxpZGZlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODY5MDUwNSwiZXhwIjoyMDk0MjY2NTA1fQ.ZMp-v08yIWB-CM3oz-A9K_dCuBjayC0C7Wv4X4mNGKM'},
+    {name:'Finance',url:'https://jggfmpihfisbusnbzyoi.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZ2ZtcGloZmlzYnVzbmJ6eW9pIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODg1OTEzNywiZXhwIjoyMDk0NDM1MTM3fQ.I0ng3oY6Y-bT3vMbpu2V980eIR9733faEBLw5zyXUnM'}
+  ];
+  var DB_LIMIT=500*1024*1024,ST_LIMIT=1024*1024*1024;
+  function fmt(b){if(!b||b<0)return '0 B';if(b<1024*1024)return (b/1024).toFixed(1)+' KB';if(b<1024*1024*1024)return (b/1024/1024).toFixed(1)+' MB';return (b/1024/1024/1024).toFixed(2)+' GB';}
+  function barColor(p){return p>=90?'var(--danger)':p>=70?'var(--warn)':'var(--accent2)';}
+  var html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">';
+  var results=await Promise.all(projects.map(async function(proj){
+    try{
+      var h={'apikey':proj.key,'Authorization':'Bearer '+proj.key,'Content-Type':'application/json'};
+      var dbSQL='SELECT pg_database_size(current_database()) AS size';
+      var stSQL="SELECT COALESCE(SUM((metadata->>'size')::bigint),0) AS size FROM storage.objects";
+      var topSQL="SELECT tablename, pg_total_relation_size('public.'||tablename) AS bytes FROM pg_tables WHERE schemaname='public' ORDER BY 2 DESC LIMIT 5";
+      var [dbR,stR,topR]=await Promise.all([
+        fetch(proj.url+'/rest/v1/rpc/exec_sql',{method:'POST',headers:h,body:JSON.stringify({sql:dbSQL})}),
+        fetch(proj.url+'/rest/v1/rpc/exec_sql',{method:'POST',headers:h,body:JSON.stringify({sql:stSQL})}),
+        fetch(proj.url+'/rest/v1/rpc/exec_sql',{method:'POST',headers:h,body:JSON.stringify({sql:topSQL})})
+      ]);
+      var dbBytes=dbR.ok?(await dbR.json())[0]?.size||0:0;
+      var stBytes=stR.ok?(await stR.json())[0]?.size||0:0;
+      var topTables=topR.ok?await topR.json():[];
+      return {ok:true,name:proj.name,dbBytes,stBytes,topTables};
+    }catch(e){return {ok:false,name:proj.name,err:e.message};}
+  }));
+  results.forEach(function(r){
+    if(!r.ok){
+      html+='<div class="panel"><div class="panel-header"><h2>'+r.name+'</h2></div><div style="padding:12px;color:var(--danger);font-size:12px">'+r.err+'</div></div>';
+      return;
+    }
+    var dbPct=Math.min(100,Math.round(r.dbBytes/DB_LIMIT*100));
+    var stPct=Math.min(100,Math.round(r.stBytes/ST_LIMIT*100));
+    var maxPct=Math.max(dbPct,stPct);
+    var statusColor=maxPct>=90?'var(--danger)':maxPct>=70?'var(--warn)':'var(--accent2)';
+    var statusLabel=maxPct>=90?'Critical':maxPct>=70?'Watch':'Healthy';
+    html+='<div class="panel">'
+      +'<div class="panel-header"><h2>'+r.name+'</h2>'
+      +'<span style="background:rgba('+(maxPct>=90?'255,118,117':maxPct>=70?'253,203,110':'0,184,148')+',0.15);color:'+statusColor+';font-size:11px;padding:2px 8px;border-radius:12px;font-weight:600">'+statusLabel+'</span>'
+      +'</div>'
+      +'<div style="padding:12px">'
+      // DB bar
+      +'<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">'
+      +'<span style="color:var(--text3)">Database</span>'
+      +'<span style="color:'+barColor(dbPct)+';font-weight:600">'+fmt(r.dbBytes)+' / 500MB ('+dbPct+'%)</span></div>'
+      +'<div style="background:rgba(255,255,255,0.07);border-radius:4px;height:8px"><div style="width:'+dbPct+'%;background:'+barColor(dbPct)+';height:8px;border-radius:4px;transition:width 0.5s"></div></div></div>'
+      // Storage bar
+      +'<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">'
+      +'<span style="color:var(--text3)">Storage</span>'
+      +'<span style="color:'+barColor(stPct)+';font-weight:600">'+fmt(r.stBytes)+' / 1GB ('+stPct+'%)</span></div>'
+      +'<div style="background:rgba(255,255,255,0.07);border-radius:4px;height:8px"><div style="width:'+stPct+'%;background:'+barColor(stPct)+';height:8px;border-radius:4px;transition:width 0.5s"></div></div></div>'
+      // Top tables
+      +(r.topTables.length?'<div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Top tables</div>'
+        +r.topTables.map(function(t){return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:var(--text2)"><span>'+t.tablename+'</span><span style="color:var(--text);font-weight:500">'+fmt(t.bytes)+'</span></div>';}).join(''):'')
+      +'</div></div>';
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+
 function renderGuide(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const tpl=document.getElementById('guide-tpl');
@@ -4748,6 +5017,7 @@ function render(){
   else if(page==='alert')m.innerHTML=renderAlert();
   else if(page==='products')m.innerHTML=renderProducts();
   else if(page==='guide')m.innerHTML=renderGuide();
+  else if(page==='system'){m.innerHTML=renderSystem();setTimeout(renderSystemRefresh,100);}
   else if(page==='daily'){
     // Render shell synchronously, load data async
     const isManagerD=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
@@ -5410,9 +5680,14 @@ function render(){
       if(e.target.closest('button'))return;
       dragging=true;
       panel.classList.add('dragging');
+      // Convert current visual position to top/left absolute before dragging
+      var rect=panel.getBoundingClientRect();
+      panel.style.left=rect.left+'px';
+      panel.style.top=rect.top+'px';
+      panel.style.right='auto';
+      panel.style.bottom='auto';
       var touch=e.touches?e.touches[0]:e;
       startX=touch.clientX;startY=touch.clientY;
-      var rect=panel.getBoundingClientRect();
       startL=rect.left;startT=rect.top;
       panel.style.transition='none';
       handle.style.cursor='grabbing';
