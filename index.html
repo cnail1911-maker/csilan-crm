@@ -2603,16 +2603,17 @@ function _campSaleTable(custs,showDeadline,campKey){
   if(totalPg>1){
     var start=(curPg-1)*CAMP_SALE_PAGE_SIZE+1;
     var end=Math.min(curPg*CAMP_SALE_PAGE_SIZE,custs.length);
+    // Dùng data-* attribute thay vì string trong onclick để tránh quote conflict
     pgBarHtml='<div class="pgbar" style="border-top:1px solid var(--border);padding:6px 12px">'
       +'<span class="pgbar-info">'+start+'-'+end+' / '+custs.length+' KH</span>'
       +'<div class="pgbar-btns">';
-    pgBarHtml+='<button class="btn" style="padding:3px 9px;font-size:11px" onclick="window._campSalePgGo(''+key+'',''+sd+'','+(curPg-1)+')" '+(curPg===1?'disabled':'')+'>&#8249;</button>';
+    pgBarHtml+='<button class="btn" style="padding:3px 9px;font-size:11px" data-pgkey="'+key+'" data-pgsd="'+sd+'" data-pgto="'+(curPg-1)+'" onclick="window._campSalePgGo(this)" '+(curPg===1?'disabled':'')+'>&#8249;</button>';
     for(var _pi=1;_pi<=totalPg;_pi++){
       if(totalPg>7&&_pi>1&&_pi<totalPg&&Math.abs(_pi-curPg)>2)continue;
-      var _active=_pi===curPg?'background:var(--brand);border-color:var(--brand);color:#fff':'';
-      pgBarHtml+='<button class="btn" style="padding:3px 9px;font-size:11px;'+_active+'" onclick="window._campSalePgGo(''+key+'',''+sd+'','+_pi+')">'+_pi+'</button>';
+      var _sel=_pi===curPg?'background:var(--brand);border-color:var(--brand);color:#fff':'';
+      pgBarHtml+='<button class="btn" style="padding:3px 9px;font-size:11px;'+_sel+'" data-pgkey="'+key+'" data-pgsd="'+sd+'" data-pgto="'+_pi+'" onclick="window._campSalePgGo(this)">'+_pi+'</button>';
     }
-    pgBarHtml+='<button class="btn" style="padding:3px 9px;font-size:11px" onclick="window._campSalePgGo(''+key+'',''+sd+'','+(curPg+1)+')" '+(curPg===totalPg?'disabled':'')+'>&#8250;</button>';
+    pgBarHtml+='<button class="btn" style="padding:3px 9px;font-size:11px" data-pgkey="'+key+'" data-pgsd="'+sd+'" data-pgto="'+(curPg+1)+'" onclick="window._campSalePgGo(this)" '+(curPg===totalPg?'disabled':'')+'>&#8250;</button>';
     pgBarHtml+='</div></div>';
   }
   return '<div class="camp-section-wrap" data-key="'+key+'" data-sd="'+sd+'">'
@@ -2627,16 +2628,18 @@ function _campSaleTable(custs,showDeadline,campKey){
     +'</div>';
 }
 
-// Helper: chuyển trang campaign sale table
-window._campSalePgGo=function(key,sd,pg){
+// Helper: chuyển trang — nhận button element, đọc data-* attribute
+window._campSalePgGo=function(btn){
+  var key=btn.dataset.pgkey;
+  var sd=btn.dataset.pgsd;
+  var pg=parseInt(btn.dataset.pgto)||1;
   window._campSalePg[key]=pg;
-  // Re-render wrap tương ứng
   var wrap=document.querySelector('.camp-section-wrap[data-key="'+key+'"]');
   if(!wrap)return;
   var custs=window._campSaleCusts&&window._campSaleCusts[key];
   if(!custs)return;
-  var newHtml=_campSaleTable(custs,sd==='1',key);
-  var tmp=document.createElement('div');tmp.innerHTML=newHtml;
+  var tmp=document.createElement('div');
+  tmp.innerHTML=_campSaleTable(custs,sd==='1',key);
   wrap.parentNode.replaceChild(tmp.firstChild,wrap);
 };
 
