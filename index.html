@@ -1491,6 +1491,19 @@ async function initApp(user){
       const idx=CUSTOMERS.findIndex(function(c){return c.id===payload.new.id;});
       if(idx>=0)Object.assign(CUSTOMERS[idx],payload.new);else CUSTOMERS.unshift(payload.new);
       render();
+    })
+    .on('postgres_changes',{event:'DELETE',schema:'public',table:'customers'},function(payload){
+      // Xử lý khi khách bị xóa từ DB (bao gồm từ tab/thiết bị khác)
+      var deletedId=payload.old&&payload.old.id;
+      if(!deletedId)return;
+      CUSTOMERS=CUSTOMERS.filter(function(c){return c.id!==deletedId;});
+      // Đóng detail modal nếu đang mở KH vừa bị xóa
+      if(selId===deletedId){
+        selId=null;
+        var dm=document.getElementById('detail-modal');
+        if(dm)dm.remove();
+      }
+      render();
     }).subscribe();
 }
 
@@ -4765,13 +4778,33 @@ async function openInvoice(customerId){
 }
 
 async function deleteCustomer(id){
-  if(!confirm('Xóa khách hàng này? Không thể hoàn tác!'))return;
+  if(!confirm('Xóa khách hàng này? Toàn bộ invoice và lịch sử cuộc gọi sẽ bị xóa. Không thể hoàn tác!'))return;
   showLoading(true);
-  await sb.from('call_logs').delete().eq('customer_id',id);
-  await sb.from('customers').delete().eq('id',id);
-  CUSTOMERS=CUSTOMERS.filter(function(c){return c.id!==id;});
-  document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
-  selId=null;showLoading(false);render();
+  try{
+    // Xóa dữ liệu liên quan song song trước khi xóa khách
+    var invIds=INVOICES.filter(function(i){return i.customer_id===id;}).map(function(i){return i.id;});
+    var deleteJobs=[
+      sb.from('call_logs').delete().eq('customer_id',id),
+      sb.from('invoices').delete().eq('customer_id',id)
+    ];
+    // Xóa invoice_items nếu có invoice liên quan
+    if(invIds.length>0){
+      deleteJobs.push(sb.from('invoice_items').delete().in('invoice_id',invIds));
+    }
+    await Promise.all(deleteJobs);
+    // Xóa khách
+    var {error}=await sb.from('customers').delete().eq('id',id);
+    if(error)throw error;
+    // Cập nhật local state
+    CUSTOMERS=CUSTOMERS.filter(function(c){return c.id!==id;});
+    INVOICES=INVOICES.filter(function(i){return i.customer_id!==id;});
+    document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
+    selId=null;
+  }catch(e){
+    console.error('[deleteCustomer]',e);
+    showCrmToast('❌ Lỗi xóa khách',''+e.message,'error');
+  }
+  showLoading(false);render();
 }
 
 // ============================================================
