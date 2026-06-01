@@ -4527,14 +4527,31 @@ async function renderDetailModal(customerId){
   modal.onclick=function(e){if(e.target===modal){modal.remove();selId=null;}};
   document.body.appendChild(modal);
 
-  // Render shell immediately from cache (no wait)
+  // Render shell immediately từ cache — user có thể nhập ngay
   _renderDetailShell(modal,c,isManager,[]);
 
-  // Fetch logs async in background
-  const logsRes=await sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId).order('called_at',{ascending:false}).limit(25);
-  const logs=logsRes.data||[];
-  // Re-render with logs
-  _renderDetailShell(modal,c,isManager,logs);
+  // Fetch logs async — CHỈ update sidebar logs, không re-render toàn modal
+  // Tránh reset các input đang nhập dở
+  try{
+    const logsRes=await sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId).order('called_at',{ascending:false}).limit(25);
+    const logs=logsRes.data||[];
+    // Chỉ update phần sidebar history, không đụng vào form bên trái
+    var logContainer=modal.querySelector('#detail-log-container');
+    if(logContainer&&logs.length>0){
+      var lh='<div style="max-height:320px;overflow-y:auto;padding-right:4px">';
+      logs.forEach(function(l){
+        const res=l.call_result&&l.call_result!=='null'?'<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(108,92,231,0.2);color:var(--brand2);margin-right:5px">'+l.call_result+'</span>':'';
+        const note=l.note&&l.note!=='null'&&l.note.trim()!==''?l.note.trim():'';
+        const line=res+(note||(!l.call_result?'<span style="color:var(--text3);font-style:italic">Thao tác</span>':''));
+        lh+='<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--brand);flex-shrink:0;margin-top:5px"></div><div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--text2)">'+line+'</div><div style="font-size:10px;color:var(--text3);margin-top:1px">'+((l.sale&&l.sale.full_name)||'—')+' · '+fmtDateTime(l.called_at)+'</div></div></div>';
+      });
+      lh+='</div>';
+      logContainer.innerHTML=lh;
+      // Update badge count
+      var badge=modal.querySelector('#detail-log-badge');
+      if(badge)badge.textContent='('+logs.length+')';
+    }
+  }catch(e){console.warn('[detail logs]',e);}
 }
 
 function _renderDetailShell(modal,c,isManager,logs){
@@ -4650,9 +4667,9 @@ function _renderDetailShell(modal,c,isManager,logs){
   // ── RIGHT SIDEBAR: Lịch sử liên hệ ──
   html+='<div style="display:flex;flex-direction:column;background:rgba(255,255,255,0.02);max-height:calc(95vh - 130px)">';
   html+='<div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">';
-  html+=lbl('Lịch sử liên hệ <span style="font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0">('+logs.length+')</span>');
+  html+='<label style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;display:block;opacity:0.75">Lịch sử liên hệ <span id="detail-log-badge" style="font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0">('+logs.length+')</span></label>';
   html+='</div>';
-  html+='<div style="flex:1;overflow-y:auto;padding:10px 14px">'+logHtml+'</div>';
+  html+='<div id="detail-log-container" style="flex:1;overflow-y:auto;padding:10px 14px">'+logHtml+'</div>';
   html+='</div>'; // end sidebar
 
   html+='</div>'; // end 2-col grid
