@@ -3027,7 +3027,8 @@ window._campShowDetail=function(campName){
 };
 
 function _campDetailStatCard(label,val,filterKey,color){
-  return '<div class="stat-card" style="cursor:pointer" onclick="window._campDetailFilter(\''+filterKey+'\',box._custs,box._invMap)" id="camp-sc-'+filterKey+'">'
+  // Không dùng box._custs — _campDetailFilter tự đọc từ box._custs bên trong
+  return '<div class="stat-card" style="cursor:pointer" onclick="window._campDetailFilter(\''+filterKey+'\')" id="camp-sc-'+filterKey+'">'
     +'<div class="stat-label">'+label+'</div>'
     +'<div class="stat-val" style="color:'+color+';font-size:15px">'+val+'</div>'
     +'</div>';
