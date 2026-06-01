@@ -1460,7 +1460,10 @@ async function initApp(user){
           window._notifAdd&&window._notifAdd('❌ Invoice bị từ chối',payload.new.invoice_no||'',{page:'pending'});
         }
       }
+      // Clear KPI cache khi INVOICES thay đổi để KPI luôn dùng data mới
+      _kpiInvCache={};
       if(window.page==='pending'||window.page==='customers'){render();}
+      if(window.page==='kpi'){renderKPIAsync();}
     }).subscribe();
 
   // ── REALTIME: Customers ──
@@ -3654,34 +3657,60 @@ var _kpiInvCache={}; // key: "fromDate_toDate"
 var _kpiRenderVersion=0; // chống race condition khi nav nhanh
 var _kpiFunnelSale='team'; // 'team' | sale.id
 
-// ── Fetch invoices for a month range (cached) ──
+// ── Lấy invoices theo khoảng tháng — dùng INVOICES local (đã load sẵn) ──
+// Không fetch DB lại để tránh RLS block và chậm network
+// Fallback fetch DB chỉ khi INVOICES chưa sẵn sàng
 async function _kpiFetchInvoices(fromDate,toDate){
   var key=fromDate+'_'+toDate;
   if(_kpiInvCache[key])return _kpiInvCache[key];
   var isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
-  // Fetch by created_at range
-  var q=sb.from('invoices')
-    .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
-    .eq('type','invoice')
-    .gte('created_at',fromDate).lte('created_at',toDate);
-  if(!isM)q=q.eq('sale_id',currentUser&&currentUser.id);
-  var {data:d1}=await q.limit(2000);
-  // Also fetch by date field for records with null created_at
-  var fromD=fromDate.slice(0,10);
-  var toD=toDate.slice(0,10);
-  var q2=sb.from('invoices')
-    .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
-    .eq('type','invoice')
-    .is('created_at',null)
-    .gte('date',fromD).lte('date',toD);
-  if(!isM)q2=q2.eq('sale_id',currentUser&&currentUser.id);
-  var {data:d2}=await q2.limit(500);
-  // Merge dedup by id
-  var merged=[...(d1||[])];
-  var ids=new Set(merged.map(function(i){return i.id;}));
-  (d2||[]).forEach(function(i){if(!ids.has(i.id))merged.push(i);});
-  _kpiInvCache[key]=merged;
-  return merged;
+  var uid=currentUser&&currentUser.id;
+  var result=[];
+
+  if(INVOICES&&INVOICES.length>0){
+    // Filter trực tiếp từ INVOICES local — nhanh, không cần network
+    var fromD=fromDate.slice(0,10); // YYYY-MM-DD
+    var toD=toDate.slice(0,10);
+    result=INVOICES.filter(function(i){
+      if(i.type!=='invoice')return false;
+      if(!isM&&i.sale_id!==uid)return false;
+      // Ưu tiên created_at, fallback date field
+      var ts=i.created_at?i.created_at.slice(0,10):null;
+      var dt=i.date?i.date.slice(0,10):null;
+      var d=ts||dt;
+      if(!d)return false;
+      return d>=fromD&&d<=toD;
+    });
+  } else {
+    // Fallback: fetch DB nếu INVOICES chưa load
+    try{
+      var q=sb.from('invoices')
+        .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
+        .eq('type','invoice')
+        .gte('created_at',fromDate).lte('created_at',toDate);
+      if(!isM)q=q.eq('sale_id',uid);
+      var {data:d1,error:e1}=await q.limit(2000);
+      if(e1)console.warn('[KPI fetch fallback]',e1.message);
+      var fromD2=fromDate.slice(0,10);
+      var toD2=toDate.slice(0,10);
+      var q2=sb.from('invoices')
+        .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
+        .eq('type','invoice').is('created_at',null)
+        .gte('date',fromD2).lte('date',toD2);
+      if(!isM)q2=q2.eq('sale_id',uid);
+      var {data:d2}=await q2.limit(500);
+      var merged=[...(d1||[])];
+      var ids=new Set(merged.map(function(i){return i.id;}));
+      (d2||[]).forEach(function(i){if(!ids.has(i.id))merged.push(i);});
+      result=merged;
+    }catch(err){
+      console.warn('[KPI fetch error]',err);
+      result=[];
+    }
+  }
+
+  _kpiInvCache[key]=result;
+  return result;
 }
 
 // ── Compute per-sale KPI from invoices ──
@@ -4137,12 +4166,17 @@ async function _kpiTrendChart(trendInvs,salesToShow,saleStats,trendMonths,curMon
     var d=new Date(curYear,curMonth-1-i,1);
     buckets.push({month:d.getMonth()+1,year:d.getFullYear(),label:['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'][d.getMonth()]});
   }
-  // Compute per-bucket
+  // Compute per-bucket — dùng date slice để nhất quán với INVOICES local
   buckets.forEach(function(b){
-    var from=b.year+'-'+String(b.month).padStart(2,'0')+'-01T00:00:00.000Z';
+    var fromD=b.year+'-'+String(b.month).padStart(2,'0')+'-01';
     var lastDayB=new Date(b.year,b.month,0).getDate();
-    var to=b.year+'-'+String(b.month).padStart(2,'0')+'-'+String(lastDayB).padStart(2,'0')+'T23:59:59.999Z';
-    var bInvs=trendInvs.filter(function(i){return i.created_at>=from&&i.created_at<=to;});
+    var toD=b.year+'-'+String(b.month).padStart(2,'0')+'-'+String(lastDayB).padStart(2,'0');
+    var bInvs=trendInvs.filter(function(i){
+      var ts=i.created_at?i.created_at.slice(0,10):null;
+      var dt=i.date?i.date.slice(0,10):null;
+      var d=ts||dt;
+      return d&&d>=fromD&&d<=toD;
+    });
     var approved=[];var custMap={};
     bInvs.forEach(function(i){
       if(i.approval_status==='approved'){
@@ -4225,7 +4259,7 @@ window._kpiShowList=async function(type,saleId){
       return c.status===statusMap[type];
     });
   } else {
-    // Invoice-based: fetch invoices and map to customers
+    // Invoice-based: dùng _kpiFetchInvoices (filter từ INVOICES local)
     var invs=await _kpiFetchInvoices(fromDate,toDate);
     var targetSales=saleId?[saleId]:PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return p.id;});
     if(!isM&&!saleId)targetSales=[currentUser&&currentUser.id];
@@ -4236,7 +4270,7 @@ window._kpiShowList=async function(type,saleId){
     var custIds=[];
     Object.entries(byC).forEach(function(e){
       var arr=e[1];
-      arr.sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);});
+      arr.sort(function(a,b){return new Date(b.created_at||'2000')-new Date(a.created_at||'2000');});
       if(type==='orders'||type==='rev'){var ap=arr.filter(function(i){return i.approval_status==='approved';});if(ap.length)custIds.push({cid:parseInt(e[0]),inv:ap[0]});}
       else{var pe=arr.filter(function(i){return i.approval_status==='pending';});if(pe.length)custIds.push({cid:parseInt(e[0]),inv:pe[0]});}
     });
