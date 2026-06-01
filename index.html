@@ -1621,6 +1621,12 @@ function renderCustomers(){
   const won=data.filter(function(c){return c.lead_status==='Closedeal';}).length;
   const followup=data.filter(function(c){return c.status==='Follow Up';}).length;
   const pageData=data.slice((curPage-1)*PAGE_SIZE,curPage*PAGE_SIZE);
+  // Tính Potential breakdown từ data hiện tại (đã qua filter)
+  var potBreakdown=[];
+  POTENTIAL_OPTS.forEach(function(p,i){
+    var cnt=data.filter(function(c){return c.potential===p;}).length;
+    if(cnt>0)potBreakdown.push({p:p,cnt:cnt,sc:'sc'+(i+1)});
+  });
 
   let filterHtml='<select class="fsel" onchange="fStatus=this.value;curPage=1;render()"><option value="all">Tất cả Status</option>'+STATUS_OPTS.map(function(s){return '<option value="'+s+'"'+(fStatus===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fPotential=this.value;curPage=1;render()"><option value="all">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'"'+(fPotential===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select>';
@@ -1674,11 +1680,10 @@ function renderCustomers(){
     +(isManager?'<button class="btn" onclick="doRecall()" style="border-color:rgba(255,118,117,0.4);color:var(--danger)"><i class="ti ti-rotate-clockwise"></i> Thu hồi hết hạn</button>':'')
     +'<button class="btn btn-primary" onclick="addOpen=true;render()"><i class="ti ti-plus"></i> Thêm khách</button>'
     +'</div>'
-    +'<div class="stats-row">'
-    +'<div class="stat-card sc0" style="cursor:pointer;border:'+(fStatus==='all'&&fLead==='all'?'2px solid var(--brand2)':'1px solid var(--border)')+'" onclick="fStatus=\'all\';fLead=\'all\';curPage=1;render()"><div class="stat-label">Tổng data</div><div class="stat-val" style="color:var(--brand2)">'+data.length+'</div><div class="stat-sub">được giao</div></div>'
-    +'<div class="stat-card sc1" style="cursor:pointer;border:'+(fStatus==='Follow Up'?'2px solid var(--accent)':'1px solid var(--border)')+'" onclick="fStatus=(fStatus===\'Follow Up\'?\'all\':\'Follow Up\');fLead=\'all\';curPage=1;render()"><div class="stat-label">Follow Up</div><div class="stat-val" style="color:var(--accent)">'+followup+'</div><div class="stat-sub">'+(fStatus==='Follow Up'?'▼ Lọc':'đang theo dõi')+'</div></div>'
-    +'<div class="stat-card sc2" style="cursor:pointer;border:'+(fLead==='Closedeal'?'2px solid var(--accent2)':'1px solid var(--border)')+'" onclick="fLead=(fLead===\'Closedeal\'?\'all\':\'Closedeal\');fStatus=\'all\';curPage=1;render()"><div class="stat-label">Closedeal</div><div class="stat-val" style="color:var(--accent2)">'+won+'</div><div class="stat-sub">'+(fLead==='Closedeal'?'▼ Lọc':'đã chốt')+'</div></div>'
-    +'<div class="stat-card sc3"><div class="stat-label">Tỉ lệ chốt</div><div class="stat-val" style="color:var(--warn)">'+(data.length?Math.round(won/data.length*100):0)+'%</div><div class="stat-sub">tháng này</div></div>'
+    +'<div class="stats-row" style="grid-template-columns:repeat('+(2+potBreakdown.length)+',1fr)">'
+    +'<div class="stat-card sc0" style="cursor:pointer;border:'+(fPotential==='all'&&fStatus==='all'&&fLead==='all'?'2px solid var(--brand2)':'1px solid var(--border)')+'" onclick="fPotential=\'all\';fStatus=\'all\';fLead=\'all\';curPage=1;render()"><div class="stat-label">Tổng data</div><div class="stat-val" style="color:var(--brand2)">'+data.length+'</div><div class="stat-sub">được giao</div></div>'
+    +'<div class="stat-card sc1" style="cursor:pointer;border:'+(fLead==='Closedeal'?'2px solid var(--accent2)':'1px solid var(--border)')+'" onclick="fLead=(fLead===\'Closedeal\'?\'all\':\'Closedeal\');fPotential=\'all\';fStatus=\'all\';curPage=1;render()"><div class="stat-label">Closedeal</div><div class="stat-val" style="color:var(--accent2)">'+won+'</div><div class="stat-sub">'+(fLead==='Closedeal'?'▼ Lọc':'đã chốt')+'</div></div>'
+    +potBreakdown.map(function(x){return '<div class="stat-card '+x.sc+'" style="cursor:pointer;border:'+(fPotential===x.p?'2px solid var(--accent)':'1px solid var(--border)')+'" onclick="fPotential=(fPotential===\''+x.p+'\'?\'all\':\''+x.p+'\');fStatus=\'all\';fLead=\'all\';curPage=1;render()"><div class="stat-label" style="font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+x.p+'</div><div class="stat-val" style="color:var(--accent);font-size:22px">'+x.cnt+'</div>'+(fPotential===x.p?'<div style="font-size:9px;color:var(--accent)">▼ Lọc</div>':'')+'</div>';}).join('')
     +'</div>'
     +'<div class="content">'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+data.length+'</span> khách</h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+'</div></div>'
@@ -1715,7 +1720,8 @@ function renderPotential(){
   let statsHtml='<div class="stat-card sc0" style="cursor:pointer;border:'+(fPotential==='all'?'2px solid var(--brand2)':'1px solid var(--border)')+'" onclick="fPotential=\'all\';potPage=1;render()"><div class="stat-label">Tổng tiềm năng</div><div class="stat-val" style="color:var(--brand2)">'+potData.length+'</div>'+(fPotential==='all'?'<div style="font-size:9px;color:var(--brand2)">▼ Tất cả</div>':'')+'</div>';
   var visiblePotCards=1;
   POTENTIAL_OPTS.forEach(function(p,i){
-    const cnt=CUSTOMERS.filter(function(c){return c.potential===p&&(fSale==='all'||c.assigned_to===fSale);}).length;
+    // FIX: đếm trong potData (đã qua filter có invoice) thay vì toàn bộ CUSTOMERS
+    const cnt=potData.filter(function(c){return c.potential===p;}).length;
     if(cnt>0){
       visiblePotCards++;
       statsHtml+='<div class="stat-card sc'+(i+1)+'" style="cursor:pointer;border:'+(fPotential===p?'2px solid var(--accent2)':'1px solid var(--border)')+'" onclick="fPotential=(fPotential===\''+p+'\'?\'all\':\''+p+'\');potPage=1;render()"><div class="stat-label">'+p+'</div><div class="stat-val" style="color:var(--accent2)">'+cnt+'</div>'+(fPotential===p?'<div style="font-size:9px;color:var(--accent2)">▼ Lọc</div>':'')+'</div>';
@@ -2653,9 +2659,13 @@ window._campOpenCreate=function(prefillName){
   }
   var curCF=(window._campFilters&&window._campFilters['campaign'])||'all';
 
-  content.innerHTML='<div style="position:absolute;top:0;left:0;right:0;bottom:52px;display:flex;flex-direction:row;overflow:hidden" id="camp-create-grid">'
+  content.innerHTML=''
+    // Wrapper dùng flex column, toàn bộ chiều cao
+    +'<div style="display:flex;flex-direction:column;height:100%;overflow:hidden">'
+    // Body: 2 cột (left filter + right list)
+    +'<div style="display:flex;flex-direction:row;flex:1;min-height:0;overflow:hidden" id="camp-create-grid">'
     // LEFT: Campaign info + filters - fixed width
-    +'<div style="width:260px;min-width:260px;border-right:1px solid var(--border);overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;height:100%">'
+    +'<div style="width:260px;min-width:260px;border-right:1px solid var(--border);overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px">'
     +'<div><label style="font-size:10px;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:3px">Tên Campaign *</label>'
     +'<input id="camp-name" value="'+(prefillName||'')+'" placeholder="2026_Campaign_T06" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box"></div>'
     +'<div><label style="font-size:10px;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:3px">Deadline *</label>'
@@ -2713,13 +2723,17 @@ window._campOpenCreate=function(prefillName){
     +'<div id="camp-cust-list" style="flex:1;overflow-y:auto;overflow-x:hidden"></div>'
     +'</div>'
     +'</div>'
-    // Bottom action bar - after grid, not inside it
-    +'<div id="camp-action-bar" style="position:absolute;bottom:0;left:0;right:0;height:52px;background:var(--bg2);border-top:1px solid var(--border);padding:0 14px;display:flex;gap:8px;align-items:center;box-sizing:border-box;z-index:10">'
+    // Đóng camp-create-grid
+    +'</div>'
+    // Bottom action bar - dùng flex-shrink:0 thay vì position:absolute
+    +'<div id="camp-action-bar" style="flex-shrink:0;height:52px;background:var(--bg2);border-top:1px solid var(--border);padding:0 14px;display:flex;gap:8px;align-items:center;box-sizing:border-box;z-index:10">'
     +'<div id="camp-action-summary" style="flex:1;font-size:12px;color:var(--text3)"></div>'
     +'<div style="position:relative">'
     +'<button class="btn" onclick="toggleAddToCampDropdown(this)" style="font-size:12px;border-color:rgba(162,155,254,0.4);color:var(--brand2)"><i class="ti ti-folder-plus"></i> Thêm vào Campaign hiện có <i class="ti ti-chevron-down" style="font-size:10px"></i></button>'
     +'</div>'
     +'<button class="btn btn-primary" onclick="createCampaign()" style="font-size:12px"><i class="ti ti-speakerphone"></i> Tạo Campaign mới</button>'
+    +'</div>'
+    // Đóng wrapper flex column
     +'</div>';
 
   // Initialize selected set
@@ -3322,23 +3336,31 @@ function renderProducts(){
   let rows='';
   pageData.forEach(function(p){
     const isActive=p.is_active!==false;
+    var vendorColor={'BOLSA':'var(--accent2)','ONS':'var(--accent)','TSPA':'var(--warn)'}[p.brand]||'var(--brand2)';
+    // Hiển thị Note hoặc Mô tả nếu có (ưu tiên Note)
+    var infoText=p._note||p.description||'';
     rows+='<tr style="'+(isActive?'':'opacity:0.5')+';cursor:pointer" onclick="openProdZoom('+p.id+')">'
       +'<td style="font-size:10px;font-family:monospace;color:var(--text3)">'+(p.sku||'—')+'</td>'
-      +'<td><div style="display:flex;align-items:center;gap:8px">'
-      +(p.image_url?'<img src="'+p.image_url+'" style="width:36px;height:36px;border-radius:6px;object-fit:cover;background:var(--surface2)" alt="">':'<div style="width:36px;height:36px;border-radius:6px;background:var(--surface2);display:flex;align-items:center;justify-content:center"><i class=\"ti ti-photo\" style=\"color:var(--text3)\"></i></div>')
-      +'<div><div style="color:var(--text)">'+(p.name||'—')+'</div>'+(p.variant?'<div style="font-size:10px;color:var(--text3)">'+p.variant+'</div>':'')+'</div></div></td>'
-      +'<td style="font-size:11px">'+(p.brand||'—')+'</td>'
-      +'<td style="color:var(--accent2);font-weight:600">$'+(p.price||0)+'</td>'
+      +'<td><div style="display:flex;align-items:center;gap:10px">'
+      +(p.image_url?'<img src="'+p.image_url+'" style="width:48px;height:48px;border-radius:8px;object-fit:cover;background:var(--surface2);flex-shrink:0" alt="">':'<div style="width:48px;height:48px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class=\"ti ti-photo\" style=\"color:var(--text3);font-size:18px\"></i></div>')
+      +'<div style="min-width:0"><div style="color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">'+(p.name||'—')+'</div>'
+      +(p.variant?'<div style="font-size:10px;color:var(--text3)">'+p.variant+'</div>':'')
+      +(infoText&&!isManagerProd?'<div style="font-size:10px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">'+infoText+'</div>':'')
+      +'</div></div></td>'
+      +'<td><span style="background:rgba(108,92,231,0.12);color:'+vendorColor+';border:1px solid '+vendorColor+';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">'+(p.brand||'—')+'</span></td>'
+      +'<td style="color:var(--accent2);font-weight:700;font-size:14px">$'+(p.price||0)+'</td>'
       +'<td>'+(p.in_stock?'<span class="badge b-won">In Stock</span>':'<span class="badge b-lost">Out</span>')+'</td>'
-      +'<td style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px" title="'+(p.description||'')+'">'+(p.description||'—')+'</td>'
-      +'<td style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px" title="'+(p._note||'')+'">'+(p._note||'—')+'</td>'
       +(isManagerProd
-        ?'<td onclick="event.stopPropagation()"><div style="display:flex;gap:4px">'
+        // Manager: hiện cột Mô tả, Note và action buttons
+        ?'<td style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px" title="'+(p.description||'')+'">'+(p.description||'—')+'</td>'
+          +'<td style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px" title="'+(p._note||'')+'">'+(p._note||'—')+'</td>'
+          +'<td onclick="event.stopPropagation()"><div style="display:flex;gap:4px">'
           +'<button class="btn" style="padding:3px 8px;font-size:10px" onclick="openProdForm('+p.id+')"><i class="ti ti-edit"></i> Sửa</button>'
           +'<button class="btn" style="padding:3px 8px;font-size:10px" onclick="toggleStock('+p.id+','+(p.in_stock?'false':'true')+')">'+(p.in_stock?'Ẩn':'Hiện')+'</button>'
           +'<button class="btn" style="padding:3px 8px;font-size:10px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="toggleActive('+p.id+','+(isActive?'false':'true')+')">'+(isActive?'Deactive':'Active')+'</button>'
           +'</div></td>'
-        :'<td></td>')
+        // Sale: ẩn cột Mô tả/Note (đã inline vào tên), chỉ có nút Xem chi tiết
+        :'<td onclick="event.stopPropagation()" style="text-align:center"><button class="btn" style="padding:3px 10px;font-size:11px;border-color:rgba(162,155,254,0.3);color:var(--brand2)" onclick="openProdZoom('+p.id+')"><i class="ti ti-eye"></i> Xem</button></td>')
       +'</tr>';
   });
   const vendorFilter='<select class="fsel" onchange="'+
@@ -3355,8 +3377,14 @@ function renderProducts(){
     +'<div class="content" style="flex:1">'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+filtered.length+'</span> sản phẩm</h2></div>'
     +(filtered.length===0?'<div class="empty-state"><i class="ti ti-package"></i>Không tìm thấy sản phẩm</div>'
-      :'<div style="overflow-x:auto"><table style="min-width:1100px;width:100%"><colgroup><col width="80"><col width="220"><col width="60"><col width="70"><col width="80"><col width="160"><col width="160">'+(isManagerProd?'<col width="180">':'')+'</colgroup>'
-      +'<thead><tr><th>SKU</th><th>Sản phẩm</th><th>Vendor</th><th>Giá</th><th>Tồn kho</th><th>Mô tả</th><th>Note</th>'+(isManagerProd?'<th></th>':'')+'</tr></thead>'
+      :'<div style="overflow-x:auto"><table style="min-width:'+(isManagerProd?'1000px':'620px')+';width:100%"><colgroup>'
+      +(isManagerProd
+        ?'<col width="80"><col width="220"><col width="80"><col width="75"><col width="80"><col width="140"><col width="140"><col width="185">'
+        :'<col width="80"><col width="260"><col width="80"><col width="80"><col width="80"><col width="80">')
+      +'</colgroup>'
+      +'<thead><tr><th>SKU</th><th>Sản phẩm</th><th>Vendor</th><th>Giá</th><th>Tồn kho</th>'
+      +(isManagerProd?'<th>Mô tả</th><th>Note</th><th></th>':'<th></th>')
+      +'</tr></thead>'
       +'<tbody>'+rows+'</tbody></table></div>'
       +pgBar(filtered.length,pgProd,PAGE_SIZE,'setProdMgPage'))
     +'</div></div>';
@@ -3622,7 +3650,8 @@ async function toggleActive(id,val){
 var _kpiMonth=new Date().getMonth()+1;
 var _kpiYear=new Date().getFullYear();
 var _kpiTrendN=3; // 3|6|9|12
-var _kpiInvCache={}; // key: "YYYY-MM"
+var _kpiInvCache={}; // key: "fromDate_toDate"
+var _kpiRenderVersion=0; // chống race condition khi nav nhanh
 var _kpiFunnelSale='team'; // 'team' | sale.id
 
 // ── Fetch invoices for a month range (cached) ──
@@ -3688,6 +3717,8 @@ function _kpiCompute(invs,saleId){
 // ── Render KPI Dashboard ──
 async function renderKPIAsync(){
   var m=document.getElementById('main-area');if(!m)return;
+  // Version guard: nếu user nav nhanh, chỉ render version mới nhất
+  var myVersion=++_kpiRenderVersion;
   var isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   var now=new Date();
   var month=_kpiMonth,year=_kpiYear;
@@ -3712,6 +3743,9 @@ async function renderKPIAsync(){
     _kpiFetchInvoices(prevFrom,prevTo),
     _kpiFetchInvoices(trendFrom,toDate)
   ]);
+
+  // Nếu có request mới hơn đang chạy, bỏ qua render này
+  if(myVersion!==_kpiRenderVersion)return;
 
   // Helper tên tối giản: Họ + Tên cuối (Phạm Thanh Cường → Phạm Cường)
   function shortName(name){
@@ -4158,7 +4192,8 @@ async function _kpiTrendChart(trendInvs,salesToShow,saleStats,trendMonths,curMon
 // ── Navigation ──
 window._kpiNav=function(m,y){
   _kpiMonth=m;_kpiYear=y;
-  // Không clear toàn bộ cache - chỉ re-render
+  // Clear cache khi navigate tháng để luôn fetch data mới nhất
+  _kpiInvCache={};
   if(window.page==='kpi'){
     var el=document.getElementById('main-area');
     if(el)el.innerHTML='<div class="topbar"><div class="topbar-title">Báo cáo KPI</div></div><div class="content"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--text3)"><i class="ti ti-loader" style="animation:spin 1s linear infinite;font-size:24px"></i></div></div>';
