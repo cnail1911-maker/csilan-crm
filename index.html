@@ -2579,7 +2579,7 @@ function _campSaleTable(custs,showDeadline,campKey){
   var sd=showDeadline?'1':'0';
 
   var filterBar='<div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center">'
-    +'<input placeholder="🔍 Tìm tên, mã KH..." oninput="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text);outline:none">'
+    +'<input placeholder="🔍 Tìm tên, mã KH..." oninput="window._campSaleFilterDebounced(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text);outline:none">'
     +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-status" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
     +'<option value="">Tất cả Status</option>'
     +STATUS_OPTS.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'</option>';}).join('')
@@ -2713,6 +2713,15 @@ function _campSaleRows(custs,showDeadline){
       +'</tr>';
   }).join('');
 }
+
+// Debounce helper cho search
+if(!window._campSearchTimer)window._campSearchTimer={};
+window._campSaleFilterDebounced=function(key,wrap,sd){
+  clearTimeout(window._campSearchTimer[key]);
+  window._campSearchTimer[key]=setTimeout(function(){
+    window._campSaleFilter(key,wrap,sd);
+  },300);
+};
 
 // Track trạng thái accordion đang mở
 if(!window._campAccOpen)window._campAccOpen={};
@@ -3024,12 +3033,21 @@ function _campDetailStatCard(label,val,filterKey,color){
     +'</div>';
 }
 
+// Pagination state cho camp detail
+if(!window._campDetailPg)window._campDetailPg={page:1,filtered:[],filterKey:'all'};
+var CAMP_DETAIL_PAGE_SIZE=50;
+
 window._campDetailFilter=function(filterKey,custs,invMap){
   if(!custs){
     var box=document.getElementById('camp-detail-box');
     if(box){custs=box._custs;invMap=box._invMap;}
   }
   if(!custs)return;
+  // Lưu invMap vào box để pagination dùng lại
+  var box2=document.getElementById('camp-detail-box');
+  if(box2&&invMap)box2._invMap=invMap;
+  else if(box2)invMap=box2._invMap||{};
+
   var today=new Date();today.setHours(0,0,0,0);
   var filtered=custs;
   var labelText='';
@@ -3037,6 +3055,12 @@ window._campDetailFilter=function(filterKey,custs,invMap){
   else if(filterKey==='potential'){filtered=custs.filter(function(c){return c.potential&&c.potential.trim();});labelText='Có Potential';}
   else if(filterKey==='orders'){filtered=custs.filter(function(c){return invMap[c.id]&&invMap[c.id].approval_status==='approved';});labelText='Đã chốt';}
   else if(filterKey==='estorders'){filtered=custs.filter(function(c){return invMap[c.id]&&invMap[c.id].approval_status==='pending';});labelText='Đang pending';}
+
+  // Lưu state pagination
+  window._campDetailPg.page=1;
+  window._campDetailPg.filtered=filtered;
+  window._campDetailPg.filterKey=filterKey;
+  window._campDetailPg.today=today;
 
   // Update stat card active state
   document.querySelectorAll('[id^="camp-sc-"]').forEach(function(el){
@@ -3047,14 +3071,28 @@ window._campDetailFilter=function(filterKey,custs,invMap){
   if(lbl)lbl.textContent=labelText?'('+labelText+': '+filtered.length+')':'';
   if(clearBtn)clearBtn.style.display=filterKey!=='all'?'inline':'none';
 
+  window._campDetailRenderPage(1);
+};
+
+window._campDetailRenderPage=function(pg){
+  var filtered=window._campDetailPg.filtered||[];
+  var today=window._campDetailPg.today||new Date();
+  var box=document.getElementById('camp-detail-box');
+  var invMap=(box&&box._invMap)||{};
   var tableEl=document.getElementById('camp-detail-cust-table');
   if(!tableEl)return;
-  var custRows=filtered.map(function(c){
+
+  var totalPg=Math.ceil(filtered.length/CAMP_DETAIL_PAGE_SIZE)||1;
+  pg=Math.max(1,Math.min(pg,totalPg));
+  window._campDetailPg.page=pg;
+  var paged=filtered.slice((pg-1)*CAMP_DETAIL_PAGE_SIZE,pg*CAMP_DETAIL_PAGE_SIZE);
+
+  var custRows=paged.map(function(c){
     var inv=invMap[c.id];
     var dl=c.assigned_deadline?new Date(c.assigned_deadline):null;if(dl)dl.setHours(0,0,0,0);
     var daysLeft=dl?Math.ceil((dl-today)/86400000):null;
     var sale=c.assigned_profile?c.assigned_profile.full_name.split(' ').pop():'—';
-    return '<tr onclick="renderDetailModal('+c.id+')" style="cursor:pointer">'
+    return '<tr onclick="document.getElementById(\'camp-detail-modal\').style.display=\'none\';renderDetailModal('+c.id+')" style="cursor:pointer">'
       +'<td style="font-size:10px;color:var(--text3)">'+(c.ma_kh||'—')+'</td>'
       +'<td>'+(c.business_name||c.customer_name||'—')+'</td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone?String(c.cellphone):'—')+'</td>'
@@ -3065,9 +3103,29 @@ window._campDetailFilter=function(filterKey,custs,invMap){
       +'<td>'+(daysLeft!==null?daysLeft<0?'<span class="badge b-lost">'+Math.abs(daysLeft)+'d</span>':'<span class="badge b-followup">'+daysLeft+'d</span>':'—')+'</td>'
       +'</tr>';
   }).join('');
-  tableEl.innerHTML='<table style="min-width:560px;width:100%">'
+
+  // Pagination bar
+  var pgBar='';
+  if(totalPg>1){
+    var start=(pg-1)*CAMP_DETAIL_PAGE_SIZE+1;
+    var end=Math.min(pg*CAMP_DETAIL_PAGE_SIZE,filtered.length);
+    pgBar='<div class="pgbar" style="border-top:1px solid var(--border);padding:6px 12px;margin-top:4px">'
+      +'<span class="pgbar-info">'+start+'-'+end+' / '+filtered.length+' KH</span>'
+      +'<div class="pgbar-btns">';
+    pgBar+='<button class="btn" style="padding:3px 9px;font-size:11px" onclick="window._campDetailRenderPage('+(pg-1)+')" '+(pg===1?'disabled':'')+'>&#8249;</button>';
+    for(var _pi=1;_pi<=totalPg;_pi++){
+      if(totalPg>7&&_pi>1&&_pi<totalPg&&Math.abs(_pi-pg)>2)continue;
+      var _sel=_pi===pg?'background:var(--brand);border-color:var(--brand);color:#fff':'';
+      pgBar+='<button class="btn" style="padding:3px 9px;font-size:11px;'+_sel+'" onclick="window._campDetailRenderPage('+_pi+')">'+_pi+'</button>';
+    }
+    pgBar+='<button class="btn" style="padding:3px 9px;font-size:11px" onclick="window._campDetailRenderPage('+(pg+1)+')" '+(pg===totalPg?'disabled':'')+'>&#8250;</button>';
+    pgBar+='</div></div>';
+  }
+
+  tableEl.innerHTML='<div style="overflow-x:auto"><table style="min-width:560px;width:100%">'
     +'<thead><tr style="font-size:10px"><th>Mã KH</th><th>Business</th><th>Phone</th><th>Potential</th><th>Status</th><th>Invoice</th><th>Sale</th><th>Deadline</th></tr></thead>'
-    +'<tbody>'+custRows+'</tbody></table>';
+    +'<tbody>'+custRows+'</tbody></table></div>'
+    +pgBar;
 };
 
 window._campExportCSV=function(campName){
