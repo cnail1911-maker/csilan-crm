@@ -3082,6 +3082,7 @@ function editPhone(customerId, field, currentVal){
   var label={'cellphone':'Cellphone','business_phone':'Business Phone','cellphone_2':'Cellphone 2'}[field]||field;
   var m=document.createElement('div');
   m.className='modal-overlay';m.id='edit-phone-modal';
+  m.style.zIndex='10010'; // trên detail-modal (10003)
   m.onclick=function(e){if(e.target===m)m.remove();};
   var saveBtn='<button class="btn btn-primary" id="edit-phone-save"><i class="ti ti-check"></i> Lưu</button>';
   m.innerHTML='<div class="modal" style="max-width:360px;width:100%">'
@@ -3102,14 +3103,24 @@ function editPhone(customerId, field, currentVal){
 async function savePhone(customerId, field){
   var val=(document.getElementById('edit-phone-input').value||'').trim();
   showLoading(true);
-  var update={};update[field]=val||null;
-  await sb.from('customers').update(update).eq('id',customerId);
-  var idx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
-  if(idx>=0)CUSTOMERS[idx][field]=val||null;
-  document.getElementById('edit-phone-modal')&&document.getElementById('edit-phone-modal').remove();
-  document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
-  selId=customerId;
-  showLoading(false);render();
+  try{
+    var update={};update[field]=val||null;
+    var {error}=await sb.from('customers').update(update).eq('id',customerId);
+    if(error)throw error;
+    // Cập nhật local
+    var idx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
+    if(idx>=0)CUSTOMERS[idx][field]=val||null;
+    // Đóng edit modal, refresh detail modal tại chỗ (không đóng detail)
+    document.getElementById('edit-phone-modal')&&document.getElementById('edit-phone-modal').remove();
+    var dm=document.getElementById('detail-modal');
+    if(dm){
+      var c=CUSTOMERS.find(function(x){return x.id===customerId;});
+      if(c)_renderDetailShell(dm,c,currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader'),[]);
+    }
+  }catch(e){
+    showCrmToast('❌ Lỗi lưu số điện thoại',e.message,'error');
+  }
+  showLoading(false);
 }
 
 
@@ -4707,15 +4718,16 @@ async function saveDetail(customerId){
     document.getElementById('d-timeline')&&document.getElementById('d-timeline').focus();
     return;
   }
-  // Validate phone fields
+  // Phone fields dùng pb() helper (không phải input) → chỉ update nếu có input d-bphone/d-cell
+  // Tránh ghi null vào DB khi element không tồn tại
   var rawBph=(document.getElementById('d-bphone')&&document.getElementById('d-bphone').value)||'';
   var rawCel=(document.getElementById('d-cell')&&document.getElementById('d-cell').value)||'';
   var rawCel2=(document.getElementById('d-cell2')&&document.getElementById('d-cell2').value)||'';
-  var vBph=rawBph?validatePhone(rawBph,'Business Phone'):null;
+  var vBph=rawBph?validatePhone(rawBph,'Business Phone'):undefined;
   if(vBph===false){showLoading(false);return;}
-  var vCel=rawCel?validatePhone(rawCel,'Cellphone'):null;
+  var vCel=rawCel?validatePhone(rawCel,'Cellphone'):undefined;
   if(vCel===false){showLoading(false);return;}
-  var vCel2=rawCel2?validatePhone(rawCel2,'Cellphone 2'):null;
+  var vCel2=rawCel2?validatePhone(rawCel2,'Cellphone 2'):undefined;
   if(vCel2===false){showLoading(false);return;}
   const update={
     status:document.getElementById('d-status')&&document.getElementById('d-status').value||null,
@@ -4732,14 +4744,15 @@ async function saveDetail(customerId){
     times_of_use:document.getElementById('d-times')&&document.getElementById('d-times').value||null,
     reason:document.getElementById('d-reason')&&document.getElementById('d-reason').value||null,
     description:document.getElementById('d-desc')&&document.getElementById('d-desc').value||null,
-    business_phone:vBph||null,
-    cellphone:vCel||null,
-    cellphone_2:vCel2||null,
     customer_name_2:document.getElementById('d-name2')&&document.getElementById('d-name2').value.trim()||null,
     assigned_deadline:deadline||null,
     timeline_follow:timeline||null,
     ...(timeline&&!subStatus?{sub_status:'Appointment Set'}:{}),
   };
+  // Chỉ thêm phone vào update nếu có input element tồn tại (editPhone modal)
+  if(vBph!==undefined)update.business_phone=vBph||null;
+  if(vCel!==undefined)update.cellphone=vCel||null;
+  if(vCel2!==undefined)update.cellphone_2=vCel2||null;
   if(saleEl)update.assigned_to=saleEl.value;
   await sb.from('customers').update(update).eq('id',customerId);
   // Always log activity - dù không có note vẫn đếm data thao tác
