@@ -4930,7 +4930,7 @@ async function saveDetail(customerId){
   if(vBph!==undefined)update.business_phone=vBph||null;
   if(vCel!==undefined)update.cellphone=vCel||null;
   if(vCel2!==undefined)update.cellphone_2=vCel2||null;
-  if(saleEl)update.assigned_to=saleEl.value;
+  if(saleEl)update.assigned_to=saleEl.value||null; // empty string → null cho UUID field
   try{
     var {error:custErr}=await sb.from('customers').update(update).eq('id',customerId);
     if(custErr)throw custErr;
