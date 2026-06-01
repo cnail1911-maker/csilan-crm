@@ -2644,23 +2644,48 @@ window._campSalePgGo=function(btn){
 };
 
 window._campSaleFilter=function(key,wrap,sd){
-  var custs=window._campSaleCusts&&window._campSaleCusts[key];
-  if(!custs||!wrap)return;
+  var allCusts=window._campSaleCusts&&window._campSaleCusts[key];
+  if(!allCusts||!wrap)return;
   var search=(wrap.querySelector('input')||{}).value||'';
   var status=(wrap.querySelector('.csf-status')||{}).value||'';
   var lead=(wrap.querySelector('.csf-lead')||{}).value||'';
   var pot=(wrap.querySelector('.csf-pot')||{}).value||'';
-  var filtered=custs.filter(function(c){
-    if(search){var s=search.toLowerCase();if(!(c.business_name||'').toLowerCase().includes(s)&&!(c.customer_name||'').toLowerCase().includes(s)&&!(c.ma_kh||'').toLowerCase().includes(s))return false;}
+  var filtered=allCusts.filter(function(c){
+    if(search){var s=search.toLowerCase();
+      if(!(c.business_name||'').toLowerCase().includes(s)
+        &&!(c.customer_name||'').toLowerCase().includes(s)
+        &&!(c.ma_kh||'').toLowerCase().includes(s)
+        &&!(c.cellphone?String(c.cellphone):'').includes(s)
+        &&!(c.business_phone?String(c.business_phone):'').includes(s))return false;
+    }
     if(status&&c.status!==status)return false;
     if(lead&&c.lead_status!==lead)return false;
     if(pot&&c.potential!==pot)return false;
     return true;
   });
-  var tbody=wrap.querySelector('.csf-tbody');
-  var cnt=wrap.querySelector('.csf-count');
-  if(tbody)tbody.innerHTML=_campSaleRows(filtered,sd==='1');
-  if(cnt)cnt.textContent=filtered.length+' KH';
+  // Reset về trang 1 khi filter thay đổi
+  window._campSalePg[key]=1;
+  // Lưu filtered list riêng để pagination dùng
+  if(!window._campSaleFiltered)window._campSaleFiltered={};
+  window._campSaleFiltered[key]=filtered;
+  // Re-render toàn bộ section với pagination đúng
+  var tmp=document.createElement('div');
+  tmp.innerHTML=_campSaleTable(filtered,sd==='1',key);
+  // Restore lại giá trị filter sau khi re-render
+  var newWrap=tmp.firstChild;
+  if(newWrap){
+    var newInput=newWrap.querySelector('input');
+    if(newInput&&search)newInput.value=search;
+    var newStatus=newWrap.querySelector('.csf-status');
+    if(newStatus&&status)newStatus.value=status;
+    var newLead=newWrap.querySelector('.csf-lead');
+    if(newLead&&lead)newLead.value=lead;
+    var newPot=newWrap.querySelector('.csf-pot');
+    if(newPot&&pot)newPot.value=pot;
+    var cnt=newWrap.querySelector('.csf-count');
+    if(cnt)cnt.textContent=filtered.length+' KH';
+  }
+  wrap.parentNode.replaceChild(tmp.firstChild,wrap);
 };
 
 // Pagination state cho campaign sale table
@@ -4777,8 +4802,10 @@ function _updateDetailDOM(customerId, update){
     if(update[dbField]===undefined)return;
     var el=document.getElementById(fieldMap[dbField]);
     if(!el)return;
+    // Gán đúng: null → '' để SELECT reset về option đầu
+    var val=update[dbField]===null?'':update[dbField];
     if(el.tagName==='SELECT'||el.tagName==='INPUT'||el.tagName==='TEXTAREA'){
-      el.value=update[dbField]||'';
+      el.value=val;
     }
   });
 
@@ -4926,8 +4953,39 @@ async function saveDetail(customerId){
       else{lc.innerHTML='<div style="max-height:320px;overflow-y:auto;padding-right:4px">'+newLog+'</div>';}
       if(lb){var cur=parseInt((lb.textContent||'').replace(/\D/g,''))||0;lb.textContent='('+(cur+1)+')';}
     }
-    // Cập nhật background table/badges
-    if(page==='daily')renderDailyData();
+    // Cập nhật row trong campaign sale table ngay (không re-render toàn bộ)
+    if(page==='campaign'){
+      // Tìm row của KH trong tất cả camp-section-wrap và update
+      var allRows=document.querySelectorAll('tr[onclick*="renderDetailModal('+customerId+')"]');
+      var updC2=CUSTOMERS.find(function(x){return x.id===customerId;});
+      if(updC2){
+        allRows.forEach(function(tr){
+          // Update badge Status
+          var cells=tr.querySelectorAll('td');
+          if(cells.length>=5){
+            // cell 4 = Status badge
+            var statusCell=tr.querySelector('td:nth-child(5)');
+            if(statusCell)statusCell.innerHTML=sBadge(updC2.status);
+            // cell 5 = Lead Status
+            var leadCell=tr.querySelector('td:nth-child(6)');
+            if(leadCell)leadCell.textContent=updC2.lead_status||'—';
+            // cell 6 = Sub Status
+            var subCell=tr.querySelector('td:nth-child(7)');
+            if(subCell)subCell.textContent=updC2.sub_status||'—';
+            // cell 7 = Potential
+            var potCell=tr.querySelector('td:nth-child(8)');
+            if(potCell)potCell.textContent=updC2.potential||'—';
+          }
+        });
+        // Cập nhật _campSaleCusts local để filter/search dùng data mới
+        Object.keys(window._campSaleCusts||{}).forEach(function(k){
+          var arr=window._campSaleCusts[k];
+          if(!arr)return;
+          var ri=arr.findIndex(function(x){return x.id===customerId;});
+          if(ri>=0)Object.assign(arr[ri],update);
+        });
+      }
+    } else if(page==='daily')renderDailyData();
     else render();
   }catch(e){
     console.error('[saveDetail]',e);
