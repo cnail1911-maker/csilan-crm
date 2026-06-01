@@ -2841,6 +2841,8 @@ window._campDetailFilter=function(filterKey,custs,invMap){
     +'<thead><tr style="font-size:10px"><th>Mã KH</th><th>Business</th><th>Phone</th><th>Potential</th><th>Status</th><th>Invoice</th><th>Sale</th><th>Deadline</th></tr></thead>'
     +'<tbody>'+custRows+'</tbody></table>';
 };
+
+window._campExportCSV=function(campName){
   var isPool=campName==='__active_pool__';
   var decoded=decodeURIComponent(campName);
   var custs=isPool?CUSTOMERS.filter(function(c){return !c.campaign_name&&c.potential&&c.potential.trim();}):CUSTOMERS.filter(function(c){return c.campaign_name===decoded;});
