@@ -2356,15 +2356,24 @@ function renderCampaign(){
       if(dl<new Date())s.expired++;
     }
   });
-  // Add revenue from invoices
-  INVOICES.forEach(function(inv){
-    if(inv.type!=='invoice')return;
-    var cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;});
-    if(!cust||!cust.campaign_name||cust.campaign_name==='__active_pool__')return;
-    var s=campStats[cust.campaign_name];
-    if(!s)return;
-    if(inv.approval_status==='approved')s.rev+=(inv.total||0);
-    else if(inv.approval_status==='pending')s.estRev+=(inv.total||0);
+  // Revenue + Orders per campaign: chỉ invoice approved, latest per KH
+  Object.keys(campStats).forEach(function(campName){
+    var custIds=new Set(CUSTOMERS.filter(function(c){return c.campaign_name===campName;}).map(function(c){return c.id;}));
+    var approvedInvs=INVOICES.filter(function(i){return i.type==='invoice'&&i.approval_status==='approved'&&custIds.has(i.customer_id);});
+    var invMap={};
+    approvedInvs.forEach(function(i){
+      if(!invMap[i.customer_id]||new Date(i.created_at)>new Date(invMap[i.customer_id].created_at))invMap[i.customer_id]=i;
+    });
+    campStats[campName].orders=Object.keys(invMap).length;
+    campStats[campName].rev=Object.values(invMap).reduce(function(s,i){return s+(i.total||0);},0);
+    // Est Rev: pending invoices
+    var pendingInvs=INVOICES.filter(function(i){return i.type==='invoice'&&i.approval_status==='pending'&&custIds.has(i.customer_id);});
+    var pendingMap={};
+    pendingInvs.forEach(function(i){
+      if(!pendingMap[i.customer_id]||new Date(i.created_at)>new Date(pendingMap[i.customer_id].created_at))pendingMap[i.customer_id]=i;
+    });
+    campStats[campName].estOrders=Object.keys(pendingMap).length;
+    campStats[campName].estRev=Object.values(pendingMap).reduce(function(s,i){return s+(i.total||0);},0);
   });
 
   const campList=Object.values(campStats).sort(function(a,b){
@@ -2390,12 +2399,12 @@ function renderCampaign(){
       +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">'
       +'<div style="text-align:center"><div style="font-size:18px;font-weight:700;color:var(--brand2)">'+s.total+'</div><div style="font-size:9px;color:var(--text3)">Data</div></div>'
       +'<div style="text-align:center"><div style="font-size:18px;font-weight:700;color:var(--accent)">'+s.potential+'</div><div style="font-size:9px;color:var(--text3)">Potential</div></div>'
-      +'<div style="text-align:center"><div style="font-size:18px;font-weight:700;color:var(--accent2)">'+s.closedeal+'</div><div style="font-size:9px;color:var(--text3)">Orders</div></div>'
+      +'<div style="text-align:center"><div style="font-size:18px;font-weight:700;color:var(--accent2)">'+(s.orders||0)+'</div><div style="font-size:9px;color:var(--text3)">Orders</div></div>'
       +'<div style="text-align:center"><div style="font-size:18px;font-weight:700;color:var(--warn)">'+saleCount+'</div><div style="font-size:9px;color:var(--text3)">Sale</div></div>'
       +'</div>'
       +'<div style="display:flex;gap:8px;font-size:11px;color:var(--text3);margin-bottom:8px;flex-wrap:wrap">'
-      +(s.rev?'<span style="color:var(--accent2)">Rev: $'+s.rev.toLocaleString('en-US')+'</span>':'')
-      +(s.estRev?'<span style="color:var(--warn)">Est: $'+s.estRev.toLocaleString('en-US')+'</span>':'')
+      +((s.rev||0)?'<span style="color:var(--accent2)">Rev: $'+(s.rev||0).toLocaleString('en-US')+'</span>':'')
+      +((s.estRev||0)?'<span style="color:var(--warn)">Est: $'+(s.estRev||0).toLocaleString('en-US')+'</span>':'')
       +'<span>Contact: '+contactPct+'%</span>'
       +'<span>Pot: '+potPct+'%</span>'
       +'</div>'
@@ -2429,12 +2438,12 @@ function renderCampaign(){
     +'</div>'
     // Slide panel for create
     // Slide panel for create
-    +'<div id="camp-slide-panel" style="display:none;flex-direction:column;position:fixed;top:0;right:0;bottom:0;width:min(860px,96vw);background:var(--bg2,#1a1240);border-left:1px solid var(--border);z-index:1000;overflow:hidden;box-shadow:-8px 0 30px rgba(0,0,0,0.4)">'
+    +'<div id="camp-slide-panel" style="display:none;position:fixed;top:0;right:0;bottom:0;width:min(860px,96vw);background:var(--bg2,#1a1240);border-left:1px solid var(--border);z-index:1000;overflow:hidden;box-shadow:-8px 0 30px rgba(0,0,0,0.4)">'
     +'<div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;height:52px;box-sizing:border-box">'
     +'<div class="camp-slide-title" style="font-size:15px;font-weight:700">Tạo Campaign mới</div>'
     +'<button onclick="document.getElementById(\'camp-slide-panel\').style.display=\'none\';document.getElementById(\'camp-slide-overlay\').style.display=\'none\'" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:4px 10px;font-size:14px">×</button>'
     +'</div>'
-    +'<div id="camp-slide-content" style="flex:1;overflow:hidden;min-height:0"></div>'
+    +'<div id="camp-slide-content" style="position:absolute;top:52px;left:0;right:0;bottom:0;overflow:hidden"></div>'
     +'</div>'
     +'<div id="camp-slide-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999" onclick="document.getElementById(\'camp-slide-panel\').style.display=\'none\';document.getElementById(\'camp-slide-overlay\').style.display=\'none\'"></div>'
     // Detail modal
@@ -2530,21 +2539,59 @@ function renderCampaignSale(uid,profId,isLeader){
 function _campSaleTable(custs,showDeadline){
   if(!custs.length)return '<div class="empty-state" style="padding:20px"><i class="ti ti-users"></i>Không có khách</div>';
   var today=new Date();today.setHours(0,0,0,0);
-  var rows=custs.map(function(c){
+
+  // Filter bar
+  var filterBar='<div style="display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center">'
+    +'<input class="camp-sale-search" placeholder="🔍 Tìm tên, mã KH..." oninput="this.closest(\'.panel\').querySelector(\'.camp-sale-tbody\').innerHTML=_campSaleRows(window._campSaleCusts[this.closest(\'.panel\').dataset.camp],this.value,\''+showDeadline+'\')" style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text);outline:none">'
+    +'<select class="camp-sale-filter-status" onchange="this.closest(\'.panel\').querySelector(\'.camp-sale-search\').dispatchEvent(new Event(\'input\'))" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
+    +'<option value="">Tất cả Status</option>'
+    +STATUS_OPTS.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'</option>';}).join('')
+    +'</select>'
+    +'<select class="camp-sale-filter-pot" onchange="this.closest(\'.panel\').querySelector(\'.camp-sale-search\').dispatchEvent(new Event(\'input\'))" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
+    +'<option value="">Tất cả Potential</option>'
+    +POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'" style="background:#1e1550">'+p+'</option>';}).join('')
+    +'</select>'
+    +'<span style="font-size:11px;color:var(--text3)">'+custs.length+' KH</span>'
+    +'</div>';
+
+  var rows=_campSaleRows(custs,'',showDeadline);
+  return filterBar
+    +'<div style="overflow-x:auto"><table style="width:100%;min-width:500px">'
+    +'<thead><tr style="font-size:10px;position:sticky;top:0;background:var(--bg2);z-index:1">'
+    +'<th>Mã KH</th><th>Business</th><th>Tên KH</th><th>Phone</th><th>Status</th><th>Sub Status</th><th>Potential</th>'
+    +(showDeadline?'<th>Deadline</th>':'')+'<th>Liên hệ</th></tr></thead>'
+    +'<tbody class="camp-sale-tbody">'+rows+'</tbody></table></div>';
+}
+
+// Expose custs for filter
+window._campSaleCusts=window._campSaleCusts||{};
+
+function _campSaleRows(custs,search,showDeadline){
+  var today=new Date();today.setHours(0,0,0,0);
+  var filtered=custs;
+  if(search){
+    var s=search.toLowerCase();
+    filtered=filtered.filter(function(c){
+      return (c.business_name||'').toLowerCase().includes(s)||(c.customer_name||'').toLowerCase().includes(s)||(c.ma_kh||'').toLowerCase().includes(s);
+    });
+  }
+  return filtered.map(function(c){
     var dl=c.assigned_deadline?new Date(c.assigned_deadline):null;if(dl)dl.setHours(0,0,0,0);
     var daysLeft=dl?Math.ceil((dl-today)/86400000):null;
     var dlBadge=daysLeft===null?'—':daysLeft<0?'<span class="badge b-lost">'+Math.abs(daysLeft)+'d</span>':daysLeft===0?'<span class="badge b-lost">Hôm nay</span>':'<span class="badge b-followup">'+daysLeft+'d</span>';
+    var lastC=c.last_contacted?Math.floor((Date.now()-new Date(c.last_contacted))/86400000)+'d':'—';
     return '<tr onclick="renderDetailModal('+c.id+')" style="cursor:pointer">'
       +'<td style="font-size:10px;color:var(--text3)">'+(c.ma_kh||'—')+'</td>'
-      +'<td>'+(c.business_name||c.customer_name||'—')+'</td>'
+      +'<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.business_name||'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--text2)">'+(c.customer_name||'—')+'</td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone?String(c.cellphone):'—')+'</td>'
       +'<td>'+sBadge(c.status)+'</td>'
+      +'<td style="font-size:11px;color:var(--text2)">'+(c.sub_status||'—')+'</td>'
       +'<td style="font-size:11px;color:var(--accent)">'+(c.potential||'—')+'</td>'
-      +(showDeadline?'<td>'+dlBadge+'</td>':'')+'</tr>';
-  }).join('');
-  return '<div style="overflow-x:auto"><table style="width:100%;min-width:400px">'
-    +'<thead><tr><th>Mã KH</th><th>Business</th><th>Phone</th><th>Status</th><th>Potential</th>'+(showDeadline?'<th>Deadline</th>':'')+'</tr></thead>'
-    +'<tbody>'+rows+'</tbody></table></div>';
+      +(showDeadline?'<td>'+dlBadge+'</td>':'')
+      +'<td style="font-size:10px;color:var(--text3)">'+lastC+'</td>'
+      +'</tr>';
+  }).join('')||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Không có kết quả</td></tr>';
 }
 
 window._campSaleToggle=function(id){
@@ -2586,7 +2633,7 @@ window._campOpenCreate=function(prefillName){
   }
   var curCF=(window._campFilters&&window._campFilters['campaign'])||'all';
 
-  content.innerHTML='<div style="display:flex;height:100%;overflow:hidden" id="camp-create-grid">'
+  content.innerHTML='<div style="display:flex;flex-direction:row;position:absolute;top:0;left:0;right:0;bottom:52px;overflow:hidden" id="camp-create-grid">'
     // LEFT: Campaign info + filters - fixed width
     +'<div style="width:260px;min-width:260px;border-right:1px solid var(--border);overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;height:100%">'
     +'<div><label style="font-size:10px;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:3px">Tên Campaign *</label>'
@@ -2646,8 +2693,8 @@ window._campOpenCreate=function(prefillName){
     +'<div id="camp-cust-list" style="flex:1;overflow-y:auto"></div>'
     +'</div>'
     +'</div>'
-    // Bottom action bar
-    +'<div style="position:sticky;bottom:0;background:var(--bg2);border-top:1px solid var(--border);padding:10px 14px;display:flex;gap:8px;align-items:center">'
+    // Bottom action bar - absolute at bottom
+    +'<div style="position:absolute;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);padding:10px 14px;display:flex;gap:8px;align-items:center;height:52px;box-sizing:border-box">'
     +'<div id="camp-action-summary" style="flex:1;font-size:12px;color:var(--text3)"></div>'
     +'<div style="position:relative">'
     +'<button class="btn" onclick="toggleAddToCampDropdown(this)" style="font-size:12px;border-color:rgba(162,155,254,0.4);color:var(--brand2)"><i class="ti ti-folder-plus"></i> Thêm vào Campaign hiện có <i class="ti ti-chevron-down" style="font-size:10px"></i></button>'
@@ -2657,7 +2704,8 @@ window._campOpenCreate=function(prefillName){
 
   // Initialize selected set
   window._campCreateSelected=new Set();
-  panel.style.display='flex';
+  panel.style.display='block';
+  panel.style.position='fixed';
   if(overlay)overlay.style.display='block';
   // Reset selections on new open
   window._campCreateSelected=new Set();
@@ -3284,7 +3332,7 @@ function renderProducts(){
     +(isManagerProd?'<button class="btn btn-primary" onclick="openProdForm(null)"><i class="ti ti-plus"></i> Thêm sản phẩm</button>':'')
     +'</div>'
     +'<div class="stats-row" style="grid-template-columns:repeat('+(VENDOR_OPTS.length+1)+',1fr)">'+statsHtml+'</div>'
-    +'<div class="content">'
+    +'<div class="content" style="flex:1">'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+filtered.length+'</span> sản phẩm</h2></div>'
     +(filtered.length===0?'<div class="empty-state"><i class="ti ti-package"></i>Không tìm thấy sản phẩm</div>'
       :'<div style="overflow-x:auto"><table style="min-width:1100px;width:100%"><colgroup><col width="80"><col width="220"><col width="60"><col width="70"><col width="80"><col width="160"><col width="160">'+(isManagerProd?'<col width="180">':'')+'</colgroup>'
