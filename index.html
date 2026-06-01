@@ -3161,7 +3161,12 @@ function toggleAddToCampDropdown(btn){
   var rect=btn.getBoundingClientRect();
   var drop=document.createElement('div');
   drop.id='add-to-camp-dropdown';
-  drop.style.cssText='position:fixed;top:'+(rect.bottom+4)+'px;left:'+rect.left+'px;background:#1a1240;border:1px solid rgba(162,155,254,0.3);border-radius:9px;overflow:hidden;z-index:9999;min-width:220px;max-height:260px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4)';
+  // Xổ lên trên thay vì xuống dưới để không bị che bởi action bar
+  // Tính bottom từ dưới viewport lên (viewport height - rect.top + 4)
+  var dropMaxH=260;
+  var spaceAbove=rect.top-8;
+  var actualH=Math.min(dropMaxH,spaceAbove);
+  drop.style.cssText='position:fixed;bottom:'+(window.innerHeight-rect.top+4)+'px;left:'+rect.left+'px;background:#1a1240;border:1px solid rgba(162,155,254,0.3);border-radius:9px;overflow:hidden;z-index:9999;min-width:220px;max-height:'+actualH+'px;overflow-y:auto;box-shadow:0 -8px 24px rgba(0,0,0,0.4)';
   var html='<div style="padding:6px 12px;font-size:10px;color:rgba(240,238,255,0.4);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,0.06)">Chọn chiến dịch</div>';
   campNames.forEach(function(name){
     html+='<div onclick="addToCampaign(\''+name.replace(/'/g,'\\\'')+'\');document.getElementById(\'add-to-camp-dropdown\').remove()" style="padding:9px 14px;font-size:12px;color:var(--brand2);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,0.04)" onmouseover="this.style.background=\'rgba(162,155,254,0.08)\'" onmouseout="this.style.background=\'\'"><i class=\"ti ti-speakerphone\"></i> '+name+'</div>';
