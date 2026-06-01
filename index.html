@@ -3166,37 +3166,11 @@ async function savePhone(customerId, field){
     // Cập nhật local
     var idx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
     if(idx>=0)CUSTOMERS[idx][field]=val||null;
-    // Đóng edit modal, refresh detail modal tại chỗ với data mới
+    // Đóng edit modal, update DOM trực tiếp — hiển thị ngay lập tức
     document.getElementById('edit-phone-modal')&&document.getElementById('edit-phone-modal').remove();
-    var dm=document.getElementById('detail-modal');
-    if(dm){
-      var updC=CUSTOMERS.find(function(x){return x.id===customerId;});
-      var isMgr=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
-      if(updC){
-        _renderDetailShell(dm,updC,isMgr,[]);
-        showCrmToast('✅ Đã lưu số điện thoại','','success');
-        // Fetch logs background để cập nhật sidebar
-        sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)')
-          .eq('customer_id',customerId).order('called_at',{ascending:false}).limit(25)
-          .then(function(res){
-            var logs=res.data||[];
-            if(!logs.length)return;
-            var lc=document.getElementById('detail-log-container');
-            var lb=document.getElementById('detail-log-badge');
-            if(!lc)return;
-            var lh='<div style="max-height:320px;overflow-y:auto;padding-right:4px">';
-            logs.forEach(function(l){
-              var r2=l.call_result&&l.call_result!=='null'?'<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(108,92,231,0.2);color:var(--brand2);margin-right:5px">'+l.call_result+'</span>':'';
-              var n2=l.note&&l.note!=='null'&&l.note.trim()!==''?l.note.trim():'';
-              var line=r2+(n2||(!l.call_result?'<span style="color:var(--text3);font-style:italic">Thao tác</span>':''));
-              lh+='<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--brand);flex-shrink:0;margin-top:5px"></div><div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--text2)">'+line+'</div><div style="font-size:10px;color:var(--text3);margin-top:1px">'+((l.sale&&l.sale.full_name)||'—')+' · '+fmtDateTime(l.called_at)+'</div></div></div>';
-            });
-            lh+='</div>';
-            lc.innerHTML=lh;
-            if(lb)lb.textContent='('+logs.length+')';
-          }).catch(function(){});
-      }
-    }
+    var phoneUpdate={};phoneUpdate[field]=val||null;
+    _updateDetailDOM(customerId, phoneUpdate);
+    showCrmToast('✅ Đã lưu số điện thoại','','success');
   }catch(e){
     showCrmToast('❌ Lỗi lưu số điện thoại',e.message,'error');
   }
@@ -4772,6 +4746,75 @@ function _renderDetailShell(modal,c,isManager,logs){
   }
 }
 
+// Update DOM trực tiếp sau khi lưu — không re-render toàn bộ modal
+// Nhanh, không gây flicker, không reset input đang nhập
+function _updateDetailDOM(customerId, update){
+  var c=CUSTOMERS.find(function(x){return x.id===customerId;});
+  if(!c)return;
+  var dm=document.getElementById('detail-modal');
+  if(!dm)return;
+
+  // Cập nhật từng field trong modal nếu có input/element tương ứng
+  var fieldMap={
+    'business_name':'d-biz',
+    'customer_name':'d-name',
+    'customer_name_2':'d-name2',
+    'address':'d-address',
+    'city':'d-city',
+    'zipcode':'d-zip',
+    'description':'d-desc',
+    'status':'d-status',
+    'sub_status':'d-substatus',
+    'lead_status':'d-leadstatus',
+    'potential':'d-potential',
+    'brand':'d-brand',
+    'times_of_use':'d-times',
+    'reason':'d-reason',
+    'assigned_deadline':'d-deadline',
+    'timeline_follow':'d-timeline',
+  };
+  Object.keys(fieldMap).forEach(function(dbField){
+    if(update[dbField]===undefined)return;
+    var el=document.getElementById(fieldMap[dbField]);
+    if(!el)return;
+    if(el.tagName==='SELECT'||el.tagName==='INPUT'||el.tagName==='TEXTAREA'){
+      el.value=update[dbField]||'';
+    }
+  });
+
+  // Cập nhật phone fields (dùng pb() helper — update span text + data-p)
+  var phoneFields={
+    'business_phone':'business_phone',
+    'cellphone':'cellphone',
+    'cellphone_2':'cellphone_2'
+  };
+  Object.keys(phoneFields).forEach(function(field){
+    if(update[field]===undefined)return;
+    var val=update[field]||'';
+    // Tìm button edit có data-f = field trong modal
+    var btn=dm.querySelector('button[data-f="'+field+'"]');
+    if(!btn)return;
+    var container=btn.parentNode;
+    if(!container)return;
+    // Update data-p trên cả 2 button
+    container.querySelectorAll('button').forEach(function(b){b.dataset.p=val;});
+    // Update span hiển thị số
+    var span=container.querySelector('span');
+    if(span)span.textContent=val||'—';
+    // Ẩn/hiện nút gọi
+    var callBtn=container.querySelector('button[onclick*="makeOpenPhoneCall"]');
+    if(callBtn)callBtn.style.display=val?'flex':'none';
+  });
+
+  // Cập nhật header (business_name hiển thị dưới tên KH)
+  if(update.business_name!==undefined||update.customer_name!==undefined){
+    var headerSub=dm.querySelector('[style*="font-size:11px;color:var(--text3)"]');
+    if(headerSub){
+      headerSub.innerHTML=(c.business_name||'—')+' · <span style="font-family:monospace">'+(c.ma_kh||'—')+'</span>';
+    }
+  }
+}
+
 function validatePhone(phone,fieldName){
   if(!phone)return null;
   var digits=phone.replace(/\D/g,'');
@@ -4867,35 +4910,21 @@ async function saveDetail(customerId){
         CUSTOMERS[idx].assigned_profile=prof?{id:prof.id,full_name:prof.full_name,role:prof.role}:null;
       }
     }
-    // Re-render detail modal với data đã update — fetch logs background
-    var updatedC=CUSTOMERS.find(function(c){return c.id===customerId;});
-    var dm=document.getElementById('detail-modal');
-    if(dm&&updatedC){
-      _renderDetailShell(dm,updatedC,isManager,[]);
-      showCrmToast('✅ Đã lưu','Thông tin khách hàng đã cập nhật','success');
-      // Fetch logs để cập nhật sidebar (background, không chặn)
-      sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)')
-        .eq('customer_id',customerId).order('called_at',{ascending:false}).limit(25)
-        .then(function(res){
-          var logs=res.data||[];
-          if(!logs.length)return;
-          var lc=document.getElementById('detail-log-container');
-          var lb=document.getElementById('detail-log-badge');
-          if(!lc)return;
-          var lh='<div style="max-height:320px;overflow-y:auto;padding-right:4px">';
-          logs.forEach(function(l){
-            var res2=l.call_result&&l.call_result!=='null'?'<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(108,92,231,0.2);color:var(--brand2);margin-right:5px">'+l.call_result+'</span>':'';
-            var note2=l.note&&l.note!=='null'&&l.note.trim()!==''?l.note.trim():'';
-            var line=res2+(note2||(!l.call_result?'<span style="color:var(--text3);font-style:italic">Thao tác</span>':''));
-            lh+='<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--brand);flex-shrink:0;margin-top:5px"></div><div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--text2)">'+line+'</div><div style="font-size:10px;color:var(--text3);margin-top:1px">'+((l.sale&&l.sale.full_name)||'—')+' · '+fmtDateTime(l.called_at)+'</div></div></div>';
-          });
-          lh+='</div>';
-          lc.innerHTML=lh;
-          if(lb)lb.textContent='('+logs.length+')';
-        }).catch(function(){});
-    } else {
-      document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
-      selId=null;
+    // Update DOM trực tiếp — không re-render toàn bộ modal, không flicker
+    _updateDetailDOM(customerId, update);
+    showCrmToast('✅ Đã lưu','Thông tin khách hàng đã cập nhật','success');
+    // Append log mới vào sidebar ngay lập tức
+    var lc=document.getElementById('detail-log-container');
+    var lb=document.getElementById('detail-log-badge');
+    if(lc&&(note||result)){
+      var r2=result?'<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(108,92,231,0.2);color:var(--brand2);margin-right:5px">'+result+'</span>':'';
+      var n2=note?'<span style="font-size:12px;color:var(--text2)">'+note+'</span>':'<span style="color:var(--text3);font-style:italic">Thao tác</span>';
+      var saleName=(currentProfile&&currentProfile.full_name)||'—';
+      var newLog='<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--accent2);flex-shrink:0;margin-top:5px"></div><div style="flex:1;min-width:0"><div>'+r2+n2+'</div><div style="font-size:10px;color:var(--text3);margin-top:1px">'+saleName+' · Vừa xong</div></div></div>';
+      var existingList=lc.querySelector('div[style*="max-height"]');
+      if(existingList){existingList.insertAdjacentHTML('afterbegin',newLog);}
+      else{lc.innerHTML='<div style="max-height:320px;overflow-y:auto;padding-right:4px">'+newLog+'</div>';}
+      if(lb){var cur=parseInt((lb.textContent||'').replace(/\D/g,''))||0;lb.textContent='('+(cur+1)+')';}
     }
     // Cập nhật background table/badges
     if(page==='daily')renderDailyData();
