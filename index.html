@@ -4946,8 +4946,10 @@ async function saveDetail(customerId){
         CUSTOMERS[idx].assigned_profile=prof?{id:prof.id,full_name:prof.full_name,role:prof.role}:null;
       }
     }
-    // Update DOM trực tiếp — không re-render toàn bộ modal, không flicker
+    // Update DOM trực tiếp rồi đóng modal
     _updateDetailDOM(customerId, update);
+    document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
+    selId=null;
     showCrmToast('✅ Đã lưu','Thông tin khách hàng đã cập nhật','success');
     // Append log mới vào sidebar ngay lập tức
     var lc=document.getElementById('detail-log-container');
