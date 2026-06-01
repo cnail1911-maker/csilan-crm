@@ -3761,8 +3761,7 @@ window._kpiListPage=async function(type,saleId,page){
 
 // ── Open customer from KPI modal — opens detail modal alongside ──
 window._kpiOpenCust=function(custId){
-  // Open detail modal directly without navigating away
-  openDetail(custId);
+  renderDetailModal(custId);
 };
 
 // ── Sale detail modal ──
