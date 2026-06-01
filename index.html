@@ -3827,87 +3827,49 @@ var _kpiInvCache={}; // key: "fromDate_toDate"
 var _kpiRenderVersion=0; // chống race condition khi nav nhanh
 var _kpiFunnelSale='team'; // 'team' | sale.id
 
-// ── Lấy invoices theo khoảng tháng — dùng INVOICES local (đã load sẵn) ──
-// Không fetch DB lại để tránh RLS block và chậm network
-// Fallback fetch DB chỉ khi INVOICES chưa sẵn sàng
+// ── Fetch invoices cho KPI — luôn query DB trực tiếp theo date range ──
+// INVOICES local chỉ load 2000 records → không đủ cho KPI nhiều tháng
+// Cache kết quả để tránh fetch lại khi không cần
 async function _kpiFetchInvoices(fromDate,toDate){
   var key=fromDate+'_'+toDate;
   if(_kpiInvCache[key])return _kpiInvCache[key];
   var isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   var uid=currentUser&&currentUser.id;
   var result=[];
+  var fromD=fromDate.slice(0,10);
+  var toD=toDate.slice(0,10);
 
-  if(INVOICES&&INVOICES.length>0){
-    // Filter trực tiếp từ INVOICES local — nhanh, không cần network
-    var fromD=fromDate.slice(0,10); // YYYY-MM-DD
-    var toD=toDate.slice(0,10);
-    result=INVOICES.filter(function(i){
-      if(i.type!=='invoice')return false;
-      if(!isM&&i.sale_id!==uid)return false;
-      // Ưu tiên created_at, fallback date field
-      var ts=i.created_at?i.created_at.slice(0,10):null;
-      var dt=i.date?i.date.slice(0,10):null;
-      var d=ts||dt;
-      if(!d)return false;
-      return d>=fromD&&d<=toD;
-    });
-    // Nếu local rỗng và đang xem tháng khác tháng hiện tại
-    // → INVOICES local có thể không đủ → fallback fetch DB
-    var nowM=new Date().getMonth()+1;
-    var nowY=new Date().getFullYear();
-    var reqM=parseInt(fromD.slice(5,7));
-    var reqY=parseInt(fromD.slice(0,4));
-    var isCurrentMonth=(reqM===nowM&&reqY===nowY);
-    if(result.length===0&&!isCurrentMonth){
-      // Fetch DB cho tháng cũ
-      try{
-        var q=sb.from('invoices')
-          .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
-          .eq('type','invoice').gte('created_at',fromDate).lte('created_at',toDate);
-        if(!isM)q=q.eq('sale_id',uid);
-        var {data:d1,error:e1}=await q.limit(2000);
-        if(e1)console.warn('[KPI fallback]',e1.message);
-        var q2=sb.from('invoices')
-          .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
-          .eq('type','invoice').is('created_at',null)
-          .gte('date',fromD).lte('date',toD);
-        if(!isM)q2=q2.eq('sale_id',uid);
-        var {data:d2}=await q2.limit(500);
-        var merged=[...(d1||[])];
-        var ids=new Set(merged.map(function(i){return i.id;}));
-        (d2||[]).forEach(function(i){if(!ids.has(i.id))merged.push(i);});
-        result=merged;
-        console.log('[KPI fallback DB] month='+fromD.slice(0,7)+' count='+result.length);
-      }catch(err){
-        console.warn('[KPI fallback error]',err);
-      }
-    }
-  } else {
-    // Fallback: fetch DB nếu INVOICES chưa load
-    try{
-      var q=sb.from('invoices')
-        .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
-        .eq('type','invoice')
-        .gte('created_at',fromDate).lte('created_at',toDate);
-      if(!isM)q=q.eq('sale_id',uid);
-      var {data:d1,error:e1}=await q.limit(2000);
-      if(e1)console.warn('[KPI fetch fallback]',e1.message);
-      var fromD2=fromDate.slice(0,10);
-      var toD2=toDate.slice(0,10);
-      var q2=sb.from('invoices')
-        .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
-        .eq('type','invoice').is('created_at',null)
-        .gte('date',fromD2).lte('date',toD2);
-      if(!isM)q2=q2.eq('sale_id',uid);
-      var {data:d2}=await q2.limit(500);
-      var merged=[...(d1||[])];
-      var ids=new Set(merged.map(function(i){return i.id;}));
-      (d2||[]).forEach(function(i){if(!ids.has(i.id))merged.push(i);});
-      result=merged;
-    }catch(err){
-      console.warn('[KPI fetch error]',err);
-      result=[];
-    }
+  try{
+    // Query theo created_at range
+    var q=sb.from('invoices')
+      .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
+      .eq('type','invoice')
+      .gte('created_at',fromDate)
+      .lte('created_at',toDate);
+    if(!isM)q=q.eq('sale_id',uid);
+    var {data:d1,error:e1}=await q.limit(5000);
+    if(e1)console.warn('[KPI fetch created_at]',e1.message);
+
+    // Query thêm theo date field (invoice nhập tay không có created_at)
+    var q2=sb.from('invoices')
+      .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
+      .eq('type','invoice')
+      .is('created_at',null)
+      .gte('date',fromD)
+      .lte('date',toD);
+    if(!isM)q2=q2.eq('sale_id',uid);
+    var {data:d2,error:e2}=await q2.limit(1000);
+    if(e2)console.warn('[KPI fetch date]',e2.message);
+
+    // Merge dedup
+    var merged=[...(d1||[])];
+    var ids=new Set(merged.map(function(i){return i.id;}));
+    (d2||[]).forEach(function(i){if(!ids.has(i.id)){merged.push(i);ids.add(i.id);}});
+    result=merged;
+    console.log('[KPI fetch] '+fromD+' → '+toD+': '+result.length+' invoices');
+  }catch(err){
+    console.error('[KPI fetch error]',err);
+    result=[];
   }
 
   _kpiInvCache[key]=result;
