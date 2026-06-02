@@ -3940,7 +3940,7 @@ async function renderKPIAsync(){
 
   // Lấy m SAU khi fetch — tránh ghi vào DOM cũ nếu user đã navigate
   var m=document.getElementById('main-area');
-  if(!m||window.page!=='kpi')return;
+  if(!m||page!=='kpi')return;
 
   // Helper tên tối giản: Họ + Tên cuối (Phạm Thanh Cường → Phạm Cường)
   function shortName(name){
