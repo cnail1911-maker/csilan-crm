@@ -3908,7 +3908,6 @@ function _kpiCompute(invs,saleId){
 
 // ── Render KPI Dashboard ──
 async function renderKPIAsync(){
-  var m=document.getElementById('main-area');if(!m)return;
   // Version guard: nếu user nav nhanh, chỉ render version mới nhất
   var myVersion=++_kpiRenderVersion;
   var isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
@@ -3938,6 +3937,10 @@ async function renderKPIAsync(){
 
   // Nếu có request mới hơn đang chạy, bỏ qua render này
   if(myVersion!==_kpiRenderVersion)return;
+
+  // Lấy m SAU khi fetch — tránh ghi vào DOM cũ nếu user đã navigate
+  var m=document.getElementById('main-area');
+  if(!m||window.page!=='kpi')return;
 
   // Helper tên tối giản: Họ + Tên cuối (Phạm Thanh Cường → Phạm Cường)
   function shortName(name){
