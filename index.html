@@ -6389,7 +6389,7 @@ function render(){
       <div class="sc-field">
         <div class="sc-label">Số đơn hàng trong tháng</div>
         <input type="number" class="sc-input" id="sc-dondathang" value="0" min="0" oninput="scCalc()">
-        <div class="sc-note">Chính thức cần ≥5 đơn. Thử việc cần ≥4 đơn.</div>
+        <div class="sc-note">Chỉ để tham khảo — không ảnh hưởng bonus. Target chỉ xét doanh số.</div>
       </div>
 
       <div class="sc-field">
@@ -6427,139 +6427,81 @@ function render(){
 
   <script>
   (function(){
-    var _scType='chinh', _scChuyen=true, _scKPI=true;
-
-    window.scSetType=function(t){
-      _scType=t;
-      document.getElementById('sc-type-chinh').className='sc-toggle-btn'+(t==='chinh'?' active':'');
-      document.getElementById('sc-type-thu').className='sc-toggle-btn'+(t==='thu'?' active':'');
-      scCalc();
-    };
-    window.scSetChuyen=function(v){
-      _scChuyen=v;
-      document.getElementById('sc-chuyen-yes').className='sc-toggle-btn'+(v?' active':'');
-      document.getElementById('sc-chuyen-no').className='sc-toggle-btn'+(!v?' active':'');
-      scCalc();
-    };
-    window.scSetKPI=function(v){
-      _scKPI=v;
-      document.getElementById('sc-kpi-yes').className='sc-toggle-btn'+(v?' active':'');
-      document.getElementById('sc-kpi-no').className='sc-toggle-btn'+(!v?' active':'');
-      scCalc();
-    };
-
+    var _scType='chinh',_scChuyen=true,_scKPI=true;
+    window.scSetType=function(t){_scType=t;document.getElementById('sc-type-chinh').className='sc-toggle-btn'+(t==='chinh'?' active':'');document.getElementById('sc-type-thu').className='sc-toggle-btn'+(t==='thu'?' active':'');scCalc();};
+    window.scSetChuyen=function(v){_scChuyen=v;document.getElementById('sc-chuyen-yes').className='sc-toggle-btn'+(v?' active':'');document.getElementById('sc-chuyen-no').className='sc-toggle-btn'+(!v?' active':'');scCalc();};
+    window.scSetKPI=function(v){_scKPI=v;document.getElementById('sc-kpi-yes').className='sc-toggle-btn'+(v?' active':'');document.getElementById('sc-kpi-no').className='sc-toggle-btn'+(!v?' active':'');scCalc();};
     function fmt(n){return Math.round(n).toLocaleString('vi-VN')+'d';}
-    function fmtUSD(n){return '$'+n.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});}
-
+    function usd(n){return '$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});}
     window.scCalc=function(){
-      var ngayCong=Math.max(0,parseFloat(document.getElementById('sc-ngaycong').value)||0);
+      var ngay=Math.max(0,parseFloat(document.getElementById('sc-ngaycong').value)||0);
       var p2c=parseFloat(document.getElementById('sc-level').value)||0;
-      var doanhThu=Math.max(0,parseFloat(document.getElementById('sc-doanhthu').value)||0);
-      var donHang=Math.max(0,parseInt(document.getElementById('sc-dondathang').value)||0);
-      var headspa=Math.max(0,parseInt(document.getElementById('sc-headspa').value)||0);
-
+      var dt=Math.max(0,parseFloat(document.getElementById('sc-doanhthu').value)||0);
+      var don=Math.max(0,parseInt(document.getElementById('sc-dondathang').value)||0);
+      var hs=Math.max(0,parseInt(document.getElementById('sc-headspa').value)||0);
       // P1
-      var p1Base=5310000/22*ngayCong;
-      var p1=_scType==='thu'?p1Base*0.85:p1Base;
-      // P2 co dinh
-      var p2a=500000;
-      var p2b=1240000;
-      var p2cVal=p2c;
-      // P3B, P3C
+      var p1b=5310000/22*ngay;
+      var p1=_scType==='thu'?p1b*0.85:p1b;
+      var p2a=500000,p2b=1240000;
       var p3b=_scChuyen?300000:0;
       var p3c=_scKPI?500000:0;
-
-      // Target
+      // Target: DT san pham + HS (1 giuong=$1450)
       var target=_scType==='thu'?19975:23500;
-      var donTarget=_scType==='thu'?4:5;
-      var datTarget=doanhThu>=target&&donHang>=donTarget;
-
+      var dtHS=hs*1450;
+      var dtTong=dt+dtHS;
+      var dat=dtTong>=target;
       // Headspa bonus rieng
-      var hsBonus=0;
-      var hsPricePerBed=0;
-      var hsExtra=0;
-      if(headspa>0){
-        if(headspa>=40){hsPricePerBed=25;hsExtra=250;}
-        else if(headspa>=30){hsPricePerBed=20;hsExtra=200;}
-        else if(headspa>=20){hsPricePerBed=17;hsExtra=150;}
-        else if(headspa>=10){hsPricePerBed=15;hsExtra=100;}
-        else{hsPricePerBed=15;hsExtra=0;}
-        hsBonus=(headspa*hsPricePerBed+hsExtra)*25000;
+      var hsPPB=0,hsEx=0,hsB=0;
+      if(hs>0){
+        if(hs>=40){hsPPB=25;hsEx=250;}
+        else if(hs>=30){hsPPB=20;hsEx=200;}
+        else if(hs>=20){hsPPB=17;hsEx=150;}
+        else if(hs>=10){hsPPB=15;hsEx=100;}
+        else{hsPPB=15;hsEx=0;}
+        hsB=(hs*hsPPB+hsEx)*25000;
       }
-
-      // Bonus 1% tren DT san pham (khong gom headspa)
-      var bonusRate=datTarget?1.0:0.5;
-      var bonus1pct=doanhThu*0.01*bonusRate*25000;
-
+      // Bonus 1% tren DT san pham
+      var b1=dt*0.01*(dat?1.0:0.5)*25000;
       // Thuong nong
-      var thuongNong=0;
-      if(doanhThu>0&&donHang>0){
-        var pctVuot=doanhThu/target;
-        if(pctVuot>=2.0){thuongNong=200*25000;}
-        else if(pctVuot>=1.4){thuongNong=100*25000;}
+      var tn=0;
+      if(dtTong>0){var pv=dtTong/target;if(pv>=2.0)tn=200*25000;else if(pv>=1.4)tn=100*25000;}
+      var p3a=b1+hsB+tn;
+      var total=p1+p2a+p2b+p2c+p3a+p3b+p3c;
+      var lvl=p2c===0?1:p2c===500000?2:p2c===1000000?3:p2c===1500000?4:5;
+      // Render rows
+      function row(label,val,sub){
+        return '<div class="sc-row"><span class="sc-row-label">'+label+'<br><small style="color:var(--text3)">'+sub+'</small></span><span class="sc-row-val '+(val>0?'pos':'zero')+'">'+fmt(val)+'</span></div>';
       }
-
-      var p3a=bonus1pct+hsBonus+thuongNong;
-      var total=p1+p2a+p2b+p2cVal+p3a+p3b+p3c;
-      var totalUSD=total/25000;
-
-      // Level label
-      var lvl=p2cVal===0?1:p2cVal===500000?2:p2cVal===1000000?3:p2cVal===1500000?4:5;
-      var p1Sub=(_scType==='thu'?'85% x ':'') + ngayCong + ' ngay cong';
-
-      var rows=[
-        {l:'P1 - Luong co ban'+(ngayCong!==22?' ('+ngayCong+' ngay)':''),v:p1,s:p1Sub},
-        {l:'P2A - Phu cap an uong & di lai',v:p2a,s:'Co dinh'},
-        {l:'P2B - Phu cap chuc nang',v:p2b,s:'Co dinh'},
-        {l:'P2C - Phu cap nang luc',v:p2cVal,s:'Level '+lvl},
-        {l:'P3B - Thuong chuyen can',v:p3b,s:_scChuyen?'Dung gio du thang':'Khong dat'},
-        {l:'P3C - Thuong KPI',v:p3c,s:_scKPI?'>=70 diem':'Chua dat'},
-      ];
-
-      var bonusRows=[];
-      if(doanhThu>0){
-        var bLabel='Bonus 1% DT san pham '+(datTarget?'(dat target)':'(khong dat - 50%)');
-        var bSub=fmtUSD(doanhThu)+' x 1% x '+(datTarget?'100%':'50%');
-        bonusRows.push({l:bLabel,v:bonus1pct,s:bSub});
-      }
-      if(headspa>0){
-        var hsLabel='Bonus Headspa ('+headspa+' giuong x $'+hsPricePerBed+(hsExtra>0?' + $'+hsExtra:'')+')';
-        var hsSub=fmtUSD(headspa*hsPricePerBed+hsExtra)+' x 25.000d';
-        bonusRows.push({l:hsLabel,v:hsBonus,s:hsSub});
-      }
-      if(thuongNong>0){
-        var tnLabel='Thuong nong';
-        var tnSub=doanhThu/target>=2.0?'Vuot 100% target: +$200':'Vuot 40% target: +$100';
-        bonusRows.push({l:tnLabel,v:thuongNong,s:tnSub});
-      }
-
-      var html='';
-      rows.forEach(function(r){
-        var cls=r.v>0?'pos':'zero';
-        html+='<div class="sc-row"><span class="sc-row-label">'+r.l+'<br><span style="font-size:10px;color:var(--text3)">'+r.s+'</span></span><span class="sc-row-val '+cls+'">'+fmt(r.v)+'</span></div>';
-      });
-
-      if(bonusRows.length>0){
-        html+='<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;padding:8px 0 4px;font-weight:600">P3A - Thuong doanh thu</div>';
-        bonusRows.forEach(function(r){
-          html+='<div class="sc-row"><span class="sc-row-label">'+r.l+'<br><span style="font-size:10px;color:var(--text3)">'+r.s+'</span></span><span class="sc-row-val pos">'+fmt(r.v)+'</span></div>';
-        });
+      var h='';
+      h+=row('P1 - Luong co ban'+(ngay!==22?' ('+ngay+' ngay)':''),p1,(_scType==='thu'?'85% x ':'')+ngay+' ngay');
+      h+=row('P2A - Phu cap an uong & di lai',p2a,'Co dinh');
+      h+=row('P2B - Phu cap chuc nang',p2b,'Co dinh');
+      h+=row('P2C - Phu cap nang luc',p2c,'Level '+lvl);
+      h+=row('P3B - Thuong chuyen can',p3b,_scChuyen?'Dung gio du thang':'Khong dat');
+      h+=row('P3C - Thuong KPI',p3c,_scKPI?'>=70 diem':'Chua dat');
+      // P3A breakdown
+      var hasPb=dt>0||hs>0||tn>0;
+      if(hasPb){
+        h+='<div style="font-size:10px;color:var(--text3);text-transform:uppercase;padding:8px 0 4px;font-weight:600">P3A - Thuong doanh thu</div>';
+        if(dt>0) h+=row('Bonus 1% DT san pham '+(dat?'(dat target)':'(chua dat 50%)'),b1,usd(dt)+' x 1% x '+(dat?'100%':'50%'));
+        if(hs>0){
+          var hsLbl='Bonus Headspa: '+hs+' giuong x $'+hsPPB+(hsEx>0?' + $'+hsEx:'');
+          h+=row(hsLbl,hsB,usd(hs*hsPPB+hsEx)+' x 25,000d');
+        }
+        if(tn>0) h+=row('Thuong nong',tn,dtTong/target>=2.0?'Vuot 100% target +$200':'Vuot 40% target +$100');
       } else {
-        html+='<div class="sc-row"><span class="sc-row-label">P3A - Thuong doanh thu</span><span class="sc-row-val zero">0d</span></div>';
+        h+='<div class="sc-row"><span class="sc-row-label">P3A - Thuong doanh thu</span><span class="sc-row-val zero">0d</span></div>';
       }
-
-      if(doanhThu>0||donHang>0){
-        var tStatus=datTarget
-          ?'<span style="color:var(--accent);font-weight:600">Dat target - Bonus 100%</span>'
-          :'<span style="color:var(--warn);font-weight:600">Chua dat target - Bonus 50%</span>';
-        html+='<div style="background:rgba(0,0,0,0.15);border-radius:8px;padding:8px 10px;margin:8px 0;font-size:11px">'+tStatus+'<br><span style="font-size:10px;color:var(--text3)">Can: '+donTarget+' don & $'+target.toLocaleString('en-US')+' | Thuc te: '+donHang+' don & $'+doanhThu.toLocaleString('en-US')+'</span></div>';
+      // Target status
+      if(dt>0||hs>0){
+        var st=dat?'<span style="color:var(--accent);font-weight:700">Dat target - Bonus 100%</span>':'<span style="color:var(--warn);font-weight:700">Chua dat target - Bonus 50%</span>';
+        var dtInfo='DT tinh target: '+usd(dtTong)+(hs>0?' (SP: '+usd(dt)+' + HS: '+usd(dtHS)+')'  :'')+' | Can: '+usd(target);
+        h+='<div style="background:rgba(0,0,0,0.15);border-radius:8px;padding:8px 10px;margin:8px 0;font-size:11px">'+st+'<br><span style="font-size:10px;color:var(--text3)">'+dtInfo+'</span></div>';
       }
-
-      html+='<div class="sc-total"><div><div style="font-size:11px;color:rgba(240,238,255,0.5);margin-bottom:2px">TONG THU NHAP UOC TINH</div><div style="font-size:10px;color:var(--text3)">~ '+fmtUSD(totalUSD)+' (ty gia 25.000d)</div></div><div style="font-size:22px;font-weight:800;color:var(--brand2)">'+fmt(total)+'</div></div>';
-
-      document.getElementById('sc-result').innerHTML=html;
+      // Total
+      h+='<div class="sc-total"><div><div style="font-size:11px;color:rgba(240,238,255,0.5);margin-bottom:2px">TONG THU NHAP UOC TINH</div><div style="font-size:10px;color:var(--text3)">~ '+usd(total/25000)+' (ty gia 25,000d)</div></div><div style="font-size:22px;font-weight:800;color:var(--brand2)">'+fmt(total)+'</div></div>';
+      document.getElementById('sc-result').innerHTML=h;
     };
-
     setTimeout(scCalc,0);
   })();
   </script>
