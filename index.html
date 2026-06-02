@@ -1943,7 +1943,7 @@ async function approveInvoice(id,status){
               var v=prodRecord.vendor.toLowerCase();
               if(v.includes('ons'))vendor='ONS';
               else if(v.includes('tspa'))vendor='TSPA';
-              else vendor='Bolsa';
+              else vendor='BOLSA';
               if(!giaBanGoc)giaBanGoc=prodRecord.vendor_cost||0;
               chenhLech=(giaBanThuc-giaBanGoc)*qty;
             } else {
