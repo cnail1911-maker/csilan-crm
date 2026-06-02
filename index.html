@@ -4774,8 +4774,18 @@ function _renderDetailShell(modal,c,isManager,logs){
   // HEADER
   html+='<div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);position:sticky;top:0;background:var(--bg2);z-index:1;border-radius:12px 12px 0 0">';
   html+='<div class="avatar '+saleAvClass(c.assigned_to)+'" style="width:38px;height:38px;font-size:13px;flex-shrink:0">'+saleInitials(c)+'</div>';
-  html+='<div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.customer_name||'')+'</div>';
-  html+='<div style="font-size:11px;color:var(--text3)">'+(c.business_name||'—')+' · <span style="font-family:monospace">'+(c.ma_kh||'—')+'</span></div></div>';
+  var localTime=getStateLocalTime(c.state);
+  var tzLabel=c.state?(STATE_TZ[c.state]||'').split('/').pop().replace('_',' '):'';
+  html+='<div style="flex:1;min-width:0">'
+    +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+    +'<div style="font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.customer_name||'')+'</div>'
+    +'<div id="detail-local-time" style="display:flex;align-items:center;gap:5px;background:rgba(255,71,87,0.12);border:1px solid rgba(255,71,87,0.35);border-radius:20px;padding:2px 10px;flex-shrink:0">'
+    +'<i class="ti ti-clock" style="font-size:11px;color:#ff4757"></i>'
+    +'<span id="detail-clock-val" style="font-size:12px;font-weight:700;color:#ff4757;font-family:monospace">'+localTime+'</span>'
+    +(tzLabel?'<span style="font-size:10px;color:rgba(255,71,87,0.7)">('+tzLabel+')</span>':'')
+    +'</div>'
+    +'</div>'
+    +'<div style="font-size:11px;color:var(--text3)">'+(c.business_name||'—')+' · <span style="font-family:monospace">'+(c.ma_kh||'—')+'</span></div></div>';
   html+='<button type="button" style="padding:4px 10px;background:none;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text2);cursor:pointer" onclick="document.getElementById(\'detail-modal\').remove();selId=null"><i class="ti ti-x"></i></button>';
   html+='</div>';
 
@@ -4784,17 +4794,6 @@ function _renderDetailShell(modal,c,isManager,logs){
 
   // ── LEFT MAIN ──
   html+='<div id="detail-left-pane" style="padding:16px 20px;border-right:1px solid rgba(255,255,255,0.07);overflow-y:auto;flex:1;min-height:0">';
-
-  // Giờ địa phương theo State — cập nhật realtime mỗi 10s
-  var localTime=getStateLocalTime(c.state);
-  var tzLabel=c.state?(STATE_TZ[c.state]||'').split('/').pop().replace('_',' '):'';
-  html+='<div id="detail-local-time" style="display:flex;align-items:center;gap:8px;padding:4px 0 10px;margin-bottom:2px">'
-    +'<div style="display:flex;align-items:center;gap:6px;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.2);border-radius:20px;padding:4px 12px">'
-    +'<i class="ti ti-clock" style="font-size:13px;color:var(--brand2)"></i>'
-    +'<span style="font-size:12px;color:var(--text2)">Giờ địa phương:</span>'
-    +'<span id="detail-clock-val" style="font-size:13px;font-weight:700;color:var(--brand2);font-family:monospace">'+localTime+'</span>'
-    +(tzLabel?'<span style="font-size:10px;color:var(--text3)">('+tzLabel+')</span>':'')
-    +'</div></div>';
 
   // ROW 1: Biz Name (2fr) | Address (2fr) | City | State | Zip
   html+=row('2fr 2fr 1fr 1fr 1fr',
