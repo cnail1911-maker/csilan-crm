@@ -4418,11 +4418,26 @@ window._kpiDebug=async function(){
 
 window._kpiNav=function(m,y){
   _kpiMonth=m;_kpiYear=y;
-  _kpiInvCache={}; // Clear filter cache khi nav tháng
-  if(window.page==='kpi'){
+  _kpiInvCache={};
+  if(page==='kpi'){
+    // Dùng overlay loading thay vì replace innerHTML — tránh mất DOM reference
     var el=document.getElementById('main-area');
-    if(el)el.innerHTML='<div class="topbar"><div class="topbar-title">Báo cáo KPI</div></div><div class="content"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--text3)"><i class="ti ti-loader" style="animation:spin 1s linear infinite;font-size:24px"></i></div></div>';
-    renderKPIAsync();
+    if(el){
+      // Thêm overlay mờ lên content hiện tại
+      var ov=document.getElementById('kpi-nav-overlay');
+      if(!ov){
+        ov=document.createElement('div');
+        ov.id='kpi-nav-overlay';
+        ov.style.cssText='position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.45);z-index:50;display:flex;align-items:center;justify-content:center;pointer-events:all';
+        ov.innerHTML='<i class="ti ti-loader" style="font-size:28px;color:var(--brand2);animation:spin 0.8s linear infinite"></i>';
+        el.style.position='relative';
+        el.appendChild(ov);
+      }
+    }
+    renderKPIAsync().then(function(){
+      var ov2=document.getElementById('kpi-nav-overlay');
+      if(ov2)ov2.remove();
+    });
   }
 };
 window._kpiFunnelTab=function(id){_kpiFunnelSale=id;if(window.page==='kpi')renderKPIAsync();};
@@ -4770,6 +4785,17 @@ function _renderDetailShell(modal,c,isManager,logs){
   // ── LEFT MAIN ──
   html+='<div id="detail-left-pane" style="padding:16px 20px;border-right:1px solid rgba(255,255,255,0.07);overflow-y:auto;flex:1;min-height:0">';
 
+  // Giờ địa phương theo State — cập nhật realtime mỗi 10s
+  var localTime=getStateLocalTime(c.state);
+  var tzLabel=c.state?(STATE_TZ[c.state]||'').split('/').pop().replace('_',' '):'';
+  html+='<div id="detail-local-time" style="display:flex;align-items:center;gap:8px;padding:4px 0 10px;margin-bottom:2px">'
+    +'<div style="display:flex;align-items:center;gap:6px;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.2);border-radius:20px;padding:4px 12px">'
+    +'<i class="ti ti-clock" style="font-size:13px;color:var(--brand2)"></i>'
+    +'<span style="font-size:12px;color:var(--text2)">Giờ địa phương:</span>'
+    +'<span id="detail-clock-val" style="font-size:13px;font-weight:700;color:var(--brand2);font-family:monospace">'+localTime+'</span>'
+    +(tzLabel?'<span style="font-size:10px;color:var(--text3)">('+tzLabel+')</span>':'')
+    +'</div></div>';
+
   // ROW 1: Biz Name (2fr) | Address (2fr) | City | State | Zip
   html+=row('2fr 2fr 1fr 1fr 1fr',
     fd('Business Name',inp('d-biz',c.business_name))+
@@ -4854,6 +4880,18 @@ function _renderDetailShell(modal,c,isManager,logs){
   if(!document.getElementById('detail-modal')){
     document.body.appendChild(modal);
   }
+  // Auto-update đồng hồ địa phương mỗi 10s
+  if(window._detailClockTimer)clearInterval(window._detailClockTimer);
+  function _updateClock(){
+    var stEl=document.getElementById('d-state');
+    var st=stEl?stEl.value:c.state;
+    var cv=document.getElementById('detail-clock-val');
+    if(cv)cv.textContent=getStateLocalTime(st||null);
+  }
+  window._detailClockTimer=setInterval(_updateClock,10000);
+  // Update khi State dropdown thay đổi
+  var stEl2=document.getElementById('d-state');
+  if(stEl2)stEl2.addEventListener('change',_updateClock);
 }
 
 // Update DOM trực tiếp sau khi lưu — không re-render toàn bộ modal
@@ -4926,6 +4964,38 @@ function _updateDetailDOM(customerId, update){
       headerSub.innerHTML=(c.business_name||'—')+' · <span style="font-family:monospace">'+(c.ma_kh||'—')+'</span>';
     }
   }
+}
+
+// Bản đồ múi giờ theo State
+var STATE_TZ={
+  'Alabama':'America/Chicago','Alaska':'America/Anchorage','Arizona':'America/Phoenix',
+  'Arkansas':'America/Chicago','California':'America/Los_Angeles','Colorado':'America/Denver',
+  'Connecticut':'America/New_York','Delaware':'America/New_York','Florida':'America/New_York',
+  'Georgia':'America/New_York','Hawaii':'Pacific/Honolulu','Idaho':'America/Denver',
+  'Illinois':'America/Chicago','Indiana':'America/Indiana/Indianapolis','Iowa':'America/Chicago',
+  'Kansas':'America/Chicago','Kentucky':'America/New_York','Louisiana':'America/Chicago',
+  'Maine':'America/New_York','Maryland':'America/New_York','Massachusetts':'America/New_York',
+  'Michigan':'America/Detroit','Minnesota':'America/Chicago','Mississippi':'America/Chicago',
+  'Missouri':'America/Chicago','Montana':'America/Denver','Nebraska':'America/Chicago',
+  'Nevada':'America/Los_Angeles','New Hampshire':'America/New_York','New Jersey':'America/New_York',
+  'New Mexico':'America/Denver','New York':'America/New_York','North Carolina':'America/New_York',
+  'North Dakota':'America/Chicago','Ohio':'America/New_York','Oklahoma':'America/Chicago',
+  'Oregon':'America/Los_Angeles','Pennsylvania':'America/New_York','Rhode Island':'America/New_York',
+  'South Carolina':'America/New_York','South Dakota':'America/Chicago','Tennessee':'America/Chicago',
+  'Texas':'America/Chicago','Utah':'America/Denver','Vermont':'America/New_York',
+  'Virginia':'America/New_York','Washington':'America/Los_Angeles','West Virginia':'America/New_York',
+  'Wisconsin':'America/Chicago','Wyoming':'America/Denver','District of Columbia':'America/New_York'
+};
+
+function getStateLocalTime(stateName){
+  if(!stateName)return '--:--';
+  var tz=STATE_TZ[stateName];
+  if(!tz)return '--:--';
+  try{
+    var now=new Date();
+    var timeStr=now.toLocaleTimeString('en-US',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:true});
+    return timeStr;
+  }catch(e){return '--:--';}
 }
 
 function validatePhone(phone,fieldName){
@@ -5029,6 +5099,7 @@ async function saveDetail(customerId){
     // Update DOM trực tiếp rồi đóng modal
     _updateDetailDOM(customerId, update);
     document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
+    if(window._detailClockTimer){clearInterval(window._detailClockTimer);window._detailClockTimer=null;}
     selId=null;
     showCrmToast('✅ Đã lưu','Thông tin khách hàng đã cập nhật','success');
     // Append log mới vào sidebar ngay lập tức
@@ -5133,6 +5204,7 @@ async function deleteCustomer(id){
     CUSTOMERS=CUSTOMERS.filter(function(c){return c.id!==id;});
     INVOICES=INVOICES.filter(function(i){return i.customer_id!==id;});
     document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
+    if(window._detailClockTimer){clearInterval(window._detailClockTimer);window._detailClockTimer=null;}
     selId=null;
   }catch(e){
     console.error('[deleteCustomer]',e);
@@ -6265,7 +6337,7 @@ function render(){
     </tbody>
   </table>
   <div style="background:rgba(253,203,110,0.08);border:1px solid rgba(253,203,110,0.2);border-radius:8px;padding:10px 12px;margin-bottom:18px;font-size:12px;color:var(--text2)">
-    💡 <b>Lưu ý:</b> Nghỉ phép đăng ký trước ngày 05 hàng tháng. Đi trễ báo trước 17:00 cùng ngày. Làm dưới 50% ngày công chuẩn không được xét thưởng chuyên cần.
+    💡 <b>Lưu ý:</b> Nghỉ phép đăng ký trước ngày 01 hàng tháng. Đi trễ báo trước 17:00 cùng ngày. Làm dưới 50% ngày công chuẩn không được xét thưởng chuyên cần.
   </div>
 
   <!-- CẤU TRÚC THU NHẬP -->
@@ -6326,7 +6398,7 @@ function render(){
   <table class="def-table" style="margin-bottom:10px">
     <thead><tr><th>Tình huống</th><th>Bonus nhận được</th><th>Ghi chú</th></tr></thead>
     <tbody>
-      <tr><td class="val">Đạt Target (100%)</td><td style="color:var(--accent);font-weight:600">1% doanh thu — 100%</td><td class="val">Không bao gồm phí vận chuyển</td></tr>
+      <tr><td class="val">Đạt Target (100%)</td><td style="color:var(--accent);font-weight:600">1% doanh thu — 100%</td><td class="val">Bao gồm phí vận chuyển</td></tr>
       <tr><td class="val">Không đạt Target</td><td style="color:var(--warn);font-weight:600">1% doanh thu — 50%</td><td class="val">Vẫn có bonus, giảm nửa</td></tr>
       <tr><td class="val">Vượt 40% Target</td><td style="color:var(--accent2);font-weight:600">+$100 thưởng nóng</td><td class="val">Cộng thêm ngoài bonus</td></tr>
       <tr><td class="val">Vượt 100% Target</td><td style="color:var(--accent2);font-weight:600">+$200 thưởng nóng</td><td class="val">Cộng thêm ngoài bonus</td></tr>
