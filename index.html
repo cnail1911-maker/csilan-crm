@@ -5945,6 +5945,7 @@ function render(){
   <div class="g-card" onclick="gShow('s12',this)"><div class="g-card-icon">📄</div><div class="g-card-label">Invoice</div><div class="g-card-sub">Tạo & duyệt đơn</div></div>
   <div class="g-card" onclick="gShow('s13',this)"><div class="g-card-icon">🤖</div><div class="g-card-label">Silan AI</div><div class="g-card-sub">Trợ lý AI</div></div>
   <div class="g-card" onclick="gShow('s14',this)"><div class="g-card-icon">💰</div><div class="g-card-label">Lương & Chính sách</div><div class="g-card-sub">Thu nhập & KPI</div></div>
+  <div class="g-card" onclick="gShow('s15',this)"><div class="g-card-icon">🧮</div><div class="g-card-label">Tính thử lương</div><div class="g-card-sub">Ước tính thu nhập</div></div>
   <div class="g-card" id="mgr-card" style="display:none" onclick="gShow('smgr',this)"><div class="g-card-icon">👑</div><div class="g-card-label">Quản lý</div><div class="g-card-sub">Dành cho Manager</div></div>
 </div>
 
@@ -6249,8 +6250,8 @@ function render(){
     <thead><tr><th style="width:55px">Ký hiệu</th><th>Tên khoản</th><th>Mức tối đa</th><th>Ghi chú</th></tr></thead>
     <tbody>
       <tr><td><span class="g-badge" style="background:rgba(108,92,231,0.2);color:var(--brand2)">P1</span></td><td class="val">Lương cơ bản</td><td style="color:var(--accent2);font-weight:700">5.310.000đ</td><td class="val">Thực nhận = (5.310.000 ÷ 22) × ngày thực tế</td></tr>
-      <tr><td><span class="g-badge" style="background:rgba(0,206,201,0.15);color:var(--accent)">P2A</span></td><td class="val">Phụ cấp ăn uống & đi lại</td><td style="color:var(--accent2);font-weight:700">500.000đ</td><td class="val">Tối đa/tháng</td></tr>
-      <tr><td><span class="g-badge" style="background:rgba(0,206,201,0.15);color:var(--accent)">P2B</span></td><td class="val">Phụ cấp chức năng</td><td style="color:var(--accent2);font-weight:700">1.240.000đ</td><td class="val">Tối đa/tháng</td></tr>
+      <tr><td><span class="g-badge" style="background:rgba(0,206,201,0.15);color:var(--accent)">P2A</span></td><td class="val">Phụ cấp ăn uống & đi lại</td><td style="color:var(--accent2);font-weight:700">500.000đ</td><td class="val">Cố định hàng tháng</td></tr>
+      <tr><td><span class="g-badge" style="background:rgba(0,206,201,0.15);color:var(--accent)">P2B</span></td><td class="val">Phụ cấp chức năng</td><td style="color:var(--accent2);font-weight:700">1.240.000đ</td><td class="val">Cố định hàng tháng</td></tr>
       <tr><td><span class="g-badge" style="background:rgba(0,206,201,0.15);color:var(--accent)">P2C</span></td><td class="val">Phụ cấp năng lực</td><td style="color:var(--accent2);font-weight:700">2.000.000đ</td><td class="val">Theo Level 1–5 (xem bên dưới)</td></tr>
       <tr><td><span class="g-badge" style="background:rgba(253,203,110,0.15);color:var(--warn)">P3A</span></td><td class="val">Thưởng doanh thu (Bonus)</td><td style="color:var(--warn);font-weight:700">Không giới hạn</td><td class="val">1% doanh thu theo kết quả (xem mục KPI)</td></tr>
       <tr><td><span class="g-badge" style="background:rgba(253,203,110,0.15);color:var(--warn)">P3B</span></td><td class="val">Thưởng chuyên cần</td><td style="color:var(--accent2);font-weight:700">300.000đ</td><td class="val">Đi đúng giờ đủ tháng</td></tr>
@@ -6326,6 +6327,242 @@ function render(){
       <div style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:#FF7675;font-weight:600"><span style="flex-shrink:0">⚠️</span><span>Vi phạm NDA: chấm dứt hợp đồng ngay lập tức + hủy toàn bộ thưởng + bồi thường thiệt hại.</span></div>
     </div>
   </div>
+</div>
+
+<div class="g-section" id="g-s15">
+  <div class="g-title"><div class="g-title-icon" style="background:rgba(0,206,201,0.2)">🧮</div>TÍNH THỬ LƯƠNG — Ước tính thu nhập tháng</div>
+  <style>
+    .sc-wrap{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media(max-width:600px){.sc-wrap{grid-template-columns:1fr}}
+    .sc-field{margin-bottom:12px}
+    .sc-label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:5px}
+    .sc-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 11px;color:var(--text);font-size:13px;outline:none;box-sizing:border-box}
+    .sc-input:focus{border-color:var(--brand2)}
+    .sc-select{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 11px;color:var(--text);font-size:13px;outline:none;box-sizing:border-box;cursor:pointer}
+    .sc-toggle{display:flex;gap:6px}
+    .sc-toggle-btn{flex:1;padding:7px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:all 0.15s}
+    .sc-toggle-btn.active{border-color:var(--brand2);background:rgba(108,92,231,0.15);color:var(--brand2)}
+    .sc-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px}
+    .sc-row-label{color:var(--text2)}
+    .sc-row-val{font-weight:600;color:var(--text)}
+    .sc-row-val.pos{color:var(--accent2)}
+    .sc-row-val.zero{color:var(--text3)}
+    .sc-total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:12px 14px;background:rgba(108,92,231,0.12);border:1.5px solid rgba(108,92,231,0.3);border-radius:10px}
+    .sc-note{font-size:10px;color:var(--text3);margin-top:4px;font-style:italic}
+  </style>
+
+  <div class="sc-wrap">
+    <!-- CỘT TRÁI: NHẬP LIỆU -->
+    <div>
+      <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">📝 Thông tin nhập liệu</div>
+
+      <div class="sc-field">
+        <div class="sc-label">Loại nhân viên</div>
+        <div class="sc-toggle">
+          <div class="sc-toggle-btn active" id="sc-type-chinh" onclick="scSetType('chinh')">✅ Chính thức</div>
+          <div class="sc-toggle-btn" id="sc-type-thu" onclick="scSetType('thu')">🔄 Thử việc (85%)</div>
+        </div>
+      </div>
+
+      <div class="sc-field">
+        <div class="sc-label">Số ngày công thực tế</div>
+        <input type="number" class="sc-input" id="sc-ngaycong" value="22" min="0" max="31" oninput="scCalc()">
+        <div class="sc-note">Chuẩn 22 ngày. Làm thêm/nghỉ thay đổi số này.</div>
+      </div>
+
+      <div class="sc-field">
+        <div class="sc-label">Level năng lực (P2C)</div>
+        <select class="sc-select" id="sc-level" onchange="scCalc()">
+          <option value="0">Level 1 — 0đ</option>
+          <option value="500000">Level 2 — 500.000đ</option>
+          <option value="1000000">Level 3 — 1.000.000đ</option>
+          <option value="1500000">Level 4 — 1.500.000đ</option>
+          <option value="2000000">Level 5 — 2.000.000đ</option>
+        </select>
+      </div>
+
+      <div class="sc-field">
+        <div class="sc-label">Doanh thu sản phẩm (USD, không bao gồm Headspa)</div>
+        <input type="number" class="sc-input" id="sc-doanhthu" value="0" min="0" oninput="scCalc()">
+      </div>
+
+      <div class="sc-field">
+        <div class="sc-label">Số đơn hàng trong tháng</div>
+        <input type="number" class="sc-input" id="sc-dondathang" value="0" min="0" oninput="scCalc()">
+        <div class="sc-note">Chính thức cần ≥5 đơn. Thử việc cần ≥4 đơn.</div>
+      </div>
+
+      <div class="sc-field">
+        <div class="sc-label">Số giường Headspa Bed Bolsa</div>
+        <input type="number" class="sc-input" id="sc-headspa" value="0" min="0" oninput="scCalc()">
+        <div class="sc-note">Nhập 0 nếu không có đơn Headspa.</div>
+      </div>
+
+      <div class="sc-field">
+        <div class="sc-label">Đi đúng giờ đủ tháng?</div>
+        <div class="sc-toggle">
+          <div class="sc-toggle-btn active" id="sc-chuyen-yes" onclick="scSetChuyen(true)">✅ Có — +300.000đ</div>
+          <div class="sc-toggle-btn" id="sc-chuyen-no" onclick="scSetChuyen(false)">❌ Không — 0đ</div>
+        </div>
+      </div>
+
+      <div class="sc-field">
+        <div class="sc-label">Đạt KPI từ 70 điểm?</div>
+        <div class="sc-toggle">
+          <div class="sc-toggle-btn active" id="sc-kpi-yes" onclick="scSetKPI(true)">✅ Có — +500.000đ</div>
+          <div class="sc-toggle-btn" id="sc-kpi-no" onclick="scSetKPI(false)">❌ Không — 0đ</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CỘT PHẢI: KẾT QUẢ -->
+    <div>
+      <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">📊 Kết quả ước tính</div>
+
+      <div id="sc-result">
+        <!-- Render by JS -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var _scType='chinh', _scChuyen=true, _scKPI=true;
+
+    window.scSetType=function(t){
+      _scType=t;
+      document.getElementById('sc-type-chinh').className='sc-toggle-btn'+(t==='chinh'?' active':'');
+      document.getElementById('sc-type-thu').className='sc-toggle-btn'+(t==='thu'?' active':'');
+      scCalc();
+    };
+    window.scSetChuyen=function(v){
+      _scChuyen=v;
+      document.getElementById('sc-chuyen-yes').className='sc-toggle-btn'+(v?' active':'');
+      document.getElementById('sc-chuyen-no').className='sc-toggle-btn'+(!v?' active':'');
+      scCalc();
+    };
+    window.scSetKPI=function(v){
+      _scKPI=v;
+      document.getElementById('sc-kpi-yes').className='sc-toggle-btn'+(v?' active':'');
+      document.getElementById('sc-kpi-no').className='sc-toggle-btn'+(!v?' active':'');
+      scCalc();
+    };
+
+    function fmt(n){return Math.round(n).toLocaleString('vi-VN')+'d';}
+    function fmtUSD(n){return '$'+n.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});}
+
+    window.scCalc=function(){
+      var ngayCong=Math.max(0,parseFloat(document.getElementById('sc-ngaycong').value)||0);
+      var p2c=parseFloat(document.getElementById('sc-level').value)||0;
+      var doanhThu=Math.max(0,parseFloat(document.getElementById('sc-doanhthu').value)||0);
+      var donHang=Math.max(0,parseInt(document.getElementById('sc-dondathang').value)||0);
+      var headspa=Math.max(0,parseInt(document.getElementById('sc-headspa').value)||0);
+
+      // P1
+      var p1Base=5310000/22*ngayCong;
+      var p1=_scType==='thu'?p1Base*0.85:p1Base;
+      // P2 co dinh
+      var p2a=500000;
+      var p2b=1240000;
+      var p2cVal=p2c;
+      // P3B, P3C
+      var p3b=_scChuyen?300000:0;
+      var p3c=_scKPI?500000:0;
+
+      // Target
+      var target=_scType==='thu'?19975:23500;
+      var donTarget=_scType==='thu'?4:5;
+      var datTarget=doanhThu>=target&&donHang>=donTarget;
+
+      // Headspa bonus rieng
+      var hsBonus=0;
+      var hsPricePerBed=0;
+      var hsExtra=0;
+      if(headspa>0){
+        if(headspa>=40){hsPricePerBed=25;hsExtra=250;}
+        else if(headspa>=30){hsPricePerBed=20;hsExtra=200;}
+        else if(headspa>=20){hsPricePerBed=17;hsExtra=150;}
+        else if(headspa>=10){hsPricePerBed=15;hsExtra=100;}
+        else{hsPricePerBed=15;hsExtra=0;}
+        hsBonus=(headspa*hsPricePerBed+hsExtra)*25000;
+      }
+
+      // Bonus 1% tren DT san pham (khong gom headspa)
+      var bonusRate=datTarget?1.0:0.5;
+      var bonus1pct=doanhThu*0.01*bonusRate*25000;
+
+      // Thuong nong
+      var thuongNong=0;
+      if(doanhThu>0&&donHang>0){
+        var pctVuot=doanhThu/target;
+        if(pctVuot>=2.0){thuongNong=200*25000;}
+        else if(pctVuot>=1.4){thuongNong=100*25000;}
+      }
+
+      var p3a=bonus1pct+hsBonus+thuongNong;
+      var total=p1+p2a+p2b+p2cVal+p3a+p3b+p3c;
+      var totalUSD=total/25000;
+
+      // Level label
+      var lvl=p2cVal===0?1:p2cVal===500000?2:p2cVal===1000000?3:p2cVal===1500000?4:5;
+      var p1Sub=(_scType==='thu'?'85% x ':'') + ngayCong + ' ngay cong';
+
+      var rows=[
+        {l:'P1 - Luong co ban'+(ngayCong!==22?' ('+ngayCong+' ngay)':''),v:p1,s:p1Sub},
+        {l:'P2A - Phu cap an uong & di lai',v:p2a,s:'Co dinh'},
+        {l:'P2B - Phu cap chuc nang',v:p2b,s:'Co dinh'},
+        {l:'P2C - Phu cap nang luc',v:p2cVal,s:'Level '+lvl},
+        {l:'P3B - Thuong chuyen can',v:p3b,s:_scChuyen?'Dung gio du thang':'Khong dat'},
+        {l:'P3C - Thuong KPI',v:p3c,s:_scKPI?'>=70 diem':'Chua dat'},
+      ];
+
+      var bonusRows=[];
+      if(doanhThu>0){
+        var bLabel='Bonus 1% DT san pham '+(datTarget?'(dat target)':'(khong dat - 50%)');
+        var bSub=fmtUSD(doanhThu)+' x 1% x '+(datTarget?'100%':'50%');
+        bonusRows.push({l:bLabel,v:bonus1pct,s:bSub});
+      }
+      if(headspa>0){
+        var hsLabel='Bonus Headspa ('+headspa+' giuong x $'+hsPricePerBed+(hsExtra>0?' + $'+hsExtra:'')+')';
+        var hsSub=fmtUSD(headspa*hsPricePerBed+hsExtra)+' x 25.000d';
+        bonusRows.push({l:hsLabel,v:hsBonus,s:hsSub});
+      }
+      if(thuongNong>0){
+        var tnLabel='Thuong nong';
+        var tnSub=doanhThu/target>=2.0?'Vuot 100% target: +$200':'Vuot 40% target: +$100';
+        bonusRows.push({l:tnLabel,v:thuongNong,s:tnSub});
+      }
+
+      var html='';
+      rows.forEach(function(r){
+        var cls=r.v>0?'pos':'zero';
+        html+='<div class="sc-row"><span class="sc-row-label">'+r.l+'<br><span style="font-size:10px;color:var(--text3)">'+r.s+'</span></span><span class="sc-row-val '+cls+'">'+fmt(r.v)+'</span></div>';
+      });
+
+      if(bonusRows.length>0){
+        html+='<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;padding:8px 0 4px;font-weight:600">P3A - Thuong doanh thu</div>';
+        bonusRows.forEach(function(r){
+          html+='<div class="sc-row"><span class="sc-row-label">'+r.l+'<br><span style="font-size:10px;color:var(--text3)">'+r.s+'</span></span><span class="sc-row-val pos">'+fmt(r.v)+'</span></div>';
+        });
+      } else {
+        html+='<div class="sc-row"><span class="sc-row-label">P3A - Thuong doanh thu</span><span class="sc-row-val zero">0d</span></div>';
+      }
+
+      if(doanhThu>0||donHang>0){
+        var tStatus=datTarget
+          ?'<span style="color:var(--accent);font-weight:600">Dat target - Bonus 100%</span>'
+          :'<span style="color:var(--warn);font-weight:600">Chua dat target - Bonus 50%</span>';
+        html+='<div style="background:rgba(0,0,0,0.15);border-radius:8px;padding:8px 10px;margin:8px 0;font-size:11px">'+tStatus+'<br><span style="font-size:10px;color:var(--text3)">Can: '+donTarget+' don & $'+target.toLocaleString('en-US')+' | Thuc te: '+donHang+' don & $'+doanhThu.toLocaleString('en-US')+'</span></div>';
+      }
+
+      html+='<div class="sc-total"><div><div style="font-size:11px;color:rgba(240,238,255,0.5);margin-bottom:2px">TONG THU NHAP UOC TINH</div><div style="font-size:10px;color:var(--text3)">~ '+fmtUSD(totalUSD)+' (ty gia 25.000d)</div></div><div style="font-size:22px;font-weight:800;color:var(--brand2)">'+fmt(total)+'</div></div>';
+
+      document.getElementById('sc-result').innerHTML=html;
+    };
+
+    setTimeout(scCalc,0);
+  })();
+  </script>
 </div>
 
 <div class="g-section" id="g-smgr">
