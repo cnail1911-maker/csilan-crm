@@ -1462,6 +1462,7 @@ async function initApp(user){
       }
       // Clear KPI cache khi INVOICES thay đổi để KPI luôn dùng data mới
       _kpiInvCache={};
+      _kpiAllInvs=null; // Force reload batch khi có invoice mới
       if(window.page==='pending'||window.page==='customers'){render();}
       if(window.page==='kpi'){renderKPIAsync();}
     }).subscribe();
@@ -3830,48 +3831,71 @@ var _kpiFunnelSale='team'; // 'team' | sale.id
 // ── Fetch invoices cho KPI — luôn query DB trực tiếp theo date range ──
 // INVOICES local chỉ load 2000 records → không đủ cho KPI nhiều tháng
 // Cache kết quả để tránh fetch lại khi không cần
+// ── Cache toàn bộ invoices cho KPI (load 1 lần, filter JS-side) ──
+var _kpiAllInvs=null; // null = chưa load
+var _kpiAllInvsLoading=false;
+var _kpiAllInvsCallbacks=[];
+
+async function _kpiLoadAllInvoices(){
+  // Nếu đã có cache thì trả về ngay
+  if(_kpiAllInvs!==null)return _kpiAllInvs;
+  // Nếu đang load thì chờ
+  if(_kpiAllInvsLoading){
+    return new Promise(function(resolve){_kpiAllInvsCallbacks.push(resolve);});
+  }
+  _kpiAllInvsLoading=true;
+  var isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
+  var uid=currentUser&&currentUser.id;
+  var all=[];
+  try{
+    // Load theo batch 1000 để tránh limit
+    var from=0,batchSize=1000,hasMore=true;
+    while(hasMore){
+      var q=sb.from('invoices')
+        .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
+        .eq('type','invoice')
+        .order('created_at',{ascending:false})
+        .range(from,from+batchSize-1);
+      if(!isM)q=q.eq('sale_id',uid);
+      var {data,error}=await q;
+      if(error){console.warn('[KPI loadAll]',error.message);break;}
+      if(!data||data.length===0){hasMore=false;break;}
+      all=all.concat(data);
+      if(data.length<batchSize){hasMore=false;}else{from+=batchSize;}
+      // Giới hạn tổng 10000 records
+      if(all.length>=10000){hasMore=false;}
+    }
+    console.log('[KPI loadAll] total invoices loaded: '+all.length);
+  }catch(err){
+    console.error('[KPI loadAll error]',err);
+  }
+  _kpiAllInvs=all;
+  _kpiAllInvsLoading=false;
+  // Notify các caller đang chờ
+  _kpiAllInvsCallbacks.forEach(function(cb){cb(all);});
+  _kpiAllInvsCallbacks=[];
+  return all;
+}
+
 async function _kpiFetchInvoices(fromDate,toDate){
   var key=fromDate+'_'+toDate;
   if(_kpiInvCache[key])return _kpiInvCache[key];
-  var isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
-  var uid=currentUser&&currentUser.id;
-  var result=[];
   var fromD=fromDate.slice(0,10);
   var toD=toDate.slice(0,10);
 
-  try{
-    // Query theo created_at range
-    var q=sb.from('invoices')
-      .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
-      .eq('type','invoice')
-      .gte('created_at',fromDate)
-      .lte('created_at',toDate);
-    if(!isM)q=q.eq('sale_id',uid);
-    var {data:d1,error:e1}=await q.limit(5000);
-    if(e1)console.warn('[KPI fetch created_at]',e1.message);
+  // Load tất cả invoices rồi filter JS-side — tránh RLS/timezone issues
+  var allInvs=await _kpiLoadAllInvoices();
 
-    // Query thêm theo date field (invoice nhập tay không có created_at)
-    var q2=sb.from('invoices')
-      .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
-      .eq('type','invoice')
-      .is('created_at',null)
-      .gte('date',fromD)
-      .lte('date',toD);
-    if(!isM)q2=q2.eq('sale_id',uid);
-    var {data:d2,error:e2}=await q2.limit(1000);
-    if(e2)console.warn('[KPI fetch date]',e2.message);
+  var result=allInvs.filter(function(i){
+    // Lấy ngày từ created_at hoặc date field
+    var raw=i.created_at||i.date||'';
+    if(!raw)return false;
+    // Normalize về YYYY-MM-DD, xử lý cả ISO string và date string
+    var d=raw.slice(0,10);
+    return d>=fromD&&d<=toD;
+  });
 
-    // Merge dedup
-    var merged=[...(d1||[])];
-    var ids=new Set(merged.map(function(i){return i.id;}));
-    (d2||[]).forEach(function(i){if(!ids.has(i.id)){merged.push(i);ids.add(i.id);}});
-    result=merged;
-    console.log('[KPI fetch] '+fromD+' → '+toD+': '+result.length+' invoices');
-  }catch(err){
-    console.error('[KPI fetch error]',err);
-    result=[];
-  }
-
+  console.log('[KPI filter] '+fromD+' → '+toD+': '+result.length+'/'+allInvs.length+' invoices');
   _kpiInvCache[key]=result;
   return result;
 }
@@ -4389,8 +4413,9 @@ async function _kpiTrendChart(trendInvs,salesToShow,saleStats,trendMonths,curMon
 // ── Navigation ──
 window._kpiNav=function(m,y){
   _kpiMonth=m;_kpiYear=y;
-  // Clear cache khi navigate tháng để luôn fetch data mới nhất
+  // Clear cache filter khi navigate
   _kpiInvCache={};
+  // Không clear _kpiAllInvs — giữ nguyên batch đã load, chỉ re-filter JS-side
   if(window.page==='kpi'){
     var el=document.getElementById('main-area');
     if(el)el.innerHTML='<div class="topbar"><div class="topbar-title">Báo cáo KPI</div></div><div class="content"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--text3)"><i class="ti ti-loader" style="animation:spin 1s linear infinite;font-size:24px"></i></div></div>';
