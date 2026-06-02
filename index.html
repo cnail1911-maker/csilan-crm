@@ -4775,7 +4775,7 @@ function _renderDetailShell(modal,c,isManager,logs){
   html+='<div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);position:sticky;top:0;background:var(--bg2);z-index:1;border-radius:12px 12px 0 0">';
   html+='<div class="avatar '+saleAvClass(c.assigned_to)+'" style="width:38px;height:38px;font-size:13px;flex-shrink:0">'+saleInitials(c)+'</div>';
   var localTime=getStateLocalTime(c.state);
-  var tzLabel=c.state?(STATE_TZ[c.state]||'').split('/').pop().replace('_',' '):'';
+  var tzLabel=c.state||'';
   html+='<div style="flex:1;min-width:0">'
     +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
     +'<div style="font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.customer_name||'')+'</div>'
