@@ -5228,24 +5228,43 @@ async function saveDetail(customerId){
         CUSTOMERS[idx].assigned_profile=prof?{id:prof.id,full_name:prof.full_name,role:prof.role}:null;
       }
     }
-    // Update DOM trực tiếp rồi đóng modal
+    // Update DOM trực tiếp
     _updateDetailDOM(customerId, update);
-    document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
-    if(window._detailClockTimer){clearInterval(window._detailClockTimer);window._detailClockTimer=null;}
-    selId=null;
     showCrmToast('✅ Đã lưu','Thông tin khách hàng đã cập nhật','success');
-    // Append log mới vào sidebar ngay lập tức
-    var lc=document.getElementById('detail-log-container');
-    var lb=document.getElementById('detail-log-badge');
-    if(lc&&(note||result)){
-      var r2=result?'<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(108,92,231,0.2);color:var(--brand2);margin-right:5px">'+result+'</span>':'';
-      var n2=note?'<span style="font-size:12px;color:var(--text2)">'+note+'</span>':'<span style="color:var(--text3);font-style:italic">Thao tác</span>';
-      var saleName=(currentProfile&&currentProfile.full_name)||'—';
-      var newLog='<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--accent2);flex-shrink:0;margin-top:5px"></div><div style="flex:1;min-width:0"><div>'+r2+n2+'</div><div style="font-size:10px;color:var(--text3);margin-top:1px">'+saleName+' · Vừa xong</div></div></div>';
-      var existingList=lc.querySelector('div[style*="max-height"]');
-      if(existingList){existingList.insertAdjacentHTML('afterbegin',newLog);}
-      else{lc.innerHTML='<div style="max-height:320px;overflow-y:auto;padding-right:4px">'+newLog+'</div>';}
-      if(lb){var cur=parseInt((lb.textContent||'').replace(/\D/g,''))||0;lb.textContent='('+(cur+1)+')';}
+
+    // Nếu đang dùng campaign nav (◀ ▶) thì GIỮ modal mở — sale tự next
+    var hasCampNav=window._campNavKey!==null&&window._campNavKey!==undefined;
+    if(!hasCampNav){
+      document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
+      if(window._detailClockTimer){clearInterval(window._detailClockTimer);window._detailClockTimer=null;}
+      selId=null;
+    } else {
+      // Re-render shell để hiển thị data mới, giữ modal mở
+      var _modal=document.getElementById('detail-modal');
+      var _cust=CUSTOMERS.find(function(x){return x.id===customerId;});
+      if(_modal&&_cust){
+        var _isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
+        _renderDetailShell(_modal,_cust,_isM,[]);
+        // Fetch logs async để cập nhật sidebar
+        sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId).order('called_at',{ascending:false}).limit(25).then(function(res){
+          if(res.data)_renderDetailShell(_modal,_cust,_isM,res.data);
+        });
+      }
+    }
+    // Append log mới vào sidebar ngay lập tức (chỉ khi không re-render shell)
+    if(!hasCampNav){
+      var lc=document.getElementById('detail-log-container');
+      var lb=document.getElementById('detail-log-badge');
+      if(lc&&(note||result)){
+        var r2=result?'<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(108,92,231,0.2);color:var(--brand2);margin-right:5px">'+result+'</span>':'';
+        var n2=note?'<span style="font-size:12px;color:var(--text2)">'+note+'</span>':'<span style="color:var(--text3);font-style:italic">Thao tác</span>';
+        var saleName=(currentProfile&&currentProfile.full_name)||'—';
+        var newLog='<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:8px"><div style="width:6px;height:6px;border-radius:50%;background:var(--accent2);flex-shrink:0;margin-top:5px"></div><div style="flex:1;min-width:0"><div>'+r2+n2+'</div><div style="font-size:10px;color:var(--text3);margin-top:1px">'+saleName+' · Vừa xong</div></div></div>';
+        var existingList=lc.querySelector('div[style*="max-height"]');
+        if(existingList){existingList.insertAdjacentHTML('afterbegin',newLog);}
+        else{lc.innerHTML='<div style="max-height:320px;overflow-y:auto;padding-right:4px">'+newLog+'</div>';}
+        if(lb){var cur=parseInt((lb.textContent||'').replace(/\D/g,''))||0;lb.textContent='('+(cur+1)+')';}
+      }
     }
     // Cập nhật row trong campaign sale table ngay (không re-render toàn bộ)
     if(page==='campaign'){
