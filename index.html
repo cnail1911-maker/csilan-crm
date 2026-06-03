@@ -1412,22 +1412,28 @@ async function initApp(user){
     if(!window._chatEarlyInit){
       window._chatEarlyInit=true;
       try{
-        // Dùng lại chatSb đã có (tránh tạo duplicate GoTrueClient)
+        // Init chatSb nếu chưa có (dùng storageKey riêng tránh duplicate warning)
         if(!window.chatSb)window.chatSb=window.supabase.createClient(
           'https://ajsakaddylbpppxlidfe.supabase.co',
           'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqc2FrYWRkeWxicHBweGxpZGZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTA1MDUsImV4cCI6MjA5NDI2NjUwNX0.B_8YwhOD4MXMKFOc3T0lpuujAnhUnpSLGjo12hWsLdc',
           {auth:{storageKey:'csilan-chat-auth',persistSession:false}}
         );
-        if(typeof loadRooms==='function'){
-          loadRooms().then(function(){
-            if(typeof startRealtime==='function')startRealtime();
-            if(typeof startPoll==='function')startPoll();
+        // Dùng exposed functions từ chat IIFE
+        var _lr=window._chatLoadRooms;
+        var _sr=window._chatStartRealtime;
+        var _sp=window._chatStartPoll;
+        if(typeof _lr==='function'){
+          _lr().then(function(){
+            if(typeof _sr==='function')_sr();
+            if(typeof _sp==='function')_sp();
             console.log('[chat] Early realtime started ✓');
           }).catch(function(e){console.warn('[chat] Early init failed:',e);});
+        }else{
+          console.warn('[chat] loadRooms not available yet — chat module not loaded');
         }
       }catch(e){console.warn('[chat] Early realtime error:',e);}
     }
-  },2000);
+  },1500);
   sb.channel('crm-products-rt')
     .on('postgres_changes',{event:'*',schema:'public',table:'products'},function(payload){
       if(payload.eventType==='INSERT'){
@@ -7624,8 +7630,11 @@ function handleNewMsg(m){
   }
 }
 
-// ── Init chatSb sớm để không delay lần đầu ──
-(function(){if(!chatSb&&window.supabase){chatSb=window.supabase.createClient(CHAT_URL,CHAT_ANON);}})();
+// ── Expose chat functions cho early init ──
+window._chatLoadRooms=loadRooms;
+window._chatStartRealtime=startRealtime;
+window._chatStartPoll=startPoll;
+window._chatHandleNewMsg=handleNewMsg;
 
 // ── Supabase Realtime subscription ──
 function startRealtime(){
@@ -7672,24 +7681,25 @@ function stopRealtime(){
 function startPoll(){
   stopPoll();
   pollT=setInterval(async function(){
-    if(!curRoom)return;
-    // Poll tin nhắn mới cho curRoom
-    var since=lastTs[curRoom]||new Date(Date.now()-60000).toISOString();
-    var res=await api({action:'poll_new_messages',room_id:curRoom,after:since});
-    if(res.messages&&res.messages.length)res.messages.forEach(function(m){handleNewMsg(m);});
-    // Poll unread count cho tất cả rooms khác (background)
-    var otherRooms=rooms.filter(function(r){return r.id!==curRoom;});
-    if(!otherRooms.length)return;
-    var ids=otherRooms.map(function(r){return r.id;});
-    var lr={};ids.forEach(function(id){try{lr[id]=localStorage.getItem('c_lr_'+id)||new Date(0).toISOString();}catch(e){void e;}});
-    var bgRes=await api({action:'poll_all_rooms',room_ids:ids,last_read:lr});
-    if(bgRes.unread_counts){
+    if(!rooms.length||!uid())return;
+    // Poll tin nhắn mới cho curRoom (nếu đang xem)
+    if(curRoom){
+      var since=lastTs[curRoom]||new Date(Date.now()-60000).toISOString();
+      var res=await api({action:'poll_new_messages',room_id:curRoom,after:since});
+      if(res.messages&&res.messages.length)res.messages.forEach(function(m){handleNewMsg(m);});
+    }
+    // Poll unread cho TẤT CẢ rooms (bao gồm khi không ở tab chat)
+    var allIds=rooms.map(function(r){return r.id;});
+    if(!allIds.length)return;
+    var lr={};allIds.forEach(function(id){try{lr[id]=localStorage.getItem('c_lr_'+id)||new Date(0).toISOString();}catch(e){void e;}});
+    var bgRes=await api({action:'poll_all_rooms',room_ids:allIds,last_read:lr});
+    if(bgRes&&bgRes.unread_counts){
       var changed=false;
       Object.keys(bgRes.unread_counts).forEach(function(rid){
         var cnt=bgRes.unread_counts[rid]||0;
         if(cnt!==(unread[rid]||0)){unread[rid]=cnt;changed=true;}
       });
-      if(changed){badge();renderRoomList();}
+      if(changed){badge();if(window.page==='chat')renderRoomList();}
     }
   },POLL_MS);
 }
@@ -8599,13 +8609,27 @@ window.initChatPage=async function(){
   startPoll();     // fallback + bg refresh
 };
 
-// Background badge check
+// Background badge check — chạy mọi lúc kể cả khi không ở tab chat
 setInterval(async function(){
-  if(window.page==='chat'||!window.currentUser||!rooms.length)return;
+  if(!window.currentUser)return;
+  // Nếu rooms chưa load (chưa vào tab chat) thì load
+  if(!rooms.length&&window._chatLoadRooms){
+    try{await window._chatLoadRooms();}catch(e){void e;}
+    return;
+  }
+  if(window.page==='chat')return; // chat đang handle bởi startPoll
+  if(!rooms.length)return;
   var ids=rooms.map(function(r){return r.id;});
   var lr={};ids.forEach(function(id){try{lr[id]=localStorage.getItem('c_lr_'+id)||new Date(0).toISOString();}catch(e){void e;}});
   var res=await api({action:'poll_all_rooms',room_ids:ids,last_read:lr});
-  if(res.unread_counts){unread=res.unread_counts;badge();}
+  if(res&&res.unread_counts){
+    var changed=false;
+    Object.keys(res.unread_counts).forEach(function(rid){
+      var cnt=res.unread_counts[rid]||0;
+      if(cnt!==(unread[rid]||0)){unread[rid]=cnt;changed=true;}
+    });
+    if(changed)badge();
+  }
 },BG_POLL_MS);
 
 })();
