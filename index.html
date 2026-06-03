@@ -210,7 +210,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
   .guide .def-table td{padding:9px 14px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:top;word-break:break-word}
   .guide .def-table tr:last-child td{border-bottom:none}
   .guide .def-table tr:hover td{background:rgba(255,255,255,0.02)}
-  .guide .key{font-weight:600;color:var(--text);white-space:nowrap;font-family:monospace;font-size:12px}
+  .guide .key{font-weight:600;color:var(--text);white-space:nowrap;font-family:'Be Vietnam Pro',sans-serif;font-size:13px}
   .guide .val{color:rgba(240,238,255,0.65)}
   .guide .rules{display:flex;flex-direction:column;gap:8px}
   .guide .rule{display:flex;gap:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px}
@@ -1093,7 +1093,7 @@ window.sb=sb; // expose for AI chatbox
 
 // DROPDOWN DATA
 const POTENTIAL_OPTS=['Pedicure Spa & Package','Massage Chair','Furniture','Padset','HeadSpa Bed','Part & Accessories'];
-const STATUS_OPTS=['New','Follow Up','Completed'];
+const STATUS_OPTS=['New','Follow','Completed'];
 const SUBSTATUS_OPTS=['New Lead','No Answer','Contacting','Gatekeeper','Qualified','Appointment Set','Quotation Sent','Pending Decision','Follow Up'];
 const LEAD_OPTS=['Closedeal','Lost','Invalid Lead','No Response','Busy'];
 const BRAND_OPTS=['TSPA','T4','LEXOR','WHALE SPA','SNS','CONTEGO','NEWSTAR','JNA','AYC','SAM SUPPLY','GULFSTREAM','SNE','TREND NAILS','S3 SPA','MrSpa','OSAKI','ALFAFA','HÃNG KHÁC'];
@@ -1128,7 +1128,7 @@ let pipePage={};
 
 // HELPERS
 function showLoading(v){document.getElementById('loading').style.display=v?'flex':'none';}
-function sBadge(s){const m={'New':'b-new','Follow Up':'b-followup','Completed':'b-completed'};return '<span class="badge '+(m[s]||'b-new')+'">'+( s||'—')+'</span>';}
+function sBadge(s){const m={'New':'b-new','Follow':'b-followup','Completed':'b-completed'};return '<span class="badge '+(m[s]||'b-new')+'">'+( s||'—')+'</span>';}
 function lBadge(s){const m={'Closedeal':'b-closedeal','Lost':'b-lost','Invalid Lead':'b-invalid','No Response':'b-noresponse','Busy':'b-busy'};return s?'<span class="badge '+(m[s]||'b-new')+'">'+s+'</span>':'<span style="font-size:10px;color:var(--text3)">—</span>';}
 function saleInitials(c){const n=(c.assigned_profile&&c.assigned_profile.full_name)||'?';return n.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();}
 function saleAvClass(pid){const idx=PROFILES.findIndex(function(p){return p.id===pid;});return AV_CLASSES[Math.max(0,idx)%AV_CLASSES.length];}
@@ -1635,7 +1635,7 @@ function renderCustomers(){
     return true;
   });
   const won=data.filter(function(c){return c.lead_status==='Closedeal';}).length;
-  const followup=data.filter(function(c){return c.status==='Follow Up';}).length;
+  const followup=data.filter(function(c){return c.status==='Follow';}).length;
   const pageData=data.slice((curPage-1)*PAGE_SIZE,curPage*PAGE_SIZE);
   // Tính Potential breakdown từ data hiện tại (đã qua filter)
   var potBreakdown=[];
@@ -2366,7 +2366,7 @@ function renderCampaign(){
     var s=campStats[name];
     s.total++;
     if(c.assigned_to)s.saleSet.add(c.assigned_to);
-    if(c.status==='Follow Up')s.followup++;
+    if(c.status==='Follow')s.followup++;
     if(c.lead_status==='Closedeal')s.closedeal++;
     if(c.lead_status==='Lost')s.lost++;
     if(c.potential&&c.potential.trim())s.potential++;
@@ -4161,7 +4161,7 @@ async function renderKPIAsync(){
     }
     var potential=mc.filter(function(cust){return cust.potential&&cust.potential.trim();}).length;
     var newC=mc.filter(function(cust){return cust.status==='New';}).length;
-    var fu=mc.filter(function(cust){return cust.status==='Follow Up';}).length;
+    var fu=mc.filter(function(cust){return cust.status==='Follow';}).length;
     var comp=mc.filter(function(cust){return cust.status==='Completed';}).length;
     var av=AV_CLASSES[si%AV_CLASSES.length];
     var init=s.full_name.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
@@ -4191,7 +4191,7 @@ async function renderKPIAsync(){
 
   var teamData=isM?CUSTOMERS:CUSTOMERS.filter(function(c){return c.assigned_to===(currentUser&&currentUser.id);});
   var teamNew=teamData.filter(function(c){return c.status==='New';}).length;
-  var teamFU=teamData.filter(function(c){return c.status==='Follow Up';}).length;
+  var teamFU=teamData.filter(function(c){return c.status==='Follow';}).length;
   var teamComp=teamData.filter(function(c){return c.status==='Completed';}).length;
   var teamPot=teamData.filter(function(c){return c.potential&&c.potential.trim();}).length;
   var teamAOVRow=teamCur.orders?Math.round(teamCur.rev/teamCur.orders):0;
@@ -4451,13 +4451,13 @@ window._kpiShowList=async function(type,saleId){
   var fromDate=year+'-'+String(month).padStart(2,'0')+'-01T00:00:00.000Z';
   var toDate=year+'-'+String(month).padStart(2,'0')+'-'+String(lastDay).padStart(2,'0')+'T23:59:59.999Z';
   var saleProf=saleId&&PROFILES.find(function(p){return p.id===saleId;});
-  var typeLabels={orders:'Orders',rev:'Revenue',estorders:'Est.Ord',estrev:'Est.Rev',new:'New',followup:'Follow Up',completed:'Completed',potential:'Potential'};
+  var typeLabels={orders:'Orders',rev:'Revenue',estorders:'Est.Ord',estrev:'Est.Rev',new:'New',followup:'Follow',completed:'Completed',potential:'Potential'};
   var label=(saleProf?saleProf.full_name.split(' ').pop()+' — ':'')+typeLabels[type];
 
   // Get customers
   var customers=[];
   if(type==='new'||type==='followup'||type==='completed'||type==='potential'){
-    var statusMap={new:'New',followup:'Follow Up',completed:'Completed'};
+    var statusMap={new:'New',followup:'Follow',completed:'Completed'};
     customers=CUSTOMERS.filter(function(c){
       if(saleId&&c.assigned_to!==saleId)return false;
       if(!isM&&c.assigned_to!==(currentUser&&currentUser.id))return false;
@@ -5043,6 +5043,24 @@ async function saveDetail(customerId){
     alert('Sub-Status "Appointment Set" bắt buộc phải có Ngày hẹn!');
     document.getElementById('d-timeline')&&document.getElementById('d-timeline').focus();
     return;
+  }
+  // Validate: Qualified ↔ Potential bắt buộc lẫn nhau
+  const potentialVal=document.getElementById('d-potential')&&document.getElementById('d-potential').value;
+  if(subStatus==='Qualified'&&(!potentialVal||potentialVal.trim()==='')){
+    showLoading(false);
+    if(!confirm('⚠️ Sub-Status đang là "Qualified" nhưng chưa chọn Potential.\n\nKhách đã xác nhận nhu cầu → nên chọn Potential ngay.\n\nBấm OK để lưu không có Potential, Cancel để quay lại chọn.')){
+      document.getElementById('d-potential')&&document.getElementById('d-potential').focus();
+      return;
+    }
+    showLoading(true);
+  }
+  if(potentialVal&&potentialVal.trim()!==''&&subStatus&&!['Qualified','Appointment Set','Quotation Sent','Pending Decision','Follow Up'].includes(subStatus)){
+    showLoading(false);
+    if(!confirm('⚠️ KH đã có Potential ("'+potentialVal+'") nhưng Sub-Status là "'+subStatus+'" — chưa đạt mức Qualified trở lên.\n\nBấm OK để lưu, Cancel để điều chỉnh Sub-Status.')){
+      document.getElementById('d-substatus')&&document.getElementById('d-substatus').focus();
+      return;
+    }
+    showLoading(true);
   }
   // Phone fields dùng pb() helper (không phải input) → chỉ update nếu có input d-bphone/d-cell
   // Tránh ghi null vào DB khi element không tồn tại
@@ -6025,6 +6043,7 @@ function render(){
     <span style="background:rgba(162,155,254,0.15);border:1px solid rgba(162,155,254,0.3);border-radius:20px;padding:3px 10px;font-size:11px;color:rgba(240,238,255,0.8)">📋 Nhân viên sales</span>
     <span style="background:rgba(0,206,201,0.1);border:1px solid rgba(0,206,201,0.25);border-radius:20px;padding:3px 10px;font-size:11px;color:rgba(0,206,201,0.9)">✅ Bắt buộc áp dụng</span>
     <span style="background:rgba(253,203,110,0.1);border:1px solid rgba(253,203,110,0.25);border-radius:20px;padding:3px 10px;font-size:11px;color:rgba(253,203,110,0.9)">🔄 Cập nhật 5/2026</span>
+    <button onclick="window.open('quiz.html','_blank')" style="background:linear-gradient(135deg,#6c5ce7,#4834d4);border:none;border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:'Be Vietnam Pro',sans-serif">🎯 Làm bài kiểm tra</button>
   </div>
 </div>
 
@@ -6055,31 +6074,57 @@ function render(){
     <thead><tr><th>Giá trị</th><th>Ý nghĩa</th><th>Khi nào dùng</th></tr></thead>
     <tbody>
       <tr><td><span class="badge b-new">New</span></td><td class="val">Chưa gọi / chưa xử lý</td><td class="val">Mặc định khi nhận data mới từ chiến dịch</td></tr>
-      <tr><td><span class="badge b-followup">Follow Up</span></td><td class="val">Đã liên hệ ít nhất 1 lần, đang chăm sóc</td><td class="val">Sau cuộc gọi đầu tiên dù kết quả ra sao</td></tr>
+      <tr><td><span class="badge b-followup">Follow</span></td><td class="val">Đã liên hệ ít nhất 1 lần, đang chăm sóc</td><td class="val">Sau cuộc gọi đầu tiên dù kết quả ra sao</td></tr>
       <tr><td><span class="badge b-completed">Completed</span></td><td class="val">Đã đóng data / hoàn tất xử lý</td><td class="val">Khi có kết quả cuối: Closedeal / Lost / Invalid. Phải điền Lead Status trước</td></tr>
     </tbody>
   </table>
-  <div class="note"><strong>Lưu ý:</strong> Status phản ánh tiến độ liên hệ, không phải kết quả. Follow Up lâu mà chưa có kết quả vẫn giữ Follow Up — không tự ý chuyển Completed khi chưa có kết luận.</div>
+  <div class="note"><strong>Lưu ý:</strong> Status phản ánh tiến độ liên hệ, không phải kết quả. <strong>Follow</strong> lâu mà chưa có kết quả vẫn giữ Follow — không tự ý chuyển Completed khi chưa có kết luận.</div>
 </div>
 
 <!-- ── SECTION 2: SUB-STATUS ── -->
 <div class="g-section" id="g-s2">
   <div class="g-title"><div class="g-title-icon" style="background:rgba(0,206,201,0.15)">🔖</div>SUB-STATUS — Tiến độ làm việc</div>
-  <table class="def-table">
-    <thead><tr><th>Giá trị</th><th>Ý nghĩa</th></tr></thead>
+
+  <!-- Step 1 -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+    <div style="background:linear-gradient(135deg,var(--brand),#4834d4);color:#fff;font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;flex-shrink:0">BƯỚC 1</div>
+    <div style="font-size:13px;font-weight:600;color:var(--text2)">Tiếp cận ban đầu — từ khi nhận data đến khi gặp đúng người</div>
+  </div>
+  <table class="def-table" style="margin-bottom:16px">
+    <thead><tr><th>Giá trị</th><th>Ý nghĩa</th><th>Khi nào dùng</th></tr></thead>
     <tbody>
-      <tr><td class="key">New Lead</td><td class="val">Khách mới, chưa xử lý lần nào</td></tr>
-      <tr><td class="key">No Answer</td><td class="val">Gọi nhưng không có ai bắt máy</td></tr>
-      <tr><td class="key">Gatekeeper</td><td class="val">Gặp nhân viên, không gặp được chủ/người quyết định</td></tr>
-      <tr><td class="key">Contacting</td><td class="val">Đang trong quá trình trao đổi với khách</td></tr>
-      <tr><td class="key">Qualified</td><td class="val">Khách xác nhận có nhu cầu — chọn Potential ngay</td></tr>
-      <tr><td class="key">Follow Up</td><td class="val">Cần liên hệ lại theo lịch hẹn</td></tr>
-      <tr><td class="key">Appointment Set</td><td class="val">Đã lên lịch hẹn cụ thể — <strong>bắt buộc điền Ngày hẹn</strong></td></tr>
-      <tr><td class="key">Quotation Sent</td><td class="val">Đã gửi báo giá cho khách</td></tr>
-      <tr><td class="key">Pending Decision</td><td class="val">Khách đang cân nhắc, chờ quyết định</td></tr>
+      <tr><td class="key">New Lead</td><td class="val">Khách mới, chưa xử lý lần nào</td><td class="val">Mặc định khi nhận data từ campaign</td></tr>
+      <tr><td class="key">No Answer</td><td class="val">Gọi nhưng không có ai bắt máy</td><td class="val">Gọi không bắt máy, chưa liên lạc được</td></tr>
+      <tr><td class="key">Gatekeeper</td><td class="val">Gặp nhân viên, không gặp được chủ/người quyết định</td><td class="val">Có người bắt máy nhưng chưa gặp được owner</td></tr>
+      <tr><td class="key">Contacting</td><td class="val">Đang trong quá trình trao đổi với khách</td><td class="val">Đã gặp đúng người, đang trò chuyện/giới thiệu</td></tr>
+      <tr><td class="key">Qualified</td><td class="val" style="color:var(--accent)"><strong>Khách xác nhận có nhu cầu — chọn Potential ngay</strong></td><td class="val">KH quan tâm sản phẩm cụ thể → bắt buộc mark Potential</td></tr>
     </tbody>
   </table>
-  <div class="note"><strong>Tip:</strong> Sub-Status phải luôn khớp với tình trạng thực tế cuộc gọi gần nhất. <strong>Appointment Set</strong> bắt buộc có Ngày hẹn — hệ thống sẽ báo lỗi nếu thiếu.</div>
+
+  <!-- Arrow -->
+  <div style="text-align:center;font-size:22px;color:var(--brand2);margin:4px 0 10px">↓</div>
+
+  <!-- Step 2 -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+    <div style="background:linear-gradient(135deg,var(--accent),#00b894);color:#fff;font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;flex-shrink:0">BƯỚC 2</div>
+    <div style="font-size:13px;font-weight:600;color:var(--text2)">Phát triển sau Qualified — từ khi có nhu cầu đến khi chốt</div>
+  </div>
+  <table class="def-table" style="margin-bottom:16px">
+    <thead><tr><th>Giá trị</th><th>Ý nghĩa</th><th>Khi nào dùng</th></tr></thead>
+    <tbody>
+      <tr><td class="key">Follow Up</td><td class="val">Cần liên hệ lại theo lịch hẹn</td><td class="val">KH hẹn gọi lại sau, chưa sẵn sàng quyết định ngay</td></tr>
+      <tr><td class="key">Appointment Set</td><td class="val">Đã lên lịch hẹn cụ thể — <strong>bắt buộc điền Ngày hẹn</strong></td><td class="val">Có lịch demo / gặp mặt cụ thể với KH</td></tr>
+      <tr><td class="key">Quotation Sent</td><td class="val">Đã gửi báo giá cho khách</td><td class="val">Tự động khi tạo Invoice — hoặc gửi báo giá thủ công</td></tr>
+      <tr><td class="key">Pending Decision</td><td class="val">Khách đang cân nhắc, chờ quyết định</td><td class="val">KH đã xem báo giá, đang cân nhắc giữa các lựa chọn</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Lưu ý quan trọng:</strong> Sub-Status phải luôn phản ánh đúng tình trạng cuộc gọi gần nhất.<br>
+    • <strong>Qualified</strong> → bắt buộc chọn <strong>Potential</strong> ngay (hệ thống sẽ cảnh báo nếu thiếu)<br>
+    • <strong>Appointment Set</strong> → bắt buộc điền <strong>Ngày hẹn</strong> (hệ thống chặn nếu thiếu)<br>
+    • <strong>Quotation Sent</strong> → tự động set khi tạo Invoice
+  </div>
 </div>
 
 <!-- ── SECTION 3: LEAD STATUS ── -->
@@ -6725,8 +6770,8 @@ function render(){
 
   // ── FAQ ──
   var FAQS=[
-    {cat:"Quy trình",icon:"🔄",q:"Tôi vừa gọi cho khách nhưng không có ai bắt máy. Cập nhật như thế nào?",a:"Chọn Kết quả gọi = <b>Không bắt máy</b>, Sub-Status = <b>No Answer</b>, giữ Status = <b>Follow Up</b>. Ghi ngắn vào Note ngày giờ gọi. Thử lại khung giờ khác."},
-    {cat:"Quy trình",icon:"🔄",q:"Khách nói 'để anh hỏi lại' — cập nhật ra sao?",a:"Status = <b>Follow Up</b>, Sub-Status = <b>Pending Decision</b>. Ghi ngày hẹn lại vào Note. Nếu khách có nhu cầu rõ ràng, chọn thêm <b>Potential</b>."},
+    {cat:"Quy trình",icon:"🔄",q:"Tôi vừa gọi cho khách nhưng không có ai bắt máy. Cập nhật như thế nào?",a:"Chọn Kết quả gọi = <b>Không bắt máy</b>, Sub-Status = <b>No Answer</b>, giữ Status = <b>Follow</b>. Ghi ngắn vào Note ngày giờ gọi. Thử lại khung giờ khác."},
+    {cat:"Quy trình",icon:"🔄",q:"Khách nói 'để anh hỏi lại' — cập nhật ra sao?",a:"Status = <b>Follow</b>, Sub-Status = <b>Pending Decision</b>. Ghi ngày hẹn lại vào Note. Nếu khách có nhu cầu rõ ràng, chọn thêm <b>Potential</b>."},
     {cat:"Quy trình",icon:"🔄",q:"Khách đồng ý mua nhưng chưa chốt giá. Có tạo invoice ngay không?",a:"Chưa. Sub-Status = <b>Quotation Sent</b> hoặc <b>Appointment Set</b>. Chỉ tạo invoice khi khách <b>xác nhận đặt cọc hoặc thanh toán</b>."},
     {cat:"Quy trình",icon:"🔄",q:"Khi nào mới chuyển Status sang Completed?",a:"Khi có kết quả rõ ràng: Closedeal, Lost, Invalid Lead, No Response (đã gọi 3–5 lần). Không Completed khi vẫn đang trao đổi."},
     {cat:"Quy trình",icon:"🔄",q:"Closedeal yêu cầu gì trước khi tạo invoice?",a:"Cần ít nhất <b>3 lần ghi log</b> tương tác với khách. Hệ thống sẽ tự chặn nếu chưa đủ. Đảm bảo ghi đầy đủ lịch sử làm việc."},
