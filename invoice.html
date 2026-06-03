@@ -1162,16 +1162,22 @@ async function loadInvoiceForEdit(invoiceNo){
   if(inv.charge_fee)document.getElementById('inv-charge-fee')&&(document.getElementById('inv-charge-fee').value=inv.charge_fee);
   if(inv.note)document.getElementById('inv-note').value=inv.note;
 
-  // Load items
-  items=(invItems||[]).map(function(it){
+  // Load items — bắt buộc có _id để updateItem/removeItem hoạt động
+  items=(invItems||[]).map(function(it,idx){
     return {
-      id:Date.now()+Math.random(),
+      _id:Date.now()+idx+1,         // unique _id cho mỗi item
+      id:it.id||null,
       product_id:it.product_id||null,
+      sku:it.sku||null,
       name:it.product_name,
       image_url:it.image_url||null,
       qty:it.qty,
       unit_price:it.unit_price,
       discount:it.discount||0,
+      vendor:it.vendor||null,
+      vendor_cost:it.vendor_cost||null,
+      crm_price:it.crm_price||null,
+      is_shipping:it.is_shipping||false,
       amount:it.amount
     };
   });
