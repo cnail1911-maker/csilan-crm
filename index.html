@@ -1128,11 +1128,16 @@ let pipePage={};
 
 // HELPERS
 function showLoading(v){document.getElementById('loading').style.display=v?'flex':'none';}
-function sBadge(s){const m={'New':'b-new','Follow':'b-followup','Completed':'b-completed'};return '<span class="badge '+(m[s]||'b-new')+'">'+( s||'—')+'</span>';}
+function sBadge(s){var norm=s==='Follow Up'?'Follow':s;const m={'New':'b-new','Follow':'b-followup','Completed':'b-completed'};return '<span class="badge '+(m[norm]||'b-new')+'">'+( norm||'—')+"</span>";}
 function lBadge(s){const m={'Closedeal':'b-closedeal','Lost':'b-lost','Invalid Lead':'b-invalid','No Response':'b-noresponse','Busy':'b-busy'};return s?'<span class="badge '+(m[s]||'b-new')+'">'+s+'</span>':'<span style="font-size:10px;color:var(--text3)">—</span>';}
 function saleInitials(c){const n=(c.assigned_profile&&c.assigned_profile.full_name)||'?';return n.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();}
 function saleAvClass(pid){const idx=PROFILES.findIndex(function(p){return p.id===pid;});return AV_CLASSES[Math.max(0,idx)%AV_CLASSES.length];}
-function selOpts(arr,val,empty){var r='<option value="">'+(empty||'-- Chọn --')+'</option>';arr.forEach(function(o){r+='<option'+(val===o?' selected':'')+'>'+o+'</option>';});return r;}
+function selOpts(arr,val,empty){
+  var normVal=val==='Follow Up'?'Follow':val; // backward compat
+  var r='<option value="">'+(empty||'-- Chọn --')+'</option>';
+  arr.forEach(function(o){r+='<option'+(normVal===o?' selected':'')+'>'+o+'</option>';});
+  return r;
+}
 function fmtDate(d){return d?new Date(d).toLocaleDateString('vi-VN'):'—';}
 function fmtDateTime(d){return d?new Date(d).toLocaleString('vi-VN'):'—';}
 function daysLeft(dl){if(!dl)return null;return Math.ceil((new Date(dl)-new Date())/864e5);}
@@ -1612,7 +1617,8 @@ function renderCustomers(){
       // Sale thấy: KH tự thêm HOẶC KH có Potential được assign cho mình
       if(!isCreatedBy&&!(hasPotential&&isAssigned))return false;
     }
-    if(fStatus!=='all'&&c.status!==fStatus)return false;
+    var normStatus=c.status==='Follow Up'?'Follow':c.status;
+    if(fStatus!=='all'&&normStatus!==fStatus)return false;
     if(fLead!=='all'){if(fLead==='__none__'){if(c.lead_status&&c.lead_status.trim())return false;}else if(c.lead_status!==fLead)return false;}
     if(fSale!=='all'){
       if(fSale==='__none__'){if(c.assigned_to)return false;}
@@ -1635,7 +1641,7 @@ function renderCustomers(){
     return true;
   });
   const won=data.filter(function(c){return c.lead_status==='Closedeal';}).length;
-  const followup=data.filter(function(c){return c.status==='Follow';}).length;
+  const followup=data.filter(function(c){return c.status==='Follow'||c.status==='Follow Up';}).length;
   const pageData=data.slice((curPage-1)*PAGE_SIZE,curPage*PAGE_SIZE);
   // Tính Potential breakdown từ data hiện tại (đã qua filter)
   var potBreakdown=[];
@@ -2087,7 +2093,8 @@ function renderPipeline(){
   html+='</div><div class="content" style="padding:0;overflow:auto"><div class="pipe-grid">';
   STATUS_OPTS.forEach(function(status,i){
     const cards=CUSTOMERS.filter(function(c){
-      return c.status===status
+      var ns=c.status==='Follow Up'?'Follow':c.status;
+      return ns===status
         &&(fSale==='all'||c.assigned_to===fSale)
         &&c.approval_status==='approved'
         &&(window._fPipePot==='all'||c.potential===window._fPipePot)
@@ -2366,7 +2373,7 @@ function renderCampaign(){
     var s=campStats[name];
     s.total++;
     if(c.assigned_to)s.saleSet.add(c.assigned_to);
-    if(c.status==='Follow')s.followup++;
+    if(c.status==='Follow'||c.status==='Follow Up')s.followup++;
     if(c.lead_status==='Closedeal')s.closedeal++;
     if(c.lead_status==='Lost')s.lost++;
     if(c.potential&&c.potential.trim())s.potential++;
@@ -4161,7 +4168,7 @@ async function renderKPIAsync(){
     }
     var potential=mc.filter(function(cust){return cust.potential&&cust.potential.trim();}).length;
     var newC=mc.filter(function(cust){return cust.status==='New';}).length;
-    var fu=mc.filter(function(cust){return cust.status==='Follow';}).length;
+    var fu=mc.filter(function(cust){return cust.status==='Follow'||cust.status==='Follow Up';}).length;
     var comp=mc.filter(function(cust){return cust.status==='Completed';}).length;
     var av=AV_CLASSES[si%AV_CLASSES.length];
     var init=s.full_name.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();
@@ -4462,7 +4469,8 @@ window._kpiShowList=async function(type,saleId){
       if(saleId&&c.assigned_to!==saleId)return false;
       if(!isM&&c.assigned_to!==(currentUser&&currentUser.id))return false;
       if(type==='potential')return c.potential&&c.potential.trim();
-      return c.status===statusMap[type];
+      var ns=c.status==='Follow Up'?'Follow':c.status;
+      return ns===statusMap[type];
     });
   } else {
     // Invoice-based: dùng _kpiFetchInvoices (filter từ INVOICES local)
@@ -6112,7 +6120,7 @@ function render(){
   <table class="def-table" style="margin-bottom:16px">
     <thead><tr><th>Giá trị</th><th>Ý nghĩa</th><th>Khi nào dùng</th></tr></thead>
     <tbody>
-      <tr><td class="key">Follow Up</td><td class="val">Khách có nhu cầu nhưng thời gian chưa rõ ràng</td><td class="val">Khách có plan thay, thường là thời gian xa cần follow dài</td></tr>
+      <tr><td class="key">Follow Up</td><td class="val">Cần liên hệ lại theo lịch hẹn</td><td class="val">KH hẹn gọi lại sau, chưa sẵn sàng quyết định ngay</td></tr>
       <tr><td class="key">Appointment Set</td><td class="val">Đã lên lịch hẹn cụ thể — <strong>bắt buộc điền Ngày hẹn</strong></td><td class="val">Có lịch demo / gặp mặt cụ thể với KH</td></tr>
       <tr><td class="key">Quotation Sent</td><td class="val">Đã gửi báo giá cho khách</td><td class="val">Tự động khi tạo Invoice — hoặc gửi báo giá thủ công</td></tr>
       <tr><td class="key">Pending Decision</td><td class="val">Khách đang cân nhắc, chờ quyết định</td><td class="val">KH đã xem báo giá, đang cân nhắc giữa các lựa chọn</td></tr>
