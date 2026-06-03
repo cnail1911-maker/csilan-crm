@@ -2699,6 +2699,7 @@ window._campSaleFilter=function(key,wrap,sd){
   var tmp=document.createElement('div');
   tmp.innerHTML=_campSaleTable(filtered,sd==='1',key,true);
   // Restore lại giá trị filter sau khi re-render
+  var newWrap=tmp.firstChild;
   if(newWrap){
     var newInput=newWrap.querySelector('input');
     if(newInput&&search)newInput.value=search;
