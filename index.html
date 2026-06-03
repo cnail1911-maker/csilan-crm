@@ -1409,14 +1409,15 @@ async function initApp(user){
 
   // ── Khởi động Chat Realtime sớm — không cần vào tab Chat mới nhận thông báo ──
   setTimeout(function(){
-    if(window.initChatPage&&!window._chatEarlyInit){
+    if(!window._chatEarlyInit){
       window._chatEarlyInit=true;
-      // Init chatSb và load rooms để badge hoạt động
       try{
-        var CHAT_URL2='https://ajsakaddylbpppxlidfe.supabase.co';
-        var CHAT_ANON2='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqc2FrYWRkeWxicHBweGxpZGZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTA1MDUsImV4cCI6MjA5NDI2NjUwNX0.B_8YwhOD4MXMKFOc3T0lpuujAnhUnpSLGjo12hWsLdc';
-        if(!window.chatSb)window.chatSb=window.supabase.createClient(CHAT_URL2,CHAT_ANON2);
-        // Load rooms + start realtime để badge hiện thông báo
+        // Dùng lại chatSb đã có (tránh tạo duplicate GoTrueClient)
+        if(!window.chatSb)window.chatSb=window.supabase.createClient(
+          'https://ajsakaddylbpppxlidfe.supabase.co',
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqc2FrYWRkeWxicHBweGxpZGZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTA1MDUsImV4cCI6MjA5NDI2NjUwNX0.B_8YwhOD4MXMKFOc3T0lpuujAnhUnpSLGjo12hWsLdc',
+          {auth:{storageKey:'csilan-chat-auth',persistSession:false}}
+        );
         if(typeof loadRooms==='function'){
           loadRooms().then(function(){
             if(typeof startRealtime==='function')startRealtime();
@@ -1426,7 +1427,7 @@ async function initApp(user){
         }
       }catch(e){console.warn('[chat] Early realtime error:',e);}
     }
-  },2000); // Delay 2s sau khi app load xong
+  },2000);
   sb.channel('crm-products-rt')
     .on('postgres_changes',{event:'*',schema:'public',table:'products'},function(payload){
       if(payload.eventType==='INSERT'){
