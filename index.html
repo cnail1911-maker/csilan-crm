@@ -2622,6 +2622,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
     +'</div>';
 
   // Phân trang 50 KH/trang
+  if(!window._campSalePg)window._campSalePg={};
   var totalPg=Math.ceil(custs.length/CAMP_SALE_PAGE_SIZE)||1;
   var curPg=Math.max(1,Math.min(window._campSalePg[key]||1,totalPg));
   var pagedCusts=custs.slice((curPg-1)*CAMP_SALE_PAGE_SIZE,curPg*CAMP_SALE_PAGE_SIZE);
