@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C-Silan CRM — Kiểm tra nghiệp vụ</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0e1a;
+  --bg2: #13152a;
+  --bg3: #1a1d35;
+  --border: rgba(255,255,255,0.08);
+  --brand: #6c5ce7;
+  --brand2: #a29bfe;
+  --accent: #00cec9;
+  --warn: #fdcb6e;
+  --danger: #ff7675;
+  --success: #00b894;
+  --text: #f0eeff;
+  --text2: #b8b5d4;
+  --text3: #6b6890;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Be Vietnam Pro', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Background grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(108,92,231,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108,92,231,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container { position: relative; z-index: 1; max-width: 780px; margin: 0 auto; padding: 24px 16px 60px; }
+
+/* Header */
+.header { text-align: center; padding: 40px 0 32px; }
+.header-logo {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: rgba(108,92,231,0.12); border: 1px solid rgba(108,92,231,0.25);
+  border-radius: 100px; padding: 6px 16px 6px 10px; margin-bottom: 24px;
+}
+.header-logo-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+.header-logo span { font-size: 12px; font-weight: 600; color: var(--brand2); letter-spacing: 1px; text-transform: uppercase; }
+.header h1 { font-family: 'Be Vietnam Pro', sans-serif; font-size: clamp(28px, 6vw, 48px); font-weight: 800; line-height: 1.1; margin-bottom: 12px; }
+.header h1 span { color: var(--brand2); }
+.header p { color: var(--text2); font-size: 15px; line-height: 1.6; max-width: 480px; margin: 0 auto; }
+
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+
+/* Mode selector */
+.mode-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 32px 0; }
+.mode-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 16px;
+  padding: 20px; cursor: pointer; transition: all 0.2s; text-align: left;
+  position: relative; overflow: hidden;
+}
+.mode-card:hover { border-color: var(--brand); background: var(--bg3); transform: translateY(-2px); }
+.mode-card.active { border-color: var(--brand2); background: rgba(108,92,231,0.15); }
+.mode-card-icon { font-size: 24px; margin-bottom: 10px; }
+.mode-card-title { font-family: 'Be Vietnam Pro', sans-serif; font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.mode-card-desc { font-size: 11px; color: var(--text3); line-height: 1.5; }
+.mode-card-badge {
+  position: absolute; top: 12px; right: 12px;
+  background: rgba(108,92,231,0.2); color: var(--brand2);
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+}
+
+/* Start button */
+.btn-start {
+  display: block; width: 100%; padding: 16px; border-radius: 14px;
+  background: linear-gradient(135deg, var(--brand), #4834d4);
+  border: none; color: #fff; font-family: 'Be Vietnam Pro', sans-serif; font-size: 16px; font-weight: 700;
+  cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px;
+  box-shadow: 0 4px 20px rgba(108,92,231,0.4);
+}
+.btn-start:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(108,92,231,0.5); }
+.btn-start:active { transform: translateY(0); }
+
+/* Quiz UI */
+#quiz-screen { display: none; }
+.quiz-header {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px 20px; margin-bottom: 20px;
+}
+.quiz-meta { font-size: 12px; color: var(--text3); }
+.quiz-meta strong { color: var(--brand2); font-size: 14px; }
+.quiz-progress-wrap { flex: 1; margin: 0 20px; }
+.quiz-progress-bar {
+  height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;
+}
+.quiz-progress-fill { height: 100%; background: linear-gradient(90deg, var(--brand), var(--accent)); border-radius: 3px; transition: width 0.4s; }
+.quiz-progress-label { font-size: 11px; color: var(--text3); margin-top: 4px; text-align: center; }
+
+.question-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 20px;
+  padding: 28px; margin-bottom: 16px;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.question-card { animation: fadeUp 0.15s ease; }
+
+.question-num {
+  display: inline-block; background: rgba(108,92,231,0.15); color: var(--brand2);
+  font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
+  margin-bottom: 14px; letter-spacing: 0.5px; text-transform: uppercase;
+}
+.question-topic {
+  display: inline-block; background: rgba(0,206,201,0.1); color: var(--accent);
+  font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+  margin-left: 6px;
+}
+.question-text {
+  font-family: 'Be Vietnam Pro', sans-serif; font-size: 16px; font-weight: 600;
+  line-height: 1.6; margin-bottom: 20px; color: var(--text);
+}
+
+.options { display: flex; flex-direction: column; gap: 10px; }
+.option {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--bg3); border: 1.5px solid var(--border); border-radius: 12px;
+  padding: 14px 16px; cursor: pointer; transition: border-color 0.1s, background 0.1s;
+  will-change: transform;
+}
+.option:hover { border-color: var(--brand2); background: rgba(108,92,231,0.1); }
+.option.selected { border-color: var(--brand2); background: rgba(108,92,231,0.15); }
+.option.correct { border-color: var(--success); background: rgba(0,184,148,0.12); }
+.option.wrong { border-color: var(--danger); background: rgba(255,118,117,0.1); }
+.option-key {
+  width: 28px; height: 28px; flex-shrink: 0;
+  background: rgba(255,255,255,0.06); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: var(--text3);
+  transition: all 0.15s;
+}
+.option.selected .option-key { background: var(--brand); color: #fff; }
+.option.correct .option-key { background: var(--success); color: #fff; }
+.option.wrong .option-key { background: var(--danger); color: #fff; }
+.option-text { font-size: 14px; color: var(--text2); line-height: 1.5; padding-top: 2px; }
+.option.selected .option-text { color: var(--text); }
+
+/* Navigation */
+.quiz-nav { display: flex; gap: 10px; justify-content: space-between; margin-top: 8px; }
+.btn-nav {
+  padding: 12px 24px; border-radius: 12px; font-family: 'Be Vietnam Pro', sans-serif;
+  font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+  border: 1px solid var(--border); background: var(--bg2); color: var(--text2);
+}
+.btn-nav:hover { border-color: var(--brand2); color: var(--brand2); }
+.btn-nav.primary {
+  background: linear-gradient(135deg, var(--brand), #4834d4);
+  border-color: transparent; color: #fff;
+  box-shadow: 0 4px 16px rgba(108,92,231,0.35);
+}
+.btn-nav.primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(108,92,231,0.45); }
+.btn-nav:disabled { opacity: 0.3; cursor: not-allowed; transform: none !important; }
+
+/* Submit */
+.btn-submit {
+  display: block; width: 100%; padding: 16px; border-radius: 14px; margin-top: 20px;
+  background: linear-gradient(135deg, var(--accent), #00b894);
+  border: none; color: #fff; font-family: 'Be Vietnam Pro', sans-serif; font-size: 16px; font-weight: 700;
+  cursor: pointer; transition: all 0.2s; letter-spacing: 0.3px;
+  box-shadow: 0 4px 20px rgba(0,184,148,0.3);
+}
+.btn-submit:hover { transform: translateY(-2px); }
+
+/* Question dots */
+.question-dots { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+.q-dot {
+  width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg2); cursor: pointer; font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; color: var(--text3);
+  transition: all 0.15s;
+}
+.q-dot.answered { background: rgba(108,92,231,0.2); border-color: var(--brand2); color: var(--brand2); }
+.q-dot.current { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+/* Result screen */
+#result-screen { display: none; }
+.result-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 24px;
+  padding: 40px; text-align: center; margin-bottom: 24px;
+}
+.result-score-wrap { position: relative; display: inline-block; margin-bottom: 24px; }
+.result-score-circle {
+  width: 140px; height: 140px; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 4px solid var(--border); position: relative; overflow: hidden;
+}
+.result-score-circle.pass { border-color: var(--success); background: rgba(0,184,148,0.1); }
+.result-score-circle.fail { border-color: var(--danger); background: rgba(255,118,117,0.1); }
+.result-score-num { font-family: 'Be Vietnam Pro', sans-serif; font-size: 48px; font-weight: 800; line-height: 1; }
+.result-score-circle.pass .result-score-num { color: var(--success); }
+.result-score-circle.fail .result-score-num { color: var(--danger); }
+.result-score-label { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.result-badge {
+  font-family: 'Be Vietnam Pro', sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 8px;
+}
+.result-badge.pass { color: var(--success); }
+.result-badge.fail { color: var(--danger); }
+.result-stats { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+.result-stat { background: var(--bg3); border-radius: 12px; padding: 12px 20px; text-align: center; }
+.result-stat-num { font-family: 'Be Vietnam Pro', sans-serif; font-size: 24px; font-weight: 700; }
+.result-stat-label { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+/* Review */
+.review-item {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 16px;
+  padding: 20px; margin-bottom: 12px; animation: fadeUp 0.3s ease both;
+}
+.review-item.correct-item { border-left: 3px solid var(--success); }
+.review-item.wrong-item { border-left: 3px solid var(--danger); }
+.review-q { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 12px; line-height: 1.5; }
+.review-your { font-size: 12px; padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; }
+.review-your.correct { background: rgba(0,184,148,0.1); color: var(--success); }
+.review-your.wrong { background: rgba(255,118,117,0.1); color: var(--danger); }
+.review-correct-ans { font-size: 12px; padding: 8px 12px; border-radius: 8px; background: rgba(0,184,148,0.08); color: var(--success); margin-bottom: 8px; }
+.review-explain { font-size: 12px; color: var(--text3); line-height: 1.6; background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px 12px; border-left: 2px solid rgba(108,92,231,0.4); }
+
+.btn-retry {
+  display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px;
+  border-radius: 12px; background: var(--bg2); border: 1px solid var(--border);
+  color: var(--text2); font-family: 'Be Vietnam Pro', sans-serif; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: all 0.15s; margin-right: 10px;
+}
+.btn-retry:hover { border-color: var(--brand2); color: var(--brand2); }
+.btn-review {
+  display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px;
+  border-radius: 12px; background: linear-gradient(135deg, var(--success), #00b894);
+  border: none; color: #fff; font-family: 'Be Vietnam Pro', sans-serif; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: all 0.15s; box-shadow: 0 4px 16px rgba(0,184,148,0.3);
+}
+.btn-review:hover { transform: translateY(-1px); }
+.btn-review:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+.locked-notice {
+  background: rgba(255,118,117,0.08); border: 1px solid rgba(255,118,117,0.2);
+  border-radius: 12px; padding: 14px 16px; font-size: 13px; color: var(--danger);
+  margin-top: 12px; text-align: center;
+}
+
+@media(max-width:600px){
+  .quiz-header{flex-direction:column;gap:10px}
+  .quiz-progress-wrap{margin:0;width:100%}
+  .mode-grid{grid-template-columns:1fr 1fr}
+  .result-stats{gap:8px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- HOME -->
+<div id="home-screen">
+  <div class="header">
+    <div class="header-logo">
+      <div class="header-logo-dot"></div>
+      <span>C-Silan CRM</span>
+    </div>
+    <h1>Kiểm tra<br><span>Nghiệp vụ</span> hệ thống</h1>
+    <p>Đánh giá mức độ nắm vững quy trình làm việc trên CRM. Điểm đạt yêu cầu: <strong style="color:var(--success)">8/10</strong> trở lên.</p>
+  </div>
+
+  <div class="mode-grid" id="mode-grid">
+    <div class="mode-card active" data-mode="random" onclick="selectMode(this,'random')">
+      <div class="mode-card-icon">🎲</div>
+      <div class="mode-card-title">Random tổng hợp</div>
+      <div class="mode-card-desc">20 câu ngẫu nhiên từ toàn bộ 100 câu hỏi</div>
+      <div class="mode-card-badge">20 câu</div>
+    </div>
+    <div class="mode-card" data-mode="1" onclick="selectMode(this,'1')">
+      <div class="mode-card-icon">👥</div>
+      <div class="mode-card-title">Đề 1 — Khách hàng</div>
+      <div class="mode-card-desc">Quản lý KH, tab hệ thống, data flow</div>
+    </div>
+    <div class="mode-card" data-mode="2" onclick="selectMode(this,'2')">
+      <div class="mode-card-icon">📋</div>
+      <div class="mode-card-title">Đề 2 — Campaign</div>
+      <div class="mode-card-desc">Nhận data, phân bổ, deadline, Active Pool</div>
+    </div>
+    <div class="mode-card" data-mode="3" onclick="selectMode(this,'3')">
+      <div class="mode-card-icon">🧾</div>
+      <div class="mode-card-title">Đề 3 — Invoice & Order</div>
+      <div class="mode-card-desc">Tạo invoice, quy trình duyệt, Closedeal</div>
+    </div>
+    <div class="mode-card" data-mode="4" onclick="selectMode(this,'4')">
+      <div class="mode-card-icon">📞</div>
+      <div class="mode-card-title">Đề 4 — Follow-up</div>
+      <div class="mode-card-desc">Status, Sub Status, Call log, Description</div>
+    </div>
+    <div class="mode-card" data-mode="5" onclick="selectMode(this,'5')">
+      <div class="mode-card-icon">⭐</div>
+      <div class="mode-card-title">Đề 5 — Potential</div>
+      <div class="mode-card-desc">Mark Potential, thu hồi, chính sách data</div>
+    </div>
+    <div class="mode-card" data-mode="6" onclick="selectMode(this,'6')">
+      <div class="mode-card-icon">🎯</div>
+      <div class="mode-card-title">Đề 6 — Tình huống</div>
+      <div class="mode-card-desc">Xử lý tình huống thực tế tổng hợp</div>
+    </div>
+  </div>
+  <button class="btn-start" onclick="startQuiz()">Bắt đầu làm bài →</button>
+</div>
+
+<!-- QUIZ -->
+<div id="quiz-screen">
+  <div class="quiz-header">
+    <div class="quiz-meta">Câu <strong id="q-current">1</strong> / <strong id="q-total">20</strong></div>
+    <div class="quiz-progress-wrap">
+      <div class="quiz-progress-bar"><div class="quiz-progress-fill" id="progress-fill" style="width:0%"></div></div>
+      <div class="quiz-progress-label" id="progress-label">0%</div>
+    </div>
+    <div class="quiz-meta">Đã trả lời: <strong id="q-answered">0</strong></div>
+  </div>
+
+  <div class="question-dots" id="q-dots"></div>
+  <div id="question-container"></div>
+
+  <div class="quiz-nav">
+    <button class="btn-nav" id="btn-prev" onclick="navigate(-1)">← Trước</button>
+    <button class="btn-nav" id="btn-next" onclick="navigate(1)">Tiếp →</button>
+  </div>
+
+  <button class="btn-submit" id="btn-submit" onclick="submitQuiz()" style="display:none">
+    ✓ Nộp bài
+  </button>
+</div>
+
+<!-- RESULT -->
+<div id="result-screen">
+  <div class="result-card" id="result-card">
+    <div class="result-score-wrap">
+      <div class="result-score-circle" id="score-circle">
+        <div class="result-score-num" id="score-num">0</div>
+        <div class="result-score-label">/ 10</div>
+      </div>
+    </div>
+    <div class="result-badge" id="result-badge"></div>
+    <div style="color:var(--text2);font-size:14px;line-height:1.6" id="result-msg"></div>
+    <div class="result-stats" id="result-stats"></div>
+  </div>
+  <div style="text-align:center;margin-bottom:24px">
+    <button class="btn-retry" onclick="retryQuiz()">↺ Làm lại</button>
+    <button class="btn-review" id="btn-review" onclick="showReview()">📋 Xem đáp án</button>
+    <div class="locked-notice" id="locked-notice" style="display:none">
+      🔒 Đáp án sẽ được mở khi đạt điểm 8/10 trở lên
+    </div>
+  </div>
+  <div id="review-container"></div>
+</div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  QUESTION BANK — 100 câu hỏi
+//  Thêm câu mới: copy 1 object, điền q/opts/ans/explain
+//  topic: 1=Khách hàng, 2=Campaign, 3=Invoice, 4=Follow-up, 5=Potential, 6=Tình huống
+// ═══════════════════════════════════════════════════
+const QUESTIONS = [
+
+// ── ĐỀ 1: QUẢN LÝ KHÁCH HÀNG (topic 1) ──────────────────
+{topic:1,q:"Tab Khách hàng của Sale hiển thị những KH nào?",opts:["A. Tất cả KH trong hệ thống","B. KH có Potential + KH tự thêm (created by sale)","C. KH được assign trong campaign tháng này","D. KH có invoice pending"],ans:1,explain:"Tab Khách hàng Sale chỉ hiện KH đã mark Potential (dù từ campaign nào) và KH sale tự thêm vào hệ thống."},
+{topic:1,q:"Tab Tiềm năng hiển thị những KH nào?",opts:["A. KH đã mark Potential","B. KH có Lead Status = Closedeal","C. KH đã có invoice hoặc báo giá bất kỳ status nào","D. KH có Sub Status = Qualified"],ans:2,explain:"Tab Tiềm năng hiển thị KH đã từng có invoice hoặc quotation, bất kể status approved, pending hay rejected."},
+{topic:1,q:"Tab Campaign của Sale hiển thị gì?",opts:["A. Tất cả campaign từ trước đến nay","B. Campaign còn hiệu lực (deadline chưa qua)","C. Campaign đã hết hạn","D. Chỉ campaign do Manager tạo tháng này"],ans:1,explain:"Sale chỉ thấy campaign còn trong deadline. Campaign hết hạn tự ẩn khỏi view của Sale."},
+{topic:1,q:"KH tự thêm nhưng chưa mark Potential hiển thị ở tab nào?",opts:["A. Tab Tiềm năng","B. Tab Campaign","C. Tab Khách hàng","D. Không hiển thị ở tab nào"],ans:2,explain:"KH tự thêm (created by sale) luôn hiển thị trong Tab Khách hàng dù có Potential hay không."},
+{topic:1,q:"Tab Pipeline dùng để làm gì?",opts:["A. Xem danh sách invoice chờ duyệt","B. Theo dõi hành trình KH qua các giai đoạn","C. Xem KH đã Closedeal","D. Quản lý campaign"],ans:1,explain:"Tab Pipeline cho thấy tổng quan KH đang ở giai đoạn nào trong hành trình bán hàng."},
+{topic:1,q:"Khi Manager thu hồi KH từ Sale, điều gì xảy ra với Potential của KH đó?",opts:["A. Giữ nguyên","B. Tự động reset về rỗng","C. Chuyển sang Manager","D. Chờ Manager quyết định"],ans:1,explain:"Khi Manager thu hồi do không follow (>30 ngày), Potential bị reset về rỗng để Sale mới tiếp cận fresh, tránh bias từ lịch sử cũ."},
+{topic:1,q:"Trường Description dùng để làm gì?",opts:["A. Ghi chú kết quả từng cuộc gọi","B. Cập nhật thông tin quan trọng: số lượng, màu sắc, vấn đề KH quan tâm","C. Ghi lịch hẹn với KH","D. Log thời gian gọi điện"],ans:1,explain:"Description là nơi cập nhật thông tin quan trọng về nhu cầu KH như số lượng ghế, màu sắc, loại sản phẩm quan tâm."},
+{topic:1,q:"Call log bắt buộc phải có gì khi ghi nhận?",opts:["A. Chỉ cần ghi ngày giờ","B. Phải chọn kết quả gọi tương ứng (ghi chú khi cần)","C. Phải điền đầy đủ nội dung cuộc trò chuyện","D. Không bắt buộc, chỉ khuyến khích"],ans:1,explain:"Call log bắt buộc chọn kết quả gọi (No Answer, Contacting, Qualified...). Ghi chú thêm khi cần thiết để ghi nhận lịch sử làm việc."},
+{topic:1,q:"Tab Chờ duyệt dùng để làm gì?",opts:["A. KH mới chờ assign","B. Invoice/KH mới tạo chờ Manager duyệt","C. Campaign chờ bắt đầu","D. Báo cáo KPI chưa cập nhật"],ans:1,explain:"Tab Chờ duyệt hiển thị invoice và KH mới tạo đang chờ Manager xem xét và duyệt."},
+{topic:1,q:"Khi Manager assign trực tiếp KH cho Sale (không qua campaign), KH nằm ở tab nào của Sale?",opts:["A. Tab Campaign","B. Tab Tiềm năng","C. Tab Khách hàng","D. Tab Pipeline"],ans:2,explain:"KH direct assign từ Manager (campaign_name='__direct__') hiển thị trong Tab Khách hàng của Sale, Potential được giữ nguyên."},
+{topic:1,q:"Active Pool là gì?",opts:["A. Danh sách KH VIP của Manager","B. KH có Potential không bị expire, luôn được giữ lại","C. KH đang trong campaign tháng này","D. KH đã mua hàng"],ans:1,explain:"Active Pool chứa KH có Potential từ các campaign cũ, không bị thu hồi theo deadline thông thường."},
+{topic:1,q:"Status mặc định khi KH mới được assign vào Campaign là gì?",opts:["A. Follow Up","B. Completed","C. New","D. Pending"],ans:2,explain:"KH mới assign vào đầu tháng có Status = New và Sub Status = New Lead theo mặc định."},
+{topic:1,q:"Call log của Sale được Manager xem được không?",opts:["A. Không, chỉ Sale đó xem được","B. Có, Manager xem được lịch sử đầy đủ","C. Chỉ xem được 7 ngày gần nhất","D. Chỉ xem khi có tranh chấp"],ans:1,explain:"Manager có thể xem toàn bộ lịch sử call log của tất cả Sale để theo dõi hoạt động làm việc."},
+{topic:1,q:"Điều kiện để Sale chuyển KH sang Completed sớm (trước deadline)?",opts:["A. Phải xin phép Manager","B. Call log đạt tối thiểu 3 lần vào 3 ngày khác nhau","C. KH phải đồng ý lịch hẹn","D. Không có điều kiện, bất kỳ lúc nào"],ans:1,explain:"Sale có thể đóng data sớm (Completed) nếu đã có tối thiểu 3 lần call log vào 3 ngày khác nhau."},
+{topic:1,q:"Khi KH bị thu hồi và assign cho Sale mới, lịch sử Call Log cũ có bị xóa không?",opts:["A. Có, xóa toàn bộ","B. Không, Sale mới vẫn thấy lịch sử cũ","C. Chỉ Manager mới xem được","D. Xóa sau 30 ngày"],ans:1,explain:"Lịch sử call log được giữ nguyên dù KH được assign cho Sale khác. Sale mới có thể xem để hiểu background KH."},
+{topic:1,q:"Tab Order hiển thị gì?",opts:["A. Tất cả invoice đã tạo","B. Invoice đã được Manager duyệt (approved)","C. Invoice đang chờ duyệt","D. KH đã mua hàng"],ans:1,explain:"Tab Order chỉ hiển thị invoice đã được Manager duyệt — tức là đơn hàng đã chốt thành công."},
+
+// ── ĐỀ 2: CAMPAIGN (topic 2) ──────────────────────────
+{topic:2,q:"Ai có quyền tạo Campaign?",opts:["A. Sale","B. Leader","C. Manager","D. Tất cả"],ans:2,explain:"Chỉ Manager mới có quyền tạo Campaign và phân bổ data cho Sale."},
+{topic:2,q:"Sau khi Campaign hết deadline, KH chưa Potential sẽ như thế nào?",opts:["A. Tự động Completed","B. Tự ẩn khỏi view của Sale, Manager có thể thu hồi","C. Chuyển sang Active Pool","D. Xóa khỏi hệ thống"],ans:1,explain:"KH hết deadline tự ẩn khỏi Campaign tab của Sale. Manager có thể thu hồi để tái sử dụng trong campaign sau."},
+{topic:2,q:"KH đã mark Potential khi campaign hết deadline sẽ đi đâu?",opts:["A. Bị thu hồi ngay lập tức","B. Nằm trong Active Pool, Sale vẫn follow được","C. Chuyển sang tab Tiềm năng","D. Xóa Potential và thu hồi"],ans:1,explain:"KH có Potential không bị thu hồi theo deadline. Họ vào Active Pool và Sale vẫn có thể follow trong Tab Khách hàng."},
+{topic:2,q:"Manager có thể thu hồi KH Potential khi nào?",opts:["A. Bất kỳ lúc nào","B. Chỉ khi Sale đồng ý","C. Sau khi hết hạn >30 ngày không follow","D. Chỉ cuối tháng"],ans:2,explain:"Manager có thể thu hồi KH Potential sau khi hết hạn trên 30 ngày không được Sale follow up."},
+{topic:2,q:"Khi Manager thu hồi KH Potential để assign cho Sale khác, Potential có bị reset không?",opts:["A. Có, reset về rỗng để tiếp cận mới","B. Không, giữ nguyên","C. Chỉ reset nếu Sale đó yêu cầu","D. Manager quyết định từng case"],ans:0,explain:"Khi thu hồi do không follow, Potential reset về rỗng. Sale mới tiếp cận hoàn toàn fresh, tránh trường hợp KH mất thiện cảm từ lần trước."},
+{topic:2,q:"Manager direct assign KH cho Sale (không qua campaign), Potential có bị reset không?",opts:["A. Có","B. Không, giữ nguyên","C. Tùy Manager","D. Tùy loại sản phẩm"],ans:1,explain:"Direct assign là Manager chủ động chuyển KH tốt sang Sale phù hợp hơn — Potential được giữ nguyên, Sale mới follow tiếp."},
+{topic:2,q:"Deadline của Campaign được set lúc nào?",opts:["A. Tự động 30 ngày từ ngày tạo","B. Khi tạo Campaign hoặc khi Manager direct assign","C. Sau khi Sale nhận data","D. Không có deadline"],ans:1,explain:"Deadline được Manager set khi tạo Campaign, hoặc có thể set riêng khi Manager direct assign KH cho Sale cụ thể."},
+{topic:2,q:"KH trong Active Pool có deadline không?",opts:["A. Có, 30 ngày tự động","B. Có, Manager set riêng","C. Không có deadline, không expire","D. Tùy campaign trước đó"],ans:2,explain:"Active Pool là nơi KH Potential được giữ lại không có deadline. Đây là điểm khác biệt với Monthly Campaign."},
+{topic:2,q:"Khi tạo Campaign mà không chọn Sale cụ thể, hệ thống xử lý như thế nào?",opts:["A. Không tạo được, bắt buộc chọn Sale","B. Chia đều cho tất cả Sale trong hệ thống","C. Manager phải assign thủ công từng KH","D. KH vào Active Pool"],ans:1,explain:"Nếu không chọn Sale cụ thể khi tạo Campaign, hệ thống tự chia đều data cho tất cả Sale."},
+{topic:2,q:"Sale thấy Campaign của tháng trước (đã hết hạn) ở đâu?",opts:["A. Vẫn thấy ở tab Campaign","B. Không thấy nữa, chỉ Manager xem được","C. Trong tab Khách hàng","D. Trong tab Archive"],ans:1,explain:"Campaign hết deadline tự ẩn khỏi view Sale. Manager vẫn xem được toàn bộ để phân tích và lên chiến lược."},
+{topic:2,q:"Nhiệm vụ chính của Sale trong Campaign là gì?",opts:["A. Tạo Campaign mới","B. Gọi điện follow KH, cập nhật status và tạo invoice khi KH đồng ý","C. Duyệt invoice","D. Thu hồi data không hiệu quả"],ans:1,explain:"Sale nhận data từ Campaign, gọi điện follow, cập nhật status/sub-status, ghi call log và tạo invoice khi KH sẵn sàng."},
+{topic:2,q:"Khi Campaign hết hạn, Sale CÒN thấy KH nào?",opts:["A. Không còn thấy KH nào","B. Chỉ KH có Potential","C. Tất cả KH đã liên hệ","D. KH có invoice pending"],ans:1,explain:"Sau khi campaign hết hạn, Sale chỉ còn thấy KH đã mark Potential (trong Tab Khách hàng), các KH khác bị ẩn."},
+{topic:2,q:"Manager có thể thêm KH vào Campaign đang chạy không?",opts:["A. Không, phải tạo Campaign mới","B. Có, thêm bất kỳ lúc nào","C. Chỉ cuối tháng","D. Chỉ khi còn dưới 100 KH"],ans:1,explain:"Manager có toàn quyền thêm KH vào Campaign đang chạy, sau đó assign cho Sale cụ thể hoặc chia đều."},
+{topic:2,q:"Sale có thể xem Campaign của Sale khác không?",opts:["A. Có","B. Không, chỉ thấy Campaign của mình","C. Chỉ Leader mới xem được","D. Chỉ khi Manager cho phép"],ans:1,explain:"Mỗi Sale chỉ thấy Campaign và data được assign cho mình. Không xem được data của Sale khác."},
+{topic:2,q:"KH có invoice pending khi bị add vào campaign mới thì sao?",opts:["A. Invoice tự hủy","B. Hệ thống cảnh báo Manager, Manager quyết định tiếp tục hay bỏ qua","C. Tự động approved","D. KH không thể add vào campaign mới"],ans:1,explain:"Hệ thống cảnh báo khi KH có invoice pending được add vào campaign mới. Manager xem cảnh báo rồi quyết định tiếp tục hay bỏ qua."},
+
+// ── ĐỀ 3: INVOICE & ORDER (topic 3) ──────────────────
+{topic:3,q:"Sale có thể tạo invoice khi nào?",opts:["A. Chỉ khi Sub Status = Quotation Sent","B. Bất kỳ lúc nào khi cần","C. Chỉ sau khi Manager cho phép","D. Chỉ khi KH đồng ý bằng văn bản"],ans:1,explain:"Sale có thể tạo invoice bất kỳ lúc nào. Không có ràng buộc về Sub Status trước khi tạo."},
+{topic:3,q:"Khi Sale tạo invoice, Sub Status của KH tự động đổi thành gì?",opts:["A. Appointment Set","B. Pending Decision","C. Quotation Sent","D. Không thay đổi"],ans:2,explain:"Khi tạo invoice, hệ thống tự động cập nhật Sub Status của KH thành Quotation Sent."},
+{topic:3,q:"Khi nào Manager duyệt invoice?",opts:["A. Ngay khi Sale tạo","B. Khi khách hàng đã thanh toán","C. Sau 3 ngày làm việc","D. Đầu tháng"],ans:1,explain:"Manager chỉ duyệt invoice khi khách hàng đã thực sự thanh toán. Đây là bước xác nhận đơn hàng đã hoàn tất."},
+{topic:3,q:"Sau khi Manager duyệt invoice, Lead Status của KH tự động đổi thành gì?",opts:["A. Won","B. Completed","C. Closedeal","D. Approved"],ans:2,explain:"Khi Manager duyệt invoice, hệ thống tự động set Lead Status = Closedeal — đây là bước duy nhất không cần Sale làm thủ công."},
+{topic:3,q:"Sale có thể sửa invoice sau khi đã tạo không?",opts:["A. Không, phải xóa và tạo lại","B. Có, có thể sửa bất kỳ lúc nào","C. Chỉ sửa được trước khi Manager duyệt","D. Chỉ Manager mới sửa được"],ans:1,explain:"Sale có thể sửa invoice. Tuy nhiên sau khi Manager đã duyệt thì cần xem lại quy trình với Manager."},
+{topic:3,q:"Khi KPI tính Revenue, hệ thống tính như thế nào?",opts:["A. Tổng tất cả invoice tạo trong tháng","B. Invoice approved (đã duyệt) mới tính vào Revenue","C. Invoice pending + approved","D. Chỉ invoice tháng hiện tại"],ans:1,explain:"Revenue chỉ tính từ invoice đã được Manager duyệt (approved). Invoice pending không tính vào Revenue thực tế."},
+{topic:3,q:"Est.Revenue (Doanh số dự kiến) được tính từ đâu?",opts:["A. Invoice đã duyệt","B. Invoice pending chờ duyệt","C. KH có Potential","D. Tổng tất cả invoice"],ans:1,explain:"Est.Revenue tính từ invoice đang pending (chờ duyệt) — đây là doanh số dự kiến chưa chắc chắn."},
+{topic:3,q:"1 KH có 2 invoice pending trong tháng, hệ thống tính Est.Order là bao nhiêu?",opts:["A. 2 Est.Order","B. 1 Est.Order (chỉ tính invoice gần nhất)","C. 0, phải duyệt mới tính","D. Tùy Manager"],ans:1,explain:"Hệ thống chống gian lận: mỗi KH chỉ tính 1 Est.Order dựa trên invoice gần nhất. Tránh Sale tạo nhiều invoice để tăng số liệu."},
+{topic:3,q:"Target Revenue mỗi Sale phải đạt trong tháng là bao nhiêu?",opts:["A. $18,000","B. $20,000","C. $23,500","D. $25,000"],ans:2,explain:"Target cố định: mỗi Sale phải đạt $23,500 Revenue và 5 Orders mỗi tháng."},
+{topic:3,q:"Target Orders mỗi Sale phải đạt trong tháng là bao nhiêu?",opts:["A. 3 orders","B. 5 orders","C. 7 orders","D. 10 orders"],ans:1,explain:"Target: 5 orders và $23,500 revenue mỗi tháng cho mỗi Sale."},
+{topic:3,q:"KH có invoice approved $1,000 tháng 5 và invoice pending $1,500 tháng 5. KPI tính thế nào?",opts:["A. Order: 1, Revenue: $1,000, Est.Order: 1, Est.Rev: $1,500","B. Order: 0, Revenue: $0, Est.Order: 1, Est.Rev: $1,500","C. Order: 1, Revenue: $2,500","D. Order: 2, Revenue: $1,000"],ans:0,explain:"Approved và pending tính độc lập. KH này đóng góp cả Order (approved $1K) lẫn Est.Order (pending $1.5K)."},
+{topic:3,q:"Invoice của KH nào được tính vào KPI của Sale?",opts:["A. KH trong campaign của tháng đó","B. KH có sale_id = Sale đó trên invoice","C. KH trong tab Khách hàng của Sale","D. KH được assign trực tiếp"],ans:1,explain:"Invoice được tính theo sale_id trên invoice, không phụ thuộc vào KH đang ở tab nào hay campaign nào."},
+{topic:3,q:"Sau khi Manager duyệt invoice, Status của KH có thay đổi tự động không?",opts:["A. Đổi thành Completed","B. Đổi thành Closedeal","C. Lead Status đổi thành Closedeal, Status giữ nguyên","D. Không thay đổi gì"],ans:2,explain:"Khi duyệt invoice, chỉ Lead Status tự động đổi thành Closedeal. Status (Follow Up/Completed) Sale vẫn phải cập nhật thủ công."},
+{topic:3,q:"Invoice bị Manager từ chối (rejected), Sale phải làm gì tiếp?",opts:["A. KH tự động Lost","B. Liên hệ lại KH, cập nhật thông tin và tạo invoice mới","C. Báo cáo với Leader","D. Chuyển KH sang Sale khác"],ans:1,explain:"Invoice bị từ chối nghĩa là chưa đủ điều kiện duyệt. Sale liên hệ lại KH, làm rõ thông tin, sửa hoặc tạo invoice mới."},
+{topic:3,q:"KH đã Closedeal tháng trước, tháng này tạo invoice mới thì sao?",opts:["A. Không tạo được","B. Lead Status reset về New","C. Tạo bình thường, KH có thể mua thêm","D. Phải xin phép Manager"],ans:2,explain:"KH có thể mua hàng nhiều lần. Invoice mới được tạo bình thường, KPI tháng mới tính riêng."},
+
+// ── ĐỀ 4: FOLLOW-UP & STATUS (topic 4) ──────────────────
+{topic:4,q:"Status mặc định khi KH mới được assign là gì?",opts:["A. Follow Up","B. New","C. Pending","D. Qualified"],ans:1,explain:"KH mới assign = Status: New và Sub Status: New Lead."},
+{topic:4,q:"Sau cuộc gọi đầu tiên, Sale đổi Status thành gì?",opts:["A. Completed","B. Follow Up","C. Qualified","D. Giữ nguyên New"],ans:1,explain:"Sau lần gọi đầu tiên, Status đổi từ New sang Follow Up, Sub Status chọn theo tình trạng thực tế (No Answer, Contacting...)."},
+{topic:4,q:"Sub Status 'Gatekeeper' có nghĩa là gì?",opts:["A. KH đã đồng ý gặp mặt","B. Gặp người chặn (lễ tân, nhân viên) chưa gặp được chủ","C. KH đang bận","D. Số điện thoại sai"],ans:1,explain:"Gatekeeper = gặp người trung gian (nhân viên, lễ tân) chưa tiếp cận được chủ tiệm/quyết định viên."},
+{topic:4,q:"Sub Status 'Qualified' có nghĩa là gì?",opts:["A. KH đồng ý mua","B. Đã gặp được người quyết định, xác nhận có nhu cầu","C. KH đang xem xét báo giá","D. Cuộc gọi thành công"],ans:1,explain:"Qualified = đã liên lạc được đúng người quyết định và xác nhận KH có nhu cầu thực sự với sản phẩm."},
+{topic:4,q:"Từ Qualified, Sale có thể chuyển sang Sub Status nào?",opts:["A. Chỉ Quotation Sent","B. Appointment Set, Quotation Sent, Pending Decision hoặc Follow Up","C. Trực tiếp sang Completed","D. Phải qua No Answer trước"],ans:1,explain:"Từ Qualified, hành trình có thể phát triển theo nhiều hướng: hẹn gặp (Appointment Set), gửi báo giá, chờ quyết định, hoặc follow dài hạn."},
+{topic:4,q:"Sub Status 'Pending Decision' nghĩa là gì?",opts:["A. Sale đang chờ Manager duyệt","B. KH đang cân nhắc, chưa quyết định","C. Invoice đang pending","D. Campaign chưa bắt đầu"],ans:1,explain:"Pending Decision = KH đã xem báo giá/thông tin và đang cân nhắc quyết định mua hay không."},
+{topic:4,q:"Điều kiện bắt buộc khi đặt Status = Completed là gì?",opts:["A. Phải có ít nhất 1 invoice","B. Lead Status không được để trống + Reason bắt buộc + tối thiểu 3 call log 3 ngày khác nhau","C. KH phải đồng ý","D. Chỉ cần Manager phê duyệt"],ans:1,explain:"Completed bắt buộc: Lead Status không rỗng, Reason có nội dung, và tối thiểu 3 call log vào 3 ngày khác nhau."},
+{topic:4,q:"'3 call log vào 3 ngày khác nhau' nghĩa là gì?",opts:["A. 3 cuộc gọi trong 1 ngày","B. Mỗi ngày gọi 1 lần, tổng 3 ngày khác nhau","C. 3 lần gọi thành công","D. 3 tuần liên tiếp"],ans:1,explain:"Hệ thống tính theo ngày, không tính số lần. Sale phải có ít nhất 3 ngày gọi khác nhau mới đủ điều kiện Completed."},
+{topic:4,q:"Khi Set Status = Lost, Sale bắt buộc phải làm gì?",opts:["A. Chỉ đổi Lead Status","B. Phải điền Reason + Lead Status = Lost","C. Báo với Manager","D. Xóa call log"],ans:1,explain:"Khi Lost phải có Reason nêu rõ lý do thất bại. Đây là thông tin quan trọng để Manager phân tích và cải thiện."},
+{topic:4,q:"Sub Status 'Follow Up' (trong danh sách sub status) dùng khi nào?",opts:["A. Thay thế cho Status Follow Up","B. Dành cho case follow dài hạn sau khi đã Qualified","C. KH mới bắt đầu","D. KH đã từ chối 1 lần"],ans:1,explain:"Sub Status Follow Up (khác với Status Follow Up) dùng cho case đang trong giai đoạn follow dài sau Qualified — KH chưa sẵn sàng ngay nhưng vẫn còn tiềm năng."},
+{topic:4,q:"Sale có thể ghi bao nhiêu lần Call Log trong 1 ngày?",opts:["A. Tối đa 1 lần","B. Tối đa 3 lần","C. Không giới hạn","D. Phải có kết quả khác nhau"],ans:2,explain:"Không giới hạn số lần gọi trong ngày, nhưng chỉ tính là 1 ngày trong điều kiện 3 ngày khác nhau để Completed."},
+{topic:4,q:"Call log 'No Answer' liên tiếp 3 lần có đủ điều kiện Completed không?",opts:["A. Có nếu 3 ngày khác nhau","B. Không, phải gặp được KH ít nhất 1 lần","C. Có, không cần điều kiện thêm","D. Cần thêm 1 lần Contacting"],ans:0,explain:"Hệ thống chỉ yêu cầu 3 call log vào 3 ngày khác nhau — không phân biệt kết quả gọi. No Answer 3 ngày khác nhau là đủ điều kiện."},
+{topic:4,q:"Khi nào nên dùng Sub Status 'Appointment Set'?",opts:["A. Khi tạo invoice","B. Khi KH đồng ý gặp mặt hoặc có lịch demo sản phẩm","C. Khi KH hỏi thêm thông tin","D. Khi gọi không bắt máy"],ans:1,explain:"Appointment Set khi đã xác nhận được lịch hẹn gặp mặt hoặc demo với KH."},
+{topic:4,q:"Trường Reason dùng để ghi gì?",opts:["A. Lý do tạo invoice","B. Lý do KH Lost/Completed — giải thích kết quả","C. Lý do Sale gọi điện","D. Lý do Campaign"],ans:1,explain:"Reason ghi lý do kết thúc data: tại sao KH Lost (không có nhu cầu, đã mua hàng khác, quá đắt...) để phân tích và cải thiện."},
+{topic:4,q:"KH đã Completed với Lead Status = No Response, Sale có thể follow lại không?",opts:["A. Không, data đã đóng hoàn toàn","B. Chỉ khi Manager mở lại","C. Sale tự mở lại được","D. Tự động mở sau 3 tháng"],ans:1,explain:"Một khi data đã Completed, Sale không thể tự mở lại. Manager có quyền mở lại nếu cần thiết."},
+
+// ── ĐỀ 5: POTENTIAL (topic 5) ──────────────────────────
+{topic:5,q:"Sale mark Potential cho KH khi nào?",opts:["A. Chỉ khi KH đã đồng ý giá","B. Bất kỳ lúc nào khi KH thể hiện quan tâm đến sản phẩm cụ thể","C. Chỉ khi Manager yêu cầu","D. Sau 3 lần gọi thành công"],ans:1,explain:"Potential có thể mark bất kỳ thời điểm nào trong hành trình khi Sale nhận thấy KH có nhu cầu thực sự với sản phẩm."},
+{topic:5,q:"Potential trên hệ thống thể hiện điều gì?",opts:["A. Xác suất mua hàng %","B. Sản phẩm/dòng hàng KH đang quan tâm","C. Mức độ ưu tiên của KH","D. Số lần Sale đã gọi"],ans:1,explain:"Potential field ghi tên sản phẩm/dòng hàng KH quan tâm (Pedicure Spa, HeadSpa Bed, Massage Chair...)."},
+{topic:5,q:"KH bị thu hồi (không follow >30 ngày), Sale mới nhận KH thấy Potential như thế nào?",opts:["A. Thấy đầy đủ Potential cũ","B. Potential đã reset về rỗng","C. Potential đổi thành Lost","D. Không thay đổi"],ans:1,explain:"Thu hồi do không follow → Potential reset về rỗng. Sale mới tiếp cận tươi mới, không bị ảnh hưởng bởi ấn tượng cũ."},
+{topic:5,q:"KH Lost nhưng đã mark Potential trước đó, Potential có bị xóa không?",opts:["A. Có, xóa ngay khi Lost","B. Không, Potential được giữ lại","C. Chỉ Manager mới xóa được","D. Xóa sau 30 ngày"],ans:1,explain:"Lost không xóa Potential. KH Lost vẫn giữ thông tin Potential vì họ từng quan tâm — có thể follow lại trong campaign sau."},
+{topic:5,q:"KH có Potential nằm ở tab nào của Sale?",opts:["A. Tab Campaign","B. Tab Tiềm năng","C. Tab Khách hàng","D. Tab Pipeline"],ans:2,explain:"KH có Potential luôn hiển thị trong Tab Khách hàng của Sale, kể cả sau khi Campaign hết hạn."},
+{topic:5,q:"Manager có thể thu hồi KH đang có Potential không?",opts:["A. Không bao giờ","B. Có, Manager toàn quyền quyết định","C. Chỉ khi Sale đồng ý","D. Chỉ khi KH không có invoice"],ans:1,explain:"Manager có toàn quyền thu hồi bất kỳ KH nào, kể cả KH có Potential, để phân bổ chiến lược tốt hơn."},
+{topic:5,q:"Sự khác biệt giữa thu hồi và direct assign là gì?",opts:["A. Không có sự khác biệt","B. Thu hồi reset Potential, direct assign giữ nguyên Potential","C. Direct assign reset Potential, thu hồi giữ nguyên","D. Cả hai đều reset Potential"],ans:1,explain:"Thu hồi (do không follow) = reset Potential + tiếp cận mới. Direct assign (Manager chủ động) = giữ Potential để Sale mới follow tiếp."},
+{topic:5,q:"Sau khi mark Potential, KH tự động chuyển sang tab nào?",opts:["A. Active Pool ngay lập tức","B. Vẫn trong Campaign, đồng thời xuất hiện trong Tab Khách hàng","C. Tab Tiềm năng","D. Không thay đổi"],ans:1,explain:"Mark Potential không di chuyển KH ngay lập tức. KH vẫn trong Campaign (nếu còn hạn), đồng thời xuất hiện trong Tab Khách hàng của Sale."},
+{topic:5,q:"KH Potential hết hạn Campaign >30 ngày, Manager chưa thu hồi, KH đó ở đâu?",opts:["A. Biến mất khỏi hệ thống","B. Active Pool — Tab Khách hàng Sale vẫn thấy","C. Tab Chờ duyệt","D. Vào pool chung của Manager"],ans:1,explain:"KH Potential không bị xóa dù Campaign hết hạn. Sau 30 ngày Manager có thể thu hồi nếu cần, nhưng nếu không, Sale vẫn giữ KH đó."},
+{topic:5,q:"Sale có thể mark Potential cho KH Lost không?",opts:["A. Không, Lost là kết thúc","B. Có thể, Potential và Lead Status là 2 field độc lập","C. Chỉ khi Manager cho phép","D. Chỉ trước khi Completed"],ans:1,explain:"Potential và Lead Status hoạt động độc lập. Sale có thể mark Potential dù KH đang ở bất kỳ status nào."},
+{topic:5,q:"Mục đích của Active Pool là gì?",opts:["A. Lưu KH đã mua hàng","B. Giữ KH tiềm năng lâu dài không bị mất theo deadline campaign","C. KH bị thu hồi chờ assign lại","D. KH chờ duyệt invoice"],ans:1,explain:"Active Pool giúp Sale giữ lại KH tiềm năng mà không lo bị thu hồi theo deadline tháng — tập trung vào những KH có cơ hội thực sự."},
+{topic:5,q:"Sale A có KH đang Potential. Manager quyết định assign KH này cho Sale B vì Sale B phù hợp hơn. Điều gì xảy ra?",opts:["A. Potential bị reset, Sale B tiếp cận mới","B. Potential giữ nguyên, Sale B follow tiếp từ chỗ Sale A dừng","C. Không thể assign khi đang Potential","D. Cần Sale A đồng ý"],ans:1,explain:"Direct assign từ Manager giữ nguyên Potential và lịch sử. Sale B nhận được đầy đủ context để follow tiếp — không cần bắt đầu lại từ đầu."},
+{topic:5,q:"Khi nào nên mark Potential = Pedicure Spa?",opts:["A. KH đặt cọc rồi","B. KH thể hiện quan tâm, hỏi về Pedicure Spa cụ thể","C. KH đã xem catalog","D. KH ở Texas"],ans:1,explain:"Mark Potential khi KH thể hiện sự quan tâm thực sự đến sản phẩm cụ thể — hỏi giá, thông số, hoặc muốn xem thêm thông tin."},
+{topic:5,q:"Trong tab KPI của Manager, cột Est.Ord được tính dựa trên?",opts:["A. Số KH có Potential","B. Invoice pending (latest per KH)","C. KH đang Follow Up","D. Số cuộc gọi thành công"],ans:1,explain:"Est.Ord tính từ số invoice pending theo nguyên tắc: mỗi KH chỉ tính 1 invoice gần nhất đang pending."},
+{topic:5,q:"Sale có bao nhiêu thời gian để follow KH trước khi Manager có thể thu hồi?",opts:["A. 15 ngày","B. 30 ngày sau deadline campaign","C. Hết campaign ngay lập tức","D. 60 ngày"],ans:1,explain:"Manager có thể thu hồi KH Potential sau khi hết deadline >30 ngày không có hoạt động follow. Sale có 30 ngày grace period."},
+
+// ── ĐỀ 6: TÌNH HUỐNG THỰC TẾ (topic 6) ──────────────────
+{topic:6,q:"KH Spa tại Texas, Sale gọi lần đầu không bắt máy. Sale nên làm gì?",opts:["A. Đổi Status = Lost ngay","B. Ghi Call Log = No Answer, giữ Status = Follow Up","C. Chờ KH gọi lại","D. Báo Manager"],ans:1,explain:"Gọi không bắt máy → ghi Call Log No Answer, Status = Follow Up, chờ gọi lại lần sau. Không đổi Lost chỉ vì 1 lần không bắt máy."},
+{topic:6,q:"KH nói 'Tôi đang cân nhắc, gọi lại sau 2 tuần'. Sale nên set Sub Status gì?",opts:["A. No Answer","B. Follow Up","C. Pending Decision","D. Appointment Set"],ans:2,explain:"KH đang cân nhắc = Pending Decision. Ghi note vào Call Log về lịch gọi lại và nội dung cuộc trò chuyện."},
+{topic:6,q:"KH hỏi chi tiết về ghế Pedicure Spa Deluxe, muốn biết giá. Sale nên làm gì ngay?",opts:["A. Chỉ trả lời qua điện thoại","B. Mark Potential = Pedicure Spa + ghi vào Description + chuyển Sub Status = Qualified","C. Tạo invoice ngay","D. Báo Leader"],ans:1,explain:"KH hỏi giá cụ thể = có nhu cầu thực → mark Potential, ghi thông tin vào Description, chuyển Qualified."},
+{topic:6,q:"Đã gọi điện 5 lần trong 5 ngày khác nhau nhưng KH không bao giờ bắt máy. Sale nên làm gì?",opts:["A. Tiếp tục gọi vô hạn","B. Set Completed + Lead Status = No Response + Reason = Không liên lạc được","C. Chuyển cho Sale khác","D. Đợi Manager quyết định"],ans:1,explain:"5 lần gọi 5 ngày khác nhau = đã đủ nỗ lực (hơn mức tối thiểu 3 ngày). Set Completed + No Response + Reason rõ ràng."},
+{topic:6,q:"KH nói 'Đắt quá, không mua nữa'. Sale nên làm gì?",opts:["A. Giảm giá ngay","B. Set Completed + Lead Status = Lost + Reason = Giá cao + ghi note chi tiết","C. Chuyển cho Manager xử lý","D. Không làm gì, chờ KH đổi ý"],ans:1,explain:"KH từ chối rõ ràng → Completed + Lost + Reason cụ thể. Thông tin này giúp Manager hiểu thị trường và điều chỉnh chiến lược."},
+{topic:6,q:"KH đồng ý mua 3 ghế, cần tạo invoice. Sale cần điền thông tin gì vào invoice?",opts:["A. Chỉ tên KH và giá","B. Đầy đủ thông tin: sản phẩm, số lượng, giá, thông tin KH","C. Chỉ cần số tiền tổng","D. Gửi email báo Manager làm"],ans:1,explain:"Invoice cần đầy đủ thông tin để Manager duyệt chính xác: sản phẩm, số lượng, đơn giá, tổng tiền, thông tin KH."},
+{topic:6,q:"Sale gọi gặp được nhân viên tiệm nails, không gặp được chủ. Sub Status nên là gì?",opts:["A. No Answer","B. Gatekeeper","C. Contacting","D. Qualified"],ans:1,explain:"Gặp nhân viên nhưng chưa gặp được người quyết định (chủ tiệm) = Gatekeeper. Cần gọi lại để tiếp cận đúng người."},
+{topic:6,q:"KH đã mua hàng (Closedeal) tháng 5. Tháng 6 Sale muốn tiếp cận lại. Sale cần làm gì?",opts:["A. Mở lại data cũ và gọi tiếp","B. KH vẫn trong hệ thống, gọi điện bình thường, tạo invoice mới nếu KH đồng ý","C. Tạo profile KH mới","D. Phải có Manager tạo campaign mới"],ans:1,explain:"KH Closedeal vẫn trong hệ thống, Sale có thể follow lại bất kỳ lúc nào. Invoice mới tạo bình thường cho tháng mới."},
+{topic:6,q:"Sale nhận 100 KH từ Campaign T06, đã gọi được 60 KH. Deadline còn 5 ngày. Nên ưu tiên làm gì?",opts:["A. Gọi hết 40 KH còn lại","B. Tập trung KH có Potential, follow kỹ để close deal","C. Báo Manager không đủ thời gian","D. Set Completed hết 40 KH chưa gọi"],ans:1,explain:"5 ngày còn lại nên ưu tiên KH đang có Potential/Qualified để push close deal. 40 KH chưa gọi nếu không đủ thời gian → ghi No Answer, đừng set Completed giả."},
+{topic:6,q:"KH nói 'Để tôi bàn với vợ, tuần sau gọi lại'. Sale nên làm gì?",opts:["A. Set Pending Decision + ghi Call Log chi tiết + nhắc lịch gọi lại","B. Set Lost vì chưa chắc chắn","C. Không làm gì, chờ KH gọi","D. Tạo invoice trước để giữ chỗ"],ans:0,explain:"KH chưa từ chối, đang cân nhắc = Pending Decision. Ghi Call Log đầy đủ, note lịch gọi lại. Đây là lead tốt cần follow kỹ."},
+{topic:6,q:"Sale vừa tạo invoice cho KH, Sub Status tự động đổi thành gì?",opts:["A. Appointment Set","B. Pending Decision","C. Quotation Sent","D. Không đổi"],ans:2,explain:"Khi tạo invoice, hệ thống tự động đổi Sub Status = Quotation Sent. Sale không cần làm thủ công."},
+{topic:6,q:"Cuối tháng Sale có 2 invoice approved = $8,000 và $15,000. Revenue tháng này là bao nhiêu?",opts:["A. $8,000","B. $15,000","C. $23,000","D. Chỉ tính 1 invoice lớn nhất"],ans:2,explain:"Revenue = tổng tất cả invoice approved trong tháng = $8,000 + $15,000 = $23,000. Gần đạt target $23,500."},
+{topic:6,q:"KH hỏi thêm thông tin qua Zalo sau cuộc gọi. Sale nên ghi nhận ở đâu?",opts:["A. Chỉ nhớ trong đầu","B. Ghi vào Call Log (ghi chú) hoặc Description tùy nội dung","C. Nhắn tin lại cho Manager","D. Không cần ghi"],ans:1,explain:"Thông tin quan trọng về nhu cầu → ghi vào Description. Kết quả tương tác → ghi vào Call Log. Đảm bảo lịch sử đầy đủ."},
+{topic:6,q:"Sale có 4 KH đang Potential nhưng chỉ 10 ngày còn lại trong tháng. Nên làm gì?",opts:["A. Tập trung push từng KH một","B. Gọi đồng thời tất cả, ưu tiên KH gần close nhất","C. Báo Manager xin thêm data","D. Set Lost hết để có data mới"],ans:1,explain:"Ưu tiên KH có Sub Status = Pending Decision hoặc Appointment Set — gần close nhất. Gọi đồng thời để không bỏ lỡ cơ hội nào."},
+{topic:6,q:"Invoice bị Manager từ chối, Lead Status của KH thay đổi gì không?",opts:["A. Đổi thành Rejected","B. Không thay đổi, KH vẫn Follow Up","C. Đổi thành Lost tự động","D. Đổi về New"],ans:1,explain:"Invoice rejected không thay đổi Status hay Lead Status của KH. KH vẫn trong hành trình, Sale cần làm rõ và xử lý tiếp."},
+
+]; // end QUESTIONS
+
+// ── CONFIG ──
+const PASS_SCORE = 8;
+const QUIZ_SIZE = 20;
+const TOPIC_NAMES = {
+  1:'Quản lý Khách hàng', 2:'Campaign & Data',
+  3:'Invoice & Order', 4:'Follow-up & Status',
+  5:'Potential', 6:'Tình huống thực tế'
+};
+
+// ── STATE ──
+let currentMode = 'random';
+let quizQuestions = [];
+let answers = {};
+let currentQ = 0;
+let submitted = false;
+
+function selectMode(el, mode) {
+  document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  currentMode = mode;
+}
+
+function startQuiz() {
+  if (currentMode === 'random') {
+    const shuffled = [...QUESTIONS].sort(() => Math.random() - 0.5);
+    quizQuestions = shuffled.slice(0, QUIZ_SIZE);
+  } else {
+    const topic = parseInt(currentMode);
+    const filtered = QUESTIONS.filter(q => q.topic === topic);
+    const shuffled = filtered.sort(() => Math.random() - 0.5);
+    quizQuestions = shuffled.slice(0, Math.min(20, filtered.length));
+  }
+  // Shuffle options for each question
+  quizQuestions = quizQuestions.map(q => {
+    const opts = q.opts.map((o, i) => ({ text: o, original: i }));
+    opts.sort(() => Math.random() - 0.5);
+    const newAns = opts.findIndex(o => o.original === q.ans);
+    return { ...q, opts: opts.map(o => o.text), ans: newAns };
+  });
+
+  answers = {};
+  currentQ = 0;
+  submitted = false;
+  document.getElementById('home-screen').style.display = 'none';
+  document.getElementById('quiz-screen').style.display = 'block';
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('q-total').textContent = quizQuestions.length;
+  buildDots();
+  renderQuestion();
+}
+
+function buildDots() {
+  const wrap = document.getElementById('q-dots');
+  wrap.innerHTML = quizQuestions.map((_, i) =>
+    `<div class="q-dot${i === 0 ? ' current' : ''}" id="dot-${i}" onclick="jumpTo(${i})">${i+1}</div>`
+  ).join('');
+}
+
+function jumpTo(i) {
+  currentQ = i;
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = quizQuestions[currentQ];
+  var total = quizQuestions.length;
+  var answered = Object.keys(answers).length;
+
+  document.getElementById('q-current').textContent = currentQ + 1;
+  document.getElementById('q-answered').textContent = answered;
+  const pct = Math.round((currentQ + 1) / total * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = pct + '%';
+
+  // Update dots
+  document.querySelectorAll('.q-dot').forEach((d, i) => {
+    d.className = 'q-dot' + (i === currentQ ? ' current' : answers[i] !== undefined ? ' answered' : '');
+  });
+
+  const keys = ['A','B','C','D'];
+  const selectedAns = answers[currentQ];
+  const container = document.getElementById('question-container');
+  container.innerHTML = `
+    <div class="question-card">
+      <div>
+        <span class="question-num">Câu ${currentQ + 1}</span>
+        <span class="question-topic">${TOPIC_NAMES[q.topic]}</span>
+      </div>
+      <div class="question-text">${q.q}</div>
+      <div class="options">
+        ${q.opts.map((opt, i) => `
+          <div class="option${selectedAns === i ? ' selected' : ''}" onclick="selectAnswer(${i})">
+            <div class="option-key">${keys[i]}</div>
+            <div class="option-text">${opt}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('btn-prev').disabled = currentQ === 0;
+  document.getElementById('btn-next').style.display = currentQ < total - 1 ? '' : 'none';
+
+  // Show submit if all answered
+  var submitBtn = document.getElementById('btn-submit');
+  var allAnswered = Object.keys(answers).length === total;
+  submitBtn.style.display = allAnswered ? 'block' : 'none';
+  submitBtn.textContent = 'Nop bai (' + answered + '/' + total + ' cau da tra loi)';
+}
+
+function selectAnswer(i) {
+  answers[currentQ] = i;
+  // Update option classes directly — no full re-render = no jank
+  document.querySelectorAll('.option').forEach((el, idx) => {
+    el.classList.toggle('selected', idx === i);
+  });
+  // Update dot
+  var dot = document.getElementById('dot-' + currentQ);
+  if (dot) { dot.className = 'q-dot answered'; }
+  // Update answered count
+  document.getElementById('q-answered').textContent = Object.keys(answers).length;
+  // Update submit button
+  var total = quizQuestions.length;
+  var answered = Object.keys(answers).length;
+  var submitBtn = document.getElementById('btn-submit');
+  submitBtn.style.display = answered === total ? 'block' : 'none';
+  if (answered === total) submitBtn.textContent = 'Nop bai (' + answered + '/' + total + ' cau da tra loi)';
+  // Auto advance - no delay
+  if (currentQ < total - 1) {
+    currentQ++;
+    renderQuestion();
+  }
+}
+
+function navigate(dir) {
+  currentQ = Math.max(0, Math.min(quizQuestions.length - 1, currentQ + dir));
+  renderQuestion();
+}
+
+function submitQuiz() {
+  const unanswered = quizQuestions.length - Object.keys(answers).length;
+  if (unanswered > 0) {
+    if (!confirm(`Còn ${unanswered} câu chưa trả lời. Nộp bài?`)) return;
+  }
+  submitted = true;
+  const correct = quizQuestions.filter((q, i) => answers[i] === q.ans).length;
+  var total = quizQuestions.length;
+  const score = Math.round(correct / total * 10 * 10) / 10;
+  const passed = score >= PASS_SCORE;
+
+  document.getElementById('quiz-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'block';
+
+  const circle = document.getElementById('score-circle');
+  const badge = document.getElementById('result-badge');
+  const msg = document.getElementById('result-msg');
+  const stats = document.getElementById('result-stats');
+
+  circle.className = 'result-score-circle ' + (passed ? 'pass' : 'fail');
+  document.getElementById('score-num').textContent = score;
+  badge.className = 'result-badge ' + (passed ? 'pass' : 'fail');
+  badge.textContent = passed ? '✅ ĐẠT YÊU CẦU' : '❌ CHƯA ĐẠT';
+  msg.innerHTML = passed
+    ? `Chúc mừng! Bạn đã nắm vững quy trình CRM.<br><span style="color:var(--text3);font-size:13px">Nhấn "Xem đáp án" để xem chi tiết từng câu.</span>`
+    : `Bạn cần ôn lại quy trình trước khi làm lại bài.<br><span style="color:var(--text3);font-size:13px">Điểm tối thiểu để xem đáp án: <strong style="color:var(--success)">8/10</strong></span>`;
+
+  const wrong = total - correct;
+  const pct = Math.round(correct / total * 100);
+  stats.innerHTML = `
+    <div class="result-stat"><div class="result-stat-num" style="color:var(--success)">${correct}</div><div class="result-stat-label">Câu đúng</div></div>
+    <div class="result-stat"><div class="result-stat-num" style="color:var(--danger)">${wrong}</div><div class="result-stat-label">Câu sai</div></div>
+    <div class="result-stat"><div class="result-stat-num" style="color:var(--brand2)">${pct}%</div><div class="result-stat-label">Tỷ lệ đúng</div></div>
+    <div class="result-stat"><div class="result-stat-num" style="color:var(--warn)">${total}</div><div class="result-stat-label">Tổng câu</div></div>
+  `;
+
+  const reviewBtn = document.getElementById('btn-review');
+  const lockedNotice = document.getElementById('locked-notice');
+  if (passed) {
+    reviewBtn.style.display = '';
+    lockedNotice.style.display = 'none';
+  } else {
+    reviewBtn.style.display = 'none';
+    lockedNotice.style.display = 'block';
+  }
+}
+
+function showReview() {
+  const keys = ['A','B','C','D'];
+  const container = document.getElementById('review-container');
+  container.innerHTML = '<div style="font-family:\'Be Vietnam Pro\',sans-serif;font-size:18px;font-weight:700;margin-bottom:16px">📋 Chi tiết đáp án</div>'
+    + quizQuestions.map((q, i) => {
+      const userAns = answers[i];
+      const correct = userAns === q.ans;
+      const userLabel = userAns !== undefined ? keys[userAns] + '. ' + q.opts[userAns].replace(/^[A-D]\.\s*/,'') : 'Chưa trả lời';
+      const correctLabel = keys[q.ans] + '. ' + q.opts[q.ans].replace(/^[A-D]\.\s*/,'');
+      return `
+        <div class="review-item ${correct ? 'correct-item' : 'wrong-item'}" style="animation-delay:${i*0.03}s">
+          <div class="review-q">${i+1}. ${q.q}</div>
+          <div class="review-your ${correct ? 'correct' : 'wrong'}">
+            ${correct ? '✅' : '❌'} Bạn chọn: <strong>${userLabel}</strong>
+          </div>
+          ${!correct ? `<div class="review-correct-ans">✅ Đáp án đúng: <strong>${correctLabel}</strong></div>` : ''}
+          <div class="review-explain">💡 ${q.explain}</div>
+        </div>
+      `;
+    }).join('');
+  container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function retryQuiz() {
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('home-screen').style.display = 'block';
+  document.getElementById('review-container').innerHTML = '';
+}
+</script>
+</body>
+</html>
