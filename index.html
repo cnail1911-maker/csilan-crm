@@ -2598,12 +2598,27 @@ function renderCampaignSale(uid,profId,isLeader){
 }
 
 function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
-  if(!custs||!custs.length)return '<div class="empty-state" style="padding:20px"><i class="ti ti-users"></i>Không có khách</div>';
   var key=campKey||'default';
   if(!window._campSaleCusts)window._campSaleCusts={};
   // Chỉ lưu full list khi render lần đầu, KHÔNG ghi đè khi re-render từ filter
-  if(!_isFilterRender)window._campSaleCusts[key]=custs;
+  if(!_isFilterRender&&custs&&custs.length)window._campSaleCusts[key]=custs;
   var sd=showDeadline?'1':'0';
+  // Empty state vẫn phải có wrapper để DOM replace hoạt động đúng
+  if(!custs||!custs.length){
+    return '<div class="camp-section-wrap" data-key="'+key+'" data-sd="'+sd+'">'
+      +'<div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center">'
+      +'<input placeholder="🔍 Tìm tên, mã KH..." oninput="window._campSaleFilterDebounced(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text);outline:none">'
+      +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-status" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
+      +'<option value="">Tất cả Status</option>'+STATUS_OPTS.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'</option>';}).join('')+'</select>'
+      +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-lead" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
+      +'<option value="">Tất cả Lead</option>'+LEAD_OPTS.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'</option>';}).join('')+'</select>'
+      +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-pot" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
+      +'<option value="">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'" style="background:#1e1550">'+p+'</option>';}).join('')+'</select>'
+      +'<span class="csf-count" style="font-size:11px;color:var(--text3)">0 KH</span>'
+      +'</div>'
+      +'<div style="padding:30px;text-align:center;color:var(--text3)"><i class="ti ti-users" style="font-size:24px;display:block;margin-bottom:8px;opacity:0.3"></i>Không có kết quả</div>'
+      +'</div>';
+  }
 
   var filterBar='<div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center">'
     +'<input placeholder="🔍 Tìm tên, mã KH..." oninput="window._campSaleFilterDebounced(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text);outline:none">'
