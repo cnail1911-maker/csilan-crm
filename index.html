@@ -2610,6 +2610,8 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
       +'<input placeholder="🔍 Tìm tên, mã KH..." oninput="window._campSaleFilterDebounced(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text);outline:none">'
       +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-status" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
       +'<option value="">Tất cả Status</option>'+STATUS_OPTS.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'</option>';}).join('')+'</select>'
+      +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-substatus" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
+      +'<option value="">Tất cả Sub Status</option>'+SUBSTATUS_OPTS.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'</option>';}).join('')+'</select>'
       +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-lead" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
       +'<option value="">Tất cả Lead</option>'+LEAD_OPTS.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'</option>';}).join('')+'</select>'
       +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-pot" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
@@ -2625,6 +2627,10 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
     +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-status" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
     +'<option value="">Tất cả Status</option>'
     +STATUS_OPTS.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'</option>';}).join('')
+    +'</select>'
+    +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-substatus" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
+    +'<option value="">Tất cả Sub Status</option>'
+    +SUBSTATUS_OPTS.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'</option>';}).join('')
     +'</select>'
     +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-lead" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
     +'<option value="">Tất cả Lead</option>'
@@ -2691,6 +2697,7 @@ window._campSaleFilter=function(key,wrap,sd){
   if(!allCusts||!wrap)return;
   var search=(wrap.querySelector('input')||{}).value||'';
   var status=(wrap.querySelector('.csf-status')||{}).value||'';
+  var substatus=(wrap.querySelector('.csf-substatus')||{}).value||'';
   var lead=(wrap.querySelector('.csf-lead')||{}).value||'';
   var pot=(wrap.querySelector('.csf-pot')||{}).value||'';
   var filtered=allCusts.filter(function(c){
@@ -2701,7 +2708,9 @@ window._campSaleFilter=function(key,wrap,sd){
         &&!(c.cellphone?String(c.cellphone):'').includes(s)
         &&!(c.business_phone?String(c.business_phone):'').includes(s))return false;
     }
-    if(status&&c.status!==status)return false;
+    var ns=c.status==='Follow Up'?'Follow':c.status;
+    if(status&&ns!==status)return false;
+    if(substatus&&c.sub_status!==substatus)return false;
     if(lead&&c.lead_status!==lead)return false;
     if(pot&&c.potential!==pot)return false;
     return true;
@@ -2721,6 +2730,8 @@ window._campSaleFilter=function(key,wrap,sd){
     if(newInput&&search)newInput.value=search;
     var newStatus=newWrap.querySelector('.csf-status');
     if(newStatus&&status)newStatus.value=status;
+    var newSub=newWrap.querySelector('.csf-substatus');
+    if(newSub&&substatus)newSub.value=substatus;
     var newLead=newWrap.querySelector('.csf-lead');
     if(newLead&&lead)newLead.value=lead;
     var newPot=newWrap.querySelector('.csf-pot');
@@ -5232,34 +5243,40 @@ async function saveDetail(customerId){
     }
     // Cập nhật row trong campaign sale table ngay (không re-render toàn bộ)
     if(page==='campaign'){
-      // Tìm row của KH trong tất cả camp-section-wrap và update
-      var allRows=document.querySelectorAll('tr[onclick*="renderDetailModal('+customerId+')"]');
       var updC2=CUSTOMERS.find(function(x){return x.id===customerId;});
       if(updC2){
+        // Selector rộng hơn — match cả _campDetailNav và renderDetailModal
+        var allRows=document.querySelectorAll('tr[onclick*="'+customerId+'"]');
         allRows.forEach(function(tr){
-          // Update badge Status
           var cells=tr.querySelectorAll('td');
           if(cells.length>=5){
-            // cell 4 = Status badge
             var statusCell=tr.querySelector('td:nth-child(5)');
             if(statusCell)statusCell.innerHTML=sBadge(updC2.status);
-            // cell 5 = Lead Status
             var leadCell=tr.querySelector('td:nth-child(6)');
             if(leadCell)leadCell.textContent=updC2.lead_status||'—';
-            // cell 6 = Sub Status
             var subCell=tr.querySelector('td:nth-child(7)');
             if(subCell)subCell.textContent=updC2.sub_status||'—';
-            // cell 7 = Potential
             var potCell=tr.querySelector('td:nth-child(8)');
             if(potCell)potCell.textContent=updC2.potential||'—';
+            var lastCell=tr.querySelector('td:last-child');
+            if(lastCell)lastCell.textContent=updC2.last_contacted?Math.floor((Date.now()-new Date(updC2.last_contacted))/86400000)+'d':'—';
           }
         });
-        // Cập nhật _campSaleCusts local để filter/search dùng data mới
-        Object.keys(window._campSaleCusts||{}).forEach(function(k){
-          var arr=window._campSaleCusts[k];
-          if(!arr)return;
-          var ri=arr.findIndex(function(x){return x.id===customerId;});
-          if(ri>=0)Object.assign(arr[ri],update);
+        // Cập nhật _campSaleCusts và _campSaleFiltered để filter dùng data mới
+        [window._campSaleCusts,window._campSaleFiltered].forEach(function(store){
+          Object.keys(store||{}).forEach(function(k){
+            var arr=store[k];if(!arr)return;
+            var ri=arr.findIndex(function(x){return x.id===customerId;});
+            if(ri>=0)Object.assign(arr[ri],updC2);
+          });
+        });
+        // Update count display
+        document.querySelectorAll('.csf-count').forEach(function(el){
+          var wrap=el.closest('.camp-section-wrap');
+          if(!wrap)return;
+          var key=wrap.dataset.key;
+          var list=(window._campSaleFiltered&&window._campSaleFiltered[key])||(window._campSaleCusts&&window._campSaleCusts[key]);
+          if(list)el.textContent=list.length+' KH';
         });
       }
     } else if(page==='daily')renderDailyData();
