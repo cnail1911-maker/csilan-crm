@@ -311,6 +311,12 @@ table.inv-table tr:last-child td{border-bottom:none}
           <div class="field"><label>Charge Fee ($)</label><input type="number" id="inv-charge-fee" value="0" min="0" placeholder="0" oninput="calcTotals()"></div>
         </div>
         <div class="field-row">
+          <div class="field"><label>Bảo hành</label>
+            <select id="inv-warranty" onchange="calcTotals()" style="height:34px">
+              <option value="12">12 tháng</option>
+              <option value="24">24 tháng</option>
+            </select>
+          </div>
           <div class="field"><label>Ghi chú</label><input type="text" id="inv-note" placeholder="Ghi chú..."></div>
         </div>
         <div class="payment-summary" id="payment-summary">
@@ -911,7 +917,7 @@ function renderPreview(){
     +'<tbody>'+prodRows+'</tbody>'
     +'</table>'
     +'<div class="inv-divider" style="margin-bottom:10px"></div>'
-    +'<div class="inv-notes-totals">'    +'<div class="inv-notes">'    +'<p>* Includes a 12-month warranty and lifetime technical support. Products are sourced directly from the manufacturer, ensuring quality, authenticity, and reliable after-sales service. Meets U.S quality and safety standards.</p>'    +'<p>* Order must be in full before delivery or ship.</p>'    +'<p>* All custom made items are non-refundable or cancel.</p>'    +'<p>* Returned item will be refunded less original shipping and 30% restocking fee.</p>'    +'<p>* If any balance (payment) has not been received, we have the right to pick up all the unpaid merechandise.</p>'    +'</div>'    +'<div class="inv-totals"><div class="inv-totals-box">'    +'<div class="inv-total-row"><span class="inv-total-label">Subtotal</span><span class="inv-total-val">'+fmt(subtotal)+'</span></div>'    +(tax>0?'<div class="inv-total-row"><span class="inv-total-label">Tax</span><span class="inv-total-val">'+fmt(tax)+'</span></div>':'')    +(chargeFee>0?'<div class="inv-total-row"><span class="inv-total-label">Charge Fee</span><span class="inv-total-val">'+fmt(chargeFee)+'</span></div>':'')    +(extraDisc>0?'<div class="inv-total-row" style="color:#27AE60"><span class="inv-total-label">Extra Discount</span><span class="inv-total-val">-'+fmt(extraDisc)+'</span></div>':'')    +'<div class="inv-grand-total">'+fmt(total)+'</div>'    +'<div class="inv-total-row"><span class="inv-total-label">Deposit</span><span class="inv-total-val">'+fmt(deposit)+'</span></div>'    +'<div class="inv-balance-row"><span class="inv-balance-label">Balance Due</span><span class="inv-balance-val">'+fmt(balance)+'</span></div>'+buildVarianceBox(items)+'</div></div>'+'</div>'
+    +'<div class="inv-notes-totals">'    +'<div class="inv-notes">'    +'<p>* Includes a '+warrantyMonths+'-month warranty and lifetime technical support. Products are sourced directly from the manufacturer, ensuring quality, authenticity, and reliable after-sales service. Meets U.S quality and safety standards.</p>'    +'<p>* Order must be in full before delivery or ship.</p>'    +'<p>* All custom made items are non-refundable or cancel.</p>'    +'<p>* Returned item will be refunded less original shipping and 30% restocking fee.</p>'    +'<p>* If any balance (payment) has not been received, we have the right to pick up all the unpaid merechandise.</p>'    +'</div>'    +'<div class="inv-totals"><div class="inv-totals-box">'    +'<div class="inv-total-row"><span class="inv-total-label">Subtotal</span><span class="inv-total-val">'+fmt(subtotal)+'</span></div>'    +(tax>0?'<div class="inv-total-row"><span class="inv-total-label">Tax</span><span class="inv-total-val">'+fmt(tax)+'</span></div>':'')    +(chargeFee>0?'<div class="inv-total-row"><span class="inv-total-label">Charge Fee</span><span class="inv-total-val">'+fmt(chargeFee)+'</span></div>':'')    +(extraDisc>0?'<div class="inv-total-row" style="color:#27AE60"><span class="inv-total-label">Extra Discount</span><span class="inv-total-val">-'+fmt(extraDisc)+'</span></div>':'')    +'<div class="inv-grand-total">'+fmt(total)+'</div>'    +'<div class="inv-total-row"><span class="inv-total-label">Deposit</span><span class="inv-total-val">'+fmt(deposit)+'</span></div>'    +'<div class="inv-balance-row"><span class="inv-balance-label">Balance Due</span><span class="inv-balance-val">'+fmt(balance)+'</span></div>'+buildVarianceBox(items)+'</div></div>'+'</div>'
     +'<div class="inv-divider-bottom"></div>'
     +'<div class="inv-thank">\'Thank You for Your Business\'</div>';
 }
@@ -939,6 +945,7 @@ async function saveAndDownload(action){
 
   // Recalculate
   const subtotal=items.reduce(function(s,i){return s+i.amount;},0);
+  const warrantyMonths=document.getElementById('inv-warranty')&&document.getElementById('inv-warranty').value||'12';
   const taxPct=parseFloat(document.getElementById('inv-tax').value)||0;
   const tax=taxPct;
   const extraDisc=parseFloat(document.getElementById('inv-extra-disc').value)||0;
@@ -965,6 +972,7 @@ async function saveAndDownload(action){
     requested_delivery:document.getElementById('inv-delivery').value,
     tax_pct:taxPct,
     charge_fee:chargeFee,
+    warranty_months:parseInt(warrantyMonths)||12,
     deposit:deposit,
     extra_discount:extraDisc,
     note:document.getElementById('inv-note').value,
@@ -1160,6 +1168,7 @@ async function loadInvoiceForEdit(invoiceNo){
   if(inv.deposit)document.getElementById('inv-deposit').value=inv.deposit;
   if(inv.extra_discount)document.getElementById('inv-extra-disc').value=inv.extra_discount;
   if(inv.charge_fee)document.getElementById('inv-charge-fee')&&(document.getElementById('inv-charge-fee').value=inv.charge_fee);
+  if(inv.warranty_months&&document.getElementById('inv-warranty'))document.getElementById('inv-warranty').value=String(inv.warranty_months||12);
   if(inv.note)document.getElementById('inv-note').value=inv.note;
 
   // Load items — bắt buộc có _id để updateItem/removeItem hoạt động
@@ -1204,6 +1213,7 @@ async function updateInvoice(){
   showLoading(true);
 
   const subtotal=items.reduce(function(s,i){return s+i.amount;},0);
+  const warrantyMonths=document.getElementById('inv-warranty')&&document.getElementById('inv-warranty').value||'12';
   const taxPct=parseFloat(document.getElementById('inv-tax').value)||0;
   const tax=taxPct;
   const extraDisc=parseFloat(document.getElementById('inv-extra-disc').value)||0;
@@ -1221,6 +1231,7 @@ async function updateInvoice(){
     requested_delivery:document.getElementById('inv-delivery').value,
     tax_pct:taxPct,
     charge_fee:chargeFee,
+    warranty_months:parseInt(warrantyMonths)||12,
     deposit:deposit,
     extra_discount:extraDisc,
     note:document.getElementById('inv-note').value,
