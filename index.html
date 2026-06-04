@@ -3934,6 +3934,8 @@ async function saveProd(id){
     if(upRes.error){showLoading(false);alert('Lỗi upload hình: '+upRes.error.message);return;}
     var urlData=sb.storage.from('products').getPublicUrl(fileName);
     imageUrl=urlData&&urlData.data?urlData.data.publicUrl:null;
+    // Cache-bust: thêm timestamp để browser + CDN không dùng ảnh cũ
+    if(imageUrl)imageUrl=imageUrl.split('?')[0]+'?t='+Date.now();
     if(statusEl)statusEl.textContent='Upload thành công!';
   }
   var payload={sku:sku,name:name,brand:document.getElementById('pf-brand').value,
