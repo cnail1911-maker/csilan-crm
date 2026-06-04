@@ -3592,34 +3592,60 @@ function renderProducts(){
 
   // ── Vendor stat cards ──
   let statsHtml='<div class="stat-card sc0" style="cursor:pointer;border:'+(fVendor==='all'&&fSku==='all'?'2px solid var(--brand2)':'1px solid var(--border)')+'" onclick="sessionStorage.setItem(\'prodVendor\',\'all\');sessionStorage.setItem(\'prodSkuPrefix\',\'all\');sessionStorage.setItem(\'prodMgPage\',1);render()"><div class="stat-label">Tất cả</div><div class="stat-val" style="color:var(--brand2)">'+allVisible.length+'</div>'+(fVendor==='all'&&fSku==='all'?'<div style="font-size:9px;color:var(--brand2)">▼ Đang xem</div>':'')+'</div>';
+
   var vendorColors=['var(--accent2)','var(--accent)','var(--warn)'];
   var vendorSc=['sc1','sc2','sc3'];
   VENDOR_OPTS.forEach(function(v,i){
     var cnt=allVisible.filter(function(p){return p.brand===v;}).length;
     var inStock=allVisible.filter(function(p){return p.brand===v&&p.in_stock;}).length;
     var active=fVendor===v;
-    statsHtml+='<div class="stat-card '+vendorSc[i]+'" style="cursor:pointer;border:'+(active?'2px solid '+vendorColors[i]:'1px solid var(--border)')+'" onclick="sessionStorage.setItem(\'prodVendor\',\''+(active?'all':v)+'\');sessionStorage.setItem(\'prodMgPage\',1);render()">'
+    statsHtml+='<div class="stat-card '+vendorSc[i]+'" style="cursor:pointer;border:'+(active?'2px solid '+vendorColors[i]:'1px solid var(--border)')+'" onclick="sessionStorage.setItem(\'prodVendor\',\''+(active?'all':v)+'\');sessionStorage.setItem(\'prodSkuPrefix\',\'all\');sessionStorage.setItem(\'prodMgPage\',1);render()">'
       +'<div class="stat-label">'+v+'</div>'
       +'<div class="stat-val" style="color:'+vendorColors[i]+'">'+cnt+'</div>'
       +'<div style="font-size:9px;color:var(--text3)">'+inStock+' in stock'+(active?' · <span style="color:'+vendorColors[i]+'">▼ Lọc</span>':'')+'</div>'
       +'</div>';
   });
+  var skuCardsHtml='';
+  if(fVendor!=='all'){
+    // Chỉ lấy prefix của vendor đang chọn
+    var vendorVisible=allVisible.filter(function(p){return p.brand===fVendor;});
+    var vendorPrefixes=[...new Set(vendorVisible.map(function(p){
+      if(!p.sku)return null;
+      var m=p.sku.match(/^([A-Za-z]+)/);
+      return m?m[1].toUpperCase():null;
+    }).filter(Boolean))].sort();
 
-  // ── SKU Prefix stat cards (row 2) ──
-  var skuColors=['#a29bfe','#74b9ff','#55efc4','#fdcb6e','#fd79a8','#e17055','#00cec9','#6c5ce7','#00b894','#fab1a0'];
-  var skuCardsHtml=skuPrefixes.map(function(prefix,i){
-    var cnt=allVisible.filter(function(p){
-      var px=p.sku?(p.sku.match(/^([A-Za-z]+)/)||[])[1]:null;
-      return px&&px.toUpperCase()===prefix;
-    }).length;
-    var active=fSku===prefix;
-    var col=skuColors[i%skuColors.length];
-    return '<div class="stat-card" style="cursor:pointer;border:'+(active?'2px solid '+col:'1px solid var(--border)')+'" onclick="sessionStorage.setItem(\'prodSkuPrefix\',\''+(active?'all':prefix)+'\');sessionStorage.setItem(\'prodMgPage\',1);render()">'
-      +'<div class="stat-label" style="font-family:monospace;font-size:11px">'+prefix+'</div>'
-      +'<div class="stat-val" style="color:'+col+';font-size:18px">'+cnt+'</div>'
-      +(active?'<div style="font-size:9px;color:'+col+'">▼ Lọc</div>':'')
-      +'</div>';
-  }).join('');
+    var skuPalette=[
+      {bg:'rgba(162,155,254,0.15)',color:'#a29bfe',border:'rgba(162,155,254,0.3)'},
+      {bg:'rgba(116,185,255,0.15)',color:'#74b9ff',border:'rgba(116,185,255,0.3)'},
+      {bg:'rgba(85,239,196,0.15)',color:'#55efc4',border:'rgba(85,239,196,0.3)'},
+      {bg:'rgba(253,203,110,0.15)',color:'#fdcb6e',border:'rgba(253,203,110,0.3)'},
+      {bg:'rgba(253,121,168,0.15)',color:'#fd79a8',border:'rgba(253,121,168,0.3)'},
+      {bg:'rgba(225,112,85,0.15)',color:'#e17055',border:'rgba(225,112,85,0.3)'},
+      {bg:'rgba(0,206,201,0.15)',color:'#00cec9',border:'rgba(0,206,201,0.3)'},
+      {bg:'rgba(108,92,231,0.15)',color:'#6c5ce7',border:'rgba(108,92,231,0.3)'},
+      {bg:'rgba(0,184,148,0.15)',color:'#00b894',border:'rgba(0,184,148,0.3)'},
+      {bg:'rgba(250,177,160,0.15)',color:'#fab1a0',border:'rgba(250,177,160,0.3)'},
+    ];
+
+    var cards=vendorPrefixes.map(function(prefix,i){
+      var pal=skuPalette[i%skuPalette.length];
+      var cnt=vendorVisible.filter(function(p){
+        var px=p.sku?(p.sku.match(/^([A-Za-z]+)/)||[])[1]:null;
+        return px&&px.toUpperCase()===prefix;
+      }).length;
+      var active=fSku===prefix;
+      return '<div onclick="sessionStorage.setItem(\'prodSkuPrefix\',\''+(active?'all':prefix)+'\');sessionStorage.setItem(\'prodMgPage\',1);render()" style="cursor:pointer;flex-shrink:0;background:'+(active?pal.bg:'rgba(255,255,255,0.04)')+';border:1px solid '+(active?pal.border:'rgba(255,255,255,0.08)')+';border-radius:10px;padding:8px 14px;min-width:70px;text-align:center;transition:all 0.15s;white-space:nowrap" onmouseover="this.style.background=\''+pal.bg+'\';this.style.borderColor=\''+pal.border+'\'" onmouseout="this.style.background=\''+(active?pal.bg:'rgba(255,255,255,0.04)')+'\';this.style.borderColor=\''+(active?pal.border:'rgba(255,255,255,0.08)') +'\'">'
+        +'<div style="font-family:monospace;font-size:11px;font-weight:700;color:'+pal.color+';letter-spacing:0.5px">'+prefix+'</div>'
+        +'<div style="font-size:15px;font-weight:700;color:'+(active?pal.color:'var(--text)')+';margin-top:1px">'+cnt+'</div>'
+        +(active?'<div style="font-size:8px;color:'+pal.color+';margin-top:1px">▼ lọc</div>':'')
+        +'</div>';
+    }).join('');
+
+    if(cards){
+      skuCardsHtml='<div style="display:flex;gap:8px;padding:6px 20px 10px;overflow-x:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent">'+cards+'</div>';
+    }
+  }
 
   let rows='';
   pageData.forEach(function(p){
@@ -3655,7 +3681,7 @@ function renderProducts(){
         :'<td onclick="event.stopPropagation()" style="text-align:center"><button class="btn" style="padding:3px 10px;font-size:11px;border-color:rgba(162,155,254,0.3);color:var(--brand2)" onclick="openProdZoom('+p.id+')"><i class="ti ti-eye"></i> Xem</button></td>')
       +'</tr>';
   });
-  const vendorFilter='<select class="fsel" onchange="sessionStorage.setItem(\'prodVendor\',this.value);sessionStorage.setItem(\'prodMgPage\',1);render()">'
+  const vendorFilter='<select class="fsel" onchange="sessionStorage.setItem(\'prodVendor\',this.value);sessionStorage.setItem(\'prodSkuPrefix\',\'all\');sessionStorage.setItem(\'prodMgPage\',1);render()">'
     +'<option value="all"'+(fVendor==='all'?' selected':'')+'>Tất cả Vendor</option>'
     +VENDOR_OPTS.map(function(v){return '<option value="'+v+'"'+(fVendor===v?' selected':'')+'>'+v+'</option>';}).join('')+'</select>';
   var totalCols=isManagerProd?9:7;
@@ -3666,8 +3692,8 @@ function renderProducts(){
     +'</div>'
     // Row 1: Vendor stat cards
     +'<div class="stats-row" style="grid-template-columns:repeat('+(VENDOR_OPTS.length+1)+',1fr)">'+statsHtml+'</div>'
-    // Row 2: SKU prefix stat cards
-    +(skuCardsHtml?'<div class="stats-row" style="grid-template-columns:repeat('+Math.min(skuPrefixes.length,8)+',1fr);margin-top:-8px">'+skuCardsHtml+'</div>':'')
+    // Row 2: SKU prefix cards (scroll ngang, chỉ hiện khi chọn vendor)
+    +(skuCardsHtml?'<div style="background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border)">'+skuCardsHtml+'</div>':'')
     +'<div class="content" style="flex:1">'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+filtered.length+'</span> sản phẩm'
     +(fSku!=='all'?' <span style="font-size:11px;color:var(--text3);font-family:monospace">· '+fSku+'</span>':'')
