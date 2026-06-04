@@ -1216,17 +1216,19 @@ async function initApp(user){
     try{
       const FINANCE_URL='https://jggfmpihfisbusnbzyoi.supabase.co';
       const FINANCE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZ2ZtcGloZmlzYnVzbmJ6eW9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NTkxMzcsImV4cCI6MjA5NDQzNTEzN30.r4OAbgoMdJXyBpIZJaBstn_a1YRg9cR4SPDVvSrXV6M';
-      const res=await fetch(FINANCE_URL+'/rest/v1/products?select=sku,name,note&limit=1000',{
+      const res=await fetch(FINANCE_URL+'/rest/v1/products?select=sku,name,note,best_price&limit=1000',{
         headers:{'apikey':FINANCE_ANON,'Authorization':'Bearer '+FINANCE_ANON}
       });
       if(!res.ok)return;
       const finProds=await res.json();
       if(!Array.isArray(finProds))return;
-      // Merge note vào PRODUCTS_ALL theo sku (case-insensitive)
+      // Merge note + best_price vào PRODUCTS_ALL theo sku
       finProds.forEach(function(fp){
-        if(!fp.note)return;
         var match=PRODUCTS_ALL.find(function(p){return p.sku&&fp.sku&&p.sku.toLowerCase()===fp.sku.toLowerCase();});
-        if(match)match._note=fp.note;
+        if(match){
+          if(fp.note)match._note=fp.note;
+          if(fp.best_price)match.best_price=fp.best_price;
+        }
       });
       window.PRODUCTS_ALL=PRODUCTS_ALL;
       if(window.page==='products')render();
@@ -3566,48 +3568,83 @@ function renderProducts(){
   const pgProd=Math.max(1,parseInt(sessionStorage.getItem('prodMgPage')||'1'));
   let prodSearch=sessionStorage.getItem('prodMgSearch')||'';
   const fVendor=sessionStorage.getItem('prodVendor')||'all';
+  const fSku=sessionStorage.getItem('prodSkuPrefix')||'all';
   const isManagerProd=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
+
+  // Extract SKU prefixes (part before first - or digit)
+  const allVisible=PRODUCTS_ALL.filter(function(p){return isManagerProd||p.in_stock;});
+  const skuPrefixes=[...new Set(allVisible.map(function(p){
+    if(!p.sku)return null;
+    var m=p.sku.match(/^([A-Za-z]+)/);
+    return m?m[1].toUpperCase():null;
+  }).filter(Boolean))].sort();
+
   const filtered=PRODUCTS_ALL.filter(function(p){
     if(fVendor!=='all'&&p.brand!==fVendor)return false;
     if(!isManagerProd&&!p.in_stock)return false;
+    if(fSku!=='all'){
+      var prefix=p.sku?(p.sku.match(/^([A-Za-z]+)/)||[])[1]:null;
+      if(!prefix||prefix.toUpperCase()!==fSku)return false;
+    }
     return !prodSearch||(p.name||'').toLowerCase().includes(prodSearch.toLowerCase())||(p.sku||'').toLowerCase().includes(prodSearch.toLowerCase());
   });
   const pageData=filtered.slice((pgProd-1)*PAGE_SIZE,pgProd*PAGE_SIZE);
 
   // ── Vendor stat cards ──
-  const allVisible=PRODUCTS_ALL.filter(function(p){return isManagerProd||p.in_stock;});
-  let statsHtml='<div class="stat-card sc0" style="cursor:pointer;border:'+(fVendor==='all'?'2px solid var(--brand2)':'1px solid var(--border)')+'" onclick="sessionStorage.setItem(\'prodVendor\',\'all\');sessionStorage.setItem(\'prodMgPage\',1);render()"><div class="stat-label">Tất cả</div><div class="stat-val" style="color:var(--brand2)">'+allVisible.length+'</div>'+(fVendor==='all'?'<div style="font-size:9px;color:var(--brand2)">▼ Đang xem</div>':'')+'</div>';
+  let statsHtml='<div class="stat-card sc0" style="cursor:pointer;border:'+(fVendor==='all'&&fSku==='all'?'2px solid var(--brand2)':'1px solid var(--border)')+'" onclick="sessionStorage.setItem(\'prodVendor\',\'all\');sessionStorage.setItem(\'prodSkuPrefix\',\'all\');sessionStorage.setItem(\'prodMgPage\',1);render()"><div class="stat-label">Tất cả</div><div class="stat-val" style="color:var(--brand2)">'+allVisible.length+'</div>'+(fVendor==='all'&&fSku==='all'?'<div style="font-size:9px;color:var(--brand2)">▼ Đang xem</div>':'')+'</div>';
   var vendorColors=['var(--accent2)','var(--accent)','var(--warn)'];
   var vendorSc=['sc1','sc2','sc3'];
   VENDOR_OPTS.forEach(function(v,i){
     var cnt=allVisible.filter(function(p){return p.brand===v;}).length;
     var inStock=allVisible.filter(function(p){return p.brand===v&&p.in_stock;}).length;
-    statsHtml+='<div class="stat-card '+vendorSc[i]+'" style="cursor:pointer;border:'+(fVendor===v?'2px solid '+vendorColors[i]:'1px solid var(--border)')+'" onclick="sessionStorage.setItem(\'prodVendor\',\''+v+'\');sessionStorage.setItem(\'prodMgPage\',1);render()">'
+    var active=fVendor===v;
+    statsHtml+='<div class="stat-card '+vendorSc[i]+'" style="cursor:pointer;border:'+(active?'2px solid '+vendorColors[i]:'1px solid var(--border)')+'" onclick="sessionStorage.setItem(\'prodVendor\',\''+(active?'all':v)+'\');sessionStorage.setItem(\'prodMgPage\',1);render()">'
       +'<div class="stat-label">'+v+'</div>'
       +'<div class="stat-val" style="color:'+vendorColors[i]+'">'+cnt+'</div>'
-      +'<div style="font-size:9px;color:var(--text3)">'+inStock+' in stock'+(fVendor===v?' · <span style="color:'+vendorColors[i]+'">▼ Lọc</span>':'')+'</div>'
+      +'<div style="font-size:9px;color:var(--text3)">'+inStock+' in stock'+(active?' · <span style="color:'+vendorColors[i]+'">▼ Lọc</span>':'')+'</div>'
       +'</div>';
   });
+
+  // ── SKU Prefix stat cards (row 2) ──
+  var skuColors=['#a29bfe','#74b9ff','#55efc4','#fdcb6e','#fd79a8','#e17055','#00cec9','#6c5ce7','#00b894','#fab1a0'];
+  var skuCardsHtml=skuPrefixes.map(function(prefix,i){
+    var cnt=allVisible.filter(function(p){
+      var px=p.sku?(p.sku.match(/^([A-Za-z]+)/)||[])[1]:null;
+      return px&&px.toUpperCase()===prefix;
+    }).length;
+    var active=fSku===prefix;
+    var col=skuColors[i%skuColors.length];
+    return '<div class="stat-card" style="cursor:pointer;border:'+(active?'2px solid '+col:'1px solid var(--border)')+'" onclick="sessionStorage.setItem(\'prodSkuPrefix\',\''+(active?'all':prefix)+'\');sessionStorage.setItem(\'prodMgPage\',1);render()">'
+      +'<div class="stat-label" style="font-family:monospace;font-size:11px">'+prefix+'</div>'
+      +'<div class="stat-val" style="color:'+col+';font-size:18px">'+cnt+'</div>'
+      +(active?'<div style="font-size:9px;color:'+col+'">▼ Lọc</div>':'')
+      +'</div>';
+  }).join('');
 
   let rows='';
   pageData.forEach(function(p){
     const isActive=p.is_active!==false;
     var vendorColor={'BOLSA':'var(--accent2)','ONS':'var(--accent)','TSPA':'var(--warn)'}[p.brand]||'var(--brand2)';
-    // Hiển thị Note hoặc Mô tả nếu có (ưu tiên Note)
     var infoText=p._note||p.description||'';
+    var hasBestPrice=p.best_price&&p.best_price>0;
+    var bestPriceHtml=hasBestPrice
+      ?'<div style="font-size:11px;color:var(--success);font-weight:600;margin-top:2px" title="'+(p.note||p._note||'')+'">Best: $'+Number(p.best_price).toLocaleString('en-US')
+        +(p.note||p._note?'<i class="ti ti-info-circle" style="margin-left:3px;font-size:10px;cursor:help" title="'+(p.note||p._note)+'"></i>':'')
+        +'</div>'
+      :'—';
     rows+='<tr style="'+(isActive?'':'opacity:0.5')+';cursor:pointer" onclick="openProdZoom('+p.id+')">'
       +'<td style="font-size:10px;font-family:monospace;color:var(--text3)">'+(p.sku||'—')+'</td>'
       +'<td><div style="display:flex;align-items:center;gap:10px">'
-      +(p.image_url?'<img src="'+p.image_url+'" style="width:48px;height:48px;border-radius:8px;object-fit:cover;background:var(--surface2);flex-shrink:0" alt="">':'<div style="width:48px;height:48px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class=\"ti ti-photo\" style=\"color:var(--text3);font-size:18px\"></i></div>')
+      +(p.image_url?'<img src="'+p.image_url+'" style="width:48px;height:48px;border-radius:8px;object-fit:cover;background:var(--surface2);flex-shrink:0" alt="">':'<div style="width:48px;height:48px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-photo" style="color:var(--text3);font-size:18px"></i></div>')
       +'<div style="min-width:0"><div style="color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">'+(p.name||'—')+'</div>'
       +(p.variant?'<div style="font-size:10px;color:var(--text3)">'+p.variant+'</div>':'')
       +(infoText&&!isManagerProd?'<div style="font-size:10px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">'+infoText+'</div>':'')
       +'</div></div></td>'
       +'<td><span style="background:rgba(108,92,231,0.12);color:'+vendorColor+';border:1px solid '+vendorColor+';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">'+(p.brand||'—')+'</span></td>'
-      +'<td style="color:var(--accent2);font-weight:700;font-size:14px">$'+(p.price||0)+'</td>'
+      +'<td style="color:var(--accent2);font-weight:700;font-size:14px">$'+Number(p.price||0).toLocaleString('en-US')+'</td>'
+      +'<td>'+bestPriceHtml+'</td>'
       +'<td>'+(p.in_stock?'<span class="badge b-won">In Stock</span>':'<span class="badge b-lost">Out</span>')+'</td>'
       +(isManagerProd
-        // Manager: hiện cột Mô tả, Note và action buttons
         ?'<td style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px" title="'+(p.description||'')+'">'+(p.description||'—')+'</td>'
           +'<td style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px" title="'+(p._note||'')+'">'+(p._note||'—')+'</td>'
           +'<td onclick="event.stopPropagation()"><div style="display:flex;gap:4px">'
@@ -3615,30 +3652,34 @@ function renderProducts(){
           +'<button class="btn" style="padding:3px 8px;font-size:10px" onclick="toggleStock('+p.id+','+(p.in_stock?'false':'true')+')">'+(p.in_stock?'Ẩn':'Hiện')+'</button>'
           +'<button class="btn" style="padding:3px 8px;font-size:10px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="toggleActive('+p.id+','+(isActive?'false':'true')+')">'+(isActive?'Deactive':'Active')+'</button>'
           +'</div></td>'
-        // Sale: ẩn cột Mô tả/Note (đã inline vào tên), chỉ có nút Xem chi tiết
         :'<td onclick="event.stopPropagation()" style="text-align:center"><button class="btn" style="padding:3px 10px;font-size:11px;border-color:rgba(162,155,254,0.3);color:var(--brand2)" onclick="openProdZoom('+p.id+')"><i class="ti ti-eye"></i> Xem</button></td>')
       +'</tr>';
   });
-  const vendorFilter='<select class="fsel" onchange="'+
-    'sessionStorage.setItem(\'prodVendor\',this.value);sessionStorage.setItem(\'prodMgPage\',1);render()">'+
-    '<option value="all"'+(fVendor==='all'?' selected':'')+'>Tất cả Vendor</option>'+
-    VENDOR_OPTS.map(function(v){return '<option value="'+v+'"'+(fVendor===v?' selected':'')+'>'+v+'</option>';}).join('')+
-    '</select>';
+  const vendorFilter='<select class="fsel" onchange="sessionStorage.setItem(\'prodVendor\',this.value);sessionStorage.setItem(\'prodMgPage\',1);render()">'
+    +'<option value="all"'+(fVendor==='all'?' selected':'')+'>Tất cả Vendor</option>'
+    +VENDOR_OPTS.map(function(v){return '<option value="'+v+'"'+(fVendor===v?' selected':'')+'>'+v+'</option>';}).join('')+'</select>';
+  var totalCols=isManagerProd?9:7;
   return '<div class="topbar"><div class="topbar-title">'+(isManagerProd?'Quản lý sản phẩm':'Sản phẩm')+'</div>'
     +'<div class="search-wrap"><i class="ti ti-search"></i><input id="prod-mg-search" placeholder="Tìm SKU, tên sản phẩm..." oninput="clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){prodMgFilter(document.getElementById(&quot;prod-mg-search&quot;).value);},120)" value="'+prodSearch+'"></div>'
     +vendorFilter
     +(isManagerProd?'<button class="btn btn-primary" onclick="openProdForm(null)"><i class="ti ti-plus"></i> Thêm sản phẩm</button>':'')
     +'</div>'
+    // Row 1: Vendor stat cards
     +'<div class="stats-row" style="grid-template-columns:repeat('+(VENDOR_OPTS.length+1)+',1fr)">'+statsHtml+'</div>'
+    // Row 2: SKU prefix stat cards
+    +(skuCardsHtml?'<div class="stats-row" style="grid-template-columns:repeat('+Math.min(skuPrefixes.length,8)+',1fr);margin-top:-8px">'+skuCardsHtml+'</div>':'')
     +'<div class="content" style="flex:1">'
-    +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+filtered.length+'</span> sản phẩm</h2></div>'
+    +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+filtered.length+'</span> sản phẩm'
+    +(fSku!=='all'?' <span style="font-size:11px;color:var(--text3);font-family:monospace">· '+fSku+'</span>':'')
+    +(fVendor!=='all'?' <span style="font-size:11px;color:var(--text3)">· '+fVendor+'</span>':'')
+    +'</h2></div>'
     +(filtered.length===0?'<div class="empty-state"><i class="ti ti-package"></i>Không tìm thấy sản phẩm</div>'
-      :'<div style="overflow-x:auto"><table style="min-width:'+(isManagerProd?'1000px':'620px')+';width:100%"><colgroup>'
+      :'<div style="overflow-x:auto"><table style="min-width:'+(isManagerProd?'1060px':'680px')+';width:100%"><colgroup>'
       +(isManagerProd
-        ?'<col width="80"><col width="220"><col width="80"><col width="75"><col width="80"><col width="140"><col width="140"><col width="185">'
-        :'<col width="80"><col width="260"><col width="80"><col width="80"><col width="80"><col width="80">')
+        ?'<col width="80"><col width="200"><col width="80"><col width="80"><col width="100"><col width="80"><col width="130"><col width="130"><col width="180">'
+        :'<col width="80"><col width="240"><col width="80"><col width="80"><col width="110"><col width="80"><col width="80">')
       +'</colgroup>'
-      +'<thead><tr><th>SKU</th><th>Sản phẩm</th><th>Vendor</th><th>Giá</th><th>Tồn kho</th>'
+      +'<thead><tr><th>SKU</th><th>Sản phẩm</th><th>Vendor</th><th>Giá</th><th>Best Price</th><th>Tồn kho</th>'
       +(isManagerProd?'<th>Mô tả</th><th>Note</th><th></th>':'<th></th>')
       +'</tr></thead>'
       +'<tbody>'+rows+'</tbody></table></div>'
@@ -3689,9 +3730,14 @@ function openProdZoom(id){
   // Info panel
   html+='<div style="padding:20px">';
 
-  // Price block
   html+='<div style="background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.15);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;gap:20px;flex-wrap:wrap">';
-  html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">Sale Price</div><div style="font-size:24px;font-weight:700;color:var(--accent2)">$'+(p.price||0)+'</div></div>';
+  html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">Sale Price</div><div style="font-size:24px;font-weight:700;color:var(--accent2)">$'+Number(p.price||0).toLocaleString('en-US')+'</div></div>';
+  if(p.best_price&&p.best_price>0){
+    html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">Best Price</div>'
+      +'<div style="font-size:24px;font-weight:700;color:var(--success)">$'+Number(p.best_price).toLocaleString('en-US')+'</div>'
+      +(p._note?'<div style="font-size:10px;color:var(--text2);margin-top:2px">'+p._note+'</div>':'')
+      +'</div>';
+  }
   if(isManagerProd&&p.vendor_cost){
     html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">Vendor Cost</div><div style="font-size:24px;font-weight:700;color:var(--warn)">$'+p.vendor_cost+'</div></div>';
     var margin=((p.price||0)-(p.vendor_cost||0));
