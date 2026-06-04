@@ -795,6 +795,7 @@ function renderPreview(){
   const po=document.getElementById('inv-po')&&document.getElementById('inv-po').value||'(Auto)';
   const location=document.getElementById('inv-location')&&document.getElementById('inv-location').value||'-';
   const delivery=document.getElementById('inv-delivery')&&document.getElementById('inv-delivery').value||'';
+  const warrantyMonths=document.getElementById('inv-warranty')&&document.getElementById('inv-warranty').value||'12';
   const subtotal=items.reduce(function(s,i){return s+i.amount;},0);
   const tax=parseFloat(document.getElementById('inv-tax')&&document.getElementById('inv-tax').value)||0;
   const extraDisc=parseFloat(document.getElementById('inv-extra-disc')&&document.getElementById('inv-extra-disc').value)||0;
