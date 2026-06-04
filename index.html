@@ -1446,6 +1446,8 @@ async function initApp(user){
       }else if(payload.eventType==='DELETE'){
         PRODUCTS_ALL=PRODUCTS_ALL.filter(function(p){return p.id!==payload.old.id;});
       }
+      // Re-render nếu đang ở tab Sản phẩm
+      if(window.page==='products')render();
     }).subscribe();
 
   // ── REALTIME: Invoices ──
