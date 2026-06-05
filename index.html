@@ -2090,6 +2090,8 @@ async function openInvEdit(id){
 
 async function saveInvEdit(id){
   showLoading(true);
+  const oldInv=INVOICES.find(function(i){return i.id===id;})||{};
+  const oldTracking=oldInv.tracking_number||'';
   const update={
     payment_status:document.getElementById('ie-pay').value||null,
     order_status:document.getElementById('ie-ord').value||null,
@@ -2099,8 +2101,39 @@ async function saveInvEdit(id){
   // Update local
   const inv=INVOICES.find(function(i){return i.id===id;});
   if(inv)Object.assign(inv,update);
+
+  // Thông báo cho Sale khi tracking number được cập nhật
+  var newTracking=update.tracking_number||'';
+  if(newTracking&&newTracking!==oldTracking){
+    var invNo=oldInv.invoice_no||'';
+    var saleId=oldInv.sale_id||oldInv.created_by;
+    var notifMsg='Mã đơn '+invNo+' đã được cập nhật';
+    // Nếu chính sale đang online → show toast ngay
+    if(saleId&&window.currentUser&&saleId===window.currentUser.id){
+      showCrmToast('📦 Cập nhật đơn hàng',notifMsg,'order','info');
+    }
+    // Lưu vào localStorage notification của sale
+    if(saleId){
+      var nk='csilan_notifs_'+saleId;
+      try{
+        var existing=JSON.parse(localStorage.getItem(nk)||'[]');
+        existing.unshift({id:Date.now(),title:'📦 Cập nhật đơn hàng',body:notifMsg,time:new Date().toISOString(),read:false,page:'order'});
+        if(existing.length>50)existing=existing.slice(0,50);
+        localStorage.setItem(nk,JSON.stringify(existing));
+        // Nếu Sale đang online trên cùng thiết bị → update badge
+        if(window.currentUser&&saleId===window.currentUser.id){
+          var unreadCnt=existing.filter(function(n){return !n.read;}).length;
+          var nb=document.getElementById('badge-notif');
+          if(nb){nb.textContent=unreadCnt;nb.style.display=unreadCnt>0?'flex':'none';}
+        }
+      }catch(e){void e;}
+    }
+  }
+
   document.getElementById('inv-edit-modal')&&document.getElementById('inv-edit-modal').remove();
-  showLoading(false);render();
+  showLoading(false);
+  showCrmToast('✅ Đã lưu','Cập nhật đơn hàng thành công','order','success');
+  render();
 }
 
 // Closedeal filters
@@ -2227,7 +2260,20 @@ function renderPending(){
       if(prof)saleName=prof.full_name;
       else if(inv.sale_rep||inv.submitted_by)saleName=inv.sale_rep||inv.submitted_by;
     }
-    invPendingRows+='<tr>'      +'<td style="font-size:10px;font-family:monospace;color:var(--warn)">'+(inv.invoice_no||'—')+'</td>'      +'<td>'+(cust.business_name||inv.business_name||'—')+'</td>'      +'<td style="color:var(--text)">'+(cust.customer_name||inv.customer_name||'—')+'</td>'      +'<td style="color:var(--accent2);font-weight:700">$'+(inv.total||0).toLocaleString('en-US')+'</td>'      +'<td style="font-size:11px;color:var(--text2)">'+saleName+'</td>'      +'<td style="font-size:10px;color:var(--text3)">'+fmtDate(inv.created_at)+'</td>'      +'<td><div style="display:flex;gap:4px">'      +(isManager?'<button class="btn btn-primary" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'approved\')">✓ Duyệt</button>':'')      +(isManager?'<button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'rejected\')">✗ Từ chối</button>':'')      +(isMine?'<button class="btn" style="padding:3px 8px;font-size:11px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="editInvoicePage(\''+inv.invoice_no+'\')"><i class="ti ti-edit"></i> Sửa</button>':'')      +'</div></td>'      +'</tr>';
+    invPendingRows+='<tr>'
+      +'<td style="font-size:10px;font-family:monospace;color:var(--warn)">'+(inv.invoice_no||'—')+'</td>'
+      +'<td>'+(cust.business_name||inv.business_name||'—')+'</td>'
+      +'<td style="color:var(--text)">'+(cust.customer_name||inv.customer_name||'—')+'</td>'
+      +'<td style="color:var(--accent2);font-weight:700">$'+(inv.total||0).toLocaleString('en-US')+'</td>'
+      +'<td style="font-size:11px;color:var(--text2)">'+saleName+'</td>'
+      +'<td style="font-size:10px;color:var(--text3)">'+fmtDate(inv.created_at)+'</td>'
+      +'<td><div style="display:flex;gap:4px">'
+      +(isManager?'<button class="btn btn-primary" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'approved\')">✓ Duyệt</button>':'')
+      +(isManager?'<button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'rejected\')">✗ Từ chối</button>':'')
+      // Manager xem và sửa tất cả invoice, sale chỉ sửa của mình
+      +(isManager||isMine?'<button class="btn" style="padding:3px 8px;font-size:11px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="editInvoicePage(\''+inv.invoice_no+'\')"><i class="ti ti-edit"></i> Sửa</button>':'')
+      +'</div></td>'
+      +'</tr>';
   });
 
   const totalLabel=pending.length+' KH · '+pendingInvoices.length+' Invoice chờ duyệt';
@@ -8468,17 +8514,17 @@ document.addEventListener('click',function(e){
 // ── CRM Toast Notifications (stackable) ──
 var _crmToastCount=0;
 window.showCrmToast=function(title,body,targetPage,type){
-  var color={'pending':'rgba(253,203,110,0.9)','error':'rgba(255,118,117,0.9)','success':'rgba(0,184,148,0.9)'}[type||'pending']||'rgba(162,155,254,0.9)';
-  var offset=90+(_crmToastCount*72);
+  var color={'pending':'rgba(253,203,110,0.9)','error':'rgba(255,118,117,0.9)','success':'rgba(0,184,148,0.9)','info':'rgba(116,185,255,0.9)'}[type||'pending']||'rgba(162,155,254,0.9)';
+  var offset=24+(_crmToastCount*90);
   _crmToastCount++;
   var t=document.createElement('div');
   t.className='crm-notif-toast';
-  t.style.cssText='position:fixed;bottom:'+offset+'px;right:20px;background:var(--bg2,#1a1240);border:1px solid '+color+';border-left:3px solid '+color+';border-radius:10px;padding:10px 14px 10px 12px;min-width:260px;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.5);z-index:9999;cursor:pointer;animation:toastIn 0.3s ease;display:flex;align-items:flex-start;gap:8px';
+  t.style.cssText='position:fixed;bottom:'+offset+'px;right:20px;background:var(--bg2,#1a1240);border:1px solid '+color+';border-left:4px solid '+color+';border-radius:12px;padding:14px 16px 14px 14px;min-width:300px;max-width:380px;box-shadow:0 12px 32px rgba(0,0,0,0.6);z-index:9999;cursor:pointer;animation:toastIn 0.3s ease;display:flex;align-items:flex-start;gap:10px';
   t.innerHTML='<div style="flex:1;min-width:0">'
-    +'<div style="font-size:12px;font-weight:700;color:'+color+';margin-bottom:2px">'+title+'</div>'
-    +'<div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+body+'</div>'
+    +'<div style="font-size:14px;font-weight:700;color:'+color+';margin-bottom:4px;line-height:1.3">'+title+'</div>'
+    +'<div style="font-size:13px;color:var(--text2);line-height:1.5;white-space:normal">'+body+'</div>'
     +'</div>'
-    +'<div style="color:var(--text3);font-size:16px;flex-shrink:0;line-height:1;margin-top:-1px" onclick="event.stopPropagation();this.parentNode.remove();_crmToastCount=Math.max(0,_crmToastCount-1)">×</div>';
+    +'<div style="color:var(--text3);font-size:20px;flex-shrink:0;line-height:1;margin-top:-2px;padding:0 2px" onclick="event.stopPropagation();this.parentNode.remove();_crmToastCount=Math.max(0,_crmToastCount-1)">×</div>';
   t.onclick=function(){
     if(targetPage)window.setPage(targetPage);
     t.remove();
@@ -8487,7 +8533,7 @@ window.showCrmToast=function(title,body,targetPage,type){
   document.body.appendChild(t);
   setTimeout(function(){
     if(t.parentNode){t.remove();_crmToastCount=Math.max(0,_crmToastCount-1);}
-  },6000);
+  },8000);
 };
 // backward compat
 window.showNotifToast=window.showCrmToast;
