@@ -1408,13 +1408,13 @@ async function initApp(user){
   const prodNav=document.getElementById('nav-products');
   if(prodNav)prodNav.style.display='flex';
   showLoading(false);render();
-
+  // Init notification system (DB-based realtime)
+  if(window._initNotifSystem)window._initNotifSystem();
   // ── Khởi động Chat Realtime sớm — không cần vào tab Chat mới nhận thông báo ──
   setTimeout(function(){
     if(!window._chatEarlyInit){
       window._chatEarlyInit=true;
       try{
-        // Init chatSb nếu chưa có (dùng storageKey riêng tránh duplicate warning)
         if(!window.chatSb)window.chatSb=window.supabase.createClient(
           'https://ajsakaddylbpppxlidfe.supabase.co',
           'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqc2FrYWRkeWxicHBweGxpZGZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTA1MDUsImV4cCI6MjA5NDI2NjUwNX0.B_8YwhOD4MXMKFOc3T0lpuujAnhUnpSLGjo12hWsLdc',
@@ -2108,25 +2108,8 @@ async function saveInvEdit(id){
     var invNo=oldInv.invoice_no||'';
     var saleId=oldInv.sale_id||oldInv.created_by;
     var notifMsg='Mã đơn '+invNo+' đã được cập nhật';
-    // Nếu chính sale đang online → show toast ngay
-    if(saleId&&window.currentUser&&saleId===window.currentUser.id){
-      showCrmToast('📦 Cập nhật đơn hàng',notifMsg,'order','info');
-    }
-    // Lưu vào localStorage notification của sale
-    if(saleId){
-      var nk='csilan_notifs_'+saleId;
-      try{
-        var existing=JSON.parse(localStorage.getItem(nk)||'[]');
-        existing.unshift({id:Date.now(),title:'📦 Cập nhật đơn hàng',body:notifMsg,time:new Date().toISOString(),read:false,page:'order'});
-        if(existing.length>50)existing=existing.slice(0,50);
-        localStorage.setItem(nk,JSON.stringify(existing));
-        // Nếu Sale đang online trên cùng thiết bị → update badge
-        if(window.currentUser&&saleId===window.currentUser.id){
-          var unreadCnt=existing.filter(function(n){return !n.read;}).length;
-          var nb=document.getElementById('badge-notif');
-          if(nb){nb.textContent=unreadCnt;nb.style.display=unreadCnt>0?'flex':'none';}
-        }
-      }catch(e){void e;}
+    if(saleId&&window._notifPush){
+      await window._notifPush(saleId,'📦 Cập nhật đơn hàng',notifMsg,'order');
     }
   }
 
@@ -3592,17 +3575,11 @@ async function createCampaign(){
   if(sp)sp.style.display='none';if(so)so.style.display='none';
   window._campCreateSelected=new Set();
   showCrmToast('✅ Campaign tạo thành công','"'+name+'" · '+dataPool.length+' khách','success');
-  // Notify each sale in campaign
+  // Notify each sale in campaign via DB
   Object.values(saleGroups).forEach(function(grp){
-    if(!grp.sale)return;
+    if(!grp.sale||!grp.sale.id)return;
     var notifMsg=grp.ids.length+' KH trong campaign "'+name+'"';
-    // Store notification (will show for sale when they load)
-    try{
-      var nk='csilan_notifs_'+grp.sale.id;
-      var nl=JSON.parse(localStorage.getItem(nk)||'[]');
-      nl.unshift({title:'📋 Campaign mới: '+name,body:notifMsg,ts:Date.now(),read:false,action:{page:'campaign'}});
-      localStorage.setItem(nk,JSON.stringify(nl.slice(0,50)));
-    }catch(notifErr){console.warn('[notif]',notifErr);}
+    if(window._notifPush)window._notifPush(grp.sale.id,'📋 Campaign mới: '+name,notifMsg,'campaign');
   });
   if(window._notifRender)window._notifRender();
   render();
@@ -5739,28 +5716,27 @@ async function renderSystemRefresh(){
 }
 
 function renderNotifPage(){
-  function getKey(){return 'csilan_notifs_'+((window.currentUser&&window.currentUser.id)||'anon');}
   function timeAgo(ts){
-    var d=Math.floor((Date.now()-ts)/1000);
+    var d=Math.floor((Date.now()-new Date(ts).getTime())/1000);
     if(d<60)return 'Vừa xong';
     if(d<3600)return Math.floor(d/60)+'p trước';
     if(d<86400)return Math.floor(d/3600)+'h trước';
     return Math.floor(d/86400)+'d trước';
   }
-  var list=[];
-  try{list=JSON.parse(localStorage.getItem(getKey())||'[]');}catch(e){void e;}
-  var unread=list.filter(function(n){return !n.read;}).length;
+  var list=window._getNotifs?window._getNotifs():[];
+  var unread=list.filter(function(n){return !n.is_read;}).length;
 
-  var items=list.length?list.map(function(n,i){
-    var icon=n.title.includes('✅')?'✅':n.title.includes('❌')?'❌':n.title.includes('📋')?'📋':n.title.includes('🎉')?'🎉':'🔔';
-    return '<div onclick="window._notifPageClick('+i+')" style="display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;background:'+(n.read?'transparent':'rgba(108,92,231,0.06)')+';border-left:'+(n.read?'3px solid transparent':'3px solid var(--brand2)')+';transition:background 0.15s" onmouseover="this.style.background=\'rgba(108,92,231,0.1)\'" onmouseout="this.style.background=\''+(n.read?'transparent':'rgba(108,92,231,0.06)')+'\'">'+
-      '<div style="font-size:20px;flex-shrink:0;line-height:1.4">'+icon+'</div>'+
-      '<div style="flex:1;min-width:0">'+
-      '<div style="font-size:13px;font-weight:'+(n.read?500:700)+';color:var(--text);margin-bottom:2px">'+n.title+'</div>'+
-      '<div style="font-size:12px;color:var(--text2);line-height:1.4">'+n.body+'</div>'+
-      '<div style="font-size:10px;color:var(--text3);margin-top:4px">'+timeAgo(n.ts)+'</div>'+
-      '</div>'+
-      (!n.read?'<div style="width:8px;height:8px;border-radius:50%;background:var(--brand2);flex-shrink:0;margin-top:6px"></div>':'')+'</div>';
+  var items=list.length?list.map(function(n){
+    var icon=n.title.includes('✅')?'✅':n.title.includes('❌')?'❌':n.title.includes('📋')?'📋':n.title.includes('🎉')?'🎉':n.title.includes('📦')?'📦':'🔔';
+    return '<div onclick="window._notifPageClick(\''+n.id+'\')" style="display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;background:'+(n.is_read?'transparent':'rgba(108,92,231,0.06)')+';border-left:'+(n.is_read?'3px solid transparent':'3px solid var(--brand2)')+';transition:background 0.15s" onmouseover="this.style.background=\'rgba(108,92,231,0.1)\'" onmouseout="this.style.background=\''+(n.is_read?'transparent':'rgba(108,92,231,0.06)')+'\'">'
+      +'<div style="font-size:20px;flex-shrink:0;line-height:1.4">'+icon+'</div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:13px;font-weight:'+(n.is_read?500:700)+';color:var(--text);margin-bottom:2px">'+n.title+'</div>'
+      +'<div style="font-size:12px;color:var(--text2);line-height:1.4">'+n.body+'</div>'
+      +'<div style="font-size:10px;color:var(--text3);margin-top:4px">'+timeAgo(n.created_at)+'</div>'
+      +'</div>'
+      +(!n.is_read?'<div style="width:8px;height:8px;border-radius:50%;background:var(--brand2);flex-shrink:0;margin-top:6px"></div>':'')
+      +'</div>';
   }).join(''):'<div style="padding:60px 20px;text-align:center;color:var(--text3)"><i class="ti ti-bell-off" style="font-size:40px;display:block;margin-bottom:12px;opacity:0.3"></i>Chưa có thông báo nào</div>';
 
   return '<div class="topbar">'
@@ -5772,26 +5748,11 @@ function renderNotifPage(){
     +'</div>';
 }
 
-window._notifPageClick=function(idx){
-  var key='csilan_notifs_'+((window.currentUser&&window.currentUser.id)||'anon');
-  try{
-    var list=JSON.parse(localStorage.getItem(key)||'[]');
-    if(list[idx]){
-      list[idx].read=true;
-      localStorage.setItem(key,JSON.stringify(list));
-      if(window._notifRender)window._notifRender();
-      var action=list[idx].action;
-      if(action){
-        if(action.page&&action.page!=='notifications')setPage(action.page);
-        if(action.custId)setTimeout(function(){renderDetailModal(action.custId);},300);
-      }
-      // Re-render page to update read state
-      if(window.page==='notifications'){
-        var m=document.getElementById('main-area');
-        if(m)m.innerHTML=renderNotifPage();
-      }
-    }
-  }catch(e){void e;}
+window._notifPageClick=function(id){
+  if(window._notifMarkRead)window._notifMarkRead(id);
+  var list=window._getNotifs?window._getNotifs():[];
+  var n=list.find(function(x){return x.id===id;});
+  if(n&&n.page&&n.page!=='notifications')setPage(n.page);
 };
 
 window._notifMarkAllPage=function(){
@@ -7220,84 +7181,119 @@ function render(){
     }
   };
 
-  // ── NOTIFICATION CENTER ENGINE ──
+  // ── NOTIFICATION CENTER ENGINE — DB-based ──
   (function(){
-    var MAX_NOTIFS=50;
-    function getKey(){return 'csilan_notifs_'+((window.currentUser&&window.currentUser.id)||'anon');}
+    var _notifs=[]; // cache local
+    var _realtimeSub=null;
 
-    function loadNotifs(){
-      try{return JSON.parse(localStorage.getItem(getKey())||'[]');}catch(e){return [];}
-    }
-    function saveNotifs(list){
-      try{localStorage.setItem(getKey(),JSON.stringify(list.slice(0,MAX_NOTIFS)));}catch(e){void e;}
-    }
     function timeAgo(ts){
-      var d=Math.floor((Date.now()-ts)/1000);
+      var d=Math.floor((Date.now()-new Date(ts).getTime())/1000);
       if(d<60)return 'Vừa xong';
       if(d<3600)return Math.floor(d/60)+'p trước';
       if(d<86400)return Math.floor(d/3600)+'h trước';
       return Math.floor(d/86400)+'d trước';
     }
 
-    function renderNotifs(){
-      var list=loadNotifs();
-      var unread=list.filter(function(n){return !n.read;}).length;
-      // Update nav badge
+    function updateBadge(){
+      var unread=_notifs.filter(function(n){return !n.is_read;}).length;
       var badge=document.getElementById('badge-notif');
-      if(badge){
-        badge.textContent=unread;
-        badge.style.display=unread>0?'inline':'none';
-      }
-      // If on notifications page, re-render
+      if(badge){badge.textContent=unread;badge.style.display=unread>0?'inline':'none';}
+    }
+
+    function rerender(){
+      updateBadge();
       if(window.page==='notifications'){
         var m=document.getElementById('main-area');
         if(m)m.innerHTML=renderNotifPage();
       }
     }
 
+    // Load notifications từ DB
+    async function loadNotifs(){
+      if(!window.currentUser)return;
+      try{
+        var res=await sb.from('notifications')
+          .select('*')
+          .eq('user_id',window.currentUser.id)
+          .order('created_at',{ascending:false})
+          .limit(50);
+        if(res.data){_notifs=res.data;updateBadge();}
+      }catch(e){console.warn('[notif] load error',e);}
+    }
+
+    // Start realtime subscription cho notifications
+    function startNotifRealtime(){
+      if(_realtimeSub)return;
+      if(!window.currentUser)return;
+      try{
+        _realtimeSub=sb.channel('notif-rt-'+window.currentUser.id)
+          .on('postgres_changes',{
+            event:'INSERT',schema:'public',table:'notifications',
+            filter:'user_id=eq.'+window.currentUser.id
+          },function(payload){
+            var n=payload.new;
+            if(!n)return;
+            _notifs.unshift(n);
+            if(_notifs.length>50)_notifs=_notifs.slice(0,50);
+            rerender();
+            // Show toast
+            showCrmToast(n.title,n.body,n.page||'notifications','info');
+          })
+          .subscribe();
+      }catch(e){console.warn('[notif] realtime error',e);}
+    }
+
+    // Push notification vào DB
+    window._notifPush=async function(userId,title,body,page){
+      if(!userId)return;
+      try{
+        await sb.from('notifications').insert({
+          user_id:userId,title:title,body:body,page:page||null
+        });
+      }catch(e){console.warn('[notif] push error',e);}
+    };
+
+    // Mark read
+    window._notifMarkRead=async function(id){
+      try{
+        await sb.from('notifications').update({is_read:true}).eq('id',id);
+        var n=_notifs.find(function(x){return x.id===id;});
+        if(n)n.is_read=true;
+        rerender();
+      }catch(e){void e;}
+    };
+
+    // Mark all read
+    window._notifMarkAllPage=async function(){
+      if(!window.currentUser)return;
+      try{
+        await sb.from('notifications').update({is_read:true})
+          .eq('user_id',window.currentUser.id).eq('is_read',false);
+        _notifs.forEach(function(n){n.is_read=true;});
+        rerender();
+      }catch(e){void e;}
+    };
+
+    // Backward compat _notifAdd → push to DB for current user
     window._notifAdd=function(title,body,action){
-      var list=loadNotifs();
-      list.unshift({title:title,body:body,ts:Date.now(),read:false,action:action||null});
-      saveNotifs(list);
-      renderNotifs();
+      if(!window.currentUser)return;
+      window._notifPush(window.currentUser.id,title,body,action&&action.page);
     };
 
-    window._notifClick=function(idx){
-      var list=loadNotifs();
-      if(list[idx]){
-        list[idx].read=true;
-        saveNotifs(list);
-        var action=list[idx].action;
-        if(action){
-          if(action.page)setPage(action.page);
-          if(action.custId)setTimeout(function(){renderDetailModal(action.custId);},300);
-          if(action.invoiceTab)setTimeout(function(){setPage('pending');},300);
-        }
-      }
-      document.getElementById('notif-panel').classList.remove('open');
-      renderNotifs();
+    // Expose notifs for renderNotifPage
+    window._getNotifs=function(){return _notifs;};
+    window._notifRender=rerender;
+    window._notifTimeAgo=timeAgo;
+
+    // Init after login
+    window._initNotifSystem=async function(){
+      await loadNotifs();
+      startNotifRealtime();
+      // Poll mỗi 30s để catch missed realtime
+      setInterval(loadNotifs, 30000);
     };
-
-    window._notifMarkAll=function(){
-      var list=loadNotifs();
-      list.forEach(function(n){n.read=true;});
-      saveNotifs(list);
-      renderNotifs();
-    };
-
-    window._notifToggle=function(){
-      var panel=document.getElementById('notif-panel');
-      if(!panel)return;
-      panel.classList.toggle('open');
-      if(panel.classList.contains('open'))renderNotifs();
-    };
-
-    // Init badge on load
-    renderNotifs();
-
-    // Expose for other parts of app
-    window._notifRender=renderNotifs;
   })();
+
   (function(){
     var panel=document.getElementById('ai-panel');
     var handle=document.getElementById('ai-drag-handle');
