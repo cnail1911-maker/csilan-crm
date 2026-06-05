@@ -239,7 +239,6 @@ table.inv-table tr:last-child td{border-bottom:none}
       <div class="section">
         <div class="type-toggle">
           <button class="type-btn active" id="btn-invoice" onclick="setType('invoice')">📄 Invoice</button>
-          <button class="type-btn" id="btn-quotation" onclick="setType('quotation')">💰 Báo giá</button>
         </div>
       </div>
 
@@ -368,7 +367,7 @@ let currentUser=null,currentProfile=null;
 let COMPANIES=[],PRODUCTS=[],CUSTOMERS_CACHE=[];
 let selectedCompany=null,selectedCustomer=null;
 let items=[]; // [{id,name,sku,image_url,qty,unit_price,discount,amount}]
-let docType='invoice';
+let docType='invoice'; // Always invoice
 let searchTimeout=null;
 
 const DELIVERY_OPTS=['CUSTOMER WILL CALL','DELIVERY','SHIP','PICK UP'];
@@ -464,12 +463,12 @@ function selectCompanyById(id){
 
 // TYPE
 function setType(t){
-  docType=t;
-  document.getElementById('btn-invoice').className='type-btn'+(t==='invoice'?' active':'');
-  document.getElementById('btn-quotation').className='type-btn'+(t==='quotation'?' active':'');
-  document.getElementById('form-title').textContent=t==='invoice'?'Tạo Invoice mới':'Tạo Báo giá mới';
+  docType='invoice';
+  document.getElementById('btn-invoice').className='type-btn active';
+  document.getElementById('form-title').textContent='Tạo Invoice mới';
   renderPreview();
 }
+
 
 // CUSTOMER SEARCH
 async function searchCustomer(q){
@@ -743,7 +742,7 @@ async function generateInvoiceNo(){
 
   const today=new Date();
   const dateStr=String(today.getFullYear()).slice(2)+String(today.getMonth()+1).padStart(2,'0')+String(today.getDate()).padStart(2,'0');
-  const prefix=docType==='invoice'?'INV':'BG';
+  const prefix='BG'; // Always BG until approved
   
   // Count only THIS user's invoices for today (using empCode-specific prefix)
   const myPrefix=prefix+'C'+empCode+dateStr;
@@ -805,7 +804,7 @@ function renderPreview(){
   const balance=total-deposit;
   const saleRep=currentProfile&&(currentProfile.nickname||currentProfile.full_name)||'Sale Rep';
   const custId=cu?cu.ma_kh:'KH-------';
-  const docLabel=docType==='invoice'?'INVOICE':'QUOTATION';
+  const docLabel='INVOICE';
 
   let prodRows='';
   if(items.length===0){
@@ -956,14 +955,14 @@ async function saveAndDownload(action){
   const balance=total-deposit;
 
   // Save to Supabase
-  const approvalStatus=docType==='invoice'?'pending':'approved';
+  const approvalStatus='pending';
   
   // Retry up to 5 times on duplicate invoice_no
   let inv=null,invErr=null;
   while(retryCount<5){
     const res=await sb.from('invoices').insert({
     invoice_no:retryNo,
-    type:docType,
+    type:'invoice',
     company_id:selectedCompany?selectedCompany.id:null,
     customer_id:selectedCustomer.id,
     sale_id:currentUser.id,
@@ -991,10 +990,10 @@ async function saveAndDownload(action){
       retryCount++;
       const today2=new Date();
       const ds2=String(today2.getFullYear()).slice(2)+String(today2.getMonth()+1).padStart(2,'0')+String(today2.getDate()).padStart(2,'0');
-      const prefixRetry=(docType==='invoice'?'INV':'BG')+'C'+empCodeR+ds2;
-      const {data:fresh}=await sb.from('invoices').select('invoice_no').like('invoice_no',prefixRetry+'%').eq('type',docType);
+      const prefixRetry='BG'+'C'+empCodeR+ds2;
+      const {data:fresh}=await sb.from('invoices').select('invoice_no').like('invoice_no',prefixRetry+'%');
       const newCount=(fresh||[]).length;
-      const prefix=docType==='invoice'?'INV':'BG';
+      const prefix='BG'; // Always BG until approved
       // Use same empCode logic as generateInvoiceNo
       let empCodeR='00';
       if(currentProfile&&currentProfile.code){
@@ -1148,7 +1147,7 @@ async function loadInvoiceForEdit(invoiceNo){
   if(cust)selectCustomer(cust);
 
   // Set doc type
-  docType=inv.type||'invoice';
+  docType='invoice';
   document.querySelectorAll('.type-btn').forEach(function(btn){
     btn.classList.toggle('active',btn.dataset.type===docType);
   });
