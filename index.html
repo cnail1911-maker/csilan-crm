@@ -1917,16 +1917,30 @@ async function approveInvoice(id,status){
   showLoading(true);
   const inv=INVOICES.find(function(i){return i.id===id;});
   if(status==='approved'&&inv){
-    // Batch update: invoices + customers in parallel
+    // Generate INVC số mới theo ngày duyệt
+    var now=new Date();
+    var ds=String(now.getFullYear()).slice(2)+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0');
+    // empCode từ sale_id
+    var saleIdForCode=inv.sale_id||inv.created_by||currentUser.id;
+    var empCode2=saleIdForCode.replace(/-/g,'').slice(-4);
+    empCode2=String(parseInt(empCode2,16)%99+1).padStart(2,'0');
+    var newPrefix='INVC'+empCode2+ds;
+    // Count INVC đã có trong ngày duyệt để lấy sequence
+    var {data:todayInvcs}=await sb.from('invoices').select('invoice_no').like('invoice_no',newPrefix+'%').eq('approval_status','approved');
+    var newSeq=String(((todayInvcs||[]).length)+1).padStart(2,'0');
+    var newInvNo=newPrefix+'-'+newSeq;
+
+    // Batch update: đổi invoice_no + approval_status + update customer
     const [invRes,custRes]=await Promise.all([
-      sb.from('invoices').update({approval_status:'approved'}).eq('id',id),
-      sb.from('customers').update({lead_status:'Closedeal',latest_invoice_no:inv.invoice_no,total_amount:inv.total}).eq('id',inv.customer_id)
+      sb.from('invoices').update({approval_status:'approved',invoice_no:newInvNo}).eq('id',id),
+      sb.from('customers').update({lead_status:'Closedeal',latest_invoice_no:newInvNo,total_amount:inv.total}).eq('id',inv.customer_id)
     ]);
-    // Update local state immediately — no reload needed
+    // Update local state
     const iidx=INVOICES.findIndex(function(i){return i.id===id;});
-    if(iidx>=0)Object.assign(INVOICES[iidx],{approval_status:'approved'});
+    if(iidx>=0)Object.assign(INVOICES[iidx],{approval_status:'approved',invoice_no:newInvNo});
+    inv.invoice_no=newInvNo; // Update ref for Edge Function below
     var cidx=CUSTOMERS.findIndex(function(c){return c.id===inv.customer_id;});
-    if(cidx>=0)Object.assign(CUSTOMERS[cidx],{lead_status:'Closedeal',latest_invoice_no:inv.invoice_no,total_amount:inv.total});
+    if(cidx>=0)Object.assign(CUSTOMERS[cidx],{lead_status:'Closedeal',latest_invoice_no:newInvNo,total_amount:inv.total});
 
     // Gọi Edge Function sync sang Finance khi approved
     try{
