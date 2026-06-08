@@ -1131,6 +1131,25 @@ function hideMobilePreview(){
 let editInvoiceId=null;
 let editInvoiceNo=null;
 
+// Tải PDF invoice đã được duyệt — dùng invoice_no chính thức (INVC...)
+async function downloadApprovedPDF(){
+  var invNo=window._editInvoiceNoApproved||editInvoiceNo;
+  // Set PO field = INVC number để PDF hiển thị đúng mã
+  var poEl=document.getElementById('inv-po');
+  var origPo=poEl?poEl.value:'';
+  if(poEl)poEl.value=invNo;
+  // Render preview với mã mới
+  renderPreview();
+  await new Promise(function(r){setTimeout(r,100);});
+  // Download PDF
+  var origNo=editInvoiceNo;
+  editInvoiceNo=invNo;
+  await saveAndDownload('pdf');
+  // Restore
+  editInvoiceNo=origNo;
+  if(poEl)poEl.value=origPo;
+  renderPreview();
+}
 async function loadInvoiceForEdit(invoiceNo){
   showLoading(true);
   // Load invoice
@@ -1138,6 +1157,9 @@ async function loadInvoiceForEdit(invoiceNo){
   if(error||!inv){showLoading(false);alert('Không tìm thấy đơn hàng: '+invoiceNo);return;}
   editInvoiceId=inv.id;
   editInvoiceNo=inv.invoice_no;
+  var editApprovalStatus=inv.approval_status||'pending';
+  window._editApprovalStatus=editApprovalStatus;
+  window._editInvoiceNoApproved=editApprovalStatus==='approved'?inv.invoice_no:null;
 
   // Load invoice items
   const {data:invItems}=await sb.from('invoice_items').select('*').eq('invoice_id',inv.id);
@@ -1195,9 +1217,13 @@ async function loadInvoiceForEdit(invoiceNo){
   document.querySelector('.sidebar-title').textContent='Chỉnh sửa '+invoiceNo;
   const footer=document.querySelector('.sidebar-footer');
   if(footer){
+    var isApproved=window._editApprovalStatus==='approved';
     footer.innerHTML='<button class="btn" onclick="resetEditMode()"><i class="ti ti-x"></i> Hủy</button>'
       +'<button class="btn btn-outline" onclick="renderPreview()"><i class="ti ti-eye"></i> Preview</button>'
-      +'<button class="btn btn-red" onclick="updateInvoice()"><i class="ti ti-device-floppy"></i> Cập nhật & Tải PDF</button>';
+      +(isApproved
+        ? '<button class="btn btn-red" onclick="downloadApprovedPDF()"><i class="ti ti-file-download"></i> Tải invoice</button>'
+        : '<button class="btn btn-red" onclick="updateInvoice()"><i class="ti ti-device-floppy"></i> Cập nhật & Tải PDF</button>'
+      );
   }
 
   renderItems();
