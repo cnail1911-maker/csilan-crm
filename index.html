@@ -2501,6 +2501,8 @@ function renderAlert(){
   const alertData=CUSTOMERS.filter(function(c){
     if(c.lead_status==='Closedeal')return false;
     if(!c.assigned_to)return false;
+    // Nếu có lịch hẹn và đã liên hệ sau ngày hẹn → đã xử lý → bỏ qua
+    if(c.timeline_follow&&c.last_contacted&&new Date(c.last_contacted)>=new Date(c.timeline_follow))return false;
     if(c.potential&&c.potential!==''&&getDays(c)>=3)return true;
     const dl=getDeadlineDays(c);
     if(dl!==null&&dl<=3)return true;
@@ -2923,11 +2925,29 @@ window._campSalePgGo=function(btn){
   window._campSalePg[key]=pg;
   var wrap=document.querySelector('.camp-section-wrap[data-key="'+key+'"]');
   if(!wrap)return;
-  var custs=window._campSaleCusts&&window._campSaleCusts[key];
+  // Dùng filtered list nếu có, fallback về full list
+  var custs=(window._campSaleFiltered&&window._campSaleFiltered[key])
+    ||(window._campSaleCusts&&window._campSaleCusts[key]);
   if(!custs)return;
+  // Lưu lại giá trị filter hiện tại trước khi re-render
+  var savedSearch=(wrap.querySelector('input')||{}).value||'';
+  var savedStatus=(wrap.querySelector('.csf-status')||{}).value||'';
+  var savedSub=(wrap.querySelector('.csf-substatus')||{}).value||'';
+  var savedLead=(wrap.querySelector('.csf-lead')||{}).value||'';
+  var savedPot=(wrap.querySelector('.csf-pot')||{}).value||'';
   var tmp=document.createElement('div');
   tmp.innerHTML=_campSaleTable(custs,sd==='1',key,true);
-  wrap.parentNode.replaceChild(tmp.firstChild,wrap);
+  var newWrap=tmp.firstChild;
+  if(newWrap){
+    // Restore filter values
+    var ni=newWrap.querySelector('input');if(ni&&savedSearch)ni.value=savedSearch;
+    var ns=newWrap.querySelector('.csf-status');if(ns&&savedStatus)ns.value=savedStatus;
+    var nb=newWrap.querySelector('.csf-substatus');if(nb&&savedSub)nb.value=savedSub;
+    var nl=newWrap.querySelector('.csf-lead');if(nl&&savedLead)nl.value=savedLead;
+    var np=newWrap.querySelector('.csf-pot');if(np&&savedPot)np.value=savedPot;
+    var cnt=newWrap.querySelector('.csf-count');if(cnt)cnt.textContent=custs.length+' KH';
+  }
+  wrap.parentNode.replaceChild(tmp.firstChild||newWrap,wrap);
 };
 
 window._campSaleFilter=function(key,wrap,sd){
@@ -6300,8 +6320,13 @@ function renderSchedule(){
   const today=new Date();today.setHours(0,0,0,0);
 
   // Customers with Appointment Set sub_status
+  // Ẩn nếu Sale đã liên hệ sau ngày hẹn (last_contacted >= timeline_follow)
   let scheduled=CUSTOMERS.filter(function(c){
-    return c.sub_status==='Appointment Set'&&c.timeline_follow;
+    if(!c.sub_status==='Appointment Set'||!c.timeline_follow)return false;
+    if(c.sub_status!=='Appointment Set')return false;
+    // Nếu đã có call log sau ngày hẹn → đã xử lý → ẩn
+    if(c.last_contacted&&new Date(c.last_contacted)>=new Date(c.timeline_follow))return false;
+    return true;
   });
   if(!isManager)scheduled=scheduled.filter(function(c){return c.assigned_to===currentUser.id;});
   scheduled.sort(function(a,b){return new Date(a.timeline_follow)-new Date(b.timeline_follow);});
