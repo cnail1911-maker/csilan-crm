@@ -7333,22 +7333,22 @@ function render(){
 
     // Delete single notification
     window._notifDelete=async function(id){
-      try{
-        await sb.from('notifications').delete().eq('id',id);
-        _notifs=_notifs.filter(function(n){return n.id!==id;});
-        rerender();
-      }catch(e){void e;}
+      // Xóa khỏi local array và update DOM ngay lập tức
+      _notifs=_notifs.filter(function(n){return n.id!==id;});
+      rerender();
+      // Xóa DB ở background
+      try{await sb.from('notifications').delete().eq('id',id);}catch(e){void e;}
     };
 
     // Delete all notifications for current user
     window._notifDeleteAll=async function(){
       if(!window.currentUser)return;
       if(!confirm('Xóa tất cả thông báo?'))return;
-      try{
-        await sb.from('notifications').delete().eq('user_id',window.currentUser.id);
-        _notifs=[];
-        rerender();
-      }catch(e){void e;}
+      // Xóa local + DOM ngay lập tức
+      _notifs=[];
+      rerender();
+      // Xóa DB ở background
+      try{await sb.from('notifications').delete().eq('user_id',window.currentUser.id);}catch(e){void e;}
     };
 
     // Backward compat _notifAdd → push to DB for current user
