@@ -1194,7 +1194,14 @@ async function doLogout(){await sb.auth.signOut();document.getElementById('app-s
 
 // INIT
 async function initApp(user){
-  showLoading(true);currentUser=user;window.currentUser=user;
+  showLoading(true);
+  // Safety timeout: tự tắt loading sau 30s
+  var _initTimeout=setTimeout(function(){
+    showLoading(false);
+    console.warn('[initApp] timeout after 30s');
+  },30000);
+  try{
+  currentUser=user;window.currentUser=user;
   const {data:profile}=await sb.from('profiles').select('*').eq('id',user.id).single();
   currentProfile=profile;window.currentProfile=profile;
   await loadCustomers();
@@ -1407,9 +1414,19 @@ async function initApp(user){
   const isManagerInit=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const prodNav=document.getElementById('nav-products');
   if(prodNav)prodNav.style.display='flex';
+  clearTimeout(_initTimeout);
   showLoading(false);render();
   // Init notification system (DB-based realtime)
   if(window._initNotifSystem)window._initNotifSystem();
+  }catch(e){
+    clearTimeout(_initTimeout);
+    console.error('[initApp] error:',e);
+    showLoading(false);
+    document.getElementById('auth-error')&&(document.getElementById('auth-error').textContent='Lỗi khởi động: '+e.message);
+    document.getElementById('auth-error')&&(document.getElementById('auth-error').style.display='block');
+    document.getElementById('app-screen').style.display='none';
+    document.getElementById('auth-screen').style.display='flex';
+  }
   // ── Khởi động Chat Realtime sớm — không cần vào tab Chat mới nhận thông báo ──
   setTimeout(function(){
     if(!window._chatEarlyInit){
@@ -5779,7 +5796,7 @@ function renderNotifPage(){
 
   var items=list.length?list.map(function(n){
     var icon=n.title.includes('✅')?'✅':n.title.includes('❌')?'❌':n.title.includes('📋')?'📋':n.title.includes('🎉')?'🎉':n.title.includes('📦')?'📦':n.title.includes('💰')?'💰':'🔔';
-    return '<div style="display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);background:'+(n.is_read?'transparent':'rgba(108,92,231,0.06)')+';border-left:'+(n.is_read?'3px solid transparent':'3px solid var(--brand2)')+';transition:background 0.15s;align-items:flex-start">'
+    return '<div data-notif-id="'+n.id+'" style="display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);background:'+(n.is_read?'transparent':'rgba(108,92,231,0.06)')+';border-left:'+(n.is_read?'3px solid transparent':'3px solid var(--brand2)')+';transition:background 0.15s;align-items:flex-start">'
       +'<div style="font-size:20px;flex-shrink:0;line-height:1.4;cursor:pointer" onclick="window._notifPageClick(\''+n.id+'\')">'+icon+'<\/div>'
       +'<div style="flex:1;min-width:0;cursor:pointer" onclick="window._notifPageClick(\''+n.id+'\')">'
       +'<div style="font-size:13px;font-weight:'+(n.is_read?500:700)+';color:var(--text);margin-bottom:2px">'+n.title+'<\/div>'
@@ -7259,9 +7276,17 @@ function render(){
 
     function rerender(){
       updateBadge();
-      if(window.page==='notifications'){
-        var m=document.getElementById('main-area');
-        if(m)m.innerHTML=renderNotifPage();
+      // Update page nếu đang ở tab notifications
+      var m=document.getElementById('main-area');
+      if(m&&(window.page==='notifications'||m.querySelector('#notif-page-list'))){
+        m.innerHTML=renderNotifPage();
+      }
+    }
+
+    function showNotifToast(n){
+      if(typeof showCrmToast==='function'){
+        var icon=n.title.includes('📦')?'📦':n.title.includes('💰')?'💰':n.title.includes('📋')?'📋':n.title.includes('✅')?'✅':n.title.includes('❌')?'❌':'🔔';
+        showCrmToast(icon+' '+n.title,n.body,n.page||'notifications','info');
       }
     }
 
@@ -7293,8 +7318,8 @@ function render(){
             _notifs.unshift(n);
             if(_notifs.length>50)_notifs=_notifs.slice(0,50);
             rerender();
-            // Show toast
-            showCrmToast(n.title,n.body,n.page||'notifications','info');
+            // Show toast popup bên phải màn hình
+            showNotifToast(n);
           })
           .subscribe();
       }catch(e){console.warn('[notif] realtime error',e);}
@@ -7333,21 +7358,30 @@ function render(){
 
     // Delete single notification
     window._notifDelete=async function(id){
-      // Xóa khỏi local array và update DOM ngay lập tức
+      // Xóa khỏi local array ngay
       _notifs=_notifs.filter(function(n){return n.id!==id;});
-      rerender();
-      // Xóa DB ở background
+      updateBadge();
+      // Xóa DOM element trực tiếp (không rebuild toàn bộ)
+      var list=document.getElementById('notif-page-list');
+      if(list){
+        // Tìm element chứa onclick với id này và xóa
+        var rows=list.querySelectorAll('[data-notif-id="'+id+'"]');
+        rows.forEach(function(el){el.remove();});
+        // Nếu hết thông báo thì hiện empty state
+        if(_notifs.length===0){
+          list.innerHTML='<div style="padding:60px 20px;text-align:center;color:var(--text3)"><i class="ti ti-bell-off" style="font-size:40px;display:block;margin-bottom:12px;opacity:0.3"><\/i>Chưa có thông báo nào<\/div>';
+        }
+      }
+      // Xóa DB background
       try{await sb.from('notifications').delete().eq('id',id);}catch(e){void e;}
     };
 
-    // Delete all notifications for current user
+    // Delete all
     window._notifDeleteAll=async function(){
       if(!window.currentUser)return;
       if(!confirm('Xóa tất cả thông báo?'))return;
-      // Xóa local + DOM ngay lập tức
       _notifs=[];
       rerender();
-      // Xóa DB ở background
       try{await sb.from('notifications').delete().eq('user_id',window.currentUser.id);}catch(e){void e;}
     };
 
