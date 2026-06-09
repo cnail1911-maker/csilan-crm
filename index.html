@@ -1234,15 +1234,16 @@ async function doLogout(){await sb.auth.signOut();document.getElementById('app-s
     try{
       _realtimeSub=sb.channel('notif-rt-'+window.currentUser.id)
         .on('postgres_changes',{
-          event:'INSERT',schema:'public',table:'notifications',
-          filter:'user_id=eq.'+window.currentUser.id
+          event:'INSERT',schema:'public',table:'notifications'
+          // Bỏ filter — check user_id trong callback thay vì server-side filter
         },function(payload){
           var n=payload.new;
           if(!n)return;
+          // Chỉ xử lý notification của user hiện tại
+          if(n.user_id!==window.currentUser.id)return;
           _notifs.unshift(n);
           if(_notifs.length>50)_notifs=_notifs.slice(0,50);
           _rerender();
-          // Toast popup
           if(typeof showCrmToast==='function'){
             showCrmToast(n.title,n.body,n.page||'notifications','info');
           }
