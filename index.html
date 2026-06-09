@@ -1192,6 +1192,136 @@ async function doLogin(){
 }
 async function doLogout(){await sb.auth.signOut();document.getElementById('app-screen').style.display='none';document.getElementById('auth-screen').style.display='flex';CUSTOMERS=[];PROFILES=[];}
 
+// ── NOTIFICATION CENTER ENGINE — DB-based (top-level, not inside any IIFE) ──
+(function(){
+  var _notifs=[];
+  var _realtimeSub=null;
+
+  function _timeAgo(ts){
+    var d=Math.floor((Date.now()-new Date(ts).getTime())/1000);
+    if(d<60)return 'Vừa xong';
+    if(d<3600)return Math.floor(d/60)+'p trước';
+    if(d<86400)return Math.floor(d/3600)+'h trước';
+    return Math.floor(d/86400)+'d trước';
+  }
+
+  function _updateBadge(){
+    var unread=_notifs.filter(function(n){return !n.is_read;}).length;
+    var badge=document.getElementById('badge-notif');
+    if(badge){badge.textContent=unread;badge.style.display=unread>0?'inline':'none';}
+  }
+
+  function _rerender(){
+    _updateBadge();
+    var m=document.getElementById('main-area');
+    if(m&&(window.page==='notifications'||m.querySelector('#notif-page-list'))){
+      m.innerHTML=renderNotifPage();
+    }
+  }
+
+  async function _loadNotifs(){
+    if(!window.currentUser)return;
+    try{
+      var res=await sb.from('notifications')
+        .select('*').eq('user_id',window.currentUser.id)
+        .order('created_at',{ascending:false}).limit(50);
+      if(res.data){_notifs=res.data;_updateBadge();}
+    }catch(e){console.warn('[notif] load error',e);}
+  }
+
+  function _startRealtime(){
+    if(_realtimeSub||!window.currentUser)return;
+    try{
+      _realtimeSub=sb.channel('notif-rt-'+window.currentUser.id)
+        .on('postgres_changes',{
+          event:'INSERT',schema:'public',table:'notifications',
+          filter:'user_id=eq.'+window.currentUser.id
+        },function(payload){
+          var n=payload.new;
+          if(!n)return;
+          _notifs.unshift(n);
+          if(_notifs.length>50)_notifs=_notifs.slice(0,50);
+          _rerender();
+          // Toast popup
+          if(typeof showCrmToast==='function'){
+            showCrmToast(n.title,n.body,n.page||'notifications','info');
+          }
+        })
+        .subscribe(function(status){
+          console.log('[notif] realtime:',status);
+        });
+    }catch(e){console.warn('[notif] realtime error',e);}
+  }
+
+  window._notifPush=async function(userId,title,body,page){
+    if(!userId)return;
+    try{
+      await sb.from('notifications').insert({user_id:userId,title:title,body:body,page:page||null});
+    }catch(e){console.warn('[notif] push error',e);}
+  };
+
+  window._notifMarkRead=async function(id){
+    try{
+      await sb.from('notifications').update({is_read:true}).eq('id',id);
+      var n=_notifs.find(function(x){return x.id===id;});
+      if(n)n.is_read=true;
+      _rerender();
+    }catch(e){void e;}
+  };
+
+  window._notifMarkAllPage=async function(){
+    if(!window.currentUser)return;
+    try{
+      await sb.from('notifications').update({is_read:true})
+        .eq('user_id',window.currentUser.id).eq('is_read',false);
+      _notifs.forEach(function(n){n.is_read=true;});
+      _rerender();
+    }catch(e){void e;}
+  };
+
+  window._notifDelete=async function(id){
+    _notifs=_notifs.filter(function(n){return n.id!==id;});
+    _updateBadge();
+    var row=document.querySelector('[data-notif-id="'+id+'"]');
+    if(row){
+      row.style.transition='opacity 0.2s';
+      row.style.opacity='0';
+      setTimeout(function(){
+        row.remove();
+        if(_notifs.length===0){
+          var list=document.getElementById('notif-page-list');
+          if(list)list.innerHTML='<div style="padding:60px 20px;text-align:center;color:var(--text3)"><i class="ti ti-bell-off" style="font-size:40px;display:block;margin-bottom:12px;opacity:0.3"><\/i>Chưa có thông báo nào<\/div>';
+        }
+      },200);
+    }
+    try{await sb.from('notifications').delete().eq('id',id);}catch(e){void e;}
+  };
+
+  window._notifDeleteAll=async function(){
+    if(!window.currentUser)return;
+    if(!confirm('Xóa tất cả thông báo?'))return;
+    _notifs=[];
+    _rerender();
+    try{await sb.from('notifications').delete().eq('user_id',window.currentUser.id);}catch(e){void e;}
+  };
+
+  window._notifAdd=function(title,body,action){
+    if(!window.currentUser)return;
+    window._notifPush(window.currentUser.id,title,body,action&&action.page);
+  };
+
+  window._getNotifs=function(){return _notifs;};
+  window._notifRender=_rerender;
+
+  window._initNotifSystem=async function(){
+    await _loadNotifs();
+    _startRealtime();
+    setInterval(_loadNotifs,30000);
+  };
+})();
+
+// ──────────────────────────────────────────────────────────
+
 // INIT
 async function initApp(user){
   showLoading(true);
@@ -5829,20 +5959,6 @@ window._notifPageClick=function(id){
   if(n&&n.page&&n.page!=='notifications')setPage(n.page);
 };
 
-window._notifMarkAllPage=function(){
-  var key='csilan_notifs_'+((window.currentUser&&window.currentUser.id)||'anon');
-  try{
-    var list=JSON.parse(localStorage.getItem(key)||'[]');
-    list.forEach(function(n){n.read=true;});
-    localStorage.setItem(key,JSON.stringify(list));
-    if(window._notifRender)window._notifRender();
-    if(window.page==='notifications'){
-      var m=document.getElementById('main-area');
-      if(m)m.innerHTML=renderNotifPage();
-    }
-  }catch(e){void e;}
-};
-
 function renderGuide(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const tpl=document.getElementById('guide-tpl');
@@ -7254,156 +7370,6 @@ function render(){
         +'<div class="ai-bubble">Lịch sử đã được xóa. Tôi sẵn sàng hỗ trợ bạn! 🙌<\/div><\/div>';
     }
   };
-
-  // ── NOTIFICATION CENTER ENGINE — DB-based ──
-  (function(){
-    var _notifs=[]; // cache local
-    var _realtimeSub=null;
-
-    function timeAgo(ts){
-      var d=Math.floor((Date.now()-new Date(ts).getTime())/1000);
-      if(d<60)return 'Vừa xong';
-      if(d<3600)return Math.floor(d/60)+'p trước';
-      if(d<86400)return Math.floor(d/3600)+'h trước';
-      return Math.floor(d/86400)+'d trước';
-    }
-
-    function updateBadge(){
-      var unread=_notifs.filter(function(n){return !n.is_read;}).length;
-      var badge=document.getElementById('badge-notif');
-      if(badge){badge.textContent=unread;badge.style.display=unread>0?'inline':'none';}
-    }
-
-    function rerender(){
-      updateBadge();
-      // Update page nếu đang ở tab notifications
-      var m=document.getElementById('main-area');
-      if(m&&(window.page==='notifications'||m.querySelector('#notif-page-list'))){
-        m.innerHTML=renderNotifPage();
-      }
-    }
-
-    function showNotifToast(n){
-      if(typeof showCrmToast==='function'){
-        var icon=n.title.includes('📦')?'📦':n.title.includes('💰')?'💰':n.title.includes('📋')?'📋':n.title.includes('✅')?'✅':n.title.includes('❌')?'❌':'🔔';
-        showCrmToast(icon+' '+n.title,n.body,n.page||'notifications','info');
-      }
-    }
-
-    // Load notifications từ DB
-    async function loadNotifs(){
-      if(!window.currentUser)return;
-      try{
-        var res=await sb.from('notifications')
-          .select('*')
-          .eq('user_id',window.currentUser.id)
-          .order('created_at',{ascending:false})
-          .limit(50);
-        if(res.data){_notifs=res.data;updateBadge();}
-      }catch(e){console.warn('[notif] load error',e);}
-    }
-
-    // Start realtime subscription cho notifications
-    function startNotifRealtime(){
-      if(_realtimeSub)return;
-      if(!window.currentUser)return;
-      try{
-        _realtimeSub=sb.channel('notif-rt-'+window.currentUser.id)
-          .on('postgres_changes',{
-            event:'INSERT',schema:'public',table:'notifications',
-            filter:'user_id=eq.'+window.currentUser.id
-          },function(payload){
-            var n=payload.new;
-            if(!n)return;
-            _notifs.unshift(n);
-            if(_notifs.length>50)_notifs=_notifs.slice(0,50);
-            rerender();
-            // Show toast popup bên phải màn hình
-            showNotifToast(n);
-          })
-          .subscribe();
-      }catch(e){console.warn('[notif] realtime error',e);}
-    }
-
-    // Push notification vào DB
-    window._notifPush=async function(userId,title,body,page){
-      if(!userId)return;
-      try{
-        await sb.from('notifications').insert({
-          user_id:userId,title:title,body:body,page:page||null
-        });
-      }catch(e){console.warn('[notif] push error',e);}
-    };
-
-    // Mark read
-    window._notifMarkRead=async function(id){
-      try{
-        await sb.from('notifications').update({is_read:true}).eq('id',id);
-        var n=_notifs.find(function(x){return x.id===id;});
-        if(n)n.is_read=true;
-        rerender();
-      }catch(e){void e;}
-    };
-
-    // Mark all read
-    window._notifMarkAllPage=async function(){
-      if(!window.currentUser)return;
-      try{
-        await sb.from('notifications').update({is_read:true})
-          .eq('user_id',window.currentUser.id).eq('is_read',false);
-        _notifs.forEach(function(n){n.is_read=true;});
-        rerender();
-      }catch(e){void e;}
-    };
-
-    // Delete single notification
-    window._notifDelete=async function(id){
-      // Xóa khỏi local array ngay
-      _notifs=_notifs.filter(function(n){return n.id!==id;});
-      updateBadge();
-      // Xóa DOM element trực tiếp (không rebuild toàn bộ)
-      var list=document.getElementById('notif-page-list');
-      if(list){
-        // Tìm element chứa onclick với id này và xóa
-        var rows=list.querySelectorAll('[data-notif-id="'+id+'"]');
-        rows.forEach(function(el){el.remove();});
-        // Nếu hết thông báo thì hiện empty state
-        if(_notifs.length===0){
-          list.innerHTML='<div style="padding:60px 20px;text-align:center;color:var(--text3)"><i class="ti ti-bell-off" style="font-size:40px;display:block;margin-bottom:12px;opacity:0.3"><\/i>Chưa có thông báo nào<\/div>';
-        }
-      }
-      // Xóa DB background
-      try{await sb.from('notifications').delete().eq('id',id);}catch(e){void e;}
-    };
-
-    // Delete all
-    window._notifDeleteAll=async function(){
-      if(!window.currentUser)return;
-      if(!confirm('Xóa tất cả thông báo?'))return;
-      _notifs=[];
-      rerender();
-      try{await sb.from('notifications').delete().eq('user_id',window.currentUser.id);}catch(e){void e;}
-    };
-
-    // Backward compat _notifAdd → push to DB for current user
-    window._notifAdd=function(title,body,action){
-      if(!window.currentUser)return;
-      window._notifPush(window.currentUser.id,title,body,action&&action.page);
-    };
-
-    // Expose notifs for renderNotifPage
-    window._getNotifs=function(){return _notifs;};
-    window._notifRender=rerender;
-    window._notifTimeAgo=timeAgo;
-
-    // Init after login
-    window._initNotifSystem=async function(){
-      await loadNotifs();
-      startNotifRealtime();
-      // Poll mỗi 30s để catch missed realtime
-      setInterval(loadNotifs, 30000);
-    };
-  })();
 
   (function(){
     var panel=document.getElementById('ai-panel');
