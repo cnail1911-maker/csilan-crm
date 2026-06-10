@@ -2862,6 +2862,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
       +'<option value="">Tất cả Lead</option>'+LEAD_OPTS.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'</option>';}).join('')+'</select>'
       +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-pot" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
       +'<option value="">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'" style="background:#1e1550">'+p+'</option>';}).join('')+'</select>'
+      +(function(){var stOpts=[...new Set((window._campSaleCusts&&window._campSaleCusts[key]||[]).map(function(c){return c.state;}).filter(Boolean))].sort();return '<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-state" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả State<\/option>'+stOpts.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'<\/option>';}).join('')+'<\/select>';})()
       +'<span class="csf-count" style="font-size:11px;color:var(--text3)">0 KH<\/span>'
       +'<\/div>'
       +'<div style="padding:30px;text-align:center;color:var(--text3)"><i class="ti ti-users" style="font-size:24px;display:block;margin-bottom:8px;opacity:0.3"></i>Không có kết quả<\/div>'
@@ -2886,7 +2887,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
     +'<option value="">Tất cả Potential</option>'
     +POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'" style="background:#1e1550">'+p+'</option>';}).join('')
     +'</select>'
-    +'<span class="csf-count" style="font-size:11px;color:var(--text3)">'+custs.length+' KH<\/span>'
+    +(function(){var stOpts=[...new Set((window._campSaleCusts&&window._campSaleCusts[key]||[]).map(function(c){return c.state;}).filter(Boolean))].sort();return '<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-state" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả State<\/option>'+stOpts.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'<\/option>';}).join('')+'<\/select>';})()
     +'<\/div>';
 
   // Phân trang 50 KH/trang
@@ -2915,7 +2916,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
     +filterBar
     +'<div style="overflow-x:auto"><table style="width:100%;min-width:520px">'
     +'<thead><tr style="font-size:10px;position:sticky;top:0;background:var(--bg2);z-index:1">'
-    +'<th>Mã KH<\/th><th>Business<\/th><th>Tên KH<\/th><th>Phone<\/th><th>Status<\/th><th>Lead<\/th><th>Sub Status<\/th><th>Potential<\/th>'
+    +'<th>Mã KH<\/th><th>Business<\/th><th>Tên KH<\/th><th>Phone<\/th><th>Status<\/th><th>Lead<\/th><th>Sub Status<\/th><th>Potential<\/th><th>State<\/th>'
     +(showDeadline?'<th>Deadline<\/th>':'')+'<th>Last<\/th><\/tr></thead>'
     +'<tbody class="csf-tbody">'+_campSaleRows(pagedCusts,showDeadline,key)+'</tbody>'
     +'<\/table><\/div>'
@@ -2941,6 +2942,7 @@ window._campSalePgGo=function(btn){
   var savedSub=(wrap.querySelector('.csf-substatus')||{}).value||'';
   var savedLead=(wrap.querySelector('.csf-lead')||{}).value||'';
   var savedPot=(wrap.querySelector('.csf-pot')||{}).value||'';
+  var savedState=(wrap.querySelector('.csf-state')||{}).value||'';
   var tmp=document.createElement('div');
   tmp.innerHTML=_campSaleTable(custs,sd==='1',key,true);
   var newWrap=tmp.firstChild;
@@ -2951,6 +2953,7 @@ window._campSalePgGo=function(btn){
     var nb=newWrap.querySelector('.csf-substatus');if(nb&&savedSub)nb.value=savedSub;
     var nl=newWrap.querySelector('.csf-lead');if(nl&&savedLead)nl.value=savedLead;
     var np=newWrap.querySelector('.csf-pot');if(np&&savedPot)np.value=savedPot;
+    var nst=newWrap.querySelector('.csf-state');if(nst&&savedState)nst.value=savedState;
     var cnt=newWrap.querySelector('.csf-count');if(cnt)cnt.textContent=custs.length+' KH';
   }
   wrap.parentNode.replaceChild(tmp.firstChild||newWrap,wrap);
@@ -2964,6 +2967,7 @@ window._campSaleFilter=function(key,wrap,sd){
   var substatus=(wrap.querySelector('.csf-substatus')||{}).value||'';
   var lead=(wrap.querySelector('.csf-lead')||{}).value||'';
   var pot=(wrap.querySelector('.csf-pot')||{}).value||'';
+  var state=(wrap.querySelector('.csf-state')||{}).value||'';
   var filtered=allCusts.filter(function(c){
     if(search){var s=search.toLowerCase();
       if(!(c.business_name||'').toLowerCase().includes(s)
@@ -2977,6 +2981,7 @@ window._campSaleFilter=function(key,wrap,sd){
     if(substatus&&c.sub_status!==substatus)return false;
     if(lead&&c.lead_status!==lead)return false;
     if(pot&&c.potential!==pot)return false;
+    if(state&&(c.state||'')!==state)return false;
     return true;
   });
   // Reset về trang 1 khi filter thay đổi
@@ -3000,6 +3005,8 @@ window._campSaleFilter=function(key,wrap,sd){
     if(newLead&&lead)newLead.value=lead;
     var newPot=newWrap.querySelector('.csf-pot');
     if(newPot&&pot)newPot.value=pot;
+    var newSt=newWrap.querySelector('.csf-state');
+    if(newSt&&state)newSt.value=state;
     var cnt=newWrap.querySelector('.csf-count');
     if(cnt)cnt.textContent=filtered.length+' KH';
   }
@@ -3049,6 +3056,7 @@ function _campSaleRows(custs,showDeadline,campKey){
       +'<td style="font-size:11px;color:var(--text2)">'+(c.lead_status||'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--text2)">'+(c.sub_status||'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--accent)">'+(c.potential||'—')+'<\/td>'
+      +'<td style="font-size:10px;color:var(--text3)">'+(c.state||'—')+'<\/td>'
       +(showDeadline?'<td>'+dlBadge+'<\/td>':'')
       +'<td style="font-size:10px;color:var(--text3)">'+lastC+'<\/td>'
       +'<\/tr>';
