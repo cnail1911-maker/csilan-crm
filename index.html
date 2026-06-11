@@ -1219,13 +1219,34 @@ async function doLogout(){await sb.auth.signOut();document.getElementById('app-s
     }
   }
 
+  var _lastNotifIds=new Set();
+  var _notifSystemReady=false;
   async function _loadNotifs(){
     if(!window.currentUser)return;
     try{
       var res=await sb.from('notifications')
         .select('*').eq('user_id',window.currentUser.id)
         .order('created_at',{ascending:false}).limit(50);
-      if(res.data){_notifs=res.data;_updateBadge();}
+      if(res.data){
+        var prev=_notifs;
+        _notifs=res.data;
+        _updateBadge();
+        // Show toast cho notification mới chưa đọc — cả lần đầu load và polling
+        if(typeof showCrmToast==='function'){
+          var now=Date.now();
+          res.data.forEach(function(n){
+            if(n.is_read)return;
+            if(_lastNotifIds.has(n.id))return;
+            // Chỉ toast nếu tạo trong vòng 5 phút (300s)
+            var age=(now-new Date(n.created_at).getTime())/1000;
+            if(age<=300){
+              showCrmToast(n.title,n.body,n.page||'notifications','info');
+            }
+          });
+        }
+        // Cập nhật set IDs đã biết
+        _lastNotifIds=new Set(res.data.map(function(n){return n.id;}));
+      }
     }catch(e){console.warn('[notif] load error',e);}
   }
 
