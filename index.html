@@ -1230,6 +1230,7 @@ async function doLogout(){await sb.auth.signOut();document.getElementById('app-s
       if(res.data){
         var prev=_notifs;
         _notifs=res.data;
+        console.log('[notif] loaded',res.data.length,'notifs, unread:',res.data.filter(function(n){return !n.is_read;}).length);
         _updateBadge();
         // Show toast cho notification mới chưa đọc — cả lần đầu load và polling
         if(typeof showCrmToast==='function'){
@@ -1276,9 +1277,11 @@ async function doLogout(){await sb.auth.signOut();document.getElementById('app-s
   }
 
   window._notifPush=async function(userId,title,body,page){
-    if(!userId)return;
+    if(!userId){console.warn('[notif] push: userId null/undefined');return;}
     try{
-      await sb.from('notifications').insert({user_id:userId,title:title,body:body,page:page||null});
+      var res=await sb.from('notifications').insert({user_id:userId,title:title,body:body,page:page||null});
+      if(res.error){console.warn('[notif] push DB error',res.error);}
+      else{console.log('[notif] push OK → user',userId,'title:',title);}
     }catch(e){console.warn('[notif] push error',e);}
   };
 
@@ -7990,6 +7993,19 @@ function handleNewMsg(m){
     if(!isSameRoom)toast(m.sender_name||'?',m.content||'',m.room_id,!!isMention,!!isReply);
     unread[m.room_id]=(unread[m.room_id]||0)+1;badge();
     renderRoomList();
+    // Push vào tab thông báo cho user hiện tại (nếu là group room)
+    var inRoom=rooms.find(function(r){return r.id===m.room_id;});
+    var isDM=inRoom&&inRoom.is_dm;
+    if(!isDM&&inRoom&&window._notifPush&&window.currentUser){
+      var roomLabel=inRoom.name||'nhóm chat';
+      var shortMsg=(m.content||'').slice(0,80);
+      window._notifPush(
+        window.currentUser.id,
+        '💬 '+(m.sender_name||'?')+' đã gửi tin nhắn trong '+roomLabel,
+        shortMsg,
+        'chat'
+      );
+    }
   }
 }
 
