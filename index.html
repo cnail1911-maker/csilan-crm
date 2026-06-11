@@ -7993,18 +7993,23 @@ function handleNewMsg(m){
     if(!isSameRoom)toast(m.sender_name||'?',m.content||'',m.room_id,!!isMention,!!isReply);
     unread[m.room_id]=(unread[m.room_id]||0)+1;badge();
     renderRoomList();
-    // Push vào tab thông báo cho user hiện tại (nếu là group room)
+    // Push vào tab thông báo cho manager/leader (nếu là group room, không phải DM)
     var inRoom=rooms.find(function(r){return r.id===m.room_id;});
-    var isDM=inRoom&&inRoom.is_dm;
-    if(!isDM&&inRoom&&window._notifPush&&window.currentUser){
+    var isDM=inRoom&&(inRoom.is_dm||inRoom.is_direct);
+    if(!isDM&&inRoom&&window._notifPush&&window.PROFILES){
       var roomLabel=inRoom.name||'nhóm chat';
       var shortMsg=(m.content||'').slice(0,80);
-      window._notifPush(
-        window.currentUser.id,
-        '💬 '+(m.sender_name||'?')+' đã gửi tin nhắn trong '+roomLabel,
-        shortMsg,
-        'chat'
-      );
+      var targets=window.PROFILES.filter(function(p){
+        return (p.role==='manager'||p.role==='leader')&&p.id!==m.user_id;
+      });
+      targets.forEach(function(p){
+        window._notifPush(
+          p.id,
+          '💬 '+(m.sender_name||'?')+' đã gửi tin nhắn trong '+roomLabel,
+          shortMsg,
+          'chat'
+        );
+      });
     }
   }
 }
