@@ -2892,6 +2892,12 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
     +POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'" style="background:#1e1550">'+p+'</option>';}).join('')
     +'</select>'
     +(function(){var stOpts=[...new Set((window._campSaleCusts&&window._campSaleCusts[key]||[]).map(function(c){return c.state;}).filter(Boolean))].sort();return '<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-state" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả State<\/option>'+stOpts.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'<\/option>';}).join('')+'<\/select>';})()
+    +'<div style="display:flex;align-items:center;gap:4px">'
+    +'<span style="font-size:10px;color:var(--text3);white-space:nowrap">Từ<\/span>'
+    +'<input type="date" class="csf-date-from" oninput="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:3px 7px;font-size:11px;color:#e0deff;outline:none;color-scheme:dark">'
+    +'<span style="font-size:10px;color:var(--text3);white-space:nowrap">đến<\/span>'
+    +'<input type="date" class="csf-date-to" oninput="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:3px 7px;font-size:11px;color:#e0deff;outline:none;color-scheme:dark">'
+    +'<\/div>'
     +'<\/div>';
 
   // Phân trang 50 KH/trang
@@ -2948,6 +2954,8 @@ window._campSalePgGo=function(btn){
   var savedLead=(wrap.querySelector('.csf-lead')||{}).value||'';
   var savedPot=(wrap.querySelector('.csf-pot')||{}).value||'';
   var savedState=(wrap.querySelector('.csf-state')||{}).value||'';
+  var savedDateFrom=(wrap.querySelector('.csf-date-from')||{}).value||'';
+  var savedDateTo=(wrap.querySelector('.csf-date-to')||{}).value||'';
   var tmp=document.createElement('div');
   tmp.innerHTML=_campSaleTable(custs,sd==='1',key,true);
   var newWrap=tmp.firstChild;
@@ -2959,6 +2967,8 @@ window._campSalePgGo=function(btn){
     var nl=newWrap.querySelector('.csf-lead');if(nl&&savedLead)nl.value=savedLead;
     var np=newWrap.querySelector('.csf-pot');if(np&&savedPot)np.value=savedPot;
     var nst=newWrap.querySelector('.csf-state');if(nst&&savedState)nst.value=savedState;
+    var ndf=newWrap.querySelector('.csf-date-from');if(ndf&&savedDateFrom)ndf.value=savedDateFrom;
+    var ndt=newWrap.querySelector('.csf-date-to');if(ndt&&savedDateTo)ndt.value=savedDateTo;
     var cnt=newWrap.querySelector('.csf-count');if(cnt)cnt.textContent=custs.length+' KH';
   }
   wrap.parentNode.replaceChild(tmp.firstChild||newWrap,wrap);
@@ -2973,6 +2983,8 @@ window._campSaleFilter=function(key,wrap,sd){
   var lead=(wrap.querySelector('.csf-lead')||{}).value||'';
   var pot=(wrap.querySelector('.csf-pot')||{}).value||'';
   var state=(wrap.querySelector('.csf-state')||{}).value||'';
+  var dateFrom=(wrap.querySelector('.csf-date-from')||{}).value||'';
+  var dateTo=(wrap.querySelector('.csf-date-to')||{}).value||'';
   var filtered=allCusts.filter(function(c){
     if(search){var s=search.toLowerCase();
       if(!(c.business_name||'').toLowerCase().includes(s)
@@ -2987,6 +2999,11 @@ window._campSaleFilter=function(key,wrap,sd){
     if(lead&&c.lead_status!==lead)return false;
     if(pot&&c.potential!==pot)return false;
     if(state&&(c.state||'')!==state)return false;
+    if(dateFrom||dateTo){
+      var cd=c.created_at?c.created_at.slice(0,10):'';
+      if(dateFrom&&cd<dateFrom)return false;
+      if(dateTo&&cd>dateTo)return false;
+    }
     return true;
   });
   // Reset về trang 1 khi filter thay đổi
@@ -3012,6 +3029,10 @@ window._campSaleFilter=function(key,wrap,sd){
     if(newPot&&pot)newPot.value=pot;
     var newSt=newWrap.querySelector('.csf-state');
     if(newSt&&state)newSt.value=state;
+    var ndf=newWrap.querySelector('.csf-date-from');
+    if(ndf&&dateFrom)ndf.value=dateFrom;
+    var ndt=newWrap.querySelector('.csf-date-to');
+    if(ndt&&dateTo)ndt.value=dateTo;
     var cnt=newWrap.querySelector('.csf-count');
     if(cnt)cnt.textContent=filtered.length+' KH';
   }
@@ -3682,9 +3703,24 @@ async function custAssignToSale(saleId,saleName){
   }
   var saleProf=PROFILES.find(function(p){return p.id===saleId;});
   var idSet=new Set(ids);
+  var assignedCusts=[];
   CUSTOMERS.forEach(function(c){
-    if(idSet.has(c.id)){c.assigned_to=saleId;c.assigned_profile=saleProf||null;}
+    if(idSet.has(c.id)){c.assigned_to=saleId;c.assigned_profile=saleProf||null;assignedCusts.push(c);}
   });
+  // Push notification cho sale
+  if(window._notifPush&&saleId){
+    var notifPromises=assignedCusts.map(function(c){
+      var dlStr=c.assigned_deadline
+        ?(function(){var d=new Date(c.assigned_deadline);return (d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear());})()
+        :'chưa có';
+      var potStr=c.potential||'chưa xác định';
+      var stStr=c.state||'';
+      var title='📋 Bạn được giao khách mới';
+      var body='Bạn vừa nhận được khách hàng '+(c.customer_name||c.business_name||'')+(c.ma_kh?' '+c.ma_kh:'')+(stStr?' ở '+stStr:'')+' có nhu cầu về '+potStr+(c.assigned_deadline?' - Deadline đến ngày '+dlStr:'');
+      return window._notifPush(saleId,title,body,'customers');
+    });
+    Promise.all(notifPromises).catch(function(e){console.warn('[assign notif]',e);});
+  }
   window._custSelected.clear();
   showLoading(false);
   alert('Đã assign '+ids.length+' khách cho '+saleName+'!');
