@@ -89,9 +89,10 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .stat-label{font-size:10px;color:var(--text2);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px}
 .stat-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700}
 .stat-sub{font-size:10px;color:var(--text3);margin-top:3px}
-.panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:14px}
-.panel-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.02)}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:visible;margin-bottom:14px}
+.panel-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface);position:sticky;top:0;z-index:20;border-radius:14px 14px 0 0}
 .panel-header h2{font-size:13px;font-weight:600;flex:1}
+thead tr{position:sticky;top:41px;z-index:19;background:var(--bg2);}
 .fsel{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;padding:5px 8px;border-radius:7px;font-family:'Be Vietnam Pro',sans-serif;cursor:pointer;outline:none}
 .fsel option{background:#1a1240}
 table{width:100%;border-collapse:collapse;table-layout:fixed}
@@ -2897,7 +2898,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
       +'<\/div>';
   }
 
-  var filterBar='<div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center">'
+  var filterBar='<div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;position:sticky;top:0;z-index:18;background:var(--surface)">'
     +'<input placeholder="🔍 Tìm tên, mã KH..." oninput="window._campSaleFilterDebounced(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text);outline:none">'
     +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-status" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
     +'<option value="">Tất cả Status</option>'
@@ -2949,7 +2950,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
   return '<div class="camp-section-wrap" data-key="'+key+'" data-sd="'+sd+'">'
     +filterBar
     +'<div style="overflow-x:auto"><table style="width:100%;min-width:520px">'
-    +'<thead><tr style="font-size:10px;position:sticky;top:0;background:var(--bg2);z-index:1">'
+    +'<thead><tr style="font-size:10px;position:sticky;top:41px;background:var(--bg2);z-index:1">'
     +'<th>Mã KH<\/th><th>Business<\/th><th>Tên KH<\/th><th>Phone<\/th><th>Status<\/th><th>Lead<\/th><th>Sub Status<\/th><th>Potential<\/th><th>State<\/th>'
     +(showDeadline?'<th>Deadline<\/th>':'')+'<th>Last<\/th><\/tr></thead>'
     +'<tbody class="csf-tbody">'+_campSaleRows(pagedCusts,showDeadline,key,_campOffset)+'</tbody>'
@@ -6548,7 +6549,7 @@ function render(){
     const fToD=window._dailyTo||todayD.toISOString().slice(0,10);
     const fSaleD=window._dailySale||'all';
     m.innerHTML='<div class="topbar"><div class="topbar-title">Daily Report<\/div><\/div>'
-      +'<div class="content"><div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">'
+      +'<div class="content"><div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;position:sticky;top:0;z-index:20;background:var(--main);padding:12px 0 10px">'
       +'<div style="font-size:11px;color:var(--text3)">Từ ngày<\/div>'
       +'<input type="date" id="daily-from" value="'+fFromD+'" onchange="window._dailyFrom=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">'
       +'<div style="font-size:11px;color:var(--text3)">đến<\/div>'
