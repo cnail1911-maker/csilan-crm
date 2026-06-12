@@ -2956,7 +2956,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
   return '<div class="camp-section-wrap" data-key="'+key+'" data-sd="'+sd+'">'
     +filterBar
     +'<div style="overflow-x:auto"><table style="width:100%;min-width:520px">'
-    +'<thead><tr style="font-size:10px;position:sticky;top:94px;background:#0f0c24;z-index:1;box-shadow:0 1px 0 var(--border)">'
+    +'<thead><tr style="font-size:10px;position:sticky;top:106px;background:#0f0c24;z-index:1;box-shadow:0 1px 0 var(--border)">'
     +'<th>Mã KH<\/th><th>Business<\/th><th>Tên KH<\/th><th>Phone<\/th><th>Status<\/th><th>Lead<\/th><th>Sub Status<\/th><th>Potential<\/th><th>State<\/th>'
     +(showDeadline?'<th>Deadline<\/th>':'')+'<th>Last<\/th><\/tr></thead>'
     +'<tbody class="csf-tbody">'+_campSaleRows(pagedCusts,showDeadline,key,_campOffset)+'</tbody>'
@@ -3445,7 +3445,7 @@ window._campShowDetail=function(campName){
     +'<tbody>'+saleRows+'</tbody><\/table><\/div><\/div>'
     // Customer list with filter
     +'<div style="padding:0 12px 12px" id="camp-detail-cust-section">'
-    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;position:sticky;top:0;z-index:6;background:#1a1240;padding:6px 0">'
     +'<div style="font-size:11px;font-weight:600;color:var(--text2)">Danh sách khách<\/div>'
     +'<span id="camp-detail-filter-label" style="font-size:10px;color:var(--text3)"><\/span>'
     +'<button id="camp-detail-clear-filter" onclick="window._campDetailFilter(\'all\',custs,invMap)" style="display:none;font-size:10px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--text3);cursor:pointer;padding:1px 6px">× Xóa lọc<\/button>'
@@ -3557,7 +3557,7 @@ window._campDetailRenderPage=function(pg){
   }
 
   tableEl.innerHTML='<div style="overflow-x:auto"><table style="min-width:560px;width:100%">'
-    +'<thead><tr style="font-size:10px"><th>Mã KH<\/th><th>Business<\/th><th>Phone<\/th><th>Potential<\/th><th>Status<\/th><th>Invoice<\/th><th>Sale<\/th><th>Deadline<\/th><\/tr></thead>'
+    +'<thead><tr style="font-size:10px;position:sticky;top:0;z-index:5;background:#1a1240"><th>Mã KH<\/th><th>Business<\/th><th>Phone<\/th><th>Potential<\/th><th>Status<\/th><th>Invoice<\/th><th>Sale<\/th><th>Deadline<\/th><\/tr></thead>'
     +'<tbody>'+custRows+'</tbody><\/table><\/div>'
     +pgBar;
 };
