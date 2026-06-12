@@ -90,9 +90,9 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .stat-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700}
 .stat-sub{font-size:10px;color:var(--text3);margin-top:3px}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:visible;margin-bottom:14px}
-.panel-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface);position:sticky;top:0;z-index:20;border-radius:14px 14px 0 0}
+.panel-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:#1a1240;position:sticky;top:0;z-index:20;border-radius:14px 14px 0 0}
 .panel-header h2{font-size:13px;font-weight:600;flex:1}
-thead tr{position:sticky;top:41px;z-index:19;background:var(--bg2);}
+thead tr{position:sticky;top:41px;z-index:19;background:var(--bg2);box-shadow:0 1px 0 var(--border);}
 .fsel{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;padding:5px 8px;border-radius:7px;font-family:'Be Vietnam Pro',sans-serif;cursor:pointer;outline:none}
 .fsel option{background:#1a1240}
 table{width:100%;border-collapse:collapse;table-layout:fixed}
@@ -306,8 +306,12 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     .stat-val{font-size:24px}
     .stats-row-compact{grid-template-columns:1fr 1fr !important}
     table{font-size:10px;display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+    /* Giữ sticky thead trên mobile: table phải là block nhưng thead/tbody cần display:table */
+    table thead{display:table;width:100%;}
+    table tbody{display:table;width:100%;}
+    table thead tr{display:table-row;position:static;}/* mobile: disable thead sticky, dùng panel-header sticky thay thế */
     th,td{padding:6px 8px}
-    .panel-header{flex-direction:column;gap:8px;align-items:flex-start}
+    .panel-header{flex-direction:column;gap:8px;align-items:flex-start;top:0;background:#1a1240}
     .modal-overlay{align-items:flex-end;padding:0}
     .modal{border-radius:16px 16px 0 0;margin:0;max-width:100% !important;max-height:90vh;overflow-y:auto}
     .pipe-grid{flex-direction:column;gap:12px;padding:10px}
@@ -2898,7 +2902,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
       +'<\/div>';
   }
 
-  var filterBar='<div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;position:sticky;top:0;z-index:18;background:var(--surface)">'
+  var filterBar='<div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;position:sticky;top:0;z-index:18;background:#1a1240;box-shadow:0 2px 0 var(--surface)">'
     +'<input placeholder="🔍 Tìm tên, mã KH..." oninput="window._campSaleFilterDebounced(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text);outline:none">'
     +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-status" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
     +'<option value="">Tất cả Status</option>'
@@ -2950,7 +2954,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
   return '<div class="camp-section-wrap" data-key="'+key+'" data-sd="'+sd+'">'
     +filterBar
     +'<div style="overflow-x:auto"><table style="width:100%;min-width:520px">'
-    +'<thead><tr style="font-size:10px;position:sticky;top:41px;background:var(--bg2);z-index:1">'
+    +'<thead><tr style="font-size:10px;position:sticky;top:41px;background:var(--bg2);z-index:1;box-shadow:0 1px 0 var(--border)">'
     +'<th>Mã KH<\/th><th>Business<\/th><th>Tên KH<\/th><th>Phone<\/th><th>Status<\/th><th>Lead<\/th><th>Sub Status<\/th><th>Potential<\/th><th>State<\/th>'
     +(showDeadline?'<th>Deadline<\/th>':'')+'<th>Last<\/th><\/tr></thead>'
     +'<tbody class="csf-tbody">'+_campSaleRows(pagedCusts,showDeadline,key,_campOffset)+'</tbody>'
@@ -6549,7 +6553,7 @@ function render(){
     const fToD=window._dailyTo||todayD.toISOString().slice(0,10);
     const fSaleD=window._dailySale||'all';
     m.innerHTML='<div class="topbar"><div class="topbar-title">Daily Report<\/div><\/div>'
-      +'<div class="content"><div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;position:sticky;top:0;z-index:20;background:var(--main);padding:12px 0 10px">'
+      +'<div class="content"><div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;position:sticky;top:0;z-index:20;background:var(--main);padding:12px 0 10px;box-shadow:0 2px 0 var(--main)">'
       +'<div style="font-size:11px;color:var(--text3)">Từ ngày<\/div>'
       +'<input type="date" id="daily-from" value="'+fFromD+'" onchange="window._dailyFrom=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">'
       +'<div style="font-size:11px;color:var(--text3)">đến<\/div>'
