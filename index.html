@@ -308,7 +308,10 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     .stat-card{padding:10px 12px}
     .stat-val{font-size:24px}
     .stats-row-compact{grid-template-columns:1fr 1fr !important}
-    table{font-size:10px;display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+    table{font-size:10px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+    table thead,table tbody{display:table;width:100%;}
+    table thead tr{display:table-row;position:static;}
+    .panel>div[style*="overflow-x"]{overflow-x:auto !important;}
     /* Giữ sticky thead trên mobile: table phải là block nhưng thead/tbody cần display:table */
     table thead{display:table;width:100%;}
     table tbody{display:table;width:100%;}
@@ -2960,7 +2963,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
   }
   return '<div class="camp-section-wrap" data-key="'+key+'" data-sd="'+sd+'">'
     +filterBar
-    +'<div style="overflow-x:auto"><table style="width:100%;min-width:520px">'
+    +'<div style="overflow-x:clip"><table style="width:100%;min-width:520px">'
     +'<thead><tr style="font-size:10px;background:#0f0c24;z-index:1;box-shadow:0 1px 0 var(--border)">'
     +'<th>Mã KH<\/th><th>Business<\/th><th>Tên KH<\/th><th>Phone<\/th><th>Status<\/th><th>Lead<\/th><th>Sub Status<\/th><th>Potential<\/th><th>State<\/th>'
     +(showDeadline?'<th>Deadline<\/th>':'')+'<th>Last<\/th><\/tr></thead>'
@@ -3449,7 +3452,7 @@ window._campShowDetail=function(campName){
     +'<\/div>'
     // Per-sale table
     +'<div style="padding:0 12px 12px"><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px">Hiệu suất theo Sale<\/div>'
-    +'<div style="overflow-x:auto"><table style="min-width:460px;width:100%">'
+    +'<div style="overflow-x:clip"><table style="min-width:460px;width:100%">'
     +'<thead><tr style="font-size:10px"><th>Sale<\/th><th>Data<\/th><th>Called<\/th><th style="color:var(--accent)">Pot.<\/th><th style="color:var(--accent2)">Ord<\/th><th style="color:var(--brand2)">Rev<\/th><th style="color:var(--warn)">EstOrd<\/th><th style="color:var(--warn)">EstRev<\/th><\/tr></thead>'
     +'<tbody>'+saleRows+'</tbody><\/table><\/div><\/div>'
     // Customer list with filter
@@ -3459,7 +3462,7 @@ window._campShowDetail=function(campName){
     +'<span id="camp-detail-filter-label" style="font-size:10px;color:var(--text3)"><\/span>'
     +'<button id="camp-detail-clear-filter" onclick="window._campDetailFilter(\'all\',custs,invMap)" style="display:none;font-size:10px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--text3);cursor:pointer;padding:1px 6px">× Xóa lọc<\/button>'
     +'<\/div>'
-    +'<div style="overflow-x:auto" id="camp-detail-cust-table"><\/div><\/div>';
+    +'<div style="overflow-x:clip" id="camp-detail-cust-table"><\/div><\/div>';
 
   // Store refs for filter
   box._custs=custs;box._invMap=invMap;
@@ -3565,7 +3568,7 @@ window._campDetailRenderPage=function(pg){
     pgBar+='<\/div><\/div>';
   }
 
-  tableEl.innerHTML='<div style="overflow-x:auto"><table style="min-width:560px;width:100%">'
+  tableEl.innerHTML='<div style="overflow-x:clip"><table style="min-width:560px;width:100%">'
     +'<thead><tr style="font-size:10px;position:sticky;top:0;z-index:5;background:#1a1240"><th>Mã KH<\/th><th>Business<\/th><th>Phone<\/th><th>Potential<\/th><th>Status<\/th><th>Invoice<\/th><th>Sale<\/th><th>Deadline<\/th><\/tr></thead>'
     +'<tbody>'+custRows+'</tbody><\/table><\/div>'
     +pgBar;
@@ -4066,7 +4069,7 @@ function renderProducts(){
     +(fVendor!=='all'?' <span style="font-size:11px;color:var(--text3)">· '+fVendor+'<\/span>':'')
     +'<\/h2><\/div>'
     +(filtered.length===0?'<div class="empty-state"><i class="ti ti-package"></i>Không tìm thấy sản phẩm<\/div>'
-      :'<div style="overflow-x:auto"><table style="min-width:'+(isManagerProd?'1060px':'680px')+';width:100%"><colgroup>'
+      :'<div style="overflow-x:clip"><table style="min-width:'+(isManagerProd?'1060px':'680px')+';width:100%"><colgroup>'
       +(isManagerProd
         ?'<col width="80"><col width="200"><col width="80"><col width="80"><col width="100"><col width="80"><col width="130"><col width="130"><col width="180">'
         :'<col width="80"><col width="240"><col width="80"><col width="80"><col width="110"><col width="80"><col width="80">')
@@ -4736,7 +4739,7 @@ async function renderKPIAsync(){
 
   var detailTable='<div class="panel">'
     +'<div class="panel-header"><h2>Chi tiết theo Sale<\/h2><button class="btn" style="padding:3px 10px;font-size:11px" onclick="this.closest(\'.panel\').querySelector(\'table\').style.display=this.closest(\'.panel\').querySelector(\'table\').style.display===\'none\'?\'table\':\'none\'">Ẩn/Hiện<\/button><\/div>'
-    +'<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:700px;width:100%">'
+    +'<div style="overflow-x:clip"><table style="min-width:700px;width:100%">'
     +'<thead><tr style="font-size:10px">'
     +'<th style="white-space:nowrap">Sale<\/th><th>Data<\/th><th>New<\/th><th>Follow<\/th><th>Comp.<\/th>'
     +'<th style="color:var(--accent)">Pot.<\/th>'
@@ -6589,21 +6592,28 @@ function render(){
 
 // ── Fix sticky thead: đo panel-header + filterBar height runtime ──
 window._fixStickyThead=function(){
-  // Với mỗi panel, tìm thead và set top = ph + filterbar height
   document.querySelectorAll('.panel').forEach(function(panel){
     var ph=panel.querySelector(':scope>.panel-header');
     var fb=panel.querySelector(':scope .csf-filterbar');
-    var phH=ph?ph.getBoundingClientRect().height:0;
-    var fbH=fb?fb.getBoundingClientRect().height:0;
-    var topVal=Math.round(phH+fbH);
+    // offsetHeight hoạt động kể cả khi element ngoài viewport
+    // Nhưng nếu panel đang display:none thì skip
+    if(!panel.offsetParent&&panel.style.display==='none')return;
+    var phH=ph?ph.offsetHeight:0;
+    var fbH=fb?fb.offsetHeight:0;
+    var topVal=phH+fbH;
     panel.querySelectorAll('thead tr').forEach(function(tr){
       tr.classList.add('sticky-thead-active');
       tr.style.top=topVal+'px';
     });
   });
-  // Daily tab: thead không trong .panel
-  var dailyContent=document.querySelector('.content:not(:has(.panel)) thead tr');
-  if(dailyContent){dailyContent.classList.add('sticky-thead-active');dailyContent.style.top='0px';}
+  // Daily và các tab không có .panel
+  var content=document.querySelector('.content');
+  if(content)content.querySelectorAll('thead tr').forEach(function(tr){
+    if(!tr.closest('.panel')){
+      tr.classList.add('sticky-thead-active');
+      tr.style.top='0px';
+    }
+  });
 };
 
 // BOOT
