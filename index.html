@@ -72,7 +72,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .btn-primary{background:linear-gradient(135deg,var(--brand),var(--brand-dark));border-color:transparent;color:#fff;font-weight:600}
 .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(108,92,231,0.4)}
 .btn-danger{border-color:rgba(255,118,117,0.4);color:var(--danger)}
-.content{flex:1;overflow:auto;padding:16px 20px}
+.content{flex:1;overflow:auto;padding:0 20px 16px}
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px 20px;background:#0f0c24;flex-shrink:0;position:sticky;top:0;z-index:25;}
 .stat-card{border-radius:14px;padding:14px 16px;position:relative;overflow:hidden;border:1px solid var(--border)}
 .stats-row-compact{gap:7px}
@@ -302,7 +302,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     #main-content{display:flex;flex-direction:column;}
     .content{box-sizing:border-box;}
     .stats-row{grid-template-columns:1fr 1fr !important;gap:8px;position:static !important;padding:0 !important;margin-top:0 !important}
-    .stats-row{position:sticky;top:0;z-index:25;overflow-x:auto;flex-wrap:nowrap;display:flex;gap:8px;padding:8px 12px;}
+    .stats-row{position:sticky;top:0;z-index:25;overflow-x:auto;flex-wrap:nowrap;display:flex;gap:8px;padding:8px 12px;-webkit-overflow-scrolling:touch;}
     .stats-row .stat-card{min-width:110px;flex-shrink:0;}
     .stat-card{padding:10px 12px}
     .stat-val{font-size:24px}
@@ -2904,7 +2904,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
       +'<\/div>';
   }
 
-  var filterBar='<div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;position:sticky;top:0;z-index:18;background:#0f0c24;box-shadow:0 2px 0 var(--surface)">'
+  var filterBar='<div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;position:sticky;top:46px;z-index:18;background:#0f0c24;box-shadow:0 2px 0 var(--surface)">'
     +'<input placeholder="🔍 Tìm tên, mã KH..." oninput="window._campSaleFilterDebounced(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text);outline:none">'
     +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-status" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
     +'<option value="">Tất cả Status</option>'
@@ -2956,7 +2956,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
   return '<div class="camp-section-wrap" data-key="'+key+'" data-sd="'+sd+'">'
     +filterBar
     +'<div style="overflow-x:auto"><table style="width:100%;min-width:520px">'
-    +'<thead><tr style="font-size:10px;position:sticky;top:41px;background:var(--bg2);z-index:1;box-shadow:0 1px 0 var(--border)">'
+    +'<thead><tr style="font-size:10px;position:sticky;top:94px;background:#0f0c24;z-index:1;box-shadow:0 1px 0 var(--border)">'
     +'<th>Mã KH<\/th><th>Business<\/th><th>Tên KH<\/th><th>Phone<\/th><th>Status<\/th><th>Lead<\/th><th>Sub Status<\/th><th>Potential<\/th><th>State<\/th>'
     +(showDeadline?'<th>Deadline<\/th>':'')+'<th>Last<\/th><\/tr></thead>'
     +'<tbody class="csf-tbody">'+_campSaleRows(pagedCusts,showDeadline,key,_campOffset)+'</tbody>'
