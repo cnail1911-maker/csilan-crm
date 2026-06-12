@@ -73,7 +73,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(108,92,231,0.4)}
 .btn-danger{border-color:rgba(255,118,117,0.4);color:var(--danger)}
 .content{flex:1;overflow:auto;padding:16px 20px}
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px 20px;background:var(--main);flex-shrink:0;}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px 20px;background:#0f0c24;flex-shrink:0;position:sticky;top:0;z-index:25;}
 .stat-card{border-radius:14px;padding:14px 16px;position:relative;overflow:hidden;border:1px solid var(--border)}
 .stats-row-compact{gap:7px}
 .stats-row-compact .stat-card{padding:10px 12px;border-radius:10px}
@@ -90,9 +90,9 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .stat-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700}
 .stat-sub{font-size:10px;color:var(--text3);margin-top:3px}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:visible;margin-bottom:14px}
-.panel-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:#1a1240;position:sticky;top:0;z-index:20;border-radius:14px 14px 0 0}
+.panel-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:#0f0c24;position:sticky;top:0;z-index:20;border-radius:14px 14px 0 0;box-shadow:0 1px 0 var(--border)}
 .panel-header h2{font-size:13px;font-weight:600;flex:1}
-thead tr{position:sticky;top:41px;z-index:19;background:var(--bg2);box-shadow:0 1px 0 var(--border);}
+thead tr{position:sticky;top:41px;z-index:19;background:#0f0c24;box-shadow:0 1px 0 var(--border);}
 .fsel{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;padding:5px 8px;border-radius:7px;font-family:'Be Vietnam Pro',sans-serif;cursor:pointer;outline:none}
 .fsel option{background:#1a1240}
 table{width:100%;border-collapse:collapse;table-layout:fixed}
@@ -302,6 +302,8 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     #main-content{display:flex;flex-direction:column;}
     .content{box-sizing:border-box;}
     .stats-row{grid-template-columns:1fr 1fr !important;gap:8px;position:static !important;padding:0 !important;margin-top:0 !important}
+    .stats-row{position:sticky;top:0;z-index:25;overflow-x:auto;flex-wrap:nowrap;display:flex;gap:8px;padding:8px 12px;}
+    .stats-row .stat-card{min-width:110px;flex-shrink:0;}
     .stat-card{padding:10px 12px}
     .stat-val{font-size:24px}
     .stats-row-compact{grid-template-columns:1fr 1fr !important}
@@ -311,7 +313,7 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
     table tbody{display:table;width:100%;}
     table thead tr{display:table-row;position:static;}/* mobile: disable thead sticky, dùng panel-header sticky thay thế */
     th,td{padding:6px 8px}
-    .panel-header{flex-direction:column;gap:8px;align-items:flex-start;top:0;background:#1a1240}
+    .panel-header{flex-direction:column;gap:8px;align-items:flex-start;top:0;background:#0f0c24}
     .modal-overlay{align-items:flex-end;padding:0}
     .modal{border-radius:16px 16px 0 0;margin:0;max-width:100% !important;max-height:90vh;overflow-y:auto}
     .pipe-grid{flex-direction:column;gap:12px;padding:10px}
@@ -2902,7 +2904,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
       +'<\/div>';
   }
 
-  var filterBar='<div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;position:sticky;top:0;z-index:18;background:#1a1240;box-shadow:0 2px 0 var(--surface)">'
+  var filterBar='<div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;position:sticky;top:0;z-index:18;background:#0f0c24;box-shadow:0 2px 0 var(--surface)">'
     +'<input placeholder="🔍 Tìm tên, mã KH..." oninput="window._campSaleFilterDebounced(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text);outline:none">'
     +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-status" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
     +'<option value="">Tất cả Status</option>'
@@ -6484,12 +6486,12 @@ function renderSchedule(){
   const saleFilter=isManager?'<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==="sale";}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>':'';
 
   return '<div class="topbar"><div class="topbar-title">Lịch hẹn<\/div>'+saleFilter+'<\/div>'
-    +'<div class="content">'
     +'<div class="stats-row">'
     +'<div class="stat-card sc2"><div class="stat-label">Sắp tới<\/div><div class="stat-val" style="color:var(--accent2)">'+upcoming.length+'<\/div><\/div>'
     +'<div class="stat-card sc3"><div class="stat-label">Đã qua<\/div><div class="stat-val" style="color:var(--danger)">'+past.length+'<\/div><\/div>'
     +'<div class="stat-card sc0"><div class="stat-label">Tổng lịch hẹn<\/div><div class="stat-val" style="color:var(--brand2)">'+scheduled.length+'<\/div><\/div>'
     +'<\/div>'
+    +'<div class="content">'
     +'<div class="panel" style="margin-bottom:14px"><div class="panel-header"><h2>🗓 Sắp tới <span style="color:var(--accent2)">'+upcoming.length+'<\/span><\/h2><\/div>'
     +(upcoming.length===0?'<div class="empty-state"><i class="ti ti-calendar-off"></i>Không có lịch hẹn nào sắp tới<\/div>'
       :'<table><colgroup><col width="80"><col width="130"><col width="110"><col width="100"><col width="90"><col width="90"><col width="80"><col width="70"></colgroup>'
