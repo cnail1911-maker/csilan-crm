@@ -3421,11 +3421,16 @@ window._campShowDetail=function(campName){
     else if(inv.approval_status==='pending'){bySale[sid].estOrd++;bySale[sid].estRev+=(inv.total||0);}}
   });
   var saleRows=Object.values(bySale).sort(function(a,b){return b.rev-a.rev;}).map(function(s){
+    var potPct=s.data?Math.round(s.potential/s.data*100):0;
+    var ordPct=s.estOrd?Math.round(s.orders/s.estOrd*100):0;
+    var estOrdPct=s.potential?Math.round(s.estOrd/s.potential*100):0;
     return '<tr><td>'+s.name.split(' ').pop()+'<\/td><td>'+s.data+'<\/td>'
       +'<td>'+s.called+' <span style="font-size:9px;color:var(--text3)">('+( s.data?Math.round(s.called/s.data*100):0)+'%)<\/span><\/td>'
-      +'<td style="color:var(--accent)">'+s.potential+'<\/td><td style="color:var(--accent2)">'+s.orders+'<\/td>'
+      +'<td style="color:var(--accent)">'+s.potential+'<span style="font-size:9px;color:var(--text3);margin-left:2px">('+potPct+'%)<\/span><\/td>'
+      +'<td style="color:var(--accent2)">'+s.orders+'<span style="font-size:9px;color:var(--text3);margin-left:2px">('+ordPct+'%)<\/span><\/td>'
       +'<td style="color:var(--brand2)">$'+s.rev.toLocaleString('en-US')+'<\/td>'
-      +'<td style="color:var(--warn)">'+s.estOrd+'<\/td><td style="color:var(--warn)">$'+s.estRev.toLocaleString('en-US')+'<\/td><\/tr>';
+      +'<td style="color:var(--warn)">'+s.estOrd+'<span style="font-size:9px;color:var(--text3);margin-left:2px">('+estOrdPct+'%)<\/span><\/td>'
+      +'<td style="color:var(--warn)">$'+s.estRev.toLocaleString('en-US')+'<\/td><\/tr>';
   }).join('');
   var custRows=custs.map(function(c){
     var inv=invMap[c.id];
@@ -3471,11 +3476,28 @@ window._campShowDetail=function(campName){
     +'<tbody style="background:#1a1240">'+saleRows+'</tbody><\/table><\/div><\/div><\/div>'
     // Customer list — flex:1 scroll riêng, thead sticky
     +'<div style="flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;min-height:0" id="camp-detail-cust-section">'
-    +'<div style="display:flex;align-items:center;gap:8px;padding:6px 12px;position:sticky;top:0;z-index:6;background:#1a1240;border-top:1px solid var(--border);border-bottom:1px solid var(--border);flex-shrink:0">'
-    +'<div style="font-size:11px;font-weight:600;color:var(--text2)">Danh sách khách<\/div>'
+    +'<div style="padding:8px 12px;position:sticky;top:0;z-index:6;background:#1a1240;border-top:1px solid var(--border);border-bottom:1px solid var(--border);flex-shrink:0">'
+    +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+    +'<div style="font-size:11px;font-weight:600;color:var(--text2);white-space:nowrap">Danh sách khách<\/div>'
+    +(function(){
+      var opts=['New','Follow','Completed'].map(function(v){return '<option value="'+v+'">'+v+'<\/option>';}).join('');
+      return '<select id="cd-f-status" onchange="window._campDetailApplyFilters()" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:3px 7px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả Status<\/option>'+opts+'<\/select>';
+    })()
+    +(function(){
+      var pOpts=[...new Set(custs.map(function(c){return c.potential;}).filter(Boolean))].sort();
+      return '<select id="cd-f-pot" onchange="window._campDetailApplyFilters()" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:3px 7px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả Potential<\/option>'+pOpts.map(function(p){return '<option value="'+p+'">'+p+'<\/option>';}).join('')+'<\/select>';
+    })()
+    +(function(){
+      var ssOpts=[...new Set(custs.map(function(c){return c.sub_status;}).filter(Boolean))].sort();
+      return '<select id="cd-f-ss" onchange="window._campDetailApplyFilters()" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:3px 7px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả Sub-status<\/option>'+ssOpts.map(function(s){return '<option value="'+s+'">'+s+'<\/option>';}).join('')+'<\/select>';
+    })()
+    +(function(){
+      var sOpts=[...new Set(custs.map(function(c){return c.assigned_profile?c.assigned_profile.full_name:null;}).filter(Boolean))].sort();
+      return '<select id="cd-f-sale" onchange="window._campDetailApplyFilters()" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:3px 7px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả Sale<\/option>'+sOpts.map(function(s){return '<option value="'+s+'">'+s.split(' ').pop()+'<\/option>';}).join('')+'<\/select>';
+    })()
     +'<span id="camp-detail-filter-label" style="font-size:10px;color:var(--text3)"><\/span>'
-    +'<button id="camp-detail-clear-filter" onclick="window._campDetailFilter(\'all\',custs,invMap)" style="display:none;font-size:10px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--text3);cursor:pointer;padding:1px 6px">× Xóa lọc<\/button>'
-    +'<\/div>'
+    +'<button id="camp-detail-clear-filter" onclick="window._campDetailClearFilters()" style="display:none;font-size:10px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--text3);cursor:pointer;padding:1px 6px">× Xóa lọc<\/button>'
+    +'<\/div><\/div>'
     +'<div style="overflow-x:auto;flex:1" id="camp-detail-cust-table"><\/div><\/div>';
 
   // Store refs for filter
@@ -3496,6 +3518,41 @@ function _campDetailStatCard(label,val,filterKey,color){
 // Pagination state cho camp detail
 if(!window._campDetailPg)window._campDetailPg={page:1,filtered:[],filterKey:'all'};
 var CAMP_DETAIL_PAGE_SIZE=50;
+
+// Bộ lọc dropdown mới: Status/Potential/Sub-status/Sale
+window._campDetailApplyFilters=function(){
+  var box=document.getElementById('camp-detail-box');
+  if(!box)return;
+  var allCusts=box._custs||[];
+  var fStatus=(document.getElementById('cd-f-status')||{}).value||'';
+  var fPot=(document.getElementById('cd-f-pot')||{}).value||'';
+  var fSS=(document.getElementById('cd-f-ss')||{}).value||'';
+  var fSale=(document.getElementById('cd-f-sale')||{}).value||'';
+  var filtered=allCusts.filter(function(c){
+    if(fStatus&&c.status!==fStatus)return false;
+    if(fPot&&(c.potential||'')!==fPot)return false;
+    if(fSS&&(c.sub_status||'')!==fSS)return false;
+    if(fSale&&(!c.assigned_profile||c.assigned_profile.full_name!==fSale))return false;
+    return true;
+  });
+  var anyFilter=fStatus||fPot||fSS||fSale;
+  var lbl=document.getElementById('camp-detail-filter-label');
+  var clearBtn=document.getElementById('camp-detail-clear-filter');
+  if(lbl)lbl.textContent=anyFilter?'('+filtered.length+' KH)':'';
+  if(clearBtn)clearBtn.style.display=anyFilter?'inline':'none';
+  window._campDetailPg.page=1;
+  window._campDetailPg.filtered=filtered;
+  window._campDetailPg.filterKey='dropdown';
+  window._campDetailFiltered=filtered;
+  window._campDetailRenderPage(1);
+};
+
+window._campDetailClearFilters=function(){
+  ['cd-f-status','cd-f-pot','cd-f-ss','cd-f-sale'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.value='';
+  });
+  window._campDetailApplyFilters();
+};
 
 window._campDetailFilter=function(filterKey,custs,invMap){
   if(!custs){
@@ -3560,6 +3617,7 @@ window._campDetailRenderPage=function(pg){
       +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone?String(c.cellphone):'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--accent)">'+(c.potential||'—')+'<\/td>'
       +'<td>'+sBadge(c.status)+'<\/td>'
+      +'<td style="font-size:10px;color:var(--text3)">'+(c.sub_status||'—')+'<\/td>'
       +(inv?'<td style="font-size:11px;color:'+(inv.approval_status==='approved'?'var(--accent2)':'var(--warn)')+'">$'+(inv.total||0).toLocaleString('en-US')+'<\/td>':'<td style="color:var(--text3)">—<\/td>')
       +'<td style="font-size:11px">'+sale+'<\/td>'
       +'<td>'+(daysLeft!==null?daysLeft<0?'<span class="badge b-lost">'+Math.abs(daysLeft)+'d<\/span>':'<span class="badge b-followup">'+daysLeft+'d<\/span>':'—')+'<\/td>'
@@ -3584,8 +3642,8 @@ window._campDetailRenderPage=function(pg){
     pgBar+='<\/div><\/div>';
   }
 
-  tableEl.innerHTML='<table style="min-width:560px;width:100%">'
-    +'<thead><tr style="font-size:10px;position:sticky;top:0;z-index:5;background:#1a1240;box-shadow:0 1px 0 var(--border)"><th>Mã KH<\/th><th>Business<\/th><th>Phone<\/th><th>Potential<\/th><th>Status<\/th><th>Invoice<\/th><th>Sale<\/th><th>Deadline<\/th><\/tr></thead>'
+  tableEl.innerHTML='<table style="min-width:640px;width:100%">'
+    +'<thead><tr style="font-size:10px;position:sticky;top:0;z-index:5;background:#1a1240;box-shadow:0 1px 0 var(--border)"><th>Mã KH<\/th><th>Business<\/th><th>Phone<\/th><th>Potential<\/th><th>Status<\/th><th>Sub-status<\/th><th>Invoice<\/th><th>Sale<\/th><th>Deadline<\/th><\/tr></thead>'
     +'<tbody>'+custRows+'</tbody><\/table>'
     +pgBar;
 };
