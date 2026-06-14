@@ -4196,15 +4196,8 @@ function openProdZoom(id){
   if(!isActive)html+='<span class="badge b-invalid">Inactive<\/span>';
   html+='<\/div><\/div>';
   // Right: nav ◀▶ + X
-  html+='<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">';
-  if(_pList.length>1){
-    html+='<button type="button" '+(_pIdx<=0?'disabled':'')+' onclick="var ni=window._prodNavIdx-1;if(ni>=0){window._prodNavIdx=ni;openProdZoom(window._prodNavList[ni].id);}" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 12px;font-size:15px;opacity:'+(_pIdx<=0?'0.3':'1')+'">◀<\/button>';
-    html+='<span style="font-size:11px;color:var(--text3);min-width:44px;text-align:center">'+(_pIdx+1)+'\/'+_pList.length+'<\/span>';
-    html+='<button type="button" '+(_pIdx>=_pList.length-1?'disabled':'')+' onclick="var ni=window._prodNavIdx+1;if(ni<window._prodNavList.length){window._prodNavIdx=ni;openProdZoom(window._prodNavList[ni].id);}" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 12px;font-size:15px;opacity:'+(_pIdx>=_pList.length-1?'0.3':'1')+'">▶<\/button>';
-    html+='<div style="width:1px;height:20px;background:rgba(255,255,255,0.1);margin:0 2px"><\/div>';
-  }
   html+='<button type="button" style="background:none;border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 12px;font-size:15px" onclick="document.getElementById(\'prod-zoom-modal\').remove()"><i class="ti ti-x"><\/i><\/button>';
-  html+='<\/div><\/div>';
+  html+='<\/div>';
 
   // ── BODY: scroll, 2-col grid ──
   html+='<div style="flex:1;overflow-y:auto;display:grid;grid-template-columns:'+(p.image_url?'320px 1fr':'1fr')+';min-height:0">';
@@ -4251,15 +4244,21 @@ function openProdZoom(id){
   html+='<\/div>';// end info col
   html+='<\/div>';// end body grid
 
-  // ── FOOTER ──
-  html+='<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;background:rgba(255,255,255,0.02);border-radius:0 0 16px 16px">';
-  if(isManagerProd){
-    html+='<button type="button" class="btn" onclick="document.getElementById(\'prod-zoom-modal\').remove()">Đóng<\/button>';
-    html+='<button type="button" class="btn" style="border-color:rgba(108,92,231,0.4);color:var(--brand2)" onclick="document.getElementById(\'prod-zoom-modal\').remove();openProdForm('+p.id+')"><i class="ti ti-edit"><\/i> Sửa<\/button>';
-  } else {
-    html+='<button type="button" class="btn" onclick="document.getElementById(\'prod-zoom-modal\').remove()">Đóng<\/button>';
+  // ── FOOTER: nav trái, buttons phải ──
+  html+='<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;background:rgba(255,255,255,0.02);border-radius:0 0 16px 16px">';
+  // Nav ◀▶ bên trái
+  html+='<div style="display:flex;align-items:center;gap:6px">';
+  if(_pList.length>1){
+    html+='<button type="button" '+(_pIdx<=0?'disabled':'')+' onclick="var ni=window._prodNavIdx-1;if(ni>=0){window._prodNavIdx=ni;openProdZoom(window._prodNavList[ni].id);}" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 12px;font-size:14px;opacity:'+(_pIdx<=0?'0.3':'1')+'">◀<\/button>';
+    html+='<span style="font-size:11px;color:var(--text3);min-width:44px;text-align:center">'+(_pIdx+1)+'\/'+_pList.length+'<\/span>';
+    html+='<button type="button" '+(_pIdx>=_pList.length-1?'disabled':'')+' onclick="var ni=window._prodNavIdx+1;if(ni<window._prodNavList.length){window._prodNavIdx=ni;openProdZoom(window._prodNavList[ni].id);}" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 12px;font-size:14px;opacity:'+(_pIdx>=_pList.length-1?'0.3':'1')+'">▶<\/button>';
   }
   html+='<\/div>';
+  // Buttons bên phải
+  html+='<div style="display:flex;gap:8px">';
+  html+='<button type="button" class="btn" onclick="document.getElementById(\'prod-zoom-modal\').remove()">Đóng<\/button>';
+  if(isManagerProd)html+='<button type="button" class="btn" style="border-color:rgba(108,92,231,0.4);color:var(--brand2)" onclick="document.getElementById(\'prod-zoom-modal\').remove();openProdForm('+p.id+')"><i class="ti ti-edit"><\/i> Sửa<\/button>';
+  html+='<\/div><\/div>';
   html+='<\/div>';// end container
 
   m.innerHTML=html;
