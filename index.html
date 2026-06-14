@@ -3104,7 +3104,9 @@ window._detailNavTo=function(dir){
   var idx=window._detailNavIdx;
   if(src===null||src===undefined)return;
   var list=null;
-  if(src==='campaign'){
+  if(src==='camp-detail'){
+    list=window._campDetailFiltered;
+  } else if(src==='campaign'){
     var key=window._campNavKey;
     if(!key)return;
     list=(window._campSaleFiltered&&window._campSaleFiltered[key])||(window._campSaleCusts&&window._campSaleCusts[key]);
@@ -3125,6 +3127,11 @@ window._detailNavTo=function(dir){
   if(src==='campaign'){window._campNavIdx=newIdx;}
   // Sync selId cho customers tab
   if(src==='customers'){selId=newCust.id;}
+  // Nếu đang nav từ camp-detail, đảm bảo camp-detail-modal vẫn hiển thị
+  if(src==='camp-detail'){
+    var _cdm=document.getElementById('camp-detail-modal');
+    if(_cdm)_cdm.style.display='block';
+  }
   renderDetailModal(newCust.id,{source:src,idx:newIdx,campKey:src==='campaign'?window._campNavKey:undefined});
 };
 var CAMP_SALE_PAGE_SIZE=50;
@@ -3538,6 +3545,7 @@ window._campDetailRenderPage=function(pg){
   var totalPg=Math.ceil(filtered.length/CAMP_DETAIL_PAGE_SIZE)||1;
   pg=Math.max(1,Math.min(pg,totalPg));
   window._campDetailPg.page=pg;
+  window._campDetailFiltered=filtered;
   var paged=filtered.slice((pg-1)*CAMP_DETAIL_PAGE_SIZE,pg*CAMP_DETAIL_PAGE_SIZE);
 
   var custRows=paged.map(function(c){
@@ -3545,7 +3553,8 @@ window._campDetailRenderPage=function(pg){
     var dl=c.assigned_deadline?new Date(c.assigned_deadline):null;if(dl)dl.setHours(0,0,0,0);
     var daysLeft=dl?Math.ceil((dl-today)/86400000):null;
     var sale=c.assigned_profile?c.assigned_profile.full_name.split(' ').pop():'—';
-    return '<tr onclick="document.getElementById(\'camp-detail-modal\').style.display=\'none\';renderDetailModal('+c.id+')" style="cursor:pointer">'
+    var _absIdx=filtered.indexOf(c);
+    return '<tr onclick="window._campDetailNavCtx={source:\'camp-detail\',idx:'+_absIdx+',list:window._campDetailFiltered};renderDetailModal('+c.id+',{source:\'camp-detail\',idx:'+_absIdx+'})" style="cursor:pointer">'
       +'<td style="font-size:10px;color:var(--text3)">'+(c.ma_kh||'—')+'<\/td>'
       +'<td>'+(c.business_name||c.customer_name||'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone?String(c.cellphone):'—')+'<\/td>'
@@ -5247,6 +5256,8 @@ async function renderDetailModal(customerId,navCtx){
     window._detailNavIdx=navCtx.idx;
     // Backward compat campaign
     if(navCtx.campKey!==undefined){window._campNavKey=navCtx.campKey;window._campNavIdx=navCtx.idx;}
+    // camp-detail: lưu list nếu truyền vào
+    if(navCtx.list)window._campDetailFiltered=navCtx.list;
   } else {
     window._detailNavSource=null;
   }
@@ -5331,7 +5342,7 @@ function _renderDetailShell(modal,c,isManager,logs){
     +'<\/div>'
     +'<\/div>'
     +'<div style="font-size:11px;color:var(--text3)">'+(c.business_name||'—')+' · <span style="font-family:monospace">'+(c.ma_kh||'—')+'<\/span><\/div><\/div>';
-  html+='<button type="button" style="padding:4px 10px;background:none;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text2);cursor:pointer" onclick="document.getElementById(\'detail-modal\').remove();selId=null"><i class="ti ti-x"></i><\/button>';
+  html+='<button type="button" style="padding:4px 10px;background:none;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text2);cursor:pointer" onclick="document.getElementById(\'detail-modal\').remove();selId=null;var _cdm=document.getElementById(\'camp-detail-modal\');if(_cdm&&window._detailNavSource===\'camp-detail\')_cdm.style.display=\'block\'"><i class="ti ti-x"><\/i><\/button>';
   html+='<\/div>';
 
   // BODY — 2-column layout: main (left) + sidebar history (right)
@@ -5418,7 +5429,7 @@ function _renderDetailShell(modal,c,isManager,logs){
   html+='<span id="detail-nav-pos" style="font-size:11px;color:var(--text3);min-width:40px;text-align:center"><\/span>';
   html+='<button type="button" id="detail-nav-next" onclick="window._detailNavTo(1)" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:6px 12px;font-size:14px" title="Khách tiếp">▶<\/button>';
   html+='<\/div>';
-  html+='<button type="button" class="btn" onclick="document.getElementById(\'detail-modal\').remove();selId=null;window._campNavKey=null">Đóng<\/button>';
+  html+='<button type="button" class="btn" onclick="document.getElementById(\'detail-modal\').remove();selId=null;window._campNavKey=null;var _cdm=document.getElementById(\'camp-detail-modal\');if(_cdm&&window._detailNavSource===\'camp-detail\')_cdm.style.display=\'block\'">Đóng<\/button>';
   if(isManager) html+='<button type="button" class="btn btn-danger" onclick="deleteCustomer('+c.id+')"><i class="ti ti-trash"></i> Xóa<\/button>';
   html+='<button type="button" class="btn" style="border-color:rgba(253,203,110,0.5);color:var(--warn)" onclick="openInvoice('+c.id+')"><i class="ti ti-file-invoice"></i> Tạo Invoice<\/button>';
   html+='<button type="button" class="btn btn-primary" onclick="saveDetail('+c.id+')"><i class="ti ti-device-floppy"></i> Lưu<\/button>';
@@ -5437,7 +5448,9 @@ function _renderDetailShell(modal,c,isManager,logs){
     var navWrap=document.getElementById('detail-nav-btns');
     if(!navWrap)return;
     var list=null;
-    if(src==='campaign'){
+    if(src==='camp-detail'){
+      list=window._campDetailFiltered;
+    } else if(src==='campaign'){
       var key=window._campNavKey;
       if(key===undefined||key===null){navWrap.style.display='none';return;}
       list=(window._campSaleFiltered&&window._campSaleFiltered[key])||(window._campSaleCusts&&window._campSaleCusts[key]);
