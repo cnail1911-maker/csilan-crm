@@ -4090,8 +4090,9 @@ function renderProducts(){
     }
   }
 
+  window._prodNavList=pageData;
   let rows='';
-  pageData.forEach(function(p){
+  pageData.forEach(function(p,_pi){
     const isActive=p.is_active!==false;
     var vendorColor={'BOLSA':'var(--accent2)','ONS':'var(--accent)','TSPA':'var(--warn)'}[p.brand]||'var(--brand2)';
     var infoText=p._note||p.description||'';
@@ -4101,7 +4102,7 @@ function renderProducts(){
         +(p.note||p._note?'<i class="ti ti-info-circle" style="margin-left:3px;font-size:10px;cursor:help" title="'+(p.note||p._note)+'"></i>':'')
         +'<\/div>'
       :'—';
-    rows+='<tr style="'+(isActive?'':'opacity:0.5')+';cursor:pointer" onclick="openProdZoom('+p.id+')">'
+    rows+='<tr style="'+(isActive?'':'opacity:0.5')+';cursor:pointer" onclick="window._prodNavIdx='+_pi+';openProdZoom('+p.id+')">'
       +'<td style="font-size:10px;font-family:monospace;color:var(--text3)">'+(p.sku||'—')+'<\/td>'
       +'<td><div style="display:flex;align-items:center;gap:10px">'
       +(p.image_url?'<img src="'+p.image_url+'" style="width:48px;height:48px;border-radius:8px;object-fit:cover;background:var(--surface2);flex-shrink:0" alt="">':'<div style="width:48px;height:48px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-photo" style="color:var(--text3);font-size:18px"></i><\/div>')
@@ -4123,7 +4124,7 @@ function renderProducts(){
           +'<\/div><\/td>'
         :'<td style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px" title="'+(p.description||'')+'">'+(p.description||'—')+'<\/td>'
           +'<td style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px" title="'+(p._note||p.note||'')+'">'+(p._note||p.note||'—')+'<\/td>'
-          +'<td onclick="event.stopPropagation()" style="text-align:center"><button class="btn" style="padding:3px 10px;font-size:11px;border-color:rgba(162,155,254,0.3);color:var(--brand2)" onclick="openProdZoom('+p.id+')"><i class="ti ti-eye"></i> Xem<\/button><\/td>')
+          +'<td onclick="event.stopPropagation()" style="text-align:center"><button class="btn" style="padding:3px 10px;font-size:11px;border-color:rgba(162,155,254,0.3);color:var(--brand2)" onclick="window._prodNavIdx='+_pi+';openProdZoom('+p.id+')"><i class="ti ti-eye"></i> Xem<\/button><\/td>')
       +'<\/tr>';
   });
   const vendorFilter='<select class="fsel" onchange="sessionStorage.setItem(\'prodVendor\',this.value);sessionStorage.setItem(\'prodSkuPrefix\',\'all\');sessionStorage.setItem(\'prodMgPage\',1);render()">'
@@ -4174,7 +4175,9 @@ function openProdZoom(id){
   m.className='modal-overlay';m.id='prod-zoom-modal';
   m.onclick=function(e){if(e.target===m)m.remove();};
 
-  var html='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:16px;width:94vw;max-width:600px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.6);border:1px solid var(--border)">';
+  var _pIdx=typeof window._prodNavIdx==='number'?window._prodNavIdx:-1;
+  var _pList=window._prodNavList||[];
+  var html='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:16px;width:96vw;max-width:960px;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.6);border:1px solid var(--border)">';
 
   // Header
   html+='<div style="display:flex;align-items:center;gap:14px;padding:18px 20px;border-bottom:1px solid var(--border);background:rgba(108,92,231,0.07);border-radius:16px 16px 0 0">';
@@ -4186,7 +4189,13 @@ function openProdZoom(id){
   html+=p.in_stock?'<span class="badge b-won">In Stock<\/span>':'<span class="badge b-lost">Out of Stock<\/span>';
   if(!isActive)html+='<span class="badge b-invalid">Inactive<\/span>';
   html+='<\/div><\/div>';
-  html+='<button type="button" style="background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px;font-size:14px" onclick="document.getElementById(\'prod-zoom-modal\').remove()"><i class="ti ti-x"></i><\/button>';
+  html+='<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">';
+  if(_pList.length>1){
+    html+='<button type="button" '+ (_pIdx<=0?'disabled':'')+' onclick="var ni=window._prodNavIdx-1;if(ni>=0){window._prodNavIdx=ni;openProdZoom(window._prodNavList[ni].id);}" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px;font-size:14px;opacity:'+(_pIdx<=0?'0.3':'1')+'">◀<\/button>';
+    html+='<span style="font-size:11px;color:var(--text3);min-width:40px;text-align:center">'+(_pIdx+1)+'\/'+_pList.length+'<\/span>';
+    html+='<button type="button" '+(_pIdx>=_pList.length-1?'disabled':'')+' onclick="var ni=window._prodNavIdx+1;if(ni<window._prodNavList.length){window._prodNavIdx=ni;openProdZoom(window._prodNavList[ni].id);}" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px;font-size:14px;opacity:'+(_pIdx>=_pList.length-1?'0.3':'1')+'">▶<\/button>';
+  }
+  html+='<button type="button" style="background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px;font-size:14px" onclick="document.getElementById(\'prod-zoom-modal\').remove()"><i class="ti ti-x"><\/i><\/button>';
   html+='<\/div>';
 
   // Body
