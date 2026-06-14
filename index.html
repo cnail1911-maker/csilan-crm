@@ -2782,7 +2782,7 @@ function renderCampaign(){
     +'<div id="camp-slide-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999" onclick="document.getElementById(\'camp-slide-panel\').style.display=\'none\';document.getElementById(\'camp-slide-overlay\').style.display=\'none\'"><\/div>'
     // Detail modal
     +'<div id="camp-detail-modal" style="display:none;position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,0.6);overflow-y:auto">'
-    +'<div onclick="event.stopPropagation()" id="camp-detail-box" style="background:var(--bg2,#1a1240);border-radius:16px;width:96vw;max-width:900px;margin:20px auto;padding:0;border:1px solid var(--border)"><\/div>'
+    +'<div onclick="event.stopPropagation()" id="camp-detail-box" style="background:var(--bg2,#1a1240);border-radius:16px;width:94vw;max-width:1400px;height:92vh;margin:20px auto;padding:0;border:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden"><\/div>'
     +'<\/div>';
 }
 
@@ -3435,13 +3435,13 @@ window._campShowDetail=function(campName){
       +'<td style="font-size:11px">'+sale+'<\/td>'
       +'<td>'+(daysLeft!==null?daysLeft<0?'<span class="badge b-lost">'+Math.abs(daysLeft)+'d<\/span>':'<span class="badge b-followup">'+daysLeft+'d<\/span>':'—')+'<\/td><\/tr>';
   }).join('');
-  box.innerHTML='<div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px">'
+  box.innerHTML='<div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0">'
     +'<div><div style="font-size:15px;font-weight:700">'+(isPool?'🌱 Active Pool':decoded)+'<\/div>'
     +'<div style="font-size:11px;color:var(--text3)">'+total+' khách<\/div><\/div>'
     +'<div style="display:flex;gap:8px"><button class="btn" onclick="window._campExportCSV(\''+campName+'\')" style="font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-file-spreadsheet"></i> Export CSV<\/button>'
     +'<button onclick="document.getElementById(\'camp-detail-modal\').style.display=\'none\'" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px">×<\/button><\/div><\/div>'
     // Stat cards — clickable as filters
-    +'<div id="camp-stat-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;padding:12px">'
+    +'<div id="camp-stat-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;padding:12px;flex-shrink:0">'
     +_campDetailStatCard('Data',total,'all','var(--brand2)')
     +_campDetailStatCard('Contact',called,'called','var(--accent)')
     +_campDetailStatCard('Potential',potential,'potential','var(--accent)')
@@ -3450,19 +3450,26 @@ window._campShowDetail=function(campName){
     +_campDetailStatCard('Est.Ord',estOrd,'estorders','var(--warn)')
     +_campDetailStatCard('Est.Rev','$'+estRev.toLocaleString('en-US'),'estorders','var(--warn)')
     +'<\/div>'
-    // Per-sale table
-    +'<div style="padding:0 12px 12px"><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px">Hiệu suất theo Sale<\/div>'
+    // Per-sale table — collapsible, màu nền đồng bộ thead KH
+    +'<div style="padding:0 12px 6px;flex-shrink:0">'
+    +'<div onclick="var b=document.getElementById(\'camp-sale-body\');var ic=document.getElementById(\'camp-sale-ic\');var open=b.style.display!==\'none\';b.style.display=open?\'none\':\'block\';ic.style.transform=open?\'rotate(-90deg)\':\'\';" style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none">'
+    +'<i id="camp-sale-ic" class="ti ti-chevron-down" style="font-size:10px;transition:transform 0.2s"><\/i>Hiệu suất theo Sale<\/div>'
+    +'<div id="camp-sale-body">'
     +'<div style="overflow-x:clip"><table style="min-width:460px;width:100%">'
-    +'<thead><tr style="font-size:10px"><th>Sale<\/th><th>Data<\/th><th>Called<\/th><th style="color:var(--accent)">Pot.<\/th><th style="color:var(--accent2)">Ord<\/th><th style="color:var(--brand2)">Rev<\/th><th style="color:var(--warn)">EstOrd<\/th><th style="color:var(--warn)">EstRev<\/th><\/tr></thead>'
-    +'<tbody>'+saleRows+'</tbody><\/table><\/div><\/div>'
-    // Customer list with filter
-    +'<div style="padding:0 12px 12px" id="camp-detail-cust-section">'
-    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;position:sticky;top:0;z-index:6;background:#1a1240;padding:6px 0">'
+    +'<thead><tr style="font-size:10px;background:#1a1240"><th>Sale<\/th><th>Data<\/th>'
+    +'<th>Called<\/th><th style="color:var(--accent)">Pot.<\/th>'
+    +'<th style="color:var(--accent2)">Ord<\/th><th style="color:var(--brand2)">Rev<\/th>'
+    +'<th style="color:var(--warn)">EstOrd<\/th><th style="color:var(--warn)">EstRev<\/th>'
+    +'<\/tr></thead>'
+    +'<tbody style="background:#1a1240">'+saleRows+'</tbody><\/table><\/div><\/div><\/div>'
+    // Customer list — flex:1 scroll riêng, thead sticky
+    +'<div style="flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;min-height:0" id="camp-detail-cust-section">'
+    +'<div style="display:flex;align-items:center;gap:8px;padding:6px 12px;position:sticky;top:0;z-index:6;background:#1a1240;border-top:1px solid var(--border);border-bottom:1px solid var(--border);flex-shrink:0">'
     +'<div style="font-size:11px;font-weight:600;color:var(--text2)">Danh sách khách<\/div>'
     +'<span id="camp-detail-filter-label" style="font-size:10px;color:var(--text3)"><\/span>'
     +'<button id="camp-detail-clear-filter" onclick="window._campDetailFilter(\'all\',custs,invMap)" style="display:none;font-size:10px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--text3);cursor:pointer;padding:1px 6px">× Xóa lọc<\/button>'
     +'<\/div>'
-    +'<div style="overflow-x:clip" id="camp-detail-cust-table"><\/div><\/div>';
+    +'<div style="overflow-x:auto;flex:1" id="camp-detail-cust-table"><\/div><\/div>';
 
   // Store refs for filter
   box._custs=custs;box._invMap=invMap;
@@ -3568,9 +3575,9 @@ window._campDetailRenderPage=function(pg){
     pgBar+='<\/div><\/div>';
   }
 
-  tableEl.innerHTML='<div style="overflow-x:clip"><table style="min-width:560px;width:100%">'
-    +'<thead><tr style="font-size:10px;position:sticky;top:0;z-index:5;background:#1a1240"><th>Mã KH<\/th><th>Business<\/th><th>Phone<\/th><th>Potential<\/th><th>Status<\/th><th>Invoice<\/th><th>Sale<\/th><th>Deadline<\/th><\/tr></thead>'
-    +'<tbody>'+custRows+'</tbody><\/table><\/div>'
+  tableEl.innerHTML='<table style="min-width:560px;width:100%">'
+    +'<thead><tr style="font-size:10px;position:sticky;top:0;z-index:5;background:#1a1240;box-shadow:0 1px 0 var(--border)"><th>Mã KH<\/th><th>Business<\/th><th>Phone<\/th><th>Potential<\/th><th>Status<\/th><th>Invoice<\/th><th>Sale<\/th><th>Deadline<\/th><\/tr></thead>'
+    +'<tbody>'+custRows+'</tbody><\/table>'
     +pgBar;
 };
 
