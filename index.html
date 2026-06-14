@@ -4177,92 +4177,89 @@ function openProdZoom(id){
 
   var _pIdx=typeof window._prodNavIdx==='number'?window._prodNavIdx:-1;
   var _pList=window._prodNavList||[];
-  var html='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:16px;width:96vw;max-width:960px;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.6);border:1px solid var(--border)">';
 
-  // Header
-  html+='<div style="display:flex;align-items:center;gap:14px;padding:18px 20px;border-bottom:1px solid var(--border);background:rgba(108,92,231,0.07);border-radius:16px 16px 0 0">';
+  var html='';
+  // ── Outer container: flex column, full height ──
+  html+='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:16px;width:96vw;max-width:960px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.6);border:1px solid var(--border)">';
+
+  // ── HEADER: tên SP bên trái, nav+X bên phải ──
+  html+='<div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);background:rgba(108,92,231,0.07);border-radius:16px 16px 0 0;flex-shrink:0">';
+  // Left: name + badges
   html+='<div style="flex:1;min-width:0">';
-  html+='<div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:2px">'+(p.name||'—')+'<\/div>';
-  html+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+  html+='<div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(p.name||'—')+'<\/div>';
+  html+='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
   html+='<span style="font-family:monospace;font-size:11px;color:var(--text3)">'+(p.sku||'')+'<\/span>';
   if(p.brand)html+='<span style="background:rgba(108,92,231,0.15);color:'+vendorColor+';border:1px solid '+vendorColor+';padding:1px 8px;border-radius:20px;font-size:11px;font-weight:600">'+p.brand+'<\/span>';
   html+=p.in_stock?'<span class="badge b-won">In Stock<\/span>':'<span class="badge b-lost">Out of Stock<\/span>';
   if(!isActive)html+='<span class="badge b-invalid">Inactive<\/span>';
   html+='<\/div><\/div>';
+  // Right: nav ◀▶ + X
   html+='<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">';
   if(_pList.length>1){
-    html+='<button type="button" '+ (_pIdx<=0?'disabled':'')+' onclick="var ni=window._prodNavIdx-1;if(ni>=0){window._prodNavIdx=ni;openProdZoom(window._prodNavList[ni].id);}" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px;font-size:14px;opacity:'+(_pIdx<=0?'0.3':'1')+'">◀<\/button>';
-    html+='<span style="font-size:11px;color:var(--text3);min-width:40px;text-align:center">'+(_pIdx+1)+'\/'+_pList.length+'<\/span>';
-    html+='<button type="button" '+(_pIdx>=_pList.length-1?'disabled':'')+' onclick="var ni=window._prodNavIdx+1;if(ni<window._prodNavList.length){window._prodNavIdx=ni;openProdZoom(window._prodNavList[ni].id);}" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px;font-size:14px;opacity:'+(_pIdx>=_pList.length-1?'0.3':'1')+'">▶<\/button>';
+    html+='<button type="button" '+(_pIdx<=0?'disabled':'')+' onclick="var ni=window._prodNavIdx-1;if(ni>=0){window._prodNavIdx=ni;openProdZoom(window._prodNavList[ni].id);}" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 12px;font-size:15px;opacity:'+(_pIdx<=0?'0.3':'1')+'">◀<\/button>';
+    html+='<span style="font-size:11px;color:var(--text3);min-width:44px;text-align:center">'+(_pIdx+1)+'\/'+_pList.length+'<\/span>';
+    html+='<button type="button" '+(_pIdx>=_pList.length-1?'disabled':'')+' onclick="var ni=window._prodNavIdx+1;if(ni<window._prodNavList.length){window._prodNavIdx=ni;openProdZoom(window._prodNavList[ni].id);}" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 12px;font-size:15px;opacity:'+(_pIdx>=_pList.length-1?'0.3':'1')+'">▶<\/button>';
+    html+='<div style="width:1px;height:20px;background:rgba(255,255,255,0.1);margin:0 2px"><\/div>';
   }
-  html+='<button type="button" style="background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px;font-size:14px" onclick="document.getElementById(\'prod-zoom-modal\').remove()"><i class="ti ti-x"><\/i><\/button>';
-  html+='<\/div>';
+  html+='<button type="button" style="background:none;border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 12px;font-size:15px" onclick="document.getElementById(\'prod-zoom-modal\').remove()"><i class="ti ti-x"><\/i><\/button>';
+  html+='<\/div><\/div>';
 
-  // Body
-  html+='<div style="display:grid;grid-template-columns:'+(p.image_url?'200px 1fr':'1fr')+';gap:0">';
+  // ── BODY: scroll, 2-col grid ──
+  html+='<div style="flex:1;overflow-y:auto;display:grid;grid-template-columns:'+(p.image_url?'260px 1fr':'1fr')+';min-height:0">';
 
-  // Image panel
+  // Image col
   if(p.image_url){
-    html+='<div style="padding:20px;border-right:1px solid var(--border);display:flex;align-items:flex-start;justify-content:center">';
-    html+='<img src="'+p.image_url+'" style="width:160px;height:160px;object-fit:contain;border-radius:10px;background:var(--surface2)" alt="'+p.name+'">';
+    html+='<div style="padding:24px;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:12px;background:rgba(0,0,0,0.15)">';
+    html+='<img src="'+p.image_url+'" style="width:200px;height:200px;object-fit:contain;border-radius:12px;background:var(--surface2)" alt="'+p.name+'">';
     html+='<\/div>';
   }
 
-  // Info panel
-  html+='<div style="padding:20px">';
+  // Info col
+  html+='<div style="padding:24px;overflow-y:auto">';
 
-  html+='<div style="background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.15);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;gap:20px;flex-wrap:wrap">';
-  html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">Sale Price<\/div><div style="font-size:24px;font-weight:700;color:var(--accent2)">$'+Number(p.price||0).toLocaleString('en-US')+'<\/div><\/div>';
+  // Price block
+  html+='<div style="background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.15);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;gap:24px;flex-wrap:wrap">';
+  html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px">Sale Price<\/div><div style="font-size:28px;font-weight:700;color:var(--accent2)">$'+Number(p.price||0).toLocaleString('en-US')+'<\/div><\/div>';
   if(p.best_price&&p.best_price>0){
-    html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">Best Price<\/div>'
-      +'<div style="font-size:24px;font-weight:700;color:var(--success)">$'+Number(p.best_price).toLocaleString('en-US')+'<\/div>'
-      +(p._note?'<div style="font-size:10px;color:var(--text2);margin-top:2px">'+p._note+'<\/div>':'')
-      +'<\/div>';
+    html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px">Best Price<\/div>';
+    html+='<div style="font-size:28px;font-weight:700;color:var(--success)">$'+Number(p.best_price).toLocaleString('en-US')+'<\/div>';
+    if(p._note)html+='<div style="font-size:10px;color:var(--text2);margin-top:2px">'+p._note+'<\/div>';
+    html+='<\/div>';
   }
   if(isManagerProd&&p.vendor_cost){
-    html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">Vendor Cost<\/div><div style="font-size:24px;font-weight:700;color:var(--warn)">$'+p.vendor_cost+'<\/div><\/div>';
+    html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px">Vendor Cost<\/div><div style="font-size:28px;font-weight:700;color:var(--warn)">$'+p.vendor_cost+'<\/div><\/div>';
     var margin=((p.price||0)-(p.vendor_cost||0));
     var marginPct=p.price?Math.round(margin/p.price*100):0;
-    html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">Margin<\/div><div style="font-size:24px;font-weight:700;color:'+(margin>=0?'var(--success)':'var(--danger)')+'">$'+margin+' <span style="font-size:13px">('+marginPct+'%)<\/span><\/div><\/div>';
+    html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px">Margin<\/div><div style="font-size:28px;font-weight:700;color:'+(margin>=0?'var(--success)':'var(--danger)')+'">$'+margin+' <span style="font-size:13px">('+marginPct+'%)<\/span><\/div><\/div>';
   }
   html+='<\/div>';
 
   // Details grid
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px">';
-  var details=[
-    ['Vendor',p.brand||'—'],
-    ['SKU',p.sku||'—'],
-    ['Variant',p.variant||'—'],
-  ];
-  if(p.description){
-    details.push(['Mô tả','<span style="color:var(--text2);white-space:pre-wrap">'+p.description+'<\/span>']);
-  }
-  if(p._note){
-    details.push(['Note','<span style="color:var(--text2);white-space:pre-wrap">'+p._note+'<\/span>']);
-  }
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 20px">';
+  var details=[['Vendor',p.brand||'—'],['SKU',p.sku||'—'],['Variant',p.variant||'—']];
+  if(p.description)details.push(['Mô tả','<span style="color:var(--text2);white-space:pre-wrap">'+p.description+'<\/span>']);
+  if(p._note)details.push(['Note','<span style="color:var(--text2);white-space:pre-wrap">'+p._note+'<\/span>']);
   details.forEach(function(d){
-    var isNote=d[0]==='Note'||d[0]==='Mô tả';
-    html+='<div'+(isNote?' style="grid-column:1/-1"':'')+'>'+
-      '<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px">'+d[0]+'<\/div>'+
+    var full=d[0]==='Note'||d[0]==='Mô tả';
+    html+='<div'+(full?' style="grid-column:1/-1"':'')+'>'+
+      '<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">'+d[0]+'<\/div>'+
       '<div style="font-size:13px;color:var(--text);font-weight:500">'+d[1]+'<\/div><\/div>';
   });
   html+='<\/div>';
-  html+='<\/div>';// end info panel
-  html+='<\/div>';// end grid
+  html+='<\/div>';// end info col
+  html+='<\/div>';// end body grid
 
-  // Footer actions (manager only)
+  // ── FOOTER ──
+  html+='<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;background:rgba(255,255,255,0.02);border-radius:0 0 16px 16px">';
   if(isManagerProd){
-    html+='<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;border-radius:0 0 16px 16px;background:rgba(255,255,255,0.02)">';
     html+='<button type="button" class="btn" onclick="document.getElementById(\'prod-zoom-modal\').remove()">Đóng<\/button>';
-    html+='<button type="button" class="btn" style="border-color:rgba(108,92,231,0.4);color:var(--brand2)" onclick="document.getElementById(\'prod-zoom-modal\').remove();openProdForm('+p.id+')"><i class="ti ti-edit"></i> Sửa sản phẩm<\/button>';
-    html+='<\/div>';
+    html+='<button type="button" class="btn" style="border-color:rgba(108,92,231,0.4);color:var(--brand2)" onclick="document.getElementById(\'prod-zoom-modal\').remove();openProdForm('+p.id+')"><i class="ti ti-edit"><\/i> Sửa<\/button>';
   } else {
-    html+='<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;border-radius:0 0 16px 16px">';
     html+='<button type="button" class="btn" onclick="document.getElementById(\'prod-zoom-modal\').remove()">Đóng<\/button>';
-    html+='<\/div>';
   }
-
+  html+='<\/div>';
   html+='<\/div>';// end container
+
   m.innerHTML=html;
   document.body.appendChild(m);
 }
