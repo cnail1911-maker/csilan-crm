@@ -1005,6 +1005,23 @@ mark.chat-hl{background:rgba(253,203,110,0.35);color:inherit;border-radius:2px;}
 }
 </style>
 <script>
+(function(){
+  try{
+    var t=JSON.parse(localStorage.getItem('csilan_theme')||'{}');
+    var r=document.documentElement;
+    if(t.brand){r.style.setProperty('--brand',t.brand);r.style.setProperty('--brand-dark',t.brandDark||t.brand);}
+    if(t.brand2)r.style.setProperty('--brand2',t.brand2);
+    if(t.accent)r.style.setProperty('--accent',t.accent);
+    if(t.accent2)r.style.setProperty('--accent2',t.accent2);
+    if(t.main)r.style.setProperty('--main',t.main);
+    if(t.bg2)r.style.setProperty('--bg2',t.bg2);
+    if(t.warn)r.style.setProperty('--warn',t.warn);
+    if(t.danger)r.style.setProperty('--danger',t.danger);
+    if(t.success)r.style.setProperty('--success',t.success);
+  }catch(e){}
+})();
+</script>
+<script>
   // Register Service Worker for PWA - only on GitHub Pages
   if('serviceWorker' in navigator && location.hostname.includes('github.io')){
     window.addEventListener('load',function(){
@@ -6092,12 +6109,108 @@ function renderSystem(){
     +'<button class="btn" onclick="renderSystemRefresh()" style="font-size:12px"><i class="ti ti-refresh"></i> Refresh<\/button>'
     +'<\/div>'
     +'<div class="content">'
+    +_renderThemePanel()
     +'<div class="panel" style="margin-bottom:14px">'
     +'<div class="panel-header"><h2>Supabase Usage<\/h2><div style="font-size:11px;color:var(--text3)">Free tier: 500MB DB · 1GB Storage per project<\/div><\/div>'
     +'<div id="sys-usage" style="padding:14px"><div style="color:var(--text3);font-size:13px">Loading...<\/div><\/div>'
     +'<\/div>'
     +'<\/div>';
 }
+
+function _renderThemePanel(){
+  var t={};try{t=JSON.parse(localStorage.getItem('csilan_theme')||'{}');}catch(e){}
+  function cur(k,d){return t[k]||d;}
+  var presets=[
+    {name:'Tím (Mặc định)',brand:'#6C5CE7',brand2:'#A29BFE',brandDark:'#4834d4',accent:'#00CEC9',accent2:'#55EFC4',main:'#0f0c24',bg2:'#1a1240'},
+    {name:'Xanh Dương',brand:'#0984e3',brand2:'#74b9ff',brandDark:'#0652dd',accent:'#00CEC9',accent2:'#55EFC4',main:'#0a1628',bg2:'#0d2137'},
+    {name:'Xanh Lá',brand:'#00b894',brand2:'#55efc4',brandDark:'#009874',accent:'#fdcb6e',accent2:'#ffeaa7',main:'#0a1f1c',bg2:'#0d2b26'},
+    {name:'Đỏ Cam',brand:'#e17055',brand2:'#fab1a0',brandDark:'#c0392b',accent:'#fdcb6e',accent2:'#ffeaa7',main:'#1a0e0a',bg2:'#2d1810'},
+    {name:'Hồng',brand:'#fd79a8',brand2:'#fdcfe8',brandDark:'#e84393',accent:'#a29bfe',accent2:'#d3cffe',main:'#1a0a14',bg2:'#2d0d1e'},
+    {name:'Tối',brand:'#636e72',brand2:'#b2bec3',brandDark:'#2d3436',accent:'#74b9ff',accent2:'#dfe6e9',main:'#0a0a0a',bg2:'#141414'},
+  ];
+  var presetHtml=presets.map(function(p){
+    var js=JSON.stringify(p).replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    return '<button onclick="window._applyThemePreset(this.dataset.p)" data-p="'+js+'"'
+      +' style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;cursor:pointer;color:var(--text2);font-size:12px">'
+      +'<span style="display:inline-flex;gap:3px">'
+      +'<span style="width:12px;height:12px;border-radius:50%;background:'+p.brand+'"></span>'
+      +'<span style="width:12px;height:12px;border-radius:50%;background:'+p.accent+'"></span>'
+      +'<span style="width:12px;height:12px;border-radius:50%;background:'+p.main+';border:1px solid rgba(255,255,255,0.2)"></span>'
+      +'</span>'+p.name+'<\/button>';
+  }).join('');
+  function cp(label,key,val){
+    return '<div style="display:flex;flex-direction:column;gap:6px">'
+      +'<div style="font-size:11px;color:var(--text3)">'+label+'<\/div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<input type="color" id="theme-'+key+'" value="'+val+'"'
+      +' style="width:36px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;padding:2px"'
+      +' oninput="document.getElementById(\'theme-'+key+'-hex\').value=this.value">'
+      +'<input type="text" id="theme-'+key+'-hex" value="'+val+'" maxlength="7"'
+      +' style="width:80px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);font-family:monospace;outline:none"'
+      +' oninput="if(this.value.match(/^#[0-9a-fA-F]{6}$/))document.getElementById(\'theme-'+key+'\').value=this.value">'
+      +'<\/div><\/div>';
+  }
+  return '<div class="panel" style="margin-bottom:14px">'
+    +'<div class="panel-header"><h2><i class="ti ti-palette" style="margin-right:6px"></i>Giao diện & Màu sắc<\/h2><\/div>'
+    +'<div style="padding:16px 20px">'
+    +'<div style="margin-bottom:18px">'
+    +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Bộ màu nhanh<\/div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:8px">'+presetHtml+'<\/div>'
+    +'<\/div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:20px">'
+    +cp('Brand chủ đạo','brand',cur('brand','#6C5CE7'))
+    +cp('Brand nhạt','brand2',cur('brand2','#A29BFE'))
+    +cp('Accent','accent',cur('accent','#00CEC9'))
+    +cp('Accent nhạt','accent2',cur('accent2','#55EFC4'))
+    +cp('Nền chính','main',cur('main','#0f0c24'))
+    +cp('Nền phụ','bg2',cur('bg2','#1a1240'))
+    +cp('Cảnh báo','warn',cur('warn','#FDCB6E'))
+    +cp('Nguy hiểm','danger',cur('danger','#FF7675'))
+    +cp('Thành công','success',cur('success','#00B894'))
+    +'<\/div>'
+    +'<div style="display:flex;gap:10px">'
+    +'<button class="btn" style="border-color:rgba(0,184,148,0.4);color:var(--success)" onclick="window._saveTheme()"><i class="ti ti-check"><\/i> Lưu & Áp dụng<\/button>'
+    +'<button class="btn" style="border-color:rgba(255,118,117,0.3);color:var(--danger)" onclick="window._resetTheme()"><i class="ti ti-refresh"><\/i> Khôi phục mặc định<\/button>'
+    +'<\/div>'
+    +'<\/div><\/div>';
+}
+
+window._applyThemePreset=function(jsonStr){
+  try{var p=JSON.parse(jsonStr.replace(/&quot;/g,'"'));}catch(e){return;}
+  var keys=['brand','brand2','brandDark','accent','accent2','main','bg2','warn','danger','success'];
+  keys.forEach(function(k){
+    var el=document.getElementById('theme-'+k);
+    var hex=document.getElementById('theme-'+k+'-hex');
+    if(p[k]&&el){el.value=p[k];if(hex)hex.value=p[k];}
+  });
+  window._saveTheme();
+};
+
+window._saveTheme=function(){
+  var keys=['brand','brand2','brandDark','accent','accent2','main','bg2','warn','danger','success'];
+  var t={};
+  keys.forEach(function(k){var el=document.getElementById('theme-'+k);if(el)t[k]=el.value;});
+  localStorage.setItem('csilan_theme',JSON.stringify(t));
+  var r=document.documentElement;
+  if(t.brand){r.style.setProperty('--brand',t.brand);r.style.setProperty('--brand-dark',t.brandDark||t.brand);}
+  if(t.brand2)r.style.setProperty('--brand2',t.brand2);
+  if(t.accent)r.style.setProperty('--accent',t.accent);
+  if(t.accent2)r.style.setProperty('--accent2',t.accent2);
+  if(t.main)r.style.setProperty('--main',t.main);
+  if(t.bg2)r.style.setProperty('--bg2',t.bg2);
+  if(t.warn)r.style.setProperty('--warn',t.warn);
+  if(t.danger)r.style.setProperty('--danger',t.danger);
+  if(t.success)r.style.setProperty('--success',t.success);
+  showNotif('Đã áp dụng giao diện mới');
+};
+
+window._resetTheme=function(){
+  localStorage.removeItem('csilan_theme');
+  var r=document.documentElement;
+  ['--brand','--brand2','--brand-dark','--accent','--accent2','--main','--bg2','--warn','--danger','--success'].forEach(function(k){r.style.removeProperty(k);});
+  showNotif('Đã khôi phục màu mặc định');
+  render();
+};
 
 async function renderSystemRefresh(){
   var el=document.getElementById('sys-usage');
