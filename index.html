@@ -3446,7 +3446,7 @@ window._campShowDetail=function(campName){
   });
   var saleRows=Object.values(bySale).sort(function(a,b){return b.rev-a.rev;}).map(function(s){
     var potPct=s.data?Math.round(s.potential/s.data*100):0;
-    var ordPct=s.estOrd?Math.round(s.orders/s.estOrd*100):0;
+    var ordPct=(s.orders+s.estOrd)>0?Math.round(s.orders/(s.orders+s.estOrd)*100):0;
     var estOrdPct=s.potential?Math.round(s.estOrd/s.potential*100):0;
     return '<tr><td>'+s.name.split(' ').pop()+'<\/td><td>'+s.data+'<\/td>'
       +'<td>'+s.called+' <span style="font-size:9px;color:var(--text3)">('+( s.data?Math.round(s.called/s.data*100):0)+'%)<\/span><\/td>'
@@ -4192,7 +4192,9 @@ function openProdZoom(id){
   var p=PRODUCTS_ALL.find(function(x){return x.id===id;});
   if(!p)return;
   var existing=document.getElementById('prod-zoom-modal');
-  if(existing)existing.remove();
+  // Nếu modal đang mở → update nội dung, giữ nguyên kích thước container
+  var _reuseModal=(existing!=null);
+  if(existing&&!_reuseModal)existing.remove();
   var isManagerProd=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   var isActive=p.is_active!==false;
   var vendorColor={'BOLSA':'var(--accent2)','ONS':'var(--accent)','TSPA':'var(--warn)'}[p.brand]||'var(--brand2)';
@@ -4285,6 +4287,14 @@ function openProdZoom(id){
   html+='<\/div><\/div>';
   html+='<\/div>';// end container
 
+  if(_reuseModal&&existing){
+    // Chỉ update inner box, giữ nguyên overlay và kích thước
+    var existingBox=existing.querySelector('div[onclick]');
+    if(existingBox){
+      existingBox.outerHTML=html;
+      return;
+    }
+  }
   m.innerHTML=html;
   document.body.appendChild(m);
 }
@@ -6791,7 +6801,24 @@ function render(){
       +(isManagerD?'<select id="daily-sale" onchange="window._dailySale=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none" class="fsel"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSaleD===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>':'')
       +'<button class="btn btn-primary" style="font-size:12px;padding:6px 14px" onclick="window._dailyFrom=document.getElementById(&quot;daily-from&quot;).value;window._dailyTo=document.getElementById(&quot;daily-to&quot;).value;var ds=document.getElementById(&quot;daily-sale&quot;);window._dailySale=ds?ds.value:&quot;all&quot;;renderDailyData()"><i class="ti ti-search"></i> Lọc<\/button>'
       +'<\/div><div id="daily-content" style="color:var(--text2);font-size:13px;padding:20px 0"><div style="display:flex;align-items:center;gap:10px"><div style="width:20px;height:20px;border:2px solid var(--brand2);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"><\/div> Đang tải dữ liệu...<\/div><\/div><\/div>';
-    renderDailyData().then(function(){if(window._fixStickyThead)window._fixStickyThead();});
+    renderDailyData().then(function(){
+      // Đo filter bar height để set panel-header và thead top đúng
+      var filterBar=document.querySelector('.content>div[style*="position:sticky"]');
+      var fbH=filterBar?filterBar.offsetHeight:0;
+      var ph=document.querySelector('#daily-content .panel-header');
+      if(ph){
+        ph.style.position='sticky';
+        ph.style.top=fbH+'px';
+        ph.style.zIndex='20';
+        ph.style.background='#0f0c24';
+      }
+      if(window._fixStickyThead){
+        // Override daily thead top = fbH + phH
+        var phH=ph?ph.offsetHeight:0;
+        var th=document.querySelector('#daily-content thead tr');
+        if(th){th.classList.add('sticky-thead-active');th.style.top=(fbH+phH)+'px';}
+      }
+    });
   }
   else if(page==='schedule')m.innerHTML=renderSchedule();
   else if(page==='chat'){m.innerHTML='<div id="chat-root"><\/div>';initChatPage();}
