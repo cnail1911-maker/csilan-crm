@@ -8469,10 +8469,10 @@ function startRealtime(){
         var existing=list.find(function(x){return x.id===m.id;});
         if(existing){
           Object.assign(existing,m);
-          // Nếu chỉ reactions thay đổi → update DOM thay vì re-render toàn bộ
           if(m.room_id===curRoom){
-            if(payload.old&&JSON.stringify(payload.old.reactions)!==JSON.stringify(m.reactions)){
-              if(window._handleReactionUpdate)window._handleReactionUpdate(payload);
+            // reactions update: chỉ update DOM chip, không re-render toàn bộ
+            if(m.reactions!==undefined&&window._handleReactionUpdate){
+              window._handleReactionUpdate(payload);
             } else {
               renderMsgs();
             }
@@ -8504,7 +8504,15 @@ function startPoll(){
     if(curRoom){
       var since=lastTs[curRoom]||new Date(Date.now()-60000).toISOString();
       var res=await api({action:'poll_new_messages',room_id:curRoom,after:since});
-      if(res.messages&&res.messages.length)res.messages.forEach(function(m){handleNewMsg(m);});
+      if(res.messages&&res.messages.length)res.messages.forEach(function(m){
+        var existing=(msgs[curRoom]||[]).find(function(x){return x.id===m.id;});
+        if(existing&&m.reactions!==undefined&&JSON.stringify(existing.reactions)!==JSON.stringify(m.reactions)){
+          existing.reactions=m.reactions;
+          if(window._handleReactionUpdate)window._handleReactionUpdate({new:m});
+        } else if(!existing){
+          handleNewMsg(m);
+        }
+      });
     }
     // Poll unread cho TẤT CẢ rooms (bao gồm khi không ở tab chat)
     var allIds=rooms.map(function(r){return r.id;});
@@ -8569,7 +8577,22 @@ async function loadMsgs(roomId,before){
   if(res.messages&&res.messages.length)lastTs[roomId]=res.messages[res.messages.length-1].created_at;
   unread[roomId]=0;
   try{localStorage.setItem('c_lr_'+roomId,new Date().toISOString());}catch(e){void e;}
-  badge();renderMsgs(!!before);
+  // Fetch reactions trực tiếp từ DB (bypass Edge Function có thể thiếu cột)
+  if(msgs[roomId]&&msgs[roomId].length){
+    var ids=msgs[roomId].map(function(m){return m.id;});
+    chatSb.from('messages').select('id,reactions').in('id',ids).then(function(r){
+      if(r.data){
+        r.data.forEach(function(row){
+          var m=(msgs[roomId]||[]).find(function(x){return x.id===row.id;});
+          if(m&&row.reactions)m.reactions=row.reactions;
+        });
+        renderMsgs(!!before);
+      }
+    }).catch(function(){});
+  } else {
+    badge();
+    renderMsgs(!!before);
+  }
 }
 
 async function send(){
