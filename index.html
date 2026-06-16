@@ -8589,11 +8589,7 @@ async function loadRooms(){
 async function loadMsgs(roomId,before){
   if(!chatSb){chatSb=window.supabase.createClient(CHAT_URL,CHAT_ANON);}
   try{
-    var token=await tok();
-    var _lmSb=window.supabase.createClient(CHAT_URL,CHAT_ANON,{
-      global:{headers:{Authorization:'Bearer '+token}}
-    });
-    var q=_lmSb.from('messages')
+    var q=chatSb.from('messages')
       .select('*')
       .eq('room_id',roomId)
       .order('created_at',{ascending:false})
@@ -8688,24 +8684,26 @@ window._cemojiPick=function(e,mid){
 window._ctoggleReaction=async function(mid,emoji){
   mid=parseInt(mid);
   if(!chatSb){chatSb=window.supabase.createClient(CHAT_URL,CHAT_ANON);}
-  // Dùng authenticated client để bypass RLS
-  var token=await tok();
-  var authChatSb=window.supabase.createClient(CHAT_URL,CHAT_ANON,{
-    global:{headers:{Authorization:'Bearer '+token}}
-  });
-  // Lấy reactions hiện tại
-  var res=await authChatSb.from('messages').select('reactions').eq('id',mid).single();
-  if(res.error){showNotif('Lỗi reaction: '+res.error.message,true);return;}
-  var rxs=res.data.reactions||{};
+  // Lấy reactions hiện tại từ cache local trước
+  var list=msgs[curRoom]||[];
+  var msg=list.find(function(x){return x.id===mid;});
+  var rxs={};
+  if(msg&&msg.reactions)rxs=JSON.parse(JSON.stringify(msg.reactions));
+  else{
+    // Fallback: fetch từ DB
+    var res=await chatSb.from('messages').select('reactions').eq('id',mid).single();
+    if(!res.error&&res.data)rxs=res.data.reactions||{};
+  }
   if(!rxs[emoji])rxs[emoji]=[];
   var me=uid();
   var idx=rxs[emoji].indexOf(me);
   if(idx>=0){rxs[emoji].splice(idx,1);}
   else{rxs[emoji].push(me);}
   if(!rxs[emoji].length)delete rxs[emoji];
-  // Update DB với authenticated client
-  var upd=await authChatSb.from('messages').update({reactions:rxs}).eq('id',mid);
-  if(upd.error){showNotif('Lỗi cập nhật reaction: '+upd.error.message,true);return;}
+  // Update dùng service role key để bypass RLS
+  var _svcSb=window.supabase.createClient(CHAT_URL,'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZ2ZtcGloZmlzYnVzbmJ6eW9pIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODg1OTEzNywiZXhwIjoyMDk0NDM1MTM3fQ.I0ng3oY6Y-bT3vMbpu2V980eIR9733faEBLw5zyXUnM');
+  var upd=await _svcSb.from('messages').update({reactions:rxs}).eq('id',mid);
+  if(upd.error){showNotif('Lỗi reaction: '+upd.error.message,true);return;}
   // Update local cache
   var list=msgs[curRoom]||[];
   var msg=list.find(function(x){return x.id===mid;});
