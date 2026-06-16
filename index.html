@@ -6690,17 +6690,28 @@ async function renderDailyData(){
   const fTo=window._dailyTo||today.toISOString().slice(0,10);
   const fSaleDaily=window._dailySale||'all';
 
-  const fromDt=fFrom+'T00:00:00';
-  const toDt=fTo+'T23:59:59';
+  // Mở rộng 1 ngày để bắt log US timezone (UTC-5 đến UTC-10)
+  // Log lúc 23:00 US = sáng hôm sau UTC → cần query từ ngày trước
+  var _fromD=new Date(fFrom+'T00:00:00');_fromD.setDate(_fromD.getDate()-1);
+  var _toD=new Date(fTo+'T23:59:59');_toD.setDate(_toD.getDate()+1);
+  const fromDt=_fromD.toISOString().slice(0,19);
+  const toDt=_toD.toISOString().slice(0,19);
+  // Để lọc lại theo local date, dùng offset US (trung bình -7h = EST/CST/PST)
+  const US_OFFSET_MS=7*60*60*1000; // UTC-7 làm baseline
 
   // Tối ưu: fetch song song, invoice tách 2 query để tránh OR chậm
   const [logsRes,invsRes1,invsRes2,potHistRes]=await Promise.all([
-    sb.from('call_logs').select('customer_id,sale_id,called_at').gte('called_at',fromDt).lte('called_at',toDt),
+    sb.from('call_logs').select('customer_id,sale_id,called_at').gte('called_at',fromDt).lte('called_at',toDt).limit(10000),
     sb.from('invoices').select('sale_id,created_at,date,total,type').gte('created_at',fromDt).lte('created_at',toDt).limit(500),
     sb.from('invoices').select('sale_id,created_at,date,total,type').is('created_at',null).gte('date',fFrom).lte('date',fTo).limit(200),
     sb.from('potential_history').select('customer_id,assigned_to_id,potential,recalled_at').gte('recalled_at',fromDt).lte('recalled_at',toDt)
   ]);
-  let logs=logsRes.data||[];
+  // Lọc lại theo local US date (UTC-7 baseline)
+  let logs=(logsRes.data||[]).filter(function(l){
+    if(!l.called_at)return false;
+    var localDate=new Date(new Date(l.called_at).getTime()-US_OFFSET_MS).toISOString().slice(0,10);
+    return localDate>=fFrom&&localDate<=fTo;
+  });
   // Merge invoices dedup by sale_id+date
   const invMap=new Map();
   [...(invsRes1.data||[]),...(invsRes2.data||[])].forEach(function(i){
@@ -6728,7 +6739,9 @@ async function renderDailyData(){
     // Số khách unique thao tác trong kỳ
     const byDate={};
     saleLogs.forEach(function(l){
-      const day=l.called_at?l.called_at.slice(0,10):'';
+      if(!l.called_at)return;
+      // Dùng local US date thay vì UTC date
+      const day=new Date(new Date(l.called_at).getTime()-US_OFFSET_MS).toISOString().slice(0,10);
       if(!day)return;
       if(!byDate[day])byDate[day]=new Set();
       byDate[day].add(l.customer_id);
@@ -8576,7 +8589,11 @@ async function loadRooms(){
 async function loadMsgs(roomId,before){
   if(!chatSb){chatSb=window.supabase.createClient(CHAT_URL,CHAT_ANON);}
   try{
-    var q=chatSb.from('messages')
+    var token=await tok();
+    var _lmSb=window.supabase.createClient(CHAT_URL,CHAT_ANON,{
+      global:{headers:{Authorization:'Bearer '+token}}
+    });
+    var q=_lmSb.from('messages')
       .select('*')
       .eq('room_id',roomId)
       .order('created_at',{ascending:false})
@@ -8671,19 +8688,24 @@ window._cemojiPick=function(e,mid){
 window._ctoggleReaction=async function(mid,emoji){
   mid=parseInt(mid);
   if(!chatSb){chatSb=window.supabase.createClient(CHAT_URL,CHAT_ANON);}
+  // Dùng authenticated client để bypass RLS
+  var token=await tok();
+  var authChatSb=window.supabase.createClient(CHAT_URL,CHAT_ANON,{
+    global:{headers:{Authorization:'Bearer '+token}}
+  });
   // Lấy reactions hiện tại
-  var res=await chatSb.from('messages').select('reactions').eq('id',mid).single();
-  if(res.error){showNotif('Lỗi reaction',true);return;}
+  var res=await authChatSb.from('messages').select('reactions').eq('id',mid).single();
+  if(res.error){showNotif('Lỗi reaction: '+res.error.message,true);return;}
   var rxs=res.data.reactions||{};
   if(!rxs[emoji])rxs[emoji]=[];
   var me=uid();
   var idx=rxs[emoji].indexOf(me);
-  if(idx>=0){rxs[emoji].splice(idx,1);}  // bỏ react
-  else{rxs[emoji].push(me);}              // thêm react
+  if(idx>=0){rxs[emoji].splice(idx,1);}
+  else{rxs[emoji].push(me);}
   if(!rxs[emoji].length)delete rxs[emoji];
-  // Update DB
-  var upd=await chatSb.from('messages').update({reactions:rxs}).eq('id',mid);
-  if(upd.error){showNotif('Lỗi cập nhật reaction',true);return;}
+  // Update DB với authenticated client
+  var upd=await authChatSb.from('messages').update({reactions:rxs}).eq('id',mid);
+  if(upd.error){showNotif('Lỗi cập nhật reaction: '+upd.error.message,true);return;}
   // Update local cache
   var list=msgs[curRoom]||[];
   var msg=list.find(function(x){return x.id===mid;});
