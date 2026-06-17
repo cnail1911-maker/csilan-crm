@@ -6109,7 +6109,8 @@ window._openSupportModal=function(customerId){
   html+='<div style="font-size:14px;font-weight:600;color:var(--text)">'+(c.business_name||c.customer_name||'—')+'</div>';
   html+='</div>';
   html+='<label style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Gửi cho</label>';
-  html+='<select id="sr-assignee" style="width:100%;margin:6px 0 16px;height:38px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:inherit;outline:none"><option value="">-- Chọn người nhận --</option>'+optsHtml+'</select>';
+  var _csScheme=document.documentElement.getAttribute('data-theme')==='light'?'light':'dark';
+  html+='<select id="sr-assignee" style="width:100%;margin:6px 0 16px;height:38px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:inherit;outline:none;color-scheme:'+_csScheme+'"><option value="">-- Chọn người nhận --</option>'+optsHtml+'</select>';
   html+='<label style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Lý do / Nội dung cần hỗ trợ</label>';
   html+='<textarea id="sr-reason" rows="4" placeholder="VD: Khách hỏi về chính sách bảo hành, cần manager tư vấn thêm..." style="width:100%;margin-top:6px;resize:vertical;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;outline:none"></textarea>';
   html+='</div>';
@@ -6203,7 +6204,8 @@ window._openSupportDetailPanel=function(reqId){
 
   if(canResolve&&req.status!=='resolved'){
     html+='<div style="margin-bottom:10px"><label style="font-size:11px;color:var(--text3);text-transform:uppercase">Cập nhật trạng thái</label>';
-    html+='<select id="sr-status" style="width:100%;margin-top:6px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-family:inherit;outline:none">';
+    var _csScheme2=document.documentElement.getAttribute('data-theme')==='light'?'light':'dark';
+  html+='<select id="sr-status" style="width:100%;margin-top:6px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-family:inherit;outline:none;color-scheme:'+_csScheme2+'">';
     html+='<option value="pending"'+(req.status==='pending'?' selected':'')+'>Đang chờ</option>';
     html+='<option value="in_progress"'+(req.status==='in_progress'?' selected':'')+'>Đang xử lý</option>';
     html+='<option value="resolved"'+(req.status==='resolved'?' selected':'')+'>Đã xử lý</option>';
