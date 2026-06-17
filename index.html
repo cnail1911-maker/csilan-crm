@@ -2824,10 +2824,14 @@ function _renderSupportPanel(reqs){
     var isReceived=r.assigned_to===currentUser.id;
     var custName=r.customer?(r.customer.business_name||r.customer.customer_name):'—';
     var custCode=r.customer?r.customer.ma_kh:'';
+    var custCellName=r.customer?(r.customer.customer_name||'—'):'—';
+    var custPhones=r.customer?[r.customer.cellphone,r.customer.business_phone].filter(Boolean).join(' / '):'';
     return '<tr onclick="window._openSupportDetailPanel('+r.id+')" style="cursor:pointer">'
       +'<td><span class="badge" style="background:'+(isReceived?'rgba(108,92,231,0.15)':'rgba(255,255,255,0.06)')+';color:'+(isReceived?'var(--brand2)':'var(--text3)')+'">'+(isReceived?'Nhận':'Gửi')+'</span></td>'
       +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(custCode||'—')+'</td>'
       +'<td>'+custName+'</td>'
+      +'<td style="font-size:11px;color:var(--text2)">'+custCellName+'</td>'
+      +'<td style="font-size:10px;color:var(--text3);font-family:monospace;white-space:nowrap">'+(custPhones||'—')+'</td>'
       +'<td style="font-size:11px;color:var(--text2)">'+(r.requester?r.requester.full_name.split(' ').pop():'—')+'</td>'
       +'<td style="font-size:11px;color:var(--text2)">'+(r.assignee?r.assignee.full_name.split(' ').pop():'—')+'</td>'
       +'<td style="font-size:11px;color:var(--text2);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_escSafe(r.reason||'')+'</td>'
@@ -2838,8 +2842,8 @@ function _renderSupportPanel(reqs){
   }).join('');
   return '<div class="panel"><div class="panel-header"><h2><i class="ti ti-headset"></i> Yêu cầu hỗ trợ <span style="color:var(--brand2)">'+filteredReqs.length+'</span>'+(filteredReqs.length!==reqs.length?' <span style="font-size:11px;color:var(--text3);font-weight:400">/ '+reqs.length+' tổng</span>':'')+'</h2></div>'
     +filterBar
-    +'<table><colgroup><col width="60"><col width="80"><col width="160"><col width="100"><col width="100"><col width="220"><col width="90"><col width="80">'+(isManagerSR?'<col width="50">':'')+'</colgroup>'
-    +'<thead><tr><th></th><th>Mã KH</th><th>Khách hàng</th><th>Người gửi</th><th>Người nhận</th><th>Lý do</th><th>Trạng thái</th><th>Ngày</th>'+(isManagerSR?'<th></th>':'')+'</tr></thead>'
+    +'<table><colgroup><col width="60"><col width="80"><col width="150"><col width="110"><col width="110"><col width="100"><col width="100"><col width="200"><col width="90"><col width="80">'+(isManagerSR?'<col width="50">':'')+'</colgroup>'
+    +'<thead><tr><th></th><th>Mã KH</th><th>Khách hàng</th><th>Tên KH</th><th>Phone</th><th>Người gửi</th><th>Người nhận</th><th>Lý do</th><th>Trạng thái</th><th>Ngày</th>'+(isManagerSR?'<th></th>':'')+'</tr></thead>'
     +'<tbody>'+rows+'</tbody></table></div>';
 }
 
@@ -6144,7 +6148,7 @@ window.SUPPORT_REQUESTS=window.SUPPORT_REQUESTS||[];
 async function _loadSupportRequests(){
   try{
     var res=await sb.from('support_requests')
-      .select('*,customer:customers(id,ma_kh,business_name,customer_name),requester:profiles!requested_by(full_name),assignee:profiles!assigned_to(full_name)')
+      .select('*,customer:customers(id,ma_kh,business_name,customer_name,cellphone,business_phone),requester:profiles!requested_by(full_name),assignee:profiles!assigned_to(full_name)')
       .order('created_at',{ascending:false})
       .limit(500);
     if(res.data)window.SUPPORT_REQUESTS=res.data;
@@ -6254,9 +6258,13 @@ window._openSupportDetailPanel=function(reqId){
   html+='<button class="btn" style="padding:4px 8px" onclick="document.getElementById(\'support-detail-modal\').remove()"><i class="ti ti-x"></i></button></div>';
   html+='<div class="modal-body" style="padding:18px">';
 
-  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">';
   html+='<div><div style="font-size:12px;color:var(--text3)">'+(req.customer?req.customer.ma_kh:'')+'</div>';
-  html+='<div style="font-size:15px;font-weight:600">'+(req.customer?(req.customer.business_name||req.customer.customer_name):'—')+'</div></div>';
+  html+='<div style="font-size:15px;font-weight:600">'+(req.customer?(req.customer.business_name||req.customer.customer_name):'—')+'</div>';
+  if(req.customer&&req.customer.customer_name)html+='<div style="font-size:12px;color:var(--text2);margin-top:2px">'+req.customer.customer_name+'</div>';
+  var _dPhones=req.customer?[req.customer.cellphone,req.customer.business_phone].filter(Boolean).join(' / '):'';
+  if(_dPhones)html+='<div style="font-size:11px;color:var(--text3);font-family:monospace;margin-top:2px"><i class="ti ti-phone"></i> '+_dPhones+'</div>';
+  html+='</div>';
   html+='<span class="badge" style="background:'+statusColor+'22;color:'+statusColor+';border:1px solid '+statusColor+'">'+statusLabel+'</span>';
   html+='</div>';
 
