@@ -21,6 +21,8 @@
 </script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;height:-webkit-fill-available;}
+body{height:100%;height:-webkit-fill-available;overflow:hidden;position:fixed;width:100%;inset:0;}
 :root{
   --brand:#6C5CE7;--brand2:#A29BFE;--brand-dark:#4834d4;
   --accent:#00CEC9;--accent2:#55EFC4;
@@ -137,7 +139,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .auth-btn{width:100%;padding:11px;background:linear-gradient(135deg,var(--brand),var(--brand-dark));border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;font-family:'Be Vietnam Pro',sans-serif;cursor:pointer}
 .auth-error{background:rgba(255,118,117,0.1);border:1px solid rgba(255,118,117,0.3);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--danger);margin-top:10px;display:none}
 #app-screen{display:none;height:100vh}
-.app{display:flex;height:100%;overflow:hidden}
+.app{display:flex;height:100%;height:100dvh;overflow:hidden}
 .sidebar{width:215px;min-width:215px;background:linear-gradient(160deg,var(--sidebar-from) 0%,var(--sidebar-mid) 50%,var(--sidebar-to) 100%);display:flex;flex-direction:column;position:relative;overflow:hidden}
 .logo-wrap{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,0.08)}
 .logo-name{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;background:linear-gradient(90deg,#fff,var(--brand2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
@@ -224,6 +226,11 @@ tr:hover td{background:rgba(255,255,255,0.04);cursor:pointer}
 .field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .field label{font-size:10px;color:var(--text3);letter-spacing:0.8px;text-transform:uppercase;font-weight:600}
 .field input,.field select,.field textarea{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);font-family:'Be Vietnam Pro',sans-serif;outline:none}
+/* Global select/option fix: đảm bảo dropdown list không bị nền trắng mặc định browser */
+select{color-scheme:dark}
+[data-theme='light'] select{color-scheme:light}
+select option{background:var(--bg2,#1a1240);color:var(--text,#F0EEFF)}
+[data-theme='light'] select option{background:#ffffff;color:#1A0A0A}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--brand)}
 .field select option{background:#1a1240}
 .field textarea{resize:vertical;min-height:60px}
