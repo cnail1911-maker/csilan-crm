@@ -1720,6 +1720,7 @@ async function initApp(user){
   showLoading(false);render();
   // Init notification system (DB-based realtime)
   if(window._initNotifSystem)window._initNotifSystem();
+  if(typeof _loadSupportRequests==='function')_loadSupportRequests();
   }catch(e){
     clearTimeout(_initTimeout);
     console.error('[initApp] error:',e);
@@ -2664,6 +2665,11 @@ function renderPending(){
 // ============================================================
 function renderAlert(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
+  if(typeof window.alertFGroup==='undefined')window.alertFGroup='all';
+  // Support requests gửi đến mình (hoặc tất cả nếu manager xem support tab)
+  const mySupportReqs=(window.SUPPORT_REQUESTS||[]).filter(function(r){
+    return r.status!=='resolved'&&(r.assigned_to===currentUser.id||r.requested_by===currentUser.id);
+  });
   const today=new Date();today.setHours(0,0,0,0);
   if(typeof window.alertFPotential==='undefined')window.alertFPotential='all';
 
@@ -2705,7 +2711,6 @@ function renderAlert(){
   }
   const potentialFilter='<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="window.alertFPotential=this.value;render()"><option value="all">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'"'+(window.alertFPotential===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select>';
   const saleFilter=isManager?('<select class="fsel" style="font-size:12px;padding:7px 10px" onchange="fSale=this.value;render()"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>'):'';
-  if(typeof window.alertFGroup==='undefined')window.alertFGroup='all';
   const filtered=alertData.filter(function(c){
     if(!isManager&&currentUser&&c.assigned_to!==currentUser.id)return false;
     if(fSale!=='all'&&c.assigned_to!==fSale)return false;
@@ -2737,16 +2742,45 @@ function renderAlert(){
     +'<div class="stat-card sc0" style="cursor:pointer;border:'+(window.alertFGroup==='over30'?'2px solid var(--danger)':'1px solid var(--border)')+'" onclick="window.alertFGroup=(window.alertFGroup===\'over30\'?\'all\':\'over30\');render()"><div class="stat-label">Quá 30 ngày<\/div><div class="stat-val" style="color:var(--danger)">'+over30+'<\/div>'+(window.alertFGroup==='over30'?'<div style="font-size:9px;color:var(--danger)">▼ Lọc<\/div>':'')+'<\/div>'
     +'<div class="stat-card sc1" style="cursor:pointer;border:'+(window.alertFGroup==='expired'?'2px solid var(--danger)':'1px solid var(--border)')+'" onclick="window.alertFGroup=(window.alertFGroup===\'expired\'?\'all\':\'expired\');render()"><div class="stat-label">Hết deadline<\/div><div class="stat-val" style="color:var(--danger)">'+expiredDl+'<\/div>'+(window.alertFGroup==='expired'?'<div style="font-size:9px;color:var(--danger)">▼ Lọc<\/div>':'')+'<\/div>'
     +'<div class="stat-card sc2"><div class="stat-label">Tổng Potential<\/div><div class="stat-val" style="color:var(--brand2)">'+CUSTOMERS.filter(function(c){return c.potential&&c.potential!=='';}).length+'<\/div><\/div>'
+    +'<div class="stat-card sc4" style="cursor:pointer;border:'+(window.alertFGroup==='support'?'2px solid var(--brand2)':'1px solid var(--border)')+'" onclick="window.alertFGroup=(window.alertFGroup===\'support\'?\'all\':\'support\');render()"><div class="stat-label"><i class="ti ti-headset" style="margin-right:4px"><\/i>Support<\/div><div class="stat-val" style="color:var(--brand2)">'+mySupportReqs.length+'<\/div>'+(window.alertFGroup==='support'?'<div style="font-size:9px;color:var(--brand2)">▼ Lọc<\/div>':'')+'<\/div>'
     +'<\/div>'
     +'<div class="content">'
-    +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--warn)">'+filtered.length+'<\/span> cần follow up<\/h2>'
+    +(window.alertFGroup==='support'
+      ? _renderSupportPanel(mySupportReqs)
+      : ('<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--warn)">'+filtered.length+'<\/span> cần follow up<\/h2>'
     +(isManager?'<button class="btn" style="border-color:rgba(255,118,117,0.4);color:var(--danger);font-size:11px" onclick="recallOver30()"><i class="ti ti-rotate-clockwise"></i> Thu hồi 30+ ngày<\/button>':'')
     +'<\/div>'
     +(filtered.length===0?'<div class="empty-state"><i class="ti ti-bell-off"></i>Không có cảnh báo nào!<\/div>'
       :'<table><colgroup><col width="80"><col width="120"><col width="110"><col width="90"><col width="100"><col width="75"><col width="80"><col width="65">'+(isManager?'<col width="70">':'')+'</colgroup>'
       +'<thead><tr><th>Mã KH<\/th><th>Business Name<\/th><th>Customer<\/th><th>Phone<\/th><th>Potential<\/th><th>Status<\/th><th>Chưa liên hệ<\/th><th>Sale<\/th>'+(isManager?'<th><\/th>':'')+'<\/tr></thead>'
       +'<tbody>'+rows+'</tbody><\/table>')
-    +'<\/div><\/div>';
+    +'<\/div>'))
+    +'<\/div>';
+}
+
+function _renderSupportPanel(reqs){
+  if(!reqs.length)return '<div class="panel"><div class="panel-header"><h2><i class="ti ti-headset"><\/i> Yêu cầu hỗ trợ<\/h2><\/div><div class="empty-state"><i class="ti ti-headset"><\/i>Không có yêu cầu hỗ trợ nào!<\/div><\/div>';
+  var rows=reqs.slice().sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);}).map(function(r){
+    var statusLabel={pending:'Đang chờ',in_progress:'Đang xử lý',resolved:'Đã xử lý'}[r.status]||r.status;
+    var statusColor={pending:'var(--warn)',in_progress:'var(--brand2)',resolved:'var(--success)'}[r.status]||'var(--text3)';
+    var isReceived=r.assigned_to===currentUser.id;
+    var custName=r.customer?(r.customer.business_name||r.customer.customer_name):'—';
+    var custCode=r.customer?r.customer.ma_kh:'';
+    return '<tr onclick="window._openSupportDetailPanel('+r.id+')" style="cursor:pointer">'
+      +'<td><span class="badge" style="background:'+(isReceived?'rgba(108,92,231,0.15)':'rgba(255,255,255,0.06)')+';color:'+(isReceived?'var(--brand2)':'var(--text3)')+'">'+(isReceived?'Nhận':'Gửi')+'<\/span><\/td>'
+      +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(custCode||'—')+'<\/td>'
+      +'<td>'+custName+'<\/td>'
+      +'<td style="font-size:11px;color:var(--text2)">'+(r.requester?r.requester.full_name.split(' ').pop():'—')+'<\/td>'
+      +'<td style="font-size:11px;color:var(--text2)">'+(r.assignee?r.assignee.full_name.split(' ').pop():'—')+'<\/td>'
+      +'<td style="font-size:11px;color:var(--text2);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.reason||'')+'<\/td>'
+      +'<td><span class="badge" style="background:'+statusColor+'22;color:'+statusColor+'">'+statusLabel+'<\/span><\/td>'
+      +'<td style="font-size:10px;color:var(--text3)">'+new Date(r.created_at).toLocaleDateString('vi-VN')+'<\/td>'
+      +'<\/tr>';
+  }).join('');
+  return '<div class="panel"><div class="panel-header"><h2><i class="ti ti-headset"><\/i> Yêu cầu hỗ trợ <span style="color:var(--brand2)">'+reqs.length+'<\/span><\/h2><\/div>'
+    +'<table><colgroup><col width="60"><col width="80"><col width="160"><col width="100"><col width="100"><col width="220"><col width="90"><col width="80"></colgroup>'
+    +'<thead><tr><th><\/th><th>Mã KH<\/th><th>Khách hàng<\/th><th>Người gửi<\/th><th>Người nhận<\/th><th>Lý do<\/th><th>Trạng thái<\/th><th>Ngày<\/th><\/tr></thead>'
+    +'<tbody>'+rows+'</tbody><\/table><\/div>';
 }
 
 async function recallOne(id){
@@ -5642,6 +5676,7 @@ function _renderDetailShell(modal,c,isManager,logs){
   html+='<\/div>';
   html+='<button type="button" class="btn" onclick="document.getElementById(\'detail-modal\').remove();selId=null;window._campNavKey=null;var _cdm=document.getElementById(\'camp-detail-modal\');if(_cdm&&window._detailNavSource===\'camp-detail\')_cdm.style.display=\'block\'">Đóng<\/button>';
   if(isManager) html+='<button type="button" class="btn btn-danger" onclick="deleteCustomer('+c.id+')"><i class="ti ti-trash"></i> Xóa<\/button>';
+  html+='<button type="button" class="btn" style="border-color:rgba(108,92,231,0.4);color:var(--brand2)" onclick="window._openSupportModal('+c.id+')"><i class="ti ti-headset"></i> Nhờ hỗ trợ<\/button>';
   html+='<button type="button" class="btn" style="border-color:rgba(253,203,110,0.5);color:var(--warn)" onclick="openInvoice('+c.id+')"><i class="ti ti-file-invoice"></i> Tạo Invoice<\/button>';
   html+='<button type="button" class="btn btn-primary" onclick="saveDetail('+c.id+')"><i class="ti ti-device-floppy"></i> Lưu<\/button>';
   html+='<\/div>';
@@ -6029,6 +6064,197 @@ async function openInvoice(customerId){
   sessionStorage.setItem('invoice_customer_id', customerId);
   window.open('invoice.html', '_blank');
 }
+
+// ════════════ SUPPORT REQUEST SYSTEM ════════════
+window.SUPPORT_REQUESTS=window.SUPPORT_REQUESTS||[];
+
+async function _loadSupportRequests(){
+  try{
+    var res=await sb.from('support_requests')
+      .select('*,customer:customers(id,ma_kh,business_name,customer_name),requester:profiles!requested_by(full_name),assignee:profiles!assigned_to(full_name)')
+      .order('created_at',{ascending:false})
+      .limit(500);
+    if(res.data)window.SUPPORT_REQUESTS=res.data;
+  }catch(e){console.warn('[support] load error',e);}
+}
+
+window._openSupportModal=function(customerId){
+  var c=CUSTOMERS.find(function(x){return x.id===customerId;});
+  if(!c)return;
+  var existing=document.getElementById('support-modal');
+  if(existing)existing.remove();
+
+  var modal=document.createElement('div');
+  modal.className='modal-overlay';modal.id='support-modal';
+  modal.style.zIndex='10005';
+
+  var recipients=PROFILES.filter(function(p){
+    return p.is_active!==false&&p.id!==currentUser.id&&
+      (p.role==='manager'||p.role==='admin'||p.role==='leader'||p.role==='sale');
+  });
+  var optsHtml=recipients.map(function(p){
+    var roleLabel=p.role==='manager'?' (Manager)':p.role==='admin'?' (Admin)':p.role==='leader'?' (Leader)':'';
+    return '<option value="'+p.id+'">'+p.full_name+roleLabel+'</option>';
+  }).join('');
+
+  var html='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:16px;width:96vw;max-width:480px;border:1px solid var(--border)">';
+  html+='<div class="modal-header"><h3><i class="ti ti-headset"></i> Nhờ hỗ trợ khách hàng</h3>';
+  html+='<button class="btn" style="padding:4px 8px" onclick="document.getElementById(\'support-modal\').remove()"><i class="ti ti-x"></i></button></div>';
+  html+='<div class="modal-body" style="padding:18px">';
+  html+='<div style="background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.15);border-radius:10px;padding:10px 14px;margin-bottom:16px">';
+  html+='<div style="font-size:12px;color:var(--text3)">'+(c.ma_kh||'')+'</div>';
+  html+='<div style="font-size:14px;font-weight:600;color:var(--text)">'+(c.business_name||c.customer_name||'—')+'</div>';
+  html+='</div>';
+  html+='<label style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Gửi cho</label>';
+  html+='<select id="sr-assignee" style="width:100%;margin:6px 0 16px;height:38px"><option value="">-- Chọn người nhận --</option>'+optsHtml+'</select>';
+  html+='<label style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Lý do / Nội dung cần hỗ trợ</label>';
+  html+='<textarea id="sr-reason" rows="4" placeholder="VD: Khách hỏi về chính sách bảo hành, cần manager tư vấn thêm..." style="width:100%;margin-top:6px;resize:vertical"></textarea>';
+  html+='</div>';
+  html+='<div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid var(--border)">';
+  html+='<button class="btn" onclick="document.getElementById(\'support-modal\').remove()">Hủy</button>';
+  html+='<button class="btn btn-primary" onclick="window._sendSupportRequest('+c.id+')"><i class="ti ti-send"></i> Gửi yêu cầu</button>';
+  html+='</div></div>';
+
+  modal.innerHTML=html;
+  document.body.appendChild(modal);
+};
+
+window._sendSupportRequest=async function(customerId){
+  var assigneeId=(document.getElementById('sr-assignee')||{}).value;
+  var reason=(document.getElementById('sr-reason')||{}).value.trim();
+  if(!assigneeId){alert('Vui lòng chọn người nhận hỗ trợ');return;}
+  if(!reason){alert('Vui lòng nhập lý do cần hỗ trợ');return;}
+  var c=CUSTOMERS.find(function(x){return x.id===customerId;});
+  if(!c)return;
+
+  try{
+    var ins=await sb.from('support_requests').insert({
+      customer_id:customerId,
+      requested_by:currentUser.id,
+      assigned_to:assigneeId,
+      reason:reason,
+      status:'pending'
+    }).select().single();
+    if(ins.error)throw ins.error;
+
+    // Push notification cho người nhận
+    if(window._notifPush){
+      var custName=c.business_name||c.customer_name||'';
+      window._notifPush(
+        assigneeId,
+        '🆘 Yêu cầu hỗ trợ mới',
+        (currentProfile.full_name||'')+' nhờ bạn hỗ trợ khách '+custName+(c.ma_kh?' ('+c.ma_kh+')':''),
+        'alert'
+      );
+    }
+
+    document.getElementById('support-modal').remove();
+    showCrmToast('✅ Đã gửi yêu cầu hỗ trợ','','alert','success');
+    await _loadSupportRequests();
+    if(window.page==='alert')render();
+  }catch(e){
+    alert('Lỗi gửi yêu cầu: '+e.message);
+  }
+};
+
+window._openSupportDetailPanel=function(reqId){
+  var req=window.SUPPORT_REQUESTS.find(function(r){return r.id===reqId;});
+  if(!req)return;
+  var existing=document.getElementById('support-detail-modal');
+  if(existing)existing.remove();
+
+  var isAssignee=req.assigned_to===currentUser.id;
+  var isRequester=req.requested_by===currentUser.id;
+  var canResolve=isAssignee;
+
+  var modal=document.createElement('div');
+  modal.className='modal-overlay';modal.id='support-detail-modal';
+  modal.style.zIndex='10005';
+
+  var statusLabel={pending:'Đang chờ',in_progress:'Đang xử lý',resolved:'Đã xử lý'}[req.status]||req.status;
+  var statusColor={pending:'var(--warn)',in_progress:'var(--brand2)',resolved:'var(--success)'}[req.status]||'var(--text3)';
+
+  var html='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:16px;width:96vw;max-width:520px;border:1px solid var(--border)">';
+  html+='<div class="modal-header"><h3><i class="ti ti-headset"></i> Chi tiết yêu cầu hỗ trợ</h3>';
+  html+='<button class="btn" style="padding:4px 8px" onclick="document.getElementById(\'support-detail-modal\').remove()"><i class="ti ti-x"></i></button></div>';
+  html+='<div class="modal-body" style="padding:18px">';
+
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  html+='<div><div style="font-size:12px;color:var(--text3)">'+(req.customer?req.customer.ma_kh:'')+'</div>';
+  html+='<div style="font-size:15px;font-weight:600">'+(req.customer?(req.customer.business_name||req.customer.customer_name):'—')+'</div></div>';
+  html+='<span class="badge" style="background:'+statusColor+'22;color:'+statusColor+';border:1px solid '+statusColor+'">'+statusLabel+'</span>';
+  html+='</div>';
+
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">';
+  html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Người gửi</div><div style="font-size:13px;font-weight:500">'+(req.requester?req.requester.full_name:'—')+'</div></div>';
+  html+='<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Người nhận</div><div style="font-size:13px;font-weight:500">'+(req.assignee?req.assignee.full_name:'—')+'</div></div>';
+  html+='</div>';
+
+  html+='<div style="margin-bottom:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Lý do</div>';
+  html+='<div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;white-space:pre-wrap">'+esc(req.reason||'')+'</div></div>';
+
+  if(req.resolved_note){
+    html+='<div style="margin-bottom:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Phản hồi xử lý</div>';
+    html+='<div style="background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.2);border-radius:8px;padding:10px 12px;font-size:13px;white-space:pre-wrap">'+esc(req.resolved_note)+'</div></div>';
+  }
+
+  if(canResolve&&req.status!=='resolved'){
+    html+='<div style="margin-bottom:10px"><label style="font-size:11px;color:var(--text3);text-transform:uppercase">Cập nhật trạng thái</label>';
+    html+='<select id="sr-status" style="width:100%;margin-top:6px;height:36px">';
+    html+='<option value="pending"'+(req.status==='pending'?' selected':'')+'>Đang chờ</option>';
+    html+='<option value="in_progress"'+(req.status==='in_progress'?' selected':'')+'>Đang xử lý</option>';
+    html+='<option value="resolved"'+(req.status==='resolved'?' selected':'')+'>Đã xử lý</option>';
+    html+='</select></div>';
+    html+='<div><label style="font-size:11px;color:var(--text3);text-transform:uppercase">Ghi chú phản hồi</label>';
+    html+='<textarea id="sr-resolve-note" rows="3" placeholder="Nội dung đã hỗ trợ / tư vấn..." style="width:100%;margin-top:6px">'+esc(req.resolved_note||'')+'</textarea></div>';
+  }
+
+  html+='<div style="font-size:11px;color:var(--text3);margin-top:14px">Tạo lúc: '+new Date(req.created_at).toLocaleString('vi-VN')+(req.resolved_at?' · Xử lý lúc: '+new Date(req.resolved_at).toLocaleString('vi-VN'):'')+'</div>';
+
+  html+='</div>';
+  html+='<div class="modal-footer" style="display:flex;justify-content:space-between;gap:8px;padding:14px 18px;border-top:1px solid var(--border)">';
+  html+='<button class="btn" onclick="document.getElementById(\'support-detail-modal\').remove();renderDetailModal('+(req.customer_id)+')"><i class="ti ti-eye"></i> Xem khách hàng</button>';
+  html+='<div style="display:flex;gap:8px">';
+  html+='<button class="btn" onclick="document.getElementById(\'support-detail-modal\').remove()">Đóng</button>';
+  if(canResolve&&req.status!=='resolved')html+='<button class="btn btn-primary" onclick="window._updateSupportRequest('+req.id+')"><i class="ti ti-check"></i> Cập nhật</button>';
+  html+='</div></div></div>';
+
+  modal.innerHTML=html;
+  document.body.appendChild(modal);
+};
+
+window._updateSupportRequest=async function(reqId){
+  var status=(document.getElementById('sr-status')||{}).value;
+  var note=(document.getElementById('sr-resolve-note')||{}).value.trim();
+  var req=window.SUPPORT_REQUESTS.find(function(r){return r.id===reqId;});
+  if(!req)return;
+  try{
+    var payload={status:status,resolved_note:note||null};
+    if(status==='resolved')payload.resolved_at=new Date().toISOString();
+    var upd=await sb.from('support_requests').update(payload).eq('id',reqId);
+    if(upd.error)throw upd.error;
+    Object.assign(req,payload);
+
+    // Notify ngược lại cho người gửi
+    if(window._notifPush&&req.requested_by){
+      var c=CUSTOMERS.find(function(x){return x.id===req.customer_id;});
+      var custName=c?(c.business_name||c.customer_name):'';
+      var statusText={pending:'Đang chờ',in_progress:'Đang xử lý',resolved:'Đã xử lý'}[status];
+      window._notifPush(
+        req.requested_by,
+        '📋 Yêu cầu hỗ trợ được cập nhật',
+        (currentProfile.full_name||'')+' đã cập nhật yêu cầu hỗ trợ khách '+custName+' → '+statusText,
+        'alert'
+      );
+    }
+
+    document.getElementById('support-detail-modal').remove();
+    showCrmToast('✅ Đã cập nhật yêu cầu hỗ trợ','','alert','success');
+    if(window.page==='alert')render();
+  }catch(e){
+    alert('Lỗi cập nhật: '+e.message);
+  }
+};
 
 async function deleteCustomer(id){
   if(!confirm('Xóa khách hàng này? Toàn bộ invoice và lịch sử cuộc gọi sẽ bị xóa. Không thể hoàn tác!'))return;
