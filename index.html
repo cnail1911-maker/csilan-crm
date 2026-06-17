@@ -168,7 +168,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(108,92,231,0.4)}
 .btn-danger{border-color:rgba(255,118,117,0.4);color:var(--danger)}
 .content{flex:1;overflow:auto;padding:0 20px 16px}
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px 20px;background:#0f0c24;flex-shrink:0;position:sticky;top:0;z-index:25;}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;padding:10px 20px;background:#0f0c24;flex-shrink:0;position:sticky;top:0;z-index:25;}
 .stat-card{border-radius:14px;padding:14px 16px;position:relative;overflow:hidden;border:1px solid var(--border)}
 .stats-row-compact{gap:7px}
 .stats-row-compact .stat-card{padding:10px 12px;border-radius:10px}
@@ -2765,18 +2765,20 @@ function renderAlert(){
 
 function _escSafe(s){return(s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-window._srFilters=window._srFilters||{requester:'all',assignee:'all',status:'all'};
+window._srFilters=window._srFilters||{requester:'all',assignee:'all',status:'all',direction:'all'};
 
 window._srApplyFilters=function(){
   window._srFilters.requester=(document.getElementById('sr-f-requester')||{}).value||'all';
   window._srFilters.assignee=(document.getElementById('sr-f-assignee')||{}).value||'all';
   window._srFilters.status=(document.getElementById('sr-f-status')||{}).value||'all';
+  window._srFilters.direction=(document.getElementById('sr-f-direction')||{}).value||'all';
   render();
 };
 
 function _renderSupportPanel(reqs){
   const isManagerSR=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   var f=window._srFilters;
+  if(typeof f.direction==='undefined')f.direction='all';
   // Danh sách người gửi/người nhận có trong dữ liệu — để build filter dropdown
   var requesterIds=[...new Set(reqs.map(function(r){return r.requested_by;}).filter(Boolean))];
   var assigneeIds=[...new Set(reqs.map(function(r){return r.assigned_to;}).filter(Boolean))];
@@ -2789,19 +2791,24 @@ function _renderSupportPanel(reqs){
     return '<option value="'+id+'"'+(f.assignee===id?' selected':'')+'>'+(p?p.full_name:'—')+'</option>';
   }).join('');
 
-  var filterBar='<div class="csf-filterbar" style="display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--border)">';
+  var filterBar='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">';
+  filterBar+='<select id="sr-f-direction" class="fsel" style="font-size:11px;padding:5px 8px" onchange="window._srApplyFilters()">'
+    +'<option value="all"'+(f.direction==='all'?' selected':'')+'>Tất cả</option>'
+    +'<option value="sent"'+(f.direction==='sent'?' selected':'')+'>Đã gửi</option>'
+    +'<option value="received"'+(f.direction==='received'?' selected':'')+'>Đã nhận</option>'
+    +'</select>';
   if(isManagerSR){
-    filterBar+='<select id="sr-f-requester" class="fsel" onchange="window._srApplyFilters()"><option value="all">Tất cả người gửi</option>'+requesterOpts+'</select>';
-    filterBar+='<select id="sr-f-assignee" class="fsel" onchange="window._srApplyFilters()"><option value="all">Tất cả người nhận</option>'+assigneeOpts+'</select>';
+    filterBar+='<select id="sr-f-requester" class="fsel" style="font-size:11px;padding:5px 8px" onchange="window._srApplyFilters()"><option value="all">Tất cả người gửi</option>'+requesterOpts+'</select>';
+    filterBar+='<select id="sr-f-assignee" class="fsel" style="font-size:11px;padding:5px 8px" onchange="window._srApplyFilters()"><option value="all">Tất cả người nhận</option>'+assigneeOpts+'</select>';
   }
-  filterBar+='<select id="sr-f-status" class="fsel" onchange="window._srApplyFilters()">'
+  filterBar+='<select id="sr-f-status" class="fsel" style="font-size:11px;padding:5px 8px" onchange="window._srApplyFilters()">'
     +'<option value="all"'+(f.status==='all'?' selected':'')+'>Tất cả trạng thái</option>'
     +'<option value="pending"'+(f.status==='pending'?' selected':'')+'>Đang chờ</option>'
     +'<option value="in_progress"'+(f.status==='in_progress'?' selected':'')+'>Đang xử lý</option>'
     +'<option value="resolved"'+(f.status==='resolved'?' selected':'')+'>Đã xử lý</option>'
     +'</select>';
-  if(f.requester!=='all'||f.assignee!=='all'||f.status!=='all'){
-    filterBar+='<button class="btn" style="font-size:11px;padding:5px 10px" onclick="window._srFilters={requester:\'all\',assignee:\'all\',status:\'all\'};render()">× Xóa lọc</button>';
+  if(f.requester!=='all'||f.assignee!=='all'||f.status!=='all'||f.direction!=='all'){
+    filterBar+='<button class="btn" style="font-size:11px;padding:5px 10px" onclick="window._srFilters={requester:\'all\',assignee:\'all\',status:\'all\',direction:\'all\'};render()">× Xóa lọc</button>';
   }
   filterBar+='</div>';
 
@@ -2809,12 +2816,13 @@ function _renderSupportPanel(reqs){
     if(f.requester!=='all'&&r.requested_by!==f.requester)return false;
     if(f.assignee!=='all'&&r.assigned_to!==f.assignee)return false;
     if(f.status!=='all'&&r.status!==f.status)return false;
+    if(f.direction==='sent'&&r.requested_by!==currentUser.id)return false;
+    if(f.direction==='received'&&r.assigned_to!==currentUser.id)return false;
     return true;
   });
 
   if(!filteredReqs.length){
-    return '<div class="panel"><div class="panel-header"><h2><i class="ti ti-headset"></i> Yêu cầu hỗ trợ</h2></div>'
-      +filterBar
+    return '<div class="panel"><div class="panel-header"><h2><i class="ti ti-headset"></i> Yêu cầu hỗ trợ</h2>'+filterBar+'</div>'
       +'<div class="empty-state"><i class="ti ti-headset"></i>Không có yêu cầu hỗ trợ nào!</div></div>';
   }
 
@@ -2825,13 +2833,14 @@ function _renderSupportPanel(reqs){
     var custName=r.customer?(r.customer.business_name||r.customer.customer_name):'—';
     var custCode=r.customer?r.customer.ma_kh:'';
     var custCellName=r.customer?(r.customer.customer_name||'—'):'—';
-    var custPhones=r.customer?[r.customer.cellphone,r.customer.business_phone].filter(Boolean).join(' / '):'';
+    var custCell=r.customer?r.customer.cellphone:'';
+    var custBiz=r.customer?r.customer.business_phone:'';
     return '<tr onclick="window._openSupportDetailPanel('+r.id+')" style="cursor:pointer">'
       +'<td><span class="badge" style="background:'+(isReceived?'rgba(108,92,231,0.15)':'rgba(255,255,255,0.06)')+';color:'+(isReceived?'var(--brand2)':'var(--text3)')+'">'+(isReceived?'Nhận':'Gửi')+'</span></td>'
       +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(custCode||'—')+'</td>'
       +'<td>'+custName+'</td>'
       +'<td style="font-size:11px;color:var(--text2)">'+custCellName+'</td>'
-      +'<td style="font-size:10px;color:var(--text3);font-family:monospace;white-space:nowrap">'+(custPhones||'—')+'</td>'
+      +'<td style="font-size:10px;color:var(--text3);font-family:monospace;line-height:1.5">'+(custCell?'<div>'+custCell+'</div>':'')+(custBiz?'<div>'+custBiz+'</div>':'')+((!custCell&&!custBiz)?'—':'')+'</td>'
       +'<td style="font-size:11px;color:var(--text2)">'+(r.requester?r.requester.full_name.split(' ').pop():'—')+'</td>'
       +'<td style="font-size:11px;color:var(--text2)">'+(r.assignee?r.assignee.full_name.split(' ').pop():'—')+'</td>'
       +'<td style="font-size:11px;color:var(--text2);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_escSafe(r.reason||'')+'</td>'
@@ -2840,8 +2849,7 @@ function _renderSupportPanel(reqs){
       +(isManagerSR?'<td><button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(255,118,117,0.4);color:var(--danger)" onclick="event.stopPropagation();window._deleteSupportRequest('+r.id+')"><i class="ti ti-trash"></i></button></td>':'')
       +'</tr>';
   }).join('');
-  return '<div class="panel"><div class="panel-header"><h2><i class="ti ti-headset"></i> Yêu cầu hỗ trợ <span style="color:var(--brand2)">'+filteredReqs.length+'</span>'+(filteredReqs.length!==reqs.length?' <span style="font-size:11px;color:var(--text3);font-weight:400">/ '+reqs.length+' tổng</span>':'')+'</h2></div>'
-    +filterBar
+  return '<div class="panel"><div class="panel-header" style="flex-wrap:wrap;gap:10px"><h2><i class="ti ti-headset"></i> Yêu cầu hỗ trợ <span style="color:var(--brand2)">'+filteredReqs.length+'</span>'+(filteredReqs.length!==reqs.length?' <span style="font-size:11px;color:var(--text3);font-weight:400">/ '+reqs.length+' tổng</span>':'')+'</h2>'+filterBar+'</div>'
     +'<table><colgroup><col width="60"><col width="80"><col width="150"><col width="110"><col width="110"><col width="100"><col width="100"><col width="200"><col width="90"><col width="80">'+(isManagerSR?'<col width="50">':'')+'</colgroup>'
     +'<thead><tr><th></th><th>Mã KH</th><th>Khách hàng</th><th>Tên KH</th><th>Phone</th><th>Người gửi</th><th>Người nhận</th><th>Lý do</th><th>Trạng thái</th><th>Ngày</th>'+(isManagerSR?'<th></th>':'')+'</tr></thead>'
     +'<tbody>'+rows+'</tbody></table></div>';
@@ -7294,6 +7302,14 @@ function render(){
 
 // ── Fix sticky thead: đo panel-header + filterBar height runtime ──
 window._fixStickyThead=function(){
+  // Trên mobile, thead KHÔNG sticky (dùng panel-header sticky thay thế) — tránh phá scroll container
+  if(window.innerWidth<=768){
+    document.querySelectorAll('thead tr.sticky-thead-active').forEach(function(tr){
+      tr.classList.remove('sticky-thead-active');
+      tr.style.top='';
+    });
+    return;
+  }
   // Fix thead trong .panel (customers, order, alert, potential, products, campaign)
   document.querySelectorAll('.panel').forEach(function(panel){
     var ph=panel.querySelector(':scope>.panel-header');
@@ -7318,6 +7334,13 @@ window._fixStickyThead=function(){
     }
   });
 };
+// Re-check khi resize/orientation đổi (chuyển qua lại mobile/desktop)
+window.addEventListener('resize',function(){
+  if(window._fixStickyTheadDebounce)clearTimeout(window._fixStickyTheadDebounce);
+  window._fixStickyTheadDebounce=setTimeout(function(){
+    if(window._fixStickyThead)window._fixStickyThead();
+  },150);
+});
 
 // BOOT
 (async function(){
