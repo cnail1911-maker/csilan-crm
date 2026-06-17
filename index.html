@@ -2261,15 +2261,17 @@ async function approveInvoice(id,status){
     var newSeq=String(((todayInvcs||[]).length)+1).padStart(2,'0');
     var newInvNo=newPrefix+'-'+newSeq;
 
-    // Batch update: đổi invoice_no + approval_status + update customer
+    // Batch update: đổi invoice_no + approval_status + ngày duyệt (created_at) + update customer
+    const approvedAt=now.toISOString();
     const [invRes,custRes]=await Promise.all([
-      sb.from('invoices').update({approval_status:'approved',invoice_no:newInvNo}).eq('id',id),
+      sb.from('invoices').update({approval_status:'approved',invoice_no:newInvNo,created_at:approvedAt}).eq('id',id),
       sb.from('customers').update({lead_status:'Closedeal',latest_invoice_no:newInvNo,total_amount:inv.total}).eq('id',inv.customer_id)
     ]);
     // Update local state
     const iidx=INVOICES.findIndex(function(i){return i.id===id;});
-    if(iidx>=0)Object.assign(INVOICES[iidx],{approval_status:'approved',invoice_no:newInvNo});
+    if(iidx>=0)Object.assign(INVOICES[iidx],{approval_status:'approved',invoice_no:newInvNo,created_at:approvedAt});
     inv.invoice_no=newInvNo; // Update ref for Edge Function below
+    inv.created_at=approvedAt;
     var cidx=CUSTOMERS.findIndex(function(c){return c.id===inv.customer_id;});
     if(cidx>=0)Object.assign(CUSTOMERS[cidx],{lead_status:'Closedeal',latest_invoice_no:newInvNo,total_amount:inv.total});
 
@@ -2758,6 +2760,7 @@ function renderAlert(){
     +'<\/div>';
 }
 
+function _escSafe(s){return(s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function _renderSupportPanel(reqs){
   if(!reqs.length)return '<div class="panel"><div class="panel-header"><h2><i class="ti ti-headset"><\/i> Yêu cầu hỗ trợ<\/h2><\/div><div class="empty-state"><i class="ti ti-headset"><\/i>Không có yêu cầu hỗ trợ nào!<\/div><\/div>';
   var rows=reqs.slice().sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);}).map(function(r){
@@ -2772,7 +2775,7 @@ function _renderSupportPanel(reqs){
       +'<td>'+custName+'<\/td>'
       +'<td style="font-size:11px;color:var(--text2)">'+(r.requester?r.requester.full_name.split(' ').pop():'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--text2)">'+(r.assignee?r.assignee.full_name.split(' ').pop():'—')+'<\/td>'
-      +'<td style="font-size:11px;color:var(--text2);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.reason||'')+'<\/td>'
+      +'<td style="font-size:11px;color:var(--text2);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_escSafe(r.reason||'')+'<\/td>'
       +'<td><span class="badge" style="background:'+statusColor+'22;color:'+statusColor+'">'+statusLabel+'<\/span><\/td>'
       +'<td style="font-size:10px;color:var(--text3)">'+new Date(r.created_at).toLocaleDateString('vi-VN')+'<\/td>'
       +'<\/tr>';
@@ -6106,9 +6109,9 @@ window._openSupportModal=function(customerId){
   html+='<div style="font-size:14px;font-weight:600;color:var(--text)">'+(c.business_name||c.customer_name||'—')+'</div>';
   html+='</div>';
   html+='<label style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Gửi cho</label>';
-  html+='<select id="sr-assignee" style="width:100%;margin:6px 0 16px;height:38px"><option value="">-- Chọn người nhận --</option>'+optsHtml+'</select>';
+  html+='<select id="sr-assignee" style="width:100%;margin:6px 0 16px;height:38px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:inherit;outline:none"><option value="">-- Chọn người nhận --</option>'+optsHtml+'</select>';
   html+='<label style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Lý do / Nội dung cần hỗ trợ</label>';
-  html+='<textarea id="sr-reason" rows="4" placeholder="VD: Khách hỏi về chính sách bảo hành, cần manager tư vấn thêm..." style="width:100%;margin-top:6px;resize:vertical"></textarea>';
+  html+='<textarea id="sr-reason" rows="4" placeholder="VD: Khách hỏi về chính sách bảo hành, cần manager tư vấn thêm..." style="width:100%;margin-top:6px;resize:vertical;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;outline:none"></textarea>';
   html+='</div>';
   html+='<div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid var(--border)">';
   html+='<button class="btn" onclick="document.getElementById(\'support-modal\').remove()">Hủy</button>';
@@ -6191,22 +6194,22 @@ window._openSupportDetailPanel=function(reqId){
   html+='</div>';
 
   html+='<div style="margin-bottom:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Lý do</div>';
-  html+='<div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;white-space:pre-wrap">'+esc(req.reason||'')+'</div></div>';
+  html+='<div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;white-space:pre-wrap">'+_escSafe(req.reason||'')+'</div></div>';
 
   if(req.resolved_note){
     html+='<div style="margin-bottom:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Phản hồi xử lý</div>';
-    html+='<div style="background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.2);border-radius:8px;padding:10px 12px;font-size:13px;white-space:pre-wrap">'+esc(req.resolved_note)+'</div></div>';
+    html+='<div style="background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.2);border-radius:8px;padding:10px 12px;font-size:13px;white-space:pre-wrap">'+_escSafe(req.resolved_note)+'</div></div>';
   }
 
   if(canResolve&&req.status!=='resolved'){
     html+='<div style="margin-bottom:10px"><label style="font-size:11px;color:var(--text3);text-transform:uppercase">Cập nhật trạng thái</label>';
-    html+='<select id="sr-status" style="width:100%;margin-top:6px;height:36px">';
+    html+='<select id="sr-status" style="width:100%;margin-top:6px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-family:inherit;outline:none">';
     html+='<option value="pending"'+(req.status==='pending'?' selected':'')+'>Đang chờ</option>';
     html+='<option value="in_progress"'+(req.status==='in_progress'?' selected':'')+'>Đang xử lý</option>';
     html+='<option value="resolved"'+(req.status==='resolved'?' selected':'')+'>Đã xử lý</option>';
     html+='</select></div>';
     html+='<div><label style="font-size:11px;color:var(--text3);text-transform:uppercase">Ghi chú phản hồi</label>';
-    html+='<textarea id="sr-resolve-note" rows="3" placeholder="Nội dung đã hỗ trợ / tư vấn..." style="width:100%;margin-top:6px">'+esc(req.resolved_note||'')+'</textarea></div>';
+    html+='<textarea id="sr-resolve-note" rows="3" placeholder="Nội dung đã hỗ trợ / tư vấn..." style="width:100%;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;outline:none;resize:vertical">'+_escSafe(req.resolved_note||'')+'</textarea></div>';
   }
 
   html+='<div style="font-size:11px;color:var(--text3);margin-top:14px">Tạo lúc: '+new Date(req.created_at).toLocaleString('vi-VN')+(req.resolved_at?' · Xử lý lúc: '+new Date(req.resolved_at).toLocaleString('vi-VN'):'')+'</div>';
