@@ -187,6 +187,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .stat-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700}
 .stat-sub{font-size:10px;color:var(--text3);margin-top:3px}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:visible;margin-bottom:14px}
+.table-mobile-scroll{overflow-x:clip}
 .panel-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:#0f0c24;position:sticky;top:0;z-index:20;border-radius:14px 14px 0 0;box-shadow:0 1px 0 var(--border)}
 .panel-header h2{font-size:13px;font-weight:600;flex:1}
 thead tr{z-index:19;background:#0f0c24;box-shadow:0 1px 0 var(--border);}
@@ -410,10 +411,11 @@ select option{background:var(--bg2,#1a1240);color:var(--text,#F0EEFF)}
     .stat-card{padding:10px 12px}
     .stat-val{font-size:24px}
     .stats-row-compact{grid-template-columns:1fr 1fr !important}
-    table{font-size:10px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+    table{font-size:10px;white-space:nowrap;min-width:600px;width:max-content}
     table thead,table tbody{display:table;width:100%;}
     table thead tr{display:table-row;position:static;}
     .panel>div[style*="overflow-x"]{overflow-x:auto !important;}
+    .table-mobile-scroll{overflow-x:auto !important;-webkit-overflow-scrolling:touch !important;}
     /* Giữ sticky thead trên mobile: table phải là block nhưng thead/tbody cần display:table */
     table thead{display:table;width:100%;}
     table tbody{display:table;width:100%;}
@@ -2071,9 +2073,9 @@ function renderCustomers(){
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+data.length+'<\/span> khách<\/h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+'<\/div><\/div>'
     +actionBar
     +(data.length===0?'<div class="empty-state"><i class="ti ti-inbox"></i>Không có khách hàng nào<\/div>'
-      :'<table><colgroup>'+(isManager?'<col width="32">':'')+'<col width="78"><col width="115"><col width="110"><col width="95"><col width="68"><col width="70"><col width="72"><col width="72"><col width="72"><col width="70"><col width="40"><col width="80"></colgroup>'
+      :'<div class="table-mobile-scroll"><table><colgroup>'+(isManager?'<col width="32">':'')+'<col width="78"><col width="115"><col width="110"><col width="95"><col width="68"><col width="70"><col width="72"><col width="72"><col width="72"><col width="70"><col width="40"><col width="80"></colgroup>'
       +'<thead><tr>'+chkAllTh+'<th>Mã KH<\/th><th>Business Name<\/th><th>Customer<\/th><th>Phone<\/th><th>State<\/th><th>Potential<\/th><th>Status<\/th><th>Lead Status<\/th><th>Deadline<\/th><th>Ngày thêm<\/th><th><\/th><th>Sale<\/th><\/tr></thead>'
-      +'<tbody>'+rows+'</tbody><\/table>'
+      +'<tbody>'+rows+'</tbody><\/table><\/div>'
       +pgBar(data.length,curPage,PAGE_SIZE,'setCurPage'))
     +'<\/div><\/div>';
 }
@@ -2142,9 +2144,9 @@ function renderPotential(){
     +'<div class="content">'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+potData.length+'<\/span> khách tiềm năng<\/h2><\/div>'
     +(potData.length===0?'<div class="empty-state"><i class="ti ti-star"></i>Chưa có khách nào có invoice<\/div>'
-      :'<table><colgroup><col width="85"><col width="130"><col width="120"><col width="100"><col width="80"><col width="120"><col width="80"><col width="80"><col width="65"><col width="65"></colgroup>'
+      :'<div class="table-mobile-scroll"><table><colgroup><col width="85"><col width="130"><col width="120"><col width="100"><col width="80"><col width="120"><col width="80"><col width="80"><col width="65"><col width="65"></colgroup>'
       +'<thead><tr><th>Mã KH<\/th><th>Business Name<\/th><th>Customer<\/th><th>Phone<\/th><th>State<\/th><th>Potential<\/th><th>Từ ngày<\/th><th>Ngày quá hạn<\/th><th>Lead Status<\/th><th>Sale<\/th><\/tr></thead>'
-      +'<tbody>'+rows+'</tbody><\/table>'
+      +'<tbody>'+rows+'</tbody><\/table><\/div>'
       +pgBar(potData.length,potPage,PAGE_SIZE,'setPotPage'))
     +'<\/div><\/div>';
 }
@@ -2243,9 +2245,9 @@ function renderClosedeal(){
   // Main table
   html+='<div class="content"><div class="panel"><div class="panel-header"><h2>Đơn hàng đã duyệt <span style="color:var(--accent2)">'+enriched.length+'<\/span><\/h2><\/div>'
     +(enriched.length===0?'<div class="empty-state"><i class="ti ti-trophy"></i>Chưa có đơn hàng nào được duyệt<\/div>'
-      :'<table><colgroup><col width="95"><col width="110"><col width="95"><col width="45"><col width="45"><col width="75"><col width="90"><col width="85"><col width="65"><col width="65"><col width="60">'+(isManager?'<col width="40">':'')+'</colgroup>'
+      :'<div class="table-mobile-scroll"><table><colgroup><col width="95"><col width="110"><col width="95"><col width="45"><col width="45"><col width="75"><col width="90"><col width="85"><col width="65"><col width="65"><col width="60">'+(isManager?'<col width="40">':'')+'</colgroup>'
       +'<thead><tr><th>Mã đơn<\/th><th>Business Name<\/th><th>Customer<\/th><th style="text-align:center">Month<\/th><th style="text-align:center">Year<\/th><th>Revenue<\/th><th>Payment Status<\/th><th>Order Status<\/th><th>Tracking<\/th><th>Sale<\/th>'+(isManager?'<th><\/th>':'')+'<\/tr></thead>'
-      +'<tbody>'+rows+'</tbody><\/table>'
+      +'<tbody>'+rows+'</tbody><\/table><\/div>'
       +pgBar(enriched.length,cdPage,PAGE_SIZE,'setCdPage'))
     +'<\/div><\/div>';
   return html;
@@ -2763,9 +2765,9 @@ function renderAlert(){
     +(isManager?'<button class="btn" style="border-color:rgba(255,118,117,0.4);color:var(--danger);font-size:11px" onclick="recallOver30()"><i class="ti ti-rotate-clockwise"></i> Thu hồi 30+ ngày<\/button>':'')
     +'<\/div>'
     +(filtered.length===0?'<div class="empty-state"><i class="ti ti-bell-off"></i>Không có cảnh báo nào!<\/div>'
-      :'<table><colgroup><col width="80"><col width="120"><col width="110"><col width="90"><col width="100"><col width="75"><col width="80"><col width="65">'+(isManager?'<col width="70">':'')+'</colgroup>'
+      :'<div class="table-mobile-scroll"><table><colgroup><col width="80"><col width="120"><col width="110"><col width="90"><col width="100"><col width="75"><col width="80"><col width="65">'+(isManager?'<col width="70">':'')+'</colgroup>'
       +'<thead><tr><th>Mã KH<\/th><th>Business Name<\/th><th>Customer<\/th><th>Phone<\/th><th>Potential<\/th><th>Status<\/th><th>Chưa liên hệ<\/th><th>Sale<\/th>'+(isManager?'<th><\/th>':'')+'<\/tr></thead>'
-      +'<tbody>'+rows+'</tbody><\/table>')
+      +'<tbody>'+rows+'</tbody><\/table><\/div>')
     +'<\/div>'))
     +'<\/div>';
 }
@@ -7206,14 +7208,14 @@ function renderSchedule(){
     +'<div class="content">'
     +'<div class="panel" style="margin-bottom:14px"><div class="panel-header"><h2>🗓 Sắp tới <span style="color:var(--accent2)">'+upcoming.length+'<\/span><\/h2><\/div>'
     +(upcoming.length===0?'<div class="empty-state"><i class="ti ti-calendar-off"></i>Không có lịch hẹn nào sắp tới<\/div>'
-      :'<table><colgroup><col width="80"><col width="130"><col width="110"><col width="100"><col width="90"><col width="90"><col width="80"><col width="70"></colgroup>'
+      :'<div class="table-mobile-scroll"><table><colgroup><col width="80"><col width="130"><col width="110"><col width="100"><col width="90"><col width="90"><col width="80"><col width="70"></colgroup>'
       +'<thead><tr><th>Mã KH<\/th><th>Business<\/th><th>Customer<\/th><th>SĐT<\/th><th>Potential<\/th><th>Trạng thái<\/th><th>Ngày hẹn<\/th><th>Sale<\/th><\/tr></thead>'
-      +'<tbody>'+makeRows(upcoming)+'</tbody><\/table>')
+      +'<tbody>'+makeRows(upcoming)+'</tbody><\/table><\/div>')
     +'<\/div>'
     +(past.length>0?'<div class="panel"><div class="panel-header"><h2>⚠️ Đã qua <span style="color:var(--danger)">'+past.length+'<\/span><\/h2><\/div>'
-      +'<table><colgroup><col width="80"><col width="130"><col width="110"><col width="100"><col width="90"><col width="90"><col width="80"><col width="70"></colgroup>'
+      +'<div class="table-mobile-scroll"><table><colgroup><col width="80"><col width="130"><col width="110"><col width="100"><col width="90"><col width="90"><col width="80"><col width="70"></colgroup>'
       +'<thead><tr><th>Mã KH<\/th><th>Business<\/th><th>Customer<\/th><th>SĐT<\/th><th>Potential<\/th><th>Trạng thái<\/th><th>Ngày hẹn<\/th><th>Sale<\/th><\/tr></thead>'
-      +'<tbody>'+makeRows(past)+'</tbody><\/table><\/div>':'')
+      +'<tbody>'+makeRows(past)+'</tbody><\/table><\/div><\/div>':'')
     +'<\/div>';
 }
 
