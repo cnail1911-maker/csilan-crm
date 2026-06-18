@@ -4884,7 +4884,7 @@ async function renderKPIAsync(){
     return '<span style="color:var(--text3);font-size:10px">—<\/span>';
   }
   function pct(a,b){return b?Math.round(a/b*100):0;}
-  function bar(v,max,color){var w=max?Math.round(v/max*100):0;return '<div style="background:rgba(255,255,255,0.07);border-radius:3px;height:4px;margin-top:3px"><div style="width:'+w+'%;background:'+color+';height:4px;border-radius:3px"><\/div><\/div>';}
+  function bar(v,max,color){var w=max?Math.min(100,Math.round(v/max*100)):0;return '<div style="background:rgba(255,255,255,0.07);border-radius:3px;height:4px;margin-top:3px;overflow:hidden"><div style="width:'+w+'%;max-width:100%;background:'+color+';height:4px;border-radius:3px"><\/div><\/div>';}
 
   // ── TOPBAR ──
   var monthNames=['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
