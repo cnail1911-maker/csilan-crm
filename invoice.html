@@ -146,6 +146,30 @@ table.inv-table tr:last-child td{border-bottom:none}
 .inv-thank{text-align:center;font-style:italic;font-size:12px;color:var(--red);font-weight:600;padding:10px 0;border-top:1px solid var(--border)}
 .inv-divider-bottom{height:1px;background:var(--red);margin-bottom:10px}
 
+/* PRODUCT CATALOG (affiliate) */
+.catalog-overlay{display:none;position:fixed;inset:0;background:var(--cream);z-index:1000;flex-direction:column}
+.catalog-overlay.show{display:flex}
+.catalog-header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:var(--red);color:#fff;flex-shrink:0}
+.catalog-header h2{font-size:16px;font-weight:700}
+.catalog-search{padding:12px 20px;background:#fff;border-bottom:1px solid var(--border);flex-shrink:0}
+.catalog-search input{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:Arial,sans-serif;outline:none}
+.catalog-body{flex:1;overflow-y:auto;padding:16px 20px;background:var(--light)}
+.catalog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.cat-card{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+.cat-card-img{width:100%;height:160px;object-fit:contain;background:var(--light)}
+.cat-card-img-ph{width:100%;height:160px;background:var(--light);display:flex;align-items:center;justify-content:center;font-size:36px;color:var(--gray)}
+.cat-card-body{padding:10px 12px;display:flex;flex-direction:column;gap:4px;flex:1}
+.cat-card-name{font-size:13px;font-weight:700;color:var(--dark);line-height:1.3}
+.cat-card-sku{font-size:10px;color:var(--gray);font-family:monospace}
+.cat-card-price{font-size:16px;font-weight:800;color:var(--red);margin-top:4px}
+.cat-card-best{font-size:11px;color:#27ae60;font-weight:600}
+.cat-card-desc{font-size:11px;color:var(--gray);line-height:1.4;margin-top:2px}
+.cat-card-vendor{display:inline-block;font-size:9px;font-weight:700;letter-spacing:0.5px;padding:2px 8px;border-radius:10px;background:var(--light);color:var(--gray);width:fit-content}
+@media(max-width:768px){
+  .catalog-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  .cat-card-img,.cat-card-img-ph{height:120px}
+}
+
 /* LOADING */
 .loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:300;gap:12px;display:none}
 .spinner{width:32px;height:32px;border:3px solid rgba(192,57,43,0.2);border-top-color:var(--red);border-radius:50%;animation:spin 0.8s linear infinite}
@@ -242,6 +266,9 @@ table.inv-table tr:last-child td{border-bottom:none}
           <div class="sidebar-title" id="form-title">Tạo Invoice mới</div>
           <div class="sidebar-sub" id="user-info">Đang tải...</div>
         </div>
+        <button id="catalog-btn" onclick="openCatalog()" style="display:none;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:7px;color:#fff;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;white-space:nowrap">
+          <i class="ti ti-package"></i> Sản phẩm
+        </button>
       </div>
     </div>
     <div class="sidebar-body">
@@ -391,6 +418,22 @@ table.inv-table tr:last-child td{border-bottom:none}
   </div>
 </div>
 
+<!-- PRODUCT CATALOG OVERLAY -->
+<div class="catalog-overlay" id="catalog-overlay">
+  <div class="catalog-header">
+    <h2><i class="ti ti-package"></i> Danh sách sản phẩm</h2>
+    <button onclick="closeCatalog()" style="background:rgba(255,255,255,0.2);border:none;border-radius:7px;color:#fff;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif">
+      <i class="ti ti-x"></i> Đóng
+    </button>
+  </div>
+  <div class="catalog-search">
+    <input type="text" id="catalog-search-input" placeholder="Tìm theo tên, SKU, vendor..." oninput="renderCatalog(this.value)">
+  </div>
+  <div class="catalog-body">
+    <div class="catalog-grid" id="catalog-grid"></div>
+  </div>
+</div>
+
 <div class="loading-overlay" id="loading">
   <div class="spinner"></div>
   <span style="font-size:13px;color:var(--gray)">Đang xử lý...</span>
@@ -449,6 +492,7 @@ async function initApp(user){
     document.getElementById('customer-section').style.display='none';
     document.getElementById('affiliate-customer-section').style.display='block';
     document.getElementById('affiliate-sale-section').style.display='block';
+    document.getElementById('catalog-btn').style.display='inline-flex';
     const {data:members}=await sb.from('affiliate_team_members')
       .select('*').eq('leader_profile_id',user.id).eq('is_active',true).order('member_name');
     const sel=document.getElementById('aff-sale-member');
@@ -576,6 +620,49 @@ function clearCustomer(){
 }
 
 // PRODUCT SEARCH
+// PRODUCT CATALOG (xem toàn bộ, dành cho affiliate)
+function openCatalog(){
+  document.getElementById('catalog-overlay').classList.add('show');
+  document.getElementById('catalog-search-input').value='';
+  renderCatalog('');
+}
+function closeCatalog(){
+  document.getElementById('catalog-overlay').classList.remove('show');
+}
+function renderCatalog(q){
+  const grid=document.getElementById('catalog-grid');
+  const qq=(q||'').toLowerCase().trim();
+  const list=PRODUCTS.filter(function(p){
+    if(p.is_active===false)return false;
+    if(!qq)return true;
+    return (p.name||'').toLowerCase().includes(qq)
+      ||(p.sku||'').toLowerCase().includes(qq)
+      ||(p.brand||'').toLowerCase().includes(qq)
+      ||(p.variant||'').toLowerCase().includes(qq);
+  });
+  if(list.length===0){
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--gray)">Không tìm thấy sản phẩm</div>';
+    return;
+  }
+  grid.innerHTML=list.map(function(p){
+    const imgHtml=p.image_url
+      ?'<img class="cat-card-img" src="'+p.image_url+'" onerror="this.outerHTML=\'<div class=&quot;cat-card-img-ph&quot;>📦</div>\'" alt="">'
+      :'<div class="cat-card-img-ph">📦</div>';
+    const bestHtml=(p.best_price&&p.best_price>0)?'<div class="cat-card-best">Best: $'+Number(p.best_price).toLocaleString('en-US')+'</div>':'';
+    const descHtml=p.description?'<div class="cat-card-desc">'+p.description+'</div>':'';
+    return '<div class="cat-card">'
+      +imgHtml
+      +'<div class="cat-card-body">'
+      +(p.brand?'<span class="cat-card-vendor">'+p.brand+'</span>':'')
+      +'<div class="cat-card-name">'+(p.name||'—')+'</div>'
+      +'<div class="cat-card-sku">'+(p.sku||'')+(p.variant?' · '+p.variant:'')+'</div>'
+      +'<div class="cat-card-price">$'+Number(p.price||0).toLocaleString('en-US')+'</div>'
+      +bestHtml
+      +descHtml
+      +'</div></div>';
+  }).join('');
+}
+
 function searchProduct(q){
   const res=document.getElementById('prod-results');
   if(!q||q.length<1){res.style.display='none';return;}
