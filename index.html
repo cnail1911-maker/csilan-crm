@@ -4500,11 +4500,12 @@ function openProdZoom(id){
 
   // Details grid
   html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 20px">';
-  var details=[['Vendor',p.brand||'—'],['SKU',p.sku||'—'],['Variant',p.variant||'—']];
+  var stockLabel={in_stock:'In Stock',out_of_stock:'Out of Stock',pre_order:'Pre Order'}[p.stock_status]||(p.in_stock?'In Stock':'Out of Stock');
+  var shipLabel=p.shipping_fee==='free'?'Free Shipping':'Check ship';
+  var details=[['Vendor',p.brand||'—'],['SKU',p.sku||'—'],['Variant',p.variant||'—'],['Tình trạng kho',stockLabel],['Shipping',shipLabel]];
   if(p.description)details.push(['Mô tả','<span style="color:var(--text2);white-space:pre-wrap">'+p.description+'<\/span>']);
-  if(p._note)details.push(['Note','<span style="color:var(--text2);white-space:pre-wrap">'+p._note+'<\/span>']);
   details.forEach(function(d){
-    var full=d[0]==='Note'||d[0]==='Mô tả';
+    var full=d[0]==='Mô tả';
     html+='<div'+(full?' style="grid-column:1/-1"':'')+'>'+
       '<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">'+d[0]+'<\/div>'+
       '<div style="font-size:13px;color:var(--text);font-weight:500">'+d[1]+'<\/div><\/div>';
