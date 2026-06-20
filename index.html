@@ -1515,6 +1515,14 @@ async function initApp(user){
   currentUser=user;window.currentUser=user;
   const {data:profile}=await sb.from('profiles').select('*').eq('id',user.id).single();
   currentProfile=profile;window.currentProfile=profile;
+
+  // ── AFFILIATE: redirect thẳng sang invoice.html, không load CRM data nặng ──
+  if(profile&&profile.role==='affiliate'){
+    clearTimeout(_initTimeout);
+    window.location.href='invoice.html';
+    return;
+  }
+
   await loadCustomers();
   const {data:profs}=await sb.from('profiles').select('*,openphone_number,openphone_phone_id').eq('is_active',true).order('full_name');
   PROFILES=profs||[];window.PROFILES=PROFILES;
@@ -2312,6 +2320,7 @@ async function approveInvoice(id,status){
         })(),
         customer_id:    inv.customer_id||null,
         sale_rep:       saleRepName,
+        affiliate_member_name: inv.affiliate_member_name||null,
         total:          inv.total||0,
         deposit:        inv.deposit||0,
         tax:            inv.tax||0,
