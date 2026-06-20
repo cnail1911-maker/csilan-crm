@@ -282,7 +282,7 @@ table.inv-table tr:last-child td{border-bottom:none}
       </div>
 
       <!-- CUSTOMER -->
-      <div class="section">
+      <div class="section" id="customer-section">
         <div class="section-label">Khách hàng</div>
         <div class="cust-search">
           <div class="field">
@@ -292,6 +292,33 @@ table.inv-table tr:last-child td{border-bottom:none}
           <div class="cust-results" id="cust-results"></div>
         </div>
         <div id="cust-selected" style="display:none"></div>
+      </div>
+
+      <!-- AFFILIATE: khách nhập tay -->
+      <div class="section" id="affiliate-customer-section" style="display:none">
+        <div class="section-label">Thông tin khách hàng</div>
+        <div class="field"><label>Business Name *</label><input type="text" id="aff-cust-business" placeholder="Tên tiệm/doanh nghiệp"></div>
+        <div class="field"><label>Customer Name</label><input type="text" id="aff-cust-name" placeholder="Tên người liên hệ"></div>
+        <div class="field-row">
+          <div class="field"><label>Cellphone</label><input type="text" id="aff-cust-cell" placeholder="(xxx) xxx-xxxx"></div>
+          <div class="field"><label>Business Phone</label><input type="text" id="aff-cust-bizphone" placeholder="(xxx) xxx-xxxx"></div>
+        </div>
+        <div class="field"><label>Address</label><input type="text" id="aff-cust-address" placeholder="Địa chỉ"></div>
+        <div class="field-row">
+          <div class="field"><label>City</label><input type="text" id="aff-cust-city" placeholder="City"></div>
+          <div class="field"><label>State</label><input type="text" id="aff-cust-state" placeholder="State"></div>
+        </div>
+        <div class="field"><label>Zipcode</label><input type="text" id="aff-cust-zip" placeholder="Zipcode"></div>
+      </div>
+
+      <!-- AFFILIATE: chọn Sale thực hiện -->
+      <div class="section" id="affiliate-sale-section" style="display:none">
+        <div class="section-label">Sale thực hiện</div>
+        <div class="field"><label>Chọn nhân viên</label>
+          <select id="aff-sale-member">
+            <option value="">-- Chọn Sale --</option>
+          </select>
+        </div>
       </div>
 
       <!-- PRODUCTS -->
@@ -415,6 +442,23 @@ async function initApp(user){
     const syncBtn=document.getElementById('sync-btn');
     if(syncBtn)syncBtn.style.display='block';
   }
+
+  // AFFILIATE: ẩn search khách có sẵn, hiện form nhập tay + dropdown chọn Sale
+  window.isAffiliate=profile&&profile.role==='affiliate';
+  if(window.isAffiliate){
+    document.getElementById('customer-section').style.display='none';
+    document.getElementById('affiliate-customer-section').style.display='block';
+    document.getElementById('affiliate-sale-section').style.display='block';
+    const {data:members}=await sb.from('affiliate_team_members')
+      .select('*').eq('leader_profile_id',user.id).eq('is_active',true).order('member_name');
+    const sel=document.getElementById('aff-sale-member');
+    (members||[]).forEach(function(m){
+      const opt=document.createElement('option');
+      opt.value=m.member_name;opt.textContent=m.member_name;
+      sel.appendChild(opt);
+    });
+  }
+
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app-screen').style.display='flex';
 
@@ -935,6 +979,34 @@ function renderPreview(){
 
 // SAVE + DOWNLOAD
 async function saveAndDownload(action){
+  // AFFILIATE: tạo customer mới từ form nhập tay trước khi validate
+  if(window.isAffiliate){
+    const bizName=document.getElementById('aff-cust-business').value.trim();
+    if(!bizName){alert('Vui lòng nhập Business Name của khách!');return;}
+    const saleMember=document.getElementById('aff-sale-member').value;
+    if(!saleMember){alert('Vui lòng chọn Sale thực hiện!');return;}
+    showLoading(true);
+    try{
+      const newCust={
+        business_name:bizName,
+        customer_name:document.getElementById('aff-cust-name').value.trim()||bizName,
+        cellphone:document.getElementById('aff-cust-cell').value.trim()||null,
+        business_phone:document.getElementById('aff-cust-bizphone').value.trim()||null,
+        address:document.getElementById('aff-cust-address').value.trim()||null,
+        city:document.getElementById('aff-cust-city').value.trim()||null,
+        state:document.getElementById('aff-cust-state').value.trim()||null,
+        zipcode:document.getElementById('aff-cust-zip').value.trim()||null,
+        assigned_to:currentUser.id,
+        source:'affiliate'
+      };
+      const {data:custRes,error:custErr}=await sb.from('customers').insert(newCust).select().single();
+      if(custErr){showLoading(false);alert('Lỗi tạo khách hàng: '+custErr.message);return;}
+      selectedCustomer=custRes;
+      window._affiliateSaleMember=saleMember;
+    }catch(e){
+      showLoading(false);alert('Lỗi: '+e.message);return;
+    }
+  }
   if(!selectedCustomer){alert('Vui lòng chọn khách hàng!');return;}
   if(items.length===0){alert('Vui lòng thêm ít nhất 1 sản phẩm!');return;}
 
@@ -993,7 +1065,8 @@ async function saveAndDownload(action){
     status:'sent',
     approval_status:approvalStatus,
     payment_status:'Deposit Paid',
-    order_status:'Đang sản xuất'
+    order_status:'Đang sản xuất',
+    affiliate_member_name:window.isAffiliate?window._affiliateSaleMember:null
     }).select().single();
     inv=res.data;invErr=res.error;
     if(!invErr)break;
