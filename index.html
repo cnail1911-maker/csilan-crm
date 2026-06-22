@@ -6475,10 +6475,10 @@ async function doAdd(){
     }
   }
   const campaign=new Date().toLocaleDateString('vi-VN',{month:'2-digit',year:'numeric'});
-  let nextNum=1;
-  const {data:maxVal,error:rpcErr}=await sb.rpc('get_max_ma_kh');
-  if(!rpcErr&&maxVal){const m=String(maxVal).match(/KH0*(\d+)/);if(m)nextNum=parseInt(m[1])+1;}
-  const ma_kh='KH'+String(nextNum).padStart(7,'0');
+  // Dùng sequence atomic — DB tự cấp số duy nhất, không còn race condition
+  const {data:nextMaKh,error:rpcErr}=await sb.rpc('get_next_ma_kh');
+  if(rpcErr){showLoading(false);alert('Lỗi sinh mã khách hàng: '+rpcErr.message);return;}
+  const ma_kh=nextMaKh;
   const newCust={ma_kh:ma_kh,
     business_name:document.getElementById('a-biz')&&document.getElementById('a-biz').value||null,
     customer_name:name,
@@ -6500,21 +6500,8 @@ async function doAdd(){
     approval_status:isDup?'pending':'approved',
     is_duplicate:isDup,
   };
-  // Retry up to 5 times on duplicate ma_kh conflict
-  let inserted=null,error=null;
-  for(let attempt=0;attempt<5;attempt++){
-    const res=await sb.from('customers').insert(newCust).select('*, assigned_profile:profiles!assigned_to(id,full_name,role)').single();
-    inserted=res.data;error=res.error;
-    if(!error)break;
-    if(error.message&&error.message.includes('duplicate key')&&error.message.includes('ma_kh')){
-      // Increment ma_kh and retry
-      nextNum++;
-      newCust.ma_kh='KH'+String(nextNum).padStart(7,'0');
-      console.warn('[addCustomer] ma_kh conflict, retrying with',newCust.ma_kh);
-    } else {
-      break; // other error, don't retry
-    }
-  }
+  const insRes=await sb.from('customers').insert(newCust).select('*, assigned_profile:profiles!assigned_to(id,full_name,role)').single();
+  const inserted=insRes.data,error=insRes.error;
   if(error){showLoading(false);alert('Lỗi: '+error.message);return;}
   // Local insert - không reload 26k rows
   if(inserted)CUSTOMERS.unshift(inserted);
