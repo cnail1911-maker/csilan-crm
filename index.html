@@ -2310,6 +2310,19 @@ async function approveInvoice(id,status){
         if(prof&&prof.full_name)saleRepName=prof.full_name;
       }
 
+      // Đối chiếu lại vendor_cost/vendor từ DB products theo product_id —
+      // KHÔNG dùng PRODUCTS_ALL (biến này có thể chưa load xong khi Manager
+      // bấm Duyệt ngay sau khi mở trang → gây race condition, mất vendor_cost,
+      // vendor bị fallback sai 'BOLSA'). Luôn fetch trực tiếp DB để chắc chắn.
+      const validProductIds=(items||[]).map(function(it){return it.product_id;}).filter(function(id){return id!=null;});
+      let productsFresh=[];
+      if(validProductIds.length>0){
+        try{
+          const {data:pf}=await sb.from('products').select('id,sku,name,vendor,vendor_cost,sale_price,best_price,is_bolsa').in('id',validProductIds);
+          productsFresh=pf||[];
+        }catch(e3){console.warn('Product fetch fallback error:',e3.message);}
+      }
+
       const payload={
         invoice_id:     id,
         invoice_no:     inv.invoice_no,
@@ -2325,40 +2338,36 @@ async function approveInvoice(id,status){
         deposit:        inv.deposit||0,
         tax:            inv.tax||0,
         items:          (items||[]).map(function(it){
-          // Use vendor & chenh_lech saved in invoice_items (set at invoice creation)
-          // Fallback: detect from product name or products table
-          var vendor=it.vendor||null;
-          var giaBanGoc=it.vendor_cost||0;
-          var giaBanThuc=it.unit_price||0;
+          var giaBanThuc=it.unit_price||0;   // giá Sale bán — giữ nguyên, sale có quyền sửa tự do
           var qty=it.qty||1;
           var amount=it.amount||(giaBanThuc*qty);
-          // chenh_lech: use saved value if exists, else recalculate
-          var chenhLech=it.chenh_lech!=null?it.chenh_lech:(giaBanThuc-giaBanGoc)*qty;
 
-          // If vendor not set in invoice_items, detect from products table
-          if(!vendor){
-            var prodRecord=PRODUCTS_ALL&&PRODUCTS_ALL.find(function(p){
+          // Đối chiếu DB products tươi (fetch ngay phía trên) — ưu tiên product_id,
+          // fallback PRODUCTS_ALL cache, cuối cùng mới dùng giá trị invoice_items đã lưu.
+          var prodRecord=productsFresh.find(function(p){
+            return (it.product_id&&p.id===it.product_id)||(it.sku&&p.sku===it.sku);
+          });
+          if(!prodRecord&&PRODUCTS_ALL){
+            prodRecord=PRODUCTS_ALL.find(function(p){
               return (it.product_id&&p.id===it.product_id)||(it.sku&&p.sku===it.sku);
             });
-            if(prodRecord&&prodRecord.vendor){
-              var v=prodRecord.vendor.toLowerCase();
-              if(v.includes('ons'))vendor='ONS';
-              else if(v.includes('tspa'))vendor='TSPA';
-              else vendor='BOLSA';
-              if(!giaBanGoc)giaBanGoc=prodRecord.vendor_cost||0;
-              chenhLech=(giaBanThuc-giaBanGoc)*qty;
-            } else {
-              // Last resort: detect from product name
-              var pname=(it.product_name||'').toLowerCase();
-              if(pname.includes('ons')||pname.includes('spa chair')||pname.includes('pedicure'))vendor='ONS';
-              else if(pname.includes('tspa')||pname.includes('t-spa')||pname.includes('nail table'))vendor='TSPA';
-              else vendor='BOLSA';
-            }
           }
+
+          var vendor,giaBanGoc;
+          if(prodRecord){
+            vendor=prodRecord.vendor||it.vendor||'BOLSA';
+            giaBanGoc=(prodRecord.vendor_cost!=null)?prodRecord.vendor_cost:(it.vendor_cost||0);
+          } else {
+            // Không tìm thấy product — giữ giá trị đã lưu trong invoice_items,
+            // KHÔNG suy đoán theo tên (tránh fallback sai 'BOLSA' không có cơ sở).
+            vendor=it.vendor||null;
+            giaBanGoc=it.vendor_cost||0;
+          }
+          var chenhLech=(giaBanThuc-giaBanGoc)*qty;
 
           return{
             product_id:   it.product_id||null,
-            sku:          it.sku||null,
+            sku:          it.sku||(prodRecord?prodRecord.sku:null)||null,
             image_url:    it.image_url||null,
             product_name: it.product_name||'',
             qty:          qty,
