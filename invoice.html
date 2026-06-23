@@ -146,6 +146,16 @@ table.inv-table tr:last-child td{border-bottom:none}
 .inv-thank{text-align:center;font-style:italic;font-size:12px;color:var(--red);font-weight:600;padding:10px 0;border-top:1px solid var(--border)}
 .inv-divider-bottom{height:1px;background:var(--red);margin-bottom:10px}
 
+/* TEAM MANAGEMENT */
+.team-row{display:flex;align-items:center;gap:8px;padding:9px 18px;border-bottom:1px solid var(--light)}
+.team-row.inactive{opacity:0.45}
+.team-row input[type="text"]{flex:1;border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size:13px;font-family:Arial,sans-serif;outline:none}
+.team-row input[type="text"]:disabled{border-color:transparent;background:transparent;padding-left:0}
+.team-icon-btn{background:none;border:none;cursor:pointer;font-size:15px;padding:4px;color:var(--gray);border-radius:5px;display:flex;align-items:center;justify-content:center}
+.team-icon-btn:hover{background:var(--light)}
+.team-icon-btn.danger:hover{color:#e74c3c}
+.team-icon-btn.success:hover{color:#27ae60}
+
 /* PRODUCT CATALOG (affiliate) */
 .catalog-overlay{display:none;position:fixed;inset:0;background:var(--cream);z-index:1000;flex-direction:column}
 .catalog-overlay.show{display:flex}
@@ -277,9 +287,14 @@ table.inv-table tr:last-child td{border-bottom:none}
           <div class="sidebar-title" id="form-title">Tạo Invoice mới</div>
           <div class="sidebar-sub" id="user-info">Đang tải...</div>
         </div>
-        <button id="catalog-btn" onclick="openCatalog()" style="display:none;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:7px;color:#fff;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;white-space:nowrap">
-          <i class="ti ti-package"></i> Sản phẩm
-        </button>
+        <div style="display:flex;gap:6px">
+          <button id="team-btn" onclick="openTeamMgmt()" style="display:none;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:7px;color:#fff;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;white-space:nowrap">
+            <i class="ti ti-users"></i> Nhân viên
+          </button>
+          <button id="catalog-btn" onclick="openCatalog()" style="display:none;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:7px;color:#fff;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;white-space:nowrap">
+            <i class="ti ti-package"></i> Sản phẩm
+          </button>
+        </div>
       </div>
     </div>
     <div class="sidebar-body">
@@ -429,6 +444,21 @@ table.inv-table tr:last-child td{border-bottom:none}
   </div>
 </div>
 
+<!-- TEAM MANAGEMENT MODAL -->
+<div class="modal-overlay" id="team-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1100;align-items:center;justify-content:center">
+  <div onclick="event.stopPropagation()" style="background:#fff;border-radius:12px;width:92vw;max-width:440px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:var(--red);color:#fff">
+      <h3 style="font-size:15px;font-weight:700"><i class="ti ti-users"></i> Quản lý nhân viên</h3>
+      <button onclick="closeTeamMgmt()" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;color:#fff;padding:5px 10px;font-size:12px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;gap:8px">
+      <input type="text" id="team-new-name" placeholder="Tên nhân viên mới..." style="flex:1;border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;font-family:Arial,sans-serif;outline:none" onkeypress="if(event.key==='Enter')addTeamMember()">
+      <button onclick="addTeamMember()" style="background:var(--red);color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">+ Thêm</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:10px 0" id="team-list-body"></div>
+  </div>
+</div>
+
 <!-- PRODUCT CATALOG OVERLAY -->
 <div class="catalog-overlay" id="catalog-overlay">
   <div class="catalog-header">
@@ -506,14 +536,9 @@ async function initApp(user){
     document.getElementById('affiliate-customer-section').style.display='block';
     document.getElementById('affiliate-sale-section').style.display='block';
     document.getElementById('catalog-btn').style.display='inline-flex';
-    const {data:members}=await sb.from('affiliate_team_members')
-      .select('*').eq('leader_profile_id',user.id).eq('is_active',true).order('member_name');
-    const sel=document.getElementById('aff-sale-member');
-    (members||[]).forEach(function(m){
-      const opt=document.createElement('option');
-      opt.value=m.member_name;opt.textContent=m.member_name;
-      sel.appendChild(opt);
-    });
+    document.getElementById('team-btn').style.display='inline-flex';
+    await loadTeamMembers();
+    refreshSaleDropdown();
   }
 
   document.getElementById('auth-screen').style.display='none';
@@ -743,6 +768,97 @@ function renderCatalog(q){
       +descHtml
       +'</div></div>';
   }).join('');
+}
+
+// TEAM MANAGEMENT (affiliate leader quản lý Sale01-04, thêm/sửa/xóa)
+let TEAM_MEMBERS=[];
+
+async function loadTeamMembers(){
+  const {data}=await sb.from('affiliate_team_members')
+    .select('*').eq('leader_profile_id',currentUser.id).order('created_at');
+  TEAM_MEMBERS=data||[];
+}
+function refreshSaleDropdown(){
+  const sel=document.getElementById('aff-sale-member');
+  const curVal=sel.value;
+  sel.innerHTML='<option value="">-- Chọn Sale --</option>';
+  TEAM_MEMBERS.filter(function(m){return m.is_active;}).forEach(function(m){
+    const opt=document.createElement('option');
+    opt.value=m.member_name;opt.textContent=m.member_name;
+    sel.appendChild(opt);
+  });
+  if([...sel.options].some(function(o){return o.value===curVal;}))sel.value=curVal;
+}
+async function openTeamMgmt(){
+  document.getElementById('team-modal').style.display='flex';
+  await loadTeamMembers();
+  renderTeamList();
+}
+function closeTeamMgmt(){
+  document.getElementById('team-modal').style.display='none';
+}
+function renderTeamList(){
+  const body=document.getElementById('team-list-body');
+  if(TEAM_MEMBERS.length===0){
+    body.innerHTML='<div style="text-align:center;padding:30px;color:var(--gray);font-size:13px">Chưa có nhân viên nào</div>';
+    return;
+  }
+  body.innerHTML=TEAM_MEMBERS.map(function(m){
+    return '<div class="team-row'+(m.is_active?'':' inactive')+'" data-id="'+m.id+'">'
+      +'<input type="text" value="'+(m.member_name||'').replace(/"/g,'&quot;')+'" disabled id="team-name-'+m.id+'">'
+      +'<button class="team-icon-btn" title="Sửa tên" onclick="teamEditToggle('+m.id+')"><i class="ti ti-pencil"></i></button>'
+      +'<button class="team-icon-btn '+(m.is_active?'danger':'success')+'" title="'+(m.is_active?'Tắt':'Bật lại')+'" onclick="teamToggleActive('+m.id+','+(!m.is_active)+')"><i class="ti ti-power"></i></button>'
+      +'<button class="team-icon-btn danger" title="Xóa" onclick="teamDelete('+m.id+')"><i class="ti ti-trash"></i></button>'
+      +'</div>';
+  }).join('');
+}
+function teamEditToggle(id){
+  const inp=document.getElementById('team-name-'+id);
+  if(inp.disabled){
+    inp.disabled=false;inp.focus();inp.select();
+    inp.onkeypress=function(e){if(e.key==='Enter')teamSaveName(id);};
+    inp.onblur=function(){teamSaveName(id);};
+  }
+}
+async function teamSaveName(id){
+  const inp=document.getElementById('team-name-'+id);
+  const newName=inp.value.trim();
+  if(!newName){renderTeamList();return;}
+  const m=TEAM_MEMBERS.find(function(x){return x.id===id;});
+  if(m&&m.member_name!==newName){
+    await sb.from('affiliate_team_members').update({member_name:newName}).eq('id',id);
+    m.member_name=newName;
+  }
+  renderTeamList();
+  refreshSaleDropdown();
+}
+async function teamToggleActive(id,newVal){
+  await sb.from('affiliate_team_members').update({is_active:newVal}).eq('id',id);
+  const m=TEAM_MEMBERS.find(function(x){return x.id===id;});
+  if(m)m.is_active=newVal;
+  renderTeamList();
+  refreshSaleDropdown();
+}
+async function teamDelete(id){
+  const m=TEAM_MEMBERS.find(function(x){return x.id===id;});
+  if(!confirm('Xóa nhân viên "'+(m?m.member_name:'')+'"?\nHành động này không thể hoàn tác.'))return;
+  await sb.from('affiliate_team_members').delete().eq('id',id);
+  TEAM_MEMBERS=TEAM_MEMBERS.filter(function(x){return x.id!==id;});
+  renderTeamList();
+  refreshSaleDropdown();
+}
+async function addTeamMember(){
+  const inp=document.getElementById('team-new-name');
+  const name=inp.value.trim();
+  if(!name){alert('Vui lòng nhập tên nhân viên');return;}
+  const {data,error}=await sb.from('affiliate_team_members')
+    .insert({leader_profile_id:currentUser.id,member_name:name,is_active:true})
+    .select().single();
+  if(error){alert('Lỗi: '+error.message);return;}
+  TEAM_MEMBERS.push(data);
+  inp.value='';
+  renderTeamList();
+  refreshSaleDropdown();
 }
 
 function searchProduct(q){
