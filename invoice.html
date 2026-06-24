@@ -397,6 +397,20 @@ table.inv-table tr:last-child td{border-bottom:none}
           <div class="field"><label>Deposit ($)</label><input type="number" id="inv-deposit" value="0" min="0" oninput="calcTotals()"></div>
         </div>
         <div class="field-row">
+          <div class="field"><label>Phương thức thanh toán</label>
+            <select id="inv-payment-method">
+              <option value="">-- Không chọn --</option>
+              <option value="Check">Check</option>
+              <option value="Zelle">Zelle</option>
+              <option value="Credit Card">Credit Card</option>
+              <option value="Cash">Cash</option>
+              <option value="Wire Transfer">Wire Transfer</option>
+              <option value="Finance">Finance</option>
+            </select>
+          </div>
+          <div></div>
+        </div>
+        <div class="field-row">
           <div class="field"><label>Extra Discount ($)</label><input type="number" id="inv-extra-disc" value="0" min="0" oninput="calcTotals()"></div>
           <div class="field"><label>Charge Fee ($)</label><input type="number" id="inv-charge-fee" value="0" min="0" placeholder="0" oninput="calcTotals()"></div>
         </div>
@@ -1142,7 +1156,7 @@ function renderPreview(){
   const deposit=parseFloat(document.getElementById('inv-deposit')&&document.getElementById('inv-deposit').value)||0;
   const total=subtotal+tax+chargeFee-extraDisc;
   const balance=total-deposit;
-  const saleRep=currentProfile&&(currentProfile.nickname||currentProfile.full_name)||'Sale Rep';
+  const saleRep=editInvoiceOriginalSaleName||(currentProfile&&(currentProfile.nickname||currentProfile.full_name))||'Sale Rep';
   const custId=cu?cu.ma_kh:'KH-------';
   const docLabel='INVOICE';
 
@@ -1295,6 +1309,14 @@ async function saveAndDownload(action){
   if(!selectedCustomer){alert('Vui lòng chọn khách hàng!');return;}
   if(items.length===0){alert('Vui lòng thêm ít nhất 1 sản phẩm!');return;}
 
+  // Validation: nếu chọn phương thức thanh toán thì Deposit phải > 0
+  const paymentMethod=document.getElementById('inv-payment-method').value;
+  const depositCheck=parseFloat(document.getElementById('inv-deposit').value)||0;
+  if(paymentMethod&&depositCheck<=0){
+    alert('Đã chọn phương thức thanh toán "'+paymentMethod+'" — vui lòng nhập số tiền Deposit!');
+    return;
+  }
+
   showLoading(true);
   const _loadTimeout=setTimeout(function(){
     showLoading(false);
@@ -1350,6 +1372,7 @@ async function saveAndDownload(action){
     status:'sent',
     approval_status:approvalStatus,
     payment_status:'Deposit Paid',
+    payment_method:paymentMethod||null,
     order_status:'Đang sản xuất',
     affiliate_member_name:window.isAffiliate?window._affiliateSaleMember:null
     }).select().single();
@@ -1385,6 +1408,20 @@ async function saveAndDownload(action){
 
   clearTimeout(_loadTimeout);
   if(invErr){showLoading(false);alert('Lỗi lưu đơn: '+invErr.message);return;}
+
+  // Push notification cho manager/admin/leader nếu sale đã chọn phương thức thanh toán
+  if(paymentMethod){
+    try{
+      const {data:approvers}=await sb.from('profiles')
+        .select('id').in('role',['manager','admin','leader']).eq('is_active',true);
+      const saleName=editInvoiceOriginalSaleName||(currentProfile&&(currentProfile.nickname||currentProfile.full_name))||'Sale';
+      const bizName=selectedCustomer.business_name||selectedCustomer.customer_name||'';
+      const notifBody=saleName+' đã tạo đơn hàng cho tiệm '+bizName+' đang chờ duyệt';
+      (approvers||[]).forEach(function(p){
+        sb.from('notifications').insert({user_id:p.id,title:'📋 Đơn hàng chờ duyệt',body:notifBody,page:'pending'}).then(function(){}).catch(function(){});
+      });
+    }catch(e){console.warn('[notif] push error',e);}
+  }
 
   // Save items — include vendor_cost, is_shipping, vendor, chenh_lech
   const isManagerRole=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='leader'||currentProfile.role==='admin');
@@ -1483,6 +1520,7 @@ function hideMobilePreview(){
 // EDIT MODE
 let editInvoiceId=null;
 let editInvoiceNo=null;
+let editInvoiceOriginalSaleName=null;
 
 // Tải PDF invoice đã approved — dùng mã INVC chính thức
 async function downloadApprovedPDF(){
@@ -1509,6 +1547,14 @@ async function loadInvoiceForEdit(invoiceNo){
   if(error||!inv){showLoading(false);alert('Không tìm thấy đơn hàng: '+invoiceNo);return;}
   editInvoiceId=inv.id;
   editInvoiceNo=inv.invoice_no;
+
+  // Lưu lại tên người TẠO ban đầu (không phải người đang mở sửa) — dùng cho PDF/preview
+  editInvoiceOriginalSaleName=null;
+  if(inv.sale_id){
+    const {data:creatorProf}=await sb.from('profiles').select('full_name,nickname').eq('id',inv.sale_id).single();
+    if(creatorProf)editInvoiceOriginalSaleName=creatorProf.nickname||creatorProf.full_name;
+  }
+  if(!editInvoiceOriginalSaleName&&inv.sale_rep)editInvoiceOriginalSaleName=inv.sale_rep;
 
   // Load invoice items
   const {data:invItems}=await sb.from('invoice_items').select('*').eq('invoice_id',inv.id);
@@ -1541,6 +1587,7 @@ async function loadInvoiceForEdit(invoiceNo){
   if(inv.charge_fee)document.getElementById('inv-charge-fee')&&(document.getElementById('inv-charge-fee').value=inv.charge_fee);
   if(inv.warranty_months&&document.getElementById('inv-warranty'))document.getElementById('inv-warranty').value=String(inv.warranty_months||12);
   if(inv.note)document.getElementById('inv-note').value=inv.note;
+  if(inv.payment_method)document.getElementById('inv-payment-method').value=inv.payment_method;
 
   // Load items — bắt buộc có _id để updateItem/removeItem hoạt động
   items=(invItems||[]).map(function(it,idx){
@@ -1660,6 +1707,7 @@ async function updateInvoice(){
 function resetEditMode(){
   editInvoiceId=null;
   editInvoiceNo=null;
+  editInvoiceOriginalSaleName=null;
   // Restore original footer buttons
   const footer=document.querySelector('.sidebar-footer');
   if(footer){
@@ -1679,6 +1727,7 @@ function resetForm(){
   document.getElementById('inv-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('inv-tax').value='0';
   document.getElementById('inv-deposit').value='0';
+  document.getElementById('inv-payment-method').value='';
   document.getElementById('inv-extra-disc').value='0';
   document.getElementById('inv-note').value='';
   document.getElementById('inv-location').value='';
