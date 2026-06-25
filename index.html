@@ -1360,6 +1360,9 @@ async function doLogin(){
 }
 async function doLogout(){
   await sb.auth.signOut();
+  // Dừng polling chat — tránh request với token rỗng/cũ lặp lại sau khi đăng nhập lại không reload
+  if(typeof stopPoll==='function'){try{stopPoll();}catch(e){}}
+  if(typeof stopRealtime==='function'){try{stopRealtime();}catch(e){}}
   // Gỡ toàn bộ Realtime channel — tránh lỗi duplicate subscribe khi đăng nhập lại / switch account
   (sb.getChannels()||[]).forEach(function(ch){try{sb.removeChannel(ch);}catch(e){}});
   window._channelsInit={}; // reset guard — channel sẽ được tạo lại sạch ở lần initApp kế tiếp
