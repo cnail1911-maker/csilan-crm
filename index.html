@@ -2212,12 +2212,12 @@ function renderClosedeal(){
       +'<td style="font-size:11px;color:var(--text3)">'+(inv.tracking_number||'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--text2)">'+((inv.assigned_profile&&inv.assigned_profile.full_name)?inv.assigned_profile.full_name.split(' ').pop():'—')+'<\/td>'
       +(isManager
-        ?'<td><div style="display:flex;gap:4px">'
-          +'<button class="btn" style="padding:2px 8px;font-size:10px" onclick="openInvEdit('+inv.id+')" title="Cập nhật tracking/status">✏️<\/button>'
-          +'<button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="editInvoicePage(\''+inv.invoice_no+'\')" title="Tải invoice PDF"><i class="ti ti-file-download"><\/i><\/button>'
-          +'<button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(116,185,255,0.4);color:#74b9ff" onclick="window._openSendEmailModal('+inv.id+')" title="Gửi Email"><i class="ti ti-mail"><\/i><\/button>'
+        ?'<td style="white-space:nowrap"><div style="display:flex;gap:3px">'
+          +'<button class="btn" style="padding:2px 6px;font-size:10px" onclick="openInvEdit('+inv.id+')" title="Cập nhật tracking/status">✏️<\/button>'
+          +'<button class="btn" style="padding:2px 6px;font-size:10px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="editInvoicePage(\''+inv.invoice_no+'\')" title="Tải invoice PDF"><i class="ti ti-file-download"><\/i><\/button>'
+          +'<button class="btn" style="padding:2px 6px;font-size:10px;border-color:rgba(116,185,255,0.4);color:#74b9ff" onclick="window._openSendEmailModal('+inv.id+')" title="Gửi Email"><i class="ti ti-mail"><\/i><\/button>'
           +'<\/div><\/td>'
-        :'<td><button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="editInvoicePage(\''+inv.invoice_no+'\')" title="Tải invoice PDF"><i class="ti ti-file-download"><\/i><\/button><\/td>'
+        :'<td style="white-space:nowrap"><button class="btn" style="padding:2px 6px;font-size:10px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="editInvoicePage(\''+inv.invoice_no+'\')" title="Tải invoice PDF"><i class="ti ti-file-download"><\/i><\/button><\/td>'
       )
       +'<\/tr>';
   });
@@ -2256,7 +2256,7 @@ function renderClosedeal(){
   // Main table
   html+='<div class="content"><div class="panel"><div class="panel-header"><h2>Đơn hàng đã duyệt <span style="color:var(--accent2)">'+enriched.length+'<\/span><\/h2><\/div>'
     +(enriched.length===0?'<div class="empty-state"><i class="ti ti-trophy"></i>Chưa có đơn hàng nào được duyệt<\/div>'
-      :'<div class="table-mobile-scroll"><table><colgroup><col width="95"><col width="110"><col width="95"><col width="45"><col width="45"><col width="75"><col width="65"><col width="65"><col width="90"><col width="85"><col width="65"><col width="65"><col width="60">'+(isManager?'<col width="60">':'')+'</colgroup>'
+      :'<div class="table-mobile-scroll"><table><colgroup><col width="95"><col width="110"><col width="95"><col width="45"><col width="45"><col width="75"><col width="65"><col width="65"><col width="90"><col width="85"><col width="65"><col width="65"><col width="60">'+(isManager?'<col width="115">':'')+'</colgroup>'
       +'<thead><tr><th>Mã đơn<\/th><th>Business Name<\/th><th>Customer<\/th><th style="text-align:center">Month<\/th><th style="text-align:center">Year<\/th><th>Revenue<\/th><th>Deposit<\/th><th>Balance Due<\/th><th>Payment Status<\/th><th>Order Status<\/th><th>Tracking<\/th><th>Sale<\/th>'+(isManager?'<th><\/th>':'')+'<\/tr></thead>'
       +'<tbody>'+rows+'</tbody><\/table><\/div>'
       +pgBar(enriched.length,cdPage,PAGE_SIZE,'setCdPage'))
@@ -2419,19 +2419,27 @@ window._openSendEmailModal=function(invId){
   const deposit=inv.deposit||0;
   const balanceDue=inv.balance_due!=null?inv.balance_due:(total-deposit);
 
-  const defaultBody='Hi '+window.VENDOR_EMAIL_RECIPIENT_NAME+',\n'
+  const divider='─────────────────────────────';
+  const defaultBody='Hi '+window.VENDOR_EMAIL_RECIPIENT_NAME+',\n\n'
     +'Em gửi '+window.VENDOR_EMAIL_RECIPIENT_NAME+' thông tin đơn hàng mới để '+window.VENDOR_EMAIL_RECIPIENT_NAME+' hỗ trợ xử lý:\n\n'
-    +'Customer Information\n'
-    +'   Salon: '+bizName+'\n'
-    +'   Contact Person: '+(cust.customer_name||'')+'\n'
-    +'   Cell: '+(cust.cellphone||'')+'\n'
-    +'   Business Phone: '+(cust.business_phone||'')+'\n'
-    +'   Address: '+([cust.address,cust.city,cust.state,cust.zipcode].filter(Boolean).join(', '))+'\n\n'
-    +'Order Summary\n'
-    +'   Total Amount: $'+total.toLocaleString('en-US')+'\n'
-    +'   Payment Received: $'+deposit.toLocaleString('en-US')+'\n'
-    +'   Balance Due: $'+balanceDue.toLocaleString('en-US')+'\n\n'
-    +'Notes:\n\n'
+    +divider+'\n'
+    +'📋 CUSTOMER INFORMATION\n'
+    +divider+'\n'
+    +'• Salon: '+bizName+'\n'
+    +'• Contact Person: '+(cust.customer_name||'—')+'\n'
+    +'• Cell: '+(cust.cellphone||'—')+'\n'
+    +'• Business Phone: '+(cust.business_phone||'—')+'\n'
+    +'• Address: '+([cust.address,cust.city,cust.state,cust.zipcode].filter(Boolean).join(', ')||'—')+'\n\n'
+    +divider+'\n'
+    +'💰 ORDER SUMMARY\n'
+    +divider+'\n'
+    +'• Total Amount: $'+total.toLocaleString('en-US')+'\n'
+    +'• Payment Received: $'+deposit.toLocaleString('en-US')+'\n'
+    +'• Balance Due: $'+balanceDue.toLocaleString('en-US')+'\n\n'
+    +divider+'\n'
+    +'📝 NOTES\n'
+    +divider+'\n'
+    +'\n\n'
     +window.VENDOR_EMAIL_RECIPIENT_NAME+' kiểm tra và xác nhận giúp em khi nhận được đơn hàng này. Nếu cần thêm thông tin, '+window.VENDOR_EMAIL_RECIPIENT_NAME+' vui lòng cho em biết.\n'
     +'Cảm ơn '+window.VENDOR_EMAIL_RECIPIENT_NAME+'.\n\n'
     +'Best regards,\n'
@@ -2513,7 +2521,7 @@ window._sendInvoiceEmail=async function(invId){
     const EDGE_URL='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/send-invoice-email';
     const res=await fetch(EDGE_URL,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},
       body:JSON.stringify({
         to:toList,
         cc:ccList,
