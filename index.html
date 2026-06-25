@@ -417,8 +417,8 @@ select option{background:var(--bg2,#1a1240);color:var(--text,#F0EEFF)}
     table thead tr{display:table-row;position:static;}
     .panel>div[style*="overflow-x"]{overflow-x:auto !important;}
     .table-mobile-scroll{overflow-x:auto !important;-webkit-overflow-scrolling:touch !important;}
-    .guide .def-table{display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
-    .guide .def-table thead,.guide .def-table tbody,.guide .def-table tr{display:table;width:100%;table-layout:auto}
+    .guide-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .guide-table-wrap .def-table{min-width:600px;width:max-content}
     /* Giữ sticky thead trên mobile: table phải là block nhưng thead/tbody cần display:table */
     table thead{display:table;width:100%;}
     table tbody{display:table;width:100%;}
@@ -6982,6 +6982,14 @@ function renderGuide(){
       if(lock)lock.style.display='none';
       if(mc)mc.style.display='block';
     }
+    // Bọc mọi .def-table trong 1 div scroll riêng — giữ nguyên cấu trúc table để không lệch cột
+    document.querySelectorAll('.guide .def-table').forEach(function(tbl){
+      if(tbl.parentElement&&tbl.parentElement.classList.contains('guide-table-wrap'))return; // đã bọc rồi
+      var wrap=document.createElement('div');
+      wrap.className='guide-table-wrap';
+      tbl.parentNode.insertBefore(wrap,tbl);
+      wrap.appendChild(tbl);
+    });
   },80);
   return out;
 }
@@ -7434,6 +7442,8 @@ function render(){
       +'<button class="btn btn-primary" style="font-size:12px;padding:6px 14px" onclick="window._dailyFrom=document.getElementById(&quot;daily-from&quot;).value;window._dailyTo=document.getElementById(&quot;daily-to&quot;).value;var ds=document.getElementById(&quot;daily-sale&quot;);window._dailySale=ds?ds.value:&quot;all&quot;;renderDailyData()"><i class="ti ti-search"></i> Lọc<\/button>'
       +'<\/div><div id="daily-content" style="color:var(--text2);font-size:13px;padding:20px 0"><div style="display:flex;align-items:center;gap:10px"><div style="width:20px;height:20px;border:2px solid var(--brand2);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"><\/div> Đang tải dữ liệu...<\/div><\/div><\/div>';
     renderDailyData().then(function(){
+      // Sticky panel-header/thead chỉ áp dụng desktop — trên mobile dễ đo sai height gây nổi giữa danh sách
+      if(window.innerWidth<=768)return;
       // Đo filter bar height để set panel-header và thead top đúng
       var filterBar=document.querySelector('.content>div[style*="position:sticky"]');
       var fbH=filterBar?filterBar.offsetHeight:0;
