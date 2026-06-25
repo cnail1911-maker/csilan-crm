@@ -1231,6 +1231,7 @@ body.ticker-on .app{margin-top:32px}
       <div class="nav-item" onclick="setPage('notifications')" id="nav-notif-tab"><i class="ti ti-bell"></i> Thông báo <span class="nav-badge" id="badge-notif" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('system')" id="nav-system" style="display:none"><i class="ti ti-server"></i> System</div>
       <div class="nav-item" onclick="setPage('chat')" id="nav-chat"><i class="ti ti-messages"></i> Chat <span class="nav-badge" id="badge-chat" style="display:none">0</span></div>
+      <div class="nav-item" onclick="window._toggleSwitchAccountDropdown()" id="nav-switch-account-mobile" style="display:none"><i class="ti ti-arrows-exchange"></i> Chuyển tài khoản</div>
       <div class="nav-item mobile-logout-item" onclick="doLogout()" id="nav-logout-mobile" style="display:none"><i class="ti ti-logout"></i> Đăng xuất</div>
       </div>
       <div class="user-area" style="position:relative">
@@ -1239,9 +1240,9 @@ body.ticker-on .app{margin-top:32px}
         <button id="btn-broadcast" onclick="document.getElementById('ticker-announce-modal').style.display='flex'" title="Broadcast" style="display:none;background:none;border:1px solid rgba(162,155,254,0.3);border-radius:8px;color:rgba(162,155,254,0.8);cursor:pointer;padding:4px 8px;font-size:13px"><i class="ti ti-speakerphone"></i></button>
         <button id="btn-switch-account" onclick="window._toggleSwitchAccountDropdown()" title="Chuyển tài khoản" style="display:none;background:none;border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--text2);cursor:pointer;padding:4px 8px;font-size:13px"><i class="ti ti-arrows-exchange"></i></button>
         <button class="logout-btn" onclick="doLogout()" title="Đăng xuất"><i class="ti ti-logout"></i></button>
-        <div id="switch-account-dropdown" style="display:none;position:absolute;bottom:100%;left:0;right:0;margin-bottom:8px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-height:320px;overflow-y:auto;z-index:200"></div>
       </div>
     </div>
+    <div id="switch-account-dropdown" style="display:none;position:fixed;left:14px;bottom:70px;width:260px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.5);max-height:320px;overflow-y:auto;z-index:9999"></div>
     <div class="main" id="main-area"></div>
   </div>
 </div>
@@ -1680,6 +1681,8 @@ async function initApp(user){
   if(currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin')){
     var sa=document.getElementById('btn-switch-account');
     if(sa)sa.style.display='inline-flex';
+    var saMobile=document.getElementById('nav-switch-account-mobile');
+    if(saMobile)saMobile.style.display='flex';
   }
 
   // ── TICKER ENGINE ──
@@ -7275,6 +7278,41 @@ async function campAssignSelected(){
 }
 
 // ── FIX 3+4: DAILY TAB ──
+// ── Mở modal danh sách khách từ Daily Report (click vào Data/Potential/Quotation/Invoice) ──
+window._dailyOpenCustList=function(saleId,type){
+  var d=window._dailyClickData&&window._dailyClickData[saleId];
+  if(!d)return;
+  var sale=PROFILES.find(function(p){return p.id===saleId;});
+  var label='',customers=[];
+
+  if(type==='unique'){
+    label='Data thao tác — '+(sale?sale.full_name:'');
+    customers=d.allUniqueIds.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);
+  } else if(type==='potential'){
+    label='Potential — '+(sale?sale.full_name:'');
+    customers=d.potKpiIds.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);
+  } else if(type==='quotation'||type==='invoice'){
+    label=(type==='quotation'?'Quotation':'Invoice')+' — '+(sale?sale.full_name:'');
+    var filtInvs=d.saleInvs.filter(function(inv){
+      return type==='quotation'?inv.type==='quotation':(inv.type==='invoice'||!inv.type);
+    });
+    // Map invoice → customer object (kèm _inv để modal hiện số tiền)
+    var seen=new Set();
+    filtInvs.forEach(function(inv){
+      var cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;});
+      if(cust&&!seen.has(cust.id)){
+        seen.add(cust.id);
+        customers.push(Object.assign({},cust,{_inv:inv}));
+      } else if(!cust){
+        // Invoice không link được customer cụ thể (vd customer_id null) — fallback tạo dòng tạm dùng customer_name
+      }
+    });
+  }
+
+  if(customers.length===0){alert('Không có dữ liệu khách hàng chi tiết để hiển thị.');return;}
+  _kpiOpenListModal(label,customers,type,saleId,1);
+};
+
 async function renderDailyData(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const today=new Date();
@@ -7295,9 +7333,9 @@ async function renderDailyData(){
   // Tối ưu: fetch song song, invoice tách 2 query để tránh OR chậm
   const [logsRes,invsRes1,invsRes2,potHistRes]=await Promise.all([
     sb.from('call_logs').select('customer_id,sale_id,called_at').gte('called_at',fromDt).lte('called_at',toDt).limit(10000),
-    sb.from('invoices').select('sale_id,created_at,date,total,type').gte('created_at',fromDt).lte('created_at',toDt).limit(500),
-    sb.from('invoices').select('sale_id,created_at,date,total,type').is('created_at',null).gte('date',fFrom).lte('date',fTo).limit(200),
-    sb.from('potential_history').select('customer_id,assigned_to_id,potential,recalled_at').gte('recalled_at',fromDt).lte('recalled_at',toDt)
+    sb.from('invoices').select('sale_id,customer_id,invoice_no,created_at,date,total,type').gte('created_at',fromDt).lte('created_at',toDt).limit(5000),
+    sb.from('invoices').select('sale_id,customer_id,invoice_no,created_at,date,total,type').is('created_at',null).gte('date',fFrom).lte('date',fTo).limit(2000),
+    sb.from('potential_history').select('customer_id,assigned_to_id,potential,recalled_at').gte('recalled_at',fromDt).lte('recalled_at',toDt).limit(5000)
   ]);
   // Lọc lại theo local US date (UTC-7 baseline)
   let logs=(logsRes.data||[]).filter(function(l){
@@ -7366,7 +7404,7 @@ async function renderDailyData(){
     });
 
     const invCount=saleInvs.length;
-    summary.push({sale:sale,total:allUnique.size,potential:potKpiIds.size,invs:invCount,byDate:byDate,potentialBreakdown:potentialBreakdown});
+    summary.push({sale:sale,total:allUnique.size,potential:potKpiIds.size,invs:invCount,byDate:byDate,potentialBreakdown:potentialBreakdown,allUniqueIds:allUnique,potKpiIds:potKpiIds,saleInvs:saleInvs});
 
         // Potential per day breakdown
     const potByDate={};
@@ -7400,13 +7438,16 @@ async function renderDailyData(){
     const quoteCount=saleInvs.filter(function(inv){return inv.type==='quotation';}).length;
     const realInvCount=saleInvs.filter(function(inv){return inv.type==='invoice'||!inv.type;}).length;
 
+    window._dailyClickData=window._dailyClickData||{};
+    window._dailyClickData[sale.id]={allUniqueIds:Array.from(allUnique),potKpiIds:Array.from(potKpiIds),saleInvs:saleInvs};
+
     tableRows+='<tr style="border-top:2px solid var(--border)">'
       +'<td><strong style="color:var(--text)">'+sale.full_name+'</strong><\/td>'
-      +'<td style="font-weight:700;color:var(--accent2)">'+allUnique.size+'<\/td>'
-      +'<td style="color:var(--warn)">'+potKpiIds.size+'<\/td>'
-      +'<td style="font-size:10px;color:var(--text3)">'+potBreakStr+'<\/td>'
-      +'<td style="font-weight:600;color:#4fc3f7;text-align:center">'+quoteCount+'<\/td>'
-      +'<td style="font-weight:600;color:var(--brand2);text-align:center">'+realInvCount+'<\/td>'
+      +'<td style="font-weight:700;color:var(--accent2);cursor:'+(allUnique.size>0?'pointer':'default')+'" '+(allUnique.size>0?'onclick="window._dailyOpenCustList(\''+sale.id+'\',\'unique\')"':'')+'>'+allUnique.size+'<\/td>'
+      +'<td style="color:var(--warn);cursor:'+(potKpiIds.size>0?'pointer':'default')+'" '+(potKpiIds.size>0?'onclick="window._dailyOpenCustList(\''+sale.id+'\',\'potential\')"':'')+'>'+potKpiIds.size+'<\/td>'
+      +'<td style="font-size:10px;color:var(--text3);cursor:'+(potKpiIds.size>0?'pointer':'default')+'" '+(potKpiIds.size>0?'onclick="window._dailyOpenCustList(\''+sale.id+'\',\'potential\')"':'')+'>'+potBreakStr+'<\/td>'
+      +'<td style="font-weight:600;color:#4fc3f7;text-align:center;cursor:'+(quoteCount>0?'pointer':'default')+'" '+(quoteCount>0?'onclick="window._dailyOpenCustList(\''+sale.id+'\',\'quotation\')"':'')+'>'+quoteCount+'<\/td>'
+      +'<td style="font-weight:600;color:var(--brand2);text-align:center;cursor:'+(realInvCount>0?'pointer':'default')+'" '+(realInvCount>0?'onclick="window._dailyOpenCustList(\''+sale.id+'\',\'invoice\')"':'')+'>'+realInvCount+'<\/td>'
       +'<\/tr>'+dayRows;
   });
 
