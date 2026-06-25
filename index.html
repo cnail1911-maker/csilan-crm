@@ -2205,6 +2205,8 @@ function renderClosedeal(){
       +'<td style="text-align:center;font-size:11px">'+(invDate.getMonth()+1)+'<\/td>'
       +'<td style="text-align:center;font-size:11px">'+invDate.getFullYear()+'<\/td>'
       +'<td style="color:var(--accent2);font-weight:700">$'+(inv.total||0).toLocaleString('en-US')+'<\/td>'
+      +'<td style="font-size:11px;color:var(--success)">$'+(inv.deposit||0).toLocaleString('en-US')+'<\/td>'
+      +'<td style="font-size:11px;color:var(--warn)">$'+(inv.balance_due!=null?inv.balance_due:((inv.total||0)-(inv.deposit||0))).toLocaleString('en-US')+'<\/td>'
       +'<td>'+(inv.payment_status?'<span class="badge '+(payBadge[inv.payment_status]||'b-new')+'">'+inv.payment_status+'<\/span>':'—')+'<\/td>'
       +'<td>'+(inv.order_status?'<span class="badge '+(ordBadge[inv.order_status]||'b-new')+'">'+inv.order_status+'<\/span>':'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--text3)">'+(inv.tracking_number||'—')+'<\/td>'
@@ -2213,6 +2215,7 @@ function renderClosedeal(){
         ?'<td><div style="display:flex;gap:4px">'
           +'<button class="btn" style="padding:2px 8px;font-size:10px" onclick="openInvEdit('+inv.id+')" title="Cập nhật tracking/status">✏️<\/button>'
           +'<button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="editInvoicePage(\''+inv.invoice_no+'\')" title="Tải invoice PDF"><i class="ti ti-file-download"><\/i><\/button>'
+          +'<button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(116,185,255,0.4);color:#74b9ff" onclick="window._openSendEmailModal('+inv.id+')" title="Gửi Email"><i class="ti ti-mail"><\/i><\/button>'
           +'<\/div><\/td>'
         :'<td><button class="btn" style="padding:2px 8px;font-size:10px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="editInvoicePage(\''+inv.invoice_no+'\')" title="Tải invoice PDF"><i class="ti ti-file-download"><\/i><\/button><\/td>'
       )
@@ -2253,8 +2256,8 @@ function renderClosedeal(){
   // Main table
   html+='<div class="content"><div class="panel"><div class="panel-header"><h2>Đơn hàng đã duyệt <span style="color:var(--accent2)">'+enriched.length+'<\/span><\/h2><\/div>'
     +(enriched.length===0?'<div class="empty-state"><i class="ti ti-trophy"></i>Chưa có đơn hàng nào được duyệt<\/div>'
-      :'<div class="table-mobile-scroll"><table><colgroup><col width="95"><col width="110"><col width="95"><col width="45"><col width="45"><col width="75"><col width="90"><col width="85"><col width="65"><col width="65"><col width="60">'+(isManager?'<col width="40">':'')+'</colgroup>'
-      +'<thead><tr><th>Mã đơn<\/th><th>Business Name<\/th><th>Customer<\/th><th style="text-align:center">Month<\/th><th style="text-align:center">Year<\/th><th>Revenue<\/th><th>Payment Status<\/th><th>Order Status<\/th><th>Tracking<\/th><th>Sale<\/th>'+(isManager?'<th><\/th>':'')+'<\/tr></thead>'
+      :'<div class="table-mobile-scroll"><table><colgroup><col width="95"><col width="110"><col width="95"><col width="45"><col width="45"><col width="75"><col width="65"><col width="65"><col width="90"><col width="85"><col width="65"><col width="65"><col width="60">'+(isManager?'<col width="60">':'')+'</colgroup>'
+      +'<thead><tr><th>Mã đơn<\/th><th>Business Name<\/th><th>Customer<\/th><th style="text-align:center">Month<\/th><th style="text-align:center">Year<\/th><th>Revenue<\/th><th>Deposit<\/th><th>Balance Due<\/th><th>Payment Status<\/th><th>Order Status<\/th><th>Tracking<\/th><th>Sale<\/th>'+(isManager?'<th><\/th>':'')+'<\/tr></thead>'
       +'<tbody>'+rows+'</tbody><\/table><\/div>'
       +pgBar(enriched.length,cdPage,PAGE_SIZE,'setCdPage'))
     +'<\/div><\/div>';
@@ -2310,19 +2313,6 @@ async function approveInvoice(id,status){
         if(prof&&prof.full_name)saleRepName=prof.full_name;
       }
 
-      // Đối chiếu lại vendor_cost/vendor từ DB products theo product_id —
-      // KHÔNG dùng PRODUCTS_ALL (biến này có thể chưa load xong khi Manager
-      // bấm Duyệt ngay sau khi mở trang → gây race condition, mất vendor_cost,
-      // vendor bị fallback sai 'BOLSA'). Luôn fetch trực tiếp DB để chắc chắn.
-      const validProductIds=(items||[]).map(function(it){return it.product_id;}).filter(function(id){return id!=null;});
-      let productsFresh=[];
-      if(validProductIds.length>0){
-        try{
-          const {data:pf}=await sb.from('products').select('id,sku,name,vendor,vendor_cost,sale_price,best_price,is_bolsa').in('id',validProductIds);
-          productsFresh=pf||[];
-        }catch(e3){console.warn('Product fetch fallback error:',e3.message);}
-      }
-
       const payload={
         invoice_id:     id,
         invoice_no:     inv.invoice_no,
@@ -2338,36 +2328,40 @@ async function approveInvoice(id,status){
         deposit:        inv.deposit||0,
         tax:            inv.tax||0,
         items:          (items||[]).map(function(it){
-          var giaBanThuc=it.unit_price||0;   // giá Sale bán — giữ nguyên, sale có quyền sửa tự do
+          // Use vendor & chenh_lech saved in invoice_items (set at invoice creation)
+          // Fallback: detect from product name or products table
+          var vendor=it.vendor||null;
+          var giaBanGoc=it.vendor_cost||0;
+          var giaBanThuc=it.unit_price||0;
           var qty=it.qty||1;
           var amount=it.amount||(giaBanThuc*qty);
+          // chenh_lech: use saved value if exists, else recalculate
+          var chenhLech=it.chenh_lech!=null?it.chenh_lech:(giaBanThuc-giaBanGoc)*qty;
 
-          // Đối chiếu DB products tươi (fetch ngay phía trên) — ưu tiên product_id,
-          // fallback PRODUCTS_ALL cache, cuối cùng mới dùng giá trị invoice_items đã lưu.
-          var prodRecord=productsFresh.find(function(p){
-            return (it.product_id&&p.id===it.product_id)||(it.sku&&p.sku===it.sku);
-          });
-          if(!prodRecord&&PRODUCTS_ALL){
-            prodRecord=PRODUCTS_ALL.find(function(p){
+          // If vendor not set in invoice_items, detect from products table
+          if(!vendor){
+            var prodRecord=PRODUCTS_ALL&&PRODUCTS_ALL.find(function(p){
               return (it.product_id&&p.id===it.product_id)||(it.sku&&p.sku===it.sku);
             });
+            if(prodRecord&&prodRecord.vendor){
+              var v=prodRecord.vendor.toLowerCase();
+              if(v.includes('ons'))vendor='ONS';
+              else if(v.includes('tspa'))vendor='TSPA';
+              else vendor='BOLSA';
+              if(!giaBanGoc)giaBanGoc=prodRecord.vendor_cost||0;
+              chenhLech=(giaBanThuc-giaBanGoc)*qty;
+            } else {
+              // Last resort: detect from product name
+              var pname=(it.product_name||'').toLowerCase();
+              if(pname.includes('ons')||pname.includes('spa chair')||pname.includes('pedicure'))vendor='ONS';
+              else if(pname.includes('tspa')||pname.includes('t-spa')||pname.includes('nail table'))vendor='TSPA';
+              else vendor='BOLSA';
+            }
           }
-
-          var vendor,giaBanGoc;
-          if(prodRecord){
-            vendor=prodRecord.vendor||it.vendor||'BOLSA';
-            giaBanGoc=(prodRecord.vendor_cost!=null)?prodRecord.vendor_cost:(it.vendor_cost||0);
-          } else {
-            // Không tìm thấy product — giữ giá trị đã lưu trong invoice_items,
-            // KHÔNG suy đoán theo tên (tránh fallback sai 'BOLSA' không có cơ sở).
-            vendor=it.vendor||null;
-            giaBanGoc=it.vendor_cost||0;
-          }
-          var chenhLech=(giaBanThuc-giaBanGoc)*qty;
 
           return{
             product_id:   it.product_id||null,
-            sku:          it.sku||(prodRecord?prodRecord.sku:null)||null,
+            sku:          it.sku||null,
             image_url:    it.image_url||null,
             product_name: it.product_name||'',
             qty:          qty,
@@ -2404,6 +2398,124 @@ async function approveInvoice(id,status){
   }
   showLoading(false);render();
 }
+
+// ════════════ GỬI EMAIL INVOICE ════════════
+window._openSendEmailModal=function(invId){
+  const inv=INVOICES.find(function(i){return i.id===invId;});
+  if(!inv)return;
+  const cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;})||{};
+  const existing=document.getElementById('send-email-modal');
+  if(existing)existing.remove();
+
+  const bizName=cust.business_name||cust.customer_name||'';
+  const defaultSubject='Invoice '+(inv.invoice_no||'')+' - '+bizName;
+  const paymentLine=inv.payment_method?('\n\nPhương thức thanh toán: '+inv.payment_method):'';
+  const defaultBody='Kính chào '+bizName+',\n\n'
+    +'C-Silan xin gửi đến quý khách invoice đơn hàng '+(inv.invoice_no||'')+'.\n\n'
+    +'Tổng tiền: $'+(inv.total||0).toLocaleString('en-US')+'\n'
+    +'Đã đặt cọc: $'+(inv.deposit||0).toLocaleString('en-US')+'\n'
+    +'Còn lại: $'+((inv.balance_due!=null?inv.balance_due:((inv.total||0)-(inv.deposit||0)))).toLocaleString('en-US')
+    +paymentLine
+    +(inv.note?('\n\nGhi chú: '+inv.note):'')
+    +'\n\nVui lòng xem chi tiết trong file đính kèm.\n\nTrân trọng,\nC-Silan Team';
+
+  const modal=document.createElement('div');
+  modal.className='modal-overlay';modal.id='send-email-modal';
+  modal.style.zIndex='10010';
+
+  let html='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:14px;width:96vw;max-width:600px;max-height:88vh;display:flex;flex-direction:column;border:1px solid var(--border)">';
+  html+='<div class="modal-header"><h3><i class="ti ti-mail"></i> Gửi Email — '+(inv.invoice_no||'')+'</h3>';
+  html+='<button class="btn" style="padding:4px 8px" onclick="document.getElementById(\'send-email-modal\').remove()"><i class="ti ti-x"></i></button></div>';
+  html+='<div class="modal-body" style="padding:16px 18px;overflow-y:auto;flex:1">';
+
+  html+='<label style="font-size:11px;color:var(--text3);text-transform:uppercase">Đến</label>';
+  html+='<input type="text" id="se-to" value="Kashantllc@gmail.com" style="width:100%;margin:6px 0 12px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);outline:none">';
+
+  html+='<label style="font-size:11px;color:var(--text3);text-transform:uppercase">CC (phân tách bằng dấu phẩy, để trống nếu không cần)</label>';
+  html+='<input type="text" id="se-cc" placeholder="vd: email1@gmail.com, email2@gmail.com" style="width:100%;margin:6px 0 12px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);outline:none">';
+
+  html+='<label style="font-size:11px;color:var(--text3);text-transform:uppercase">Chủ đề</label>';
+  html+='<input type="text" id="se-subject" value="'+defaultSubject.replace(/"/g,'&quot;')+'" style="width:100%;margin:6px 0 12px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);outline:none">';
+
+  html+='<label style="font-size:11px;color:var(--text3);text-transform:uppercase">Nội dung</label>';
+  html+='<textarea id="se-body" rows="9" style="width:100%;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);outline:none;resize:vertical;font-family:inherit">'+defaultBody+'</textarea>';
+
+  html+='<div style="margin-top:14px">';
+  html+='<label style="font-size:11px;color:var(--text3);text-transform:uppercase">File đính kèm (PDF invoice đã tải)</label>';
+  html+='<input type="file" id="se-attachment" accept="application/pdf" style="width:100%;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text)">';
+  html+='<div id="se-attach-name" style="font-size:11px;color:var(--text3);margin-top:4px"></div>';
+  html+='</div>';
+
+  html+='</div>';
+  html+='<div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid var(--border)">';
+  html+='<button class="btn" onclick="document.getElementById(\'send-email-modal\').remove()">Hủy</button>';
+  html+='<button class="btn btn-primary" id="se-send-btn" onclick="window._sendInvoiceEmail('+invId+')"><i class="ti ti-send"></i> Gửi Email</button>';
+  html+='</div></div>';
+
+  modal.innerHTML=html;
+  document.body.appendChild(modal);
+
+  document.getElementById('se-attachment').addEventListener('change',function(e){
+    var f=e.target.files[0];
+    document.getElementById('se-attach-name').textContent=f?('📎 '+f.name+' ('+(f.size/1024).toFixed(0)+' KB)'):'';
+  });
+};
+
+window._sendInvoiceEmail=async function(invId){
+  const toRaw=(document.getElementById('se-to')||{}).value.trim();
+  const ccRaw=(document.getElementById('se-cc')||{}).value.trim();
+  const subject=(document.getElementById('se-subject')||{}).value.trim();
+  const bodyText=(document.getElementById('se-body')||{}).value;
+  const fileInput=document.getElementById('se-attachment');
+  const file=fileInput&&fileInput.files[0];
+
+  if(!toRaw){alert('Vui lòng nhập địa chỉ người nhận');return;}
+  if(!subject){alert('Vui lòng nhập chủ đề email');return;}
+
+  const sendBtn=document.getElementById('se-send-btn');
+  sendBtn.disabled=true;sendBtn.textContent='Đang gửi...';
+
+  try{
+    let attachmentBase64=null,attachmentFilename=null;
+    if(file){
+      attachmentFilename=file.name;
+      attachmentBase64=await new Promise(function(resolve,reject){
+        const reader=new FileReader();
+        reader.onload=function(){resolve(reader.result.split(',')[1]);};
+        reader.onerror=reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    const htmlBody=bodyText.replace(/\n/g,'<br>');
+    const toList=toRaw.split(',').map(function(s){return s.trim();}).filter(Boolean);
+    const ccList=ccRaw?ccRaw.split(',').map(function(s){return s.trim();}).filter(Boolean):[];
+
+    const EDGE_URL='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/send-invoice-email';
+    const res=await fetch(EDGE_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        to:toList,
+        cc:ccList,
+        subject:subject,
+        html_body:htmlBody,
+        attachment_base64:attachmentBase64,
+        attachment_filename:attachmentFilename
+      })
+    });
+    const result=await res.json();
+    if(!res.ok||result.error){
+      throw new Error(result.error||'Gửi email thất bại');
+    }
+
+    showCrmToast('✅ Đã gửi email thành công','','order','success');
+    document.getElementById('send-email-modal').remove();
+  }catch(e){
+    alert('Lỗi gửi email: '+e.message);
+    sendBtn.disabled=false;sendBtn.innerHTML='<i class="ti ti-send"></i> Gửi Email';
+  }
+};
 
 async function openInvEdit(id){
   const inv=INVOICES.find(function(i){return i.id===id;});
