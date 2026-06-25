@@ -2499,6 +2499,15 @@ window._sendInvoiceEmail=async function(invId){
   if(!toRaw){alert('Vui lòng nhập địa chỉ người nhận');return;}
   if(!subject){alert('Vui lòng nhập chủ đề email');return;}
 
+  // Validate format email cơ bản — tránh gửi thất bại âm thầm do nhập sai
+  const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const toListCheck=toRaw.split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean);
+  const invalidTo=toListCheck.filter(function(e){return !emailRe.test(e);});
+  if(invalidTo.length>0){alert('Địa chỉ "Đến" không hợp lệ: '+invalidTo.join(', '));return;}
+  const ccListCheck=ccRaw?ccRaw.split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean):[];
+  const invalidCc=ccListCheck.filter(function(e){return !emailRe.test(e);});
+  if(invalidCc.length>0){alert('Địa chỉ "CC" không hợp lệ: '+invalidCc.join(', '));return;}
+
   const sendBtn=document.getElementById('se-send-btn');
   sendBtn.disabled=true;sendBtn.textContent='Đang gửi...';
 
@@ -2516,7 +2525,7 @@ window._sendInvoiceEmail=async function(invId){
 
     const htmlBody=bodyText.replace(/\n/g,'<br>');
     const toList=toRaw.split(',').map(function(s){return s.trim();}).filter(Boolean);
-    const ccList=ccRaw?ccRaw.split(',').map(function(s){return s.trim();}).filter(Boolean):[];
+    const ccList=ccRaw?ccRaw.split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean):[];
 
     const EDGE_URL='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/send-invoice-email';
     const res=await fetch(EDGE_URL,{
