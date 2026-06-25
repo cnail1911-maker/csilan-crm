@@ -2822,12 +2822,12 @@ function renderPending(){
     +'<div class="content">'
     +(pendingInvoices.length>0
       ?'<div class="panel" style="margin-bottom:14px;border-color:rgba(253,203,110,0.3)"><div class="panel-header" style="background:rgba(253,203,110,0.08)"><h2><i class="ti ti-file-invoice" style="color:var(--warn)"></i> Invoice chờ duyệt <span style="color:var(--warn)">'+pendingInvoices.length+'<\/span><\/h2>'+(isManager?'<span style="font-size:11px;color:var(--text3)">Duyệt để chuyển khách sang tab Order<\/span>':'')+'<\/div>'
-      +'<table><thead><tr><th>Mã đơn<\/th><th>Business Name<\/th><th>Customer<\/th><th>Total<\/th><th>Sale<\/th><th>Ngày tạo<\/th><th>Thao tác<\/th><\/tr></thead>'
-      +'<tbody>'+invPendingRows+'</tbody><\/table><\/div>'
+      +'<div class="table-scroll-always"><table><thead><tr><th>Mã đơn<\/th><th>Business Name<\/th><th>Customer<\/th><th>Total<\/th><th>Sale<\/th><th>Ngày tạo<\/th><th>Thao tác<\/th><\/tr></thead>'
+      +'<tbody>'+invPendingRows+'</tbody><\/table><\/div><\/div>'
       :'')
     +'<div class="panel"><div class="panel-header"><h2>Khách hàng chờ duyệt <span style="color:var(--warn)">'+pending.length+'<\/span><\/h2>'+(isManager?'<span style="font-size:11px;color:var(--text3)">Sale không thấy khách cho đến khi được duyệt<\/span>':'')+'<\/div>'
     +(pending.length===0?'<div class="empty-state"><i class="ti ti-clock"></i>Không có khách chờ duyệt<\/div>'
-      :'<table>'+tableHead+'<tbody>'+pendingRows+'</tbody><\/table>'+pgBar(pending.length,pdPage,PAGE_SIZE,'setPdPage'))
+      :'<div class="table-scroll-always"><table>'+tableHead+'<tbody>'+pendingRows+'</tbody><\/table><\/div>'+pgBar(pending.length,pdPage,PAGE_SIZE,'setPdPage'))
     +'<\/div>'
     +(rejected.length>0?'<div class="panel"><div class="panel-header"><h2>Đã từ chối <span style="color:var(--danger)">'+rejected.length+'<\/span><\/h2><span style="font-size:11px;color:var(--text3)">Khách bị từ chối vẫn lưu trong hệ thống<\/span><\/div>'
       +'<table>'+tableHead+'<tbody>'+rejectedRows+'</tbody><\/table><\/div>':'')
@@ -3212,7 +3212,7 @@ function renderCampaign(){
     +'<div id="camp-slide-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999" onclick="document.getElementById(\'camp-slide-panel\').style.display=\'none\';document.getElementById(\'camp-slide-overlay\').style.display=\'none\'"><\/div>'
     // Detail modal
     +'<div id="camp-detail-modal" style="display:none;position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,0.6);overflow-y:auto">'
-    +'<div onclick="event.stopPropagation()" id="camp-detail-box" style="background:var(--bg2,#1a1240);border-radius:16px;width:94vw;max-width:1400px;height:92vh;margin:20px auto;padding:0;border:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden"><\/div>'
+    +'<div onclick="event.stopPropagation()" id="camp-detail-box" style="background:var(--bg2,#1a1240);border-radius:16px;width:94vw;max-width:1400px;height:92vh;height:92dvh;margin:20px auto;padding:0;border:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden"><\/div>'
     +'<\/div>';
 }
 
@@ -7460,6 +7460,8 @@ function render(){
   }
   // Fix sticky thead top sau mỗi render
   requestAnimationFrame(window._fixStickyThead||function(){});
+  // Reset scroll ngang về đầu cho bảng luôn-scroll (vd Order) — tránh hiển thị lệch khi mobile giữ vị trí cuộn cũ
+  document.querySelectorAll('.table-scroll-always').forEach(function(el){el.scrollLeft=0;});
   if(addOpen&&!document.getElementById('add-modal'))renderAddModal();
 }
 
