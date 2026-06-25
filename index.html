@@ -361,6 +361,7 @@ select option{background:var(--bg2,#1a1240);color:var(--text,#F0EEFF)}
     .logo-wrap{display:none !important}
     .nav-sec{display:none !important}
     .user-area{display:none !important}
+    .mobile-logout-item{display:flex !important;color:#ff7675 !important}
     .nav-tabs{
       display:flex !important;
       flex-direction:row !important;
@@ -1230,12 +1231,15 @@ body.ticker-on .app{margin-top:32px}
       <div class="nav-item" onclick="setPage('notifications')" id="nav-notif-tab"><i class="ti ti-bell"></i> Thông báo <span class="nav-badge" id="badge-notif" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('system')" id="nav-system" style="display:none"><i class="ti ti-server"></i> System</div>
       <div class="nav-item" onclick="setPage('chat')" id="nav-chat"><i class="ti ti-messages"></i> Chat <span class="nav-badge" id="badge-chat" style="display:none">0</span></div>
+      <div class="nav-item mobile-logout-item" onclick="doLogout()" id="nav-logout-mobile" style="display:none"><i class="ti ti-logout"></i> Đăng xuất</div>
       </div>
-      <div class="user-area">
+      <div class="user-area" style="position:relative">
         <div class="avatar av-0" id="user-avatar">--</div>
         <div><div class="user-name" id="user-name">--</div><div class="user-role" id="user-role">Sale</div></div>
         <button id="btn-broadcast" onclick="document.getElementById('ticker-announce-modal').style.display='flex'" title="Broadcast" style="display:none;background:none;border:1px solid rgba(162,155,254,0.3);border-radius:8px;color:rgba(162,155,254,0.8);cursor:pointer;padding:4px 8px;font-size:13px"><i class="ti ti-speakerphone"></i></button>
+        <button id="btn-switch-account" onclick="window._toggleSwitchAccountDropdown()" title="Chuyển tài khoản" style="display:none;background:none;border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--text2);cursor:pointer;padding:4px 8px;font-size:13px"><i class="ti ti-arrows-exchange"></i></button>
         <button class="logout-btn" onclick="doLogout()" title="Đăng xuất"><i class="ti ti-logout"></i></button>
+        <div id="switch-account-dropdown" style="display:none;position:absolute;bottom:100%;left:0;right:0;margin-bottom:8px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-height:320px;overflow-y:auto;z-index:200"></div>
       </div>
     </div>
     <div class="main" id="main-area"></div>
@@ -1348,8 +1352,98 @@ async function doLogin(){
   const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
   if(error){errEl.textContent=error.message;errEl.style.display='block';btn.disabled=false;btn.textContent='Đăng nhập';return;}
   await initApp(data.user);
+  // Lưu account vào danh sách switch — chỉ cho manager/admin
+  if(data.session&&currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin')){
+    window._saveSwitchAccount(email,data.session.refresh_token);
+  }
 }
 async function doLogout(){await sb.auth.signOut();document.getElementById('app-screen').style.display='none';document.getElementById('auth-screen').style.display='flex';CUSTOMERS=[];PROFILES=[];}
+
+// ════════════ SWITCH ACCOUNT (chỉ Manager) ════════════
+window._saveSwitchAccount=function(email,refreshToken){
+  try{
+    var accounts=JSON.parse(localStorage.getItem('crm_switch_accounts')||'[]');
+    var idx=accounts.findIndex(function(a){return a.email===email;});
+    var entry={email:email,refresh_token:refreshToken,saved_at:new Date().toISOString()};
+    if(idx>=0)accounts[idx]=entry;
+    else accounts.push(entry);
+    if(accounts.length>8)accounts=accounts.slice(-8); // giới hạn 8 tài khoản gần nhất
+    localStorage.setItem('crm_switch_accounts',JSON.stringify(accounts));
+  }catch(e){console.warn('[switch-account] save error',e);}
+};
+
+window._removeSwitchAccount=function(email){
+  try{
+    var accounts=JSON.parse(localStorage.getItem('crm_switch_accounts')||'[]');
+    accounts=accounts.filter(function(a){return a.email!==email;});
+    localStorage.setItem('crm_switch_accounts',JSON.stringify(accounts));
+    window._renderSwitchAccountList();
+  }catch(e){}
+};
+
+window._switchToAccount=async function(email,refreshToken){
+  if(currentUser&&currentUser.email===email){
+    document.getElementById('switch-account-dropdown').style.display='none';
+    return;
+  }
+  showLoading(true);
+  try{
+    const {data,error}=await sb.auth.setSession({refresh_token:refreshToken,access_token:''});
+    if(error||!data.session){
+      alert('Phiên đăng nhập của "'+email+'" đã hết hạn, vui lòng đăng nhập lại tài khoản này.');
+      window._removeSwitchAccount(email);
+      showLoading(false);
+      return;
+    }
+    // Cập nhật refresh_token mới nhất (Supabase tự xoay token sau mỗi lần dùng)
+    window._saveSwitchAccount(email,data.session.refresh_token);
+    location.reload();
+  }catch(e){
+    alert('Lỗi chuyển tài khoản: '+e.message);
+    showLoading(false);
+  }
+};
+
+window._toggleSwitchAccountDropdown=function(){
+  var dd=document.getElementById('switch-account-dropdown');
+  if(!dd)return;
+  if(dd.style.display==='block'){dd.style.display='none';return;}
+  window._renderSwitchAccountList();
+  dd.style.display='block';
+};
+
+window._renderSwitchAccountList=function(){
+  var dd=document.getElementById('switch-account-dropdown');
+  if(!dd)return;
+  var accounts=[];
+  try{accounts=JSON.parse(localStorage.getItem('crm_switch_accounts')||'[]');}catch(e){}
+  var html='<div style="padding:8px 0">';
+  if(accounts.length===0){
+    html+='<div style="padding:12px 16px;font-size:12px;color:var(--text3)">Chưa có tài khoản nào được lưu.<br>Đăng nhập tài khoản khác để thêm vào danh sách.</div>';
+  } else {
+    accounts.forEach(function(a){
+      var isCurrent=currentUser&&currentUser.email===a.email;
+      var initial=a.email.charAt(0).toUpperCase();
+      html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;'+(isCurrent?'background:rgba(108,92,231,0.12)':'')+'" onmouseover="this.style.background=\'rgba(255,255,255,0.05)\'" onmouseout="this.style.background=\''+(isCurrent?'rgba(108,92,231,0.12)':'transparent')+'\'" onclick="window._switchToAccount(\''+a.email.replace(/'/g,"\\'")+'\',\''+a.refresh_token+'\')">'
+        +'<div class="avatar av-0" style="width:30px;height:30px;font-size:12px;flex-shrink:0">'+initial+'<\/div>'
+        +'<div style="flex:1;min-width:0;overflow:hidden"><div style="font-size:12.5px;color:var(--text);white-space:nowrap;text-overflow:ellipsis;overflow:hidden">'+a.email+'<\/div>'+(isCurrent?'<div style="font-size:10px;color:var(--brand2)">Đang dùng<\/div>':'')+'<\/div>'
+        +(isCurrent?'':'<button onclick="event.stopPropagation();window._removeSwitchAccount(\''+a.email.replace(/'/g,"\\'")+'\')" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;flex-shrink:0" title="Xóa khỏi danh sách"><i class="ti ti-x"><\/i><\/button>')
+        +'<\/div>';
+    });
+  }
+  html+='<div style="border-top:1px solid var(--border);margin-top:6px;padding:8px 14px;font-size:11px;color:var(--text3);cursor:pointer" onclick="document.getElementById(\'switch-account-dropdown\').style.display=\'none\';doLogout()"><i class="ti ti-plus"><\/i> Đăng nhập tài khoản khác<\/div>';
+  html+='<\/div>';
+  dd.innerHTML=html;
+};
+
+document.addEventListener('click',function(e){
+  var dd=document.getElementById('switch-account-dropdown');
+  var btn=document.getElementById('btn-switch-account');
+  if(!dd||dd.style.display==='none')return;
+  if(!dd.contains(e.target)&&e.target!==btn&&!btn.contains(e.target)){
+    dd.style.display='none';
+  }
+});
 
 // ── NOTIFICATION CENTER ENGINE — DB-based (top-level, not inside any IIFE) ──
 (function(){
@@ -1581,6 +1675,11 @@ async function initApp(user){
     if(bb)bb.style.display='inline-flex';
     var sysNav=document.getElementById('nav-system');
     if(sysNav&&(currentProfile.role==='manager'||currentProfile.role==='admin'))sysNav.style.display='flex';
+  }
+  // ── Switch account: chỉ dành cho manager/admin ──
+  if(currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin')){
+    var sa=document.getElementById('btn-switch-account');
+    if(sa)sa.style.display='inline-flex';
   }
 
   // ── TICKER ENGINE ──
