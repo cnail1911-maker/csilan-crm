@@ -1358,7 +1358,13 @@ async function doLogin(){
     window._saveSwitchAccount(email,data.session.refresh_token);
   }
 }
-async function doLogout(){await sb.auth.signOut();document.getElementById('app-screen').style.display='none';document.getElementById('auth-screen').style.display='flex';CUSTOMERS=[];PROFILES=[];}
+async function doLogout(){
+  await sb.auth.signOut();
+  // Gỡ toàn bộ Realtime channel — tránh lỗi duplicate subscribe khi đăng nhập lại / switch account
+  (sb.getChannels()||[]).forEach(function(ch){try{sb.removeChannel(ch);}catch(e){}});
+  if(typeof _realtimeSub!=='undefined')_realtimeSub=null;
+  document.getElementById('app-screen').style.display='none';document.getElementById('auth-screen').style.display='flex';CUSTOMERS=[];PROFILES=[];
+}
 
 // ════════════ SWITCH ACCOUNT (chỉ Manager) ════════════
 window._saveSwitchAccount=function(email,refreshToken){
@@ -1743,6 +1749,8 @@ async function initApp(user){
     };
 
     // Realtime: lắng nghe bảng announcements — đáng tin cậy hơn Broadcast channel
+    // Gỡ channel cũ (nếu có) trước khi tạo mới — tránh lỗi khi initApp chạy lại (login lại / switch account)
+    (sb.getChannels()||[]).filter(function(ch){return ch.topic==='realtime:crm-announcements-rt';}).forEach(function(ch){sb.removeChannel(ch);});
     sb.channel('crm-announcements-rt')
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'announcements'},function(payload){
         try{
@@ -1778,6 +1786,7 @@ async function initApp(user){
     };
 
     // Listen for invoice approvals via Supabase Realtime
+    (sb.getChannels()||[]).filter(function(ch){return ch.topic==='realtime:ticker-invoices';}).forEach(function(ch){sb.removeChannel(ch);});
     sb.channel('ticker-invoices')
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'invoices'},function(payload){
         try{
@@ -1878,6 +1887,8 @@ async function initApp(user){
       }catch(e){console.warn('[chat] Early realtime error:',e);}
     }
   },1500);
+  // Gỡ channel cũ trước khi tạo mới — tránh lỗi duplicate subscribe khi initApp chạy lại
+  (sb.getChannels()||[]).filter(function(ch){return ch.topic==='realtime:crm-products-rt';}).forEach(function(ch){sb.removeChannel(ch);});
   sb.channel('crm-products-rt')
     .on('postgres_changes',{event:'*',schema:'public',table:'products'},function(payload){
       if(payload.eventType==='INSERT'){
@@ -1893,6 +1904,7 @@ async function initApp(user){
     }).subscribe();
 
   // ── REALTIME: Invoices ──
+  (sb.getChannels()||[]).filter(function(ch){return ch.topic==='realtime:crm-invoices-rt';}).forEach(function(ch){sb.removeChannel(ch);});
   sb.channel('crm-invoices-rt')
     .on('postgres_changes',{event:'*',schema:'public',table:'invoices'},function(payload){
       if(payload.eventType==='INSERT'){
@@ -1944,6 +1956,7 @@ async function initApp(user){
     }).subscribe();
 
   // ── REALTIME: Customers ──
+  (sb.getChannels()||[]).filter(function(ch){return ch.topic==='realtime:crm-customers-rt';}).forEach(function(ch){sb.removeChannel(ch);});
   sb.channel('crm-customers-rt')
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'customers'},async function(payload){
       if(!CUSTOMERS.find(function(c){return c.id===payload.new.id;})){
