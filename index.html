@@ -7613,26 +7613,7 @@ function render(){
       +(isManagerD?'<select id="daily-sale" onchange="window._dailySale=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none" class="fsel"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSaleD===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>':'')
       +'<button class="btn btn-primary" style="font-size:12px;padding:6px 14px" onclick="window._dailyFrom=document.getElementById(&quot;daily-from&quot;).value;window._dailyTo=document.getElementById(&quot;daily-to&quot;).value;var ds=document.getElementById(&quot;daily-sale&quot;);window._dailySale=ds?ds.value:&quot;all&quot;;renderDailyData()"><i class="ti ti-search"></i> Lọc<\/button>'
       +'<\/div><div id="daily-content" style="color:var(--text2);font-size:13px;padding:20px 0"><div style="display:flex;align-items:center;gap:10px"><div style="width:20px;height:20px;border:2px solid var(--brand2);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"><\/div> Đang tải dữ liệu...<\/div><\/div><\/div>';
-    renderDailyData().then(function(){
-      // Sticky panel-header/thead chỉ áp dụng desktop — trên mobile dễ đo sai height gây nổi giữa danh sách
-      if(window.innerWidth<=768)return;
-      // Đo filter bar height để set panel-header và thead top đúng
-      var filterBar=document.querySelector('.content>div[style*="position:sticky"]');
-      var fbH=filterBar?filterBar.offsetHeight:0;
-      var ph=document.querySelector('#daily-content .panel-header');
-      if(ph){
-        ph.style.position='sticky';
-        ph.style.top=fbH+'px';
-        ph.style.zIndex='20';
-        ph.style.background='#0f0c24';
-      }
-      if(window._fixStickyThead){
-        // Override daily thead top = fbH + phH
-        var phH=ph?ph.offsetHeight:0;
-        var th=document.querySelector('#daily-content thead tr');
-        if(th){th.classList.add('sticky-thead-active');th.style.top=(fbH+phH)+'px';}
-      }
-    });
+    renderDailyData();
   }
   else if(page==='schedule')m.innerHTML=renderSchedule();
   else if(page==='chat'){m.innerHTML='<div id="chat-root"><\/div>';initChatPage();}
@@ -7659,7 +7640,7 @@ window._fixStickyThead=function(){
     });
     return;
   }
-  // Fix thead trong .panel (customers, order, alert, potential, products, campaign)
+  // Fix thead trong .panel (customers, alert, potential, products, campaign)
   document.querySelectorAll('.panel').forEach(function(panel){
     var ph=panel.querySelector(':scope>.panel-header');
     // fb: filterbar có thể là .csf-filterbar hoặc actionBar trong customers
@@ -7670,6 +7651,14 @@ window._fixStickyThead=function(){
     var fbH=fb&&fb.offsetHeight>0?fb.offsetHeight:0;
     var topVal=phH+fbH;
     panel.querySelectorAll('thead tr').forEach(function(tr){
+      // Bảng dùng table-scroll-always (Order, Pending...) — bỏ sticky thead, chỉ giữ panel-header sticky
+      // Lý do: bảng này nhiều cột, đo height runtime dễ sai gây khoảng trống ảo
+      if(tr.closest('.table-scroll-always')){
+        tr.classList.remove('sticky-thead-active');
+        tr.style.position='static';
+        tr.style.top='';
+        return;
+      }
       tr.classList.add('sticky-thead-active');
       tr.style.top=topVal+'px';
     });
@@ -7677,7 +7666,7 @@ window._fixStickyThead=function(){
   // Daily và các tab không có .panel
   var mainContent=document.querySelector('.content');
   if(mainContent)mainContent.querySelectorAll('thead tr').forEach(function(tr){
-    if(!tr.closest('.panel')){
+    if(!tr.closest('.panel')&&!tr.closest('.table-scroll-always')){
       tr.classList.add('sticky-thead-active');
       tr.style.top='0px';
     }
