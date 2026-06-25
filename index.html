@@ -2400,6 +2400,10 @@ async function approveInvoice(id,status){
 }
 
 // ════════════ GỬI EMAIL INVOICE ════════════
+// Cấu hình tên người ký email gửi vendor — đổi ở đây khi đổi người phụ trách
+window.VENDOR_EMAIL_SENDER_NAME='Bảo Nam';
+window.VENDOR_EMAIL_RECIPIENT_NAME='chị Trinh';
+
 window._openSendEmailModal=function(invId){
   const inv=INVOICES.find(function(i){return i.id===invId;});
   if(!inv)return;
@@ -2408,23 +2412,38 @@ window._openSendEmailModal=function(invId){
   if(existing)existing.remove();
 
   const bizName=cust.business_name||cust.customer_name||'';
-  const defaultSubject='Invoice '+(inv.invoice_no||'')+' - '+bizName;
-  const paymentLine=inv.payment_method?('\n\nPhương thức thanh toán: '+inv.payment_method):'';
-  const defaultBody='Kính chào '+bizName+',\n\n'
-    +'C-Silan xin gửi đến quý khách invoice đơn hàng '+(inv.invoice_no||'')+'.\n\n'
-    +'Tổng tiền: $'+(inv.total||0).toLocaleString('en-US')+'\n'
-    +'Đã đặt cọc: $'+(inv.deposit||0).toLocaleString('en-US')+'\n'
-    +'Còn lại: $'+((inv.balance_due!=null?inv.balance_due:((inv.total||0)-(inv.deposit||0)))).toLocaleString('en-US')
-    +paymentLine
-    +(inv.note?('\n\nGhi chú: '+inv.note):'')
-    +'\n\nVui lòng xem chi tiết trong file đính kèm.\n\nTrân trọng,\nC-Silan Team';
+  const stateZip=[cust.state,cust.zipcode].filter(Boolean).join(' ');
+  const defaultSubject='Order_'+(inv.invoice_no||'')+'_'+bizName+(stateZip?('_'+stateZip):'');
+
+  const total=inv.total||0;
+  const deposit=inv.deposit||0;
+  const balanceDue=inv.balance_due!=null?inv.balance_due:(total-deposit);
+
+  const defaultBody='Hi '+window.VENDOR_EMAIL_RECIPIENT_NAME+',\n'
+    +'Em gửi '+window.VENDOR_EMAIL_RECIPIENT_NAME+' thông tin đơn hàng mới để '+window.VENDOR_EMAIL_RECIPIENT_NAME+' hỗ trợ xử lý:\n\n'
+    +'Customer Information\n'
+    +'   Salon: '+bizName+'\n'
+    +'   Contact Person: '+(cust.customer_name||'')+'\n'
+    +'   Cell: '+(cust.cellphone||'')+'\n'
+    +'   Business Phone: '+(cust.business_phone||'')+'\n'
+    +'   Address: '+([cust.address,cust.city,cust.state,cust.zipcode].filter(Boolean).join(', '))+'\n\n'
+    +'Order Summary\n'
+    +'   Total Amount: $'+total.toLocaleString('en-US')+'\n'
+    +'   Payment Received: $'+deposit.toLocaleString('en-US')+'\n'
+    +'   Balance Due: $'+balanceDue.toLocaleString('en-US')+'\n\n'
+    +'Notes:\n\n'
+    +window.VENDOR_EMAIL_RECIPIENT_NAME+' kiểm tra và xác nhận giúp em khi nhận được đơn hàng này. Nếu cần thêm thông tin, '+window.VENDOR_EMAIL_RECIPIENT_NAME+' vui lòng cho em biết.\n'
+    +'Cảm ơn '+window.VENDOR_EMAIL_RECIPIENT_NAME+'.\n\n'
+    +'Best regards,\n'
+    +window.VENDOR_EMAIL_SENDER_NAME+'\n'
+    +'Sales Department';
 
   const modal=document.createElement('div');
   modal.className='modal-overlay';modal.id='send-email-modal';
   modal.style.zIndex='10010';
 
-  let html='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:14px;width:96vw;max-width:600px;max-height:88vh;display:flex;flex-direction:column;border:1px solid var(--border)">';
-  html+='<div class="modal-header"><h3><i class="ti ti-mail"></i> Gửi Email — '+(inv.invoice_no||'')+'</h3>';
+  let html='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:14px;width:96vw;max-width:680px;max-height:90vh;display:flex;flex-direction:column;border:1px solid var(--border)">';
+  html+='<div class="modal-header"><h3><i class="ti ti-mail"></i> Gửi Email — '+(inv.invoice_no||'')+(bizName?(' · '+bizName):'')+'</h3>';
   html+='<button class="btn" style="padding:4px 8px" onclick="document.getElementById(\'send-email-modal\').remove()"><i class="ti ti-x"></i></button></div>';
   html+='<div class="modal-body" style="padding:16px 18px;overflow-y:auto;flex:1">';
 
@@ -2438,7 +2457,7 @@ window._openSendEmailModal=function(invId){
   html+='<input type="text" id="se-subject" value="'+defaultSubject.replace(/"/g,'&quot;')+'" style="width:100%;margin:6px 0 12px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);outline:none">';
 
   html+='<label style="font-size:11px;color:var(--text3);text-transform:uppercase">Nội dung</label>';
-  html+='<textarea id="se-body" rows="9" style="width:100%;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);outline:none;resize:vertical;font-family:inherit">'+defaultBody+'</textarea>';
+  html+='<textarea id="se-body" rows="16" style="width:100%;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);outline:none;resize:vertical;font-family:\'Consolas\',monospace;font-size:12.5px;line-height:1.6">'+defaultBody+'</textarea>';
 
   html+='<div style="margin-top:14px">';
   html+='<label style="font-size:11px;color:var(--text3);text-transform:uppercase">File đính kèm (PDF invoice đã tải)</label>';
