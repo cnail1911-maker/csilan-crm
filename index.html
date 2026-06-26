@@ -2604,8 +2604,8 @@ window._openSendEmailModal=function(invId){
   html+='<textarea id="se-body" rows="16" style="width:100%;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);outline:none;resize:vertical;font-family:\'Consolas\',monospace;font-size:12.5px;line-height:1.6">'+defaultBody+'</textarea>';
 
   html+='<div style="margin-top:14px">';
-  html+='<label style="font-size:11px;color:var(--text3);text-transform:uppercase">File đính kèm (PDF invoice đã tải)</label>';
-  html+='<input type="file" id="se-attachment" accept="application/pdf" style="width:100%;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text)">';
+  html+='<label style="font-size:11px;color:var(--text3);text-transform:uppercase">File đính kèm (có thể chọn nhiều file, mọi loại file)</label>';
+  html+='<input type="file" id="se-attachment" multiple style="width:100%;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text)">';
   html+='<div id="se-attach-name" style="font-size:11px;color:var(--text3);margin-top:4px"></div>';
   html+='</div>';
 
@@ -2627,8 +2627,10 @@ window._openSendEmailModal=function(invId){
   document.body.appendChild(modal);
 
   document.getElementById('se-attachment').addEventListener('change',function(e){
-    var f=e.target.files[0];
-    document.getElementById('se-attach-name').textContent=f?('📎 '+f.name+' ('+(f.size/1024).toFixed(0)+' KB)'):'';
+    var fs=Array.prototype.slice.call(e.target.files||[]);
+    document.getElementById('se-attach-name').innerHTML=fs.length
+      ?fs.map(function(f){return '📎 '+f.name+' ('+(f.size/1024).toFixed(0)+' KB)';}).join('<br>')
+      :'';
   });
 };
 
@@ -2638,7 +2640,7 @@ window._sendInvoiceEmail=async function(invId){
   const subject=(document.getElementById('se-subject')||{}).value.trim();
   const bodyText=(document.getElementById('se-body')||{}).value;
   const fileInput=document.getElementById('se-attachment');
-  const file=fileInput&&fileInput.files[0];
+  const selectedFiles=fileInput?Array.prototype.slice.call(fileInput.files||[]):[];
 
   if(!toRaw){alert('Vui lòng nhập địa chỉ người nhận');return;}
   if(!subject){alert('Vui lòng nhập chủ đề email');return;}
@@ -2661,14 +2663,14 @@ window._sendInvoiceEmail=async function(invId){
     const includeProof=includeProofEl?includeProofEl.checked:false;
 
     const attachments=[];
-    if(file){
+    for(const f of selectedFiles){
       const base64=await new Promise(function(resolve,reject){
         const reader=new FileReader();
         reader.onload=function(){resolve(reader.result.split(',')[1]);};
         reader.onerror=reject;
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(f);
       });
-      attachments.push({filename:file.name,base64:base64,mime_type:file.type||'application/pdf'});
+      attachments.push({filename:f.name,base64:base64,mime_type:f.type||'application/octet-stream'});
     }
     if(includeProof&&inv&&inv.payment_proof_url){
       try{
