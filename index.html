@@ -2543,6 +2543,17 @@ window.VENDOR_EMAIL_RECIPIENT_NAME='chị Trinh';
 
 let _seAttachedFiles=[];
 
+function parseProofUrls(raw){
+  if(!raw)return [];
+  try{
+    var parsed=JSON.parse(raw);
+    if(Array.isArray(parsed))return parsed.filter(Boolean);
+    return parsed?[String(parsed)]:[];
+  }catch(e){
+    return [raw]; // dữ liệu cũ — 1 URL dạng text thường (trước khi invoice.html hỗ trợ nhiều file)
+  }
+}
+
 function _renderSeAttachList(){
   const box=document.getElementById('se-attach-name');
   if(!box)return;
@@ -2629,11 +2640,12 @@ window._openSendEmailModal=function(invId){
   html+='<div id="se-attach-name" style="font-size:11px;color:var(--text3);margin-top:4px"></div>';
   html+='</div>';
 
-  if(inv.payment_proof_url){
+  const proofUrls=parseProofUrls(inv.payment_proof_url);
+  if(proofUrls.length>0){
     html+='<div style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center">';
     html+='<input type="checkbox" id="se-include-proof" checked style="width:16px;height:16px;flex-shrink:0">';
-    html+='<img src="'+inv.payment_proof_url+'" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0;border:1px solid var(--border)">';
-    html+='<label for="se-include-proof" style="font-size:12px;color:var(--text);cursor:pointer;flex:1">Gửi kèm ảnh proof thanh toán (sale đã đính kèm khi tạo đơn)</label>';
+    html+='<div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0">'+proofUrls.map(function(u){return '<img src="'+u+'" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border)">';}).join('')+'</div>';
+    html+='<label for="se-include-proof" style="font-size:12px;color:var(--text);cursor:pointer;flex:1">Gửi kèm '+(proofUrls.length>1?(proofUrls.length+' ảnh proof'):'ảnh proof')+' thanh toán (sale đã đính kèm khi tạo đơn)</label>';
     html+='</div>';
   }
 
@@ -2692,20 +2704,28 @@ window._sendInvoiceEmail=async function(invId){
       attachments.push({filename:f.name,base64:base64,mime_type:f.type||'application/octet-stream'});
     }
     if(includeProof&&inv&&inv.payment_proof_url){
-      try{
-        const proofRes=await fetch(inv.payment_proof_url);
-        const proofBlob=await proofRes.blob();
-        const proofBase64=await new Promise(function(resolve,reject){
-          const reader=new FileReader();
-          reader.onload=function(){resolve(reader.result.split(',')[1]);};
-          reader.onerror=reject;
-          reader.readAsDataURL(proofBlob);
-        });
-        var proofExt=(proofBlob.type&&proofBlob.type.split('/')[1])||'jpg';
-        attachments.push({filename:'payment-proof.'+proofExt,base64:proofBase64,mime_type:proofBlob.type||'image/jpeg'});
-      }catch(proofErr){
-        console.warn('[proof-attach] fetch error',proofErr);
-        showCrmToast('⚠️ Không tải được ảnh proof, email vẫn gửi nhưng không kèm ảnh','','order','pending');
+      const proofUrlList=parseProofUrls(inv.payment_proof_url);
+      let proofFailCount=0;
+      for(let pi=0;pi<proofUrlList.length;pi++){
+        try{
+          const proofRes=await fetch(proofUrlList[pi]);
+          const proofBlob=await proofRes.blob();
+          const proofBase64=await new Promise(function(resolve,reject){
+            const reader=new FileReader();
+            reader.onload=function(){resolve(reader.result.split(',')[1]);};
+            reader.onerror=reject;
+            reader.readAsDataURL(proofBlob);
+          });
+          var proofExt=(proofBlob.type&&proofBlob.type.split('/')[1])||'jpg';
+          var proofName=proofUrlList.length>1?('payment-proof-'+(pi+1)+'.'+proofExt):('payment-proof.'+proofExt);
+          attachments.push({filename:proofName,base64:proofBase64,mime_type:proofBlob.type||'image/jpeg'});
+        }catch(proofErr){
+          console.warn('[proof-attach] fetch error',proofErr);
+          proofFailCount++;
+        }
+      }
+      if(proofFailCount>0){
+        showCrmToast('⚠️ Không tải được '+proofFailCount+' ảnh proof, email vẫn gửi nhưng thiếu ảnh','','order','pending');
       }
     }
 
