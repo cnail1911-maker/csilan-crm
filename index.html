@@ -1366,7 +1366,7 @@ async function doLogout(){
   // Gỡ toàn bộ Realtime channel — tránh lỗi duplicate subscribe khi đăng nhập lại / switch account
   (sb.getChannels()||[]).forEach(function(ch){try{sb.removeChannel(ch);}catch(e){}});
   window._channelsInit={}; // reset guard — channel sẽ được tạo lại sạch ở lần initApp kế tiếp
-  if(typeof _realtimeSub!=='undefined')_realtimeSub=null;
+  if(window._notifResetRealtimeSub)window._notifResetRealtimeSub(); // reset đúng biến _realtimeSub thật (xem ghi chú ở _initNotifSystem)
   document.getElementById('app-screen').style.display='none';document.getElementById('auth-screen').style.display='flex';CUSTOMERS=[];PROFILES=[];
 }
 
@@ -1517,8 +1517,12 @@ document.addEventListener('click',function(e){
 
   function _startRealtime(){
     if(_realtimeSub||!window.currentUser)return;
+    window._channelsInit=window._channelsInit||{};
+    var _chKey='notif-rt-'+window.currentUser.id;
+    if(window._channelsInit[_chKey])return; // đã tạo channel này trong tab session — không tạo lại
+    window._channelsInit[_chKey]=true;
     try{
-      _realtimeSub=sb.channel('notif-rt-'+window.currentUser.id)
+      _realtimeSub=sb.channel(_chKey)
         .on('postgres_changes',{
           event:'INSERT',schema:'public',table:'notifications'
           // Bỏ filter — check user_id trong callback thay vì server-side filter
@@ -1606,6 +1610,13 @@ document.addEventListener('click',function(e){
     await _loadNotifs();
     _startRealtime();
     setInterval(_loadNotifs,30000);
+  };
+  // Cho phép code ngoài (doLogout) reset đúng biến _realtimeSub thật sự —
+  // trước đây doLogout cố reset 1 biến cùng tên ở ngoài closure, không có
+  // tác dụng gì, khiến _startRealtime() bị khoá vĩnh viễn sau lần logout đầu.
+  window._notifResetRealtimeSub=function(){
+    if(_realtimeSub){try{sb.removeChannel(_realtimeSub);}catch(e){}}
+    _realtimeSub=null;
   };
 })();
 
@@ -9314,6 +9325,7 @@ function handleNewMsg(m){
   msgs[m.room_id].push(m);
   lastTs[m.room_id]=m.created_at;
   if(m.room_id===curRoom&&window.page==='chat'){renderMsgs(false,true);}
+
   if(m.user_id!==uid()){
     var isMention=m.content&&m.content.includes('@'+uname());
     var isReply=m.reply_to_id&&(msgs[m.room_id]||[]).find(function(x){return x.id===m.reply_to_id&&x.user_id===uid();});
@@ -9322,7 +9334,11 @@ function handleNewMsg(m){
     if(!isSameRoom)toast(m.sender_name||'?',m.content||'',m.room_id,!!isMention,!!isReply);
     unread[m.room_id]=(unread[m.room_id]||0)+1;badge();
     renderRoomList();
-    // Push vào tab thông báo cho manager/leader (nếu là group room, không phải DM)
+  } else {
+    // m.user_id===uid() — đây là echo realtime của CHÍNH tin nhắn mình vừa gửi.
+    // Chỉ máy người GỬI mới thực hiện đẩy notification cho manager/leader khác —
+    // tránh tình trạng mọi máy đang online cùng nhận realtime đều tự đẩy lặp lại
+    // (trước đây N người xem online → N x (số manager/leader) bản ghi trùng).
     var inRoom=rooms.find(function(r){return r.id===m.room_id;});
     var isDM=inRoom&&(inRoom.is_dm||inRoom.is_direct);
     if(!isDM&&inRoom&&window._notifPush&&window.PROFILES){
@@ -9351,6 +9367,14 @@ window._chatHandleNewMsg=handleNewMsg;
 
 // ── Supabase Realtime subscription ──
 function startRealtime(){
+  window._channelsInit=window._channelsInit||{};
+  if(window._channelsInit['chat-rt-messages']){
+    // Channel đã tồn tại trong tab session này — không subscribe lại (tránh
+    // lỗi "cannot add postgres_changes callbacks after subscribe()" và tránh
+    // vòng lặp đóng/mở liên tục mỗi khi initApp chạy lại).
+    return;
+  }
+  window._channelsInit['chat-rt-messages']=true;
   stopRealtime();
   try{
     if(!chatSb){chatSb=window.supabase.createClient(CHAT_URL,CHAT_ANON);}
