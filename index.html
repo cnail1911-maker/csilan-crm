@@ -2591,7 +2591,10 @@ async function confirmApproveAfterReview(){
   }catch(e){
     showLoading(false);
     if(btn){btn.disabled=false;btn.textContent='Xác nhận duyệt';}
+    console.error('[confirmApproveAfterReview] ERROR',e);
     alert('Lỗi khi lưu thay đổi: '+e.message);
+    // Reload lại invoices từ DB để UI đồng bộ dù có lỗi
+    try{await loadInvoices();render();}catch(e2){}
   }
 }
 
