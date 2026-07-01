@@ -2466,14 +2466,30 @@ function _renderArItems(){
     body.innerHTML='<div class="empty-state">Đơn này không có sản phẩm nào.</div>';
   }else{
     body.innerHTML=_arItems.map(function(it,idx){
+      var _disc=it.discount||0;
+      var _amt=Math.max(0,(it.qty||1)*((it.unit_price||0)-_disc));
       return '<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
         +'<img src="'+(it.image_url||'')+'" style="width:38px;height:38px;object-fit:cover;border-radius:6px;background:var(--surface);flex-shrink:0" onerror="this.style.visibility=\'hidden\'">'
         +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:12.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(it.product_name||'—')+'</div>'
+        +'<div style="font-size:12.5px;color:var(--text);word-break:break-word">'+(it.product_name||'—')+'</div>'
         +'<div style="font-size:10px;color:var(--text3)">'+(it.vendor||'')+'</div>'
         +'</div>'
+        +'<div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">'
+        +'<div style="font-size:9px;color:var(--text3);text-align:center">QTY</div>'
         +'<input type="number" min="1" value="'+(it.qty||1)+'" style="width:52px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px;color:var(--text);text-align:center" onchange="_arUpdateField('+idx+',\'qty\',this.value)">'
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">'
+        +'<div style="font-size:9px;color:var(--text3);text-align:right">Unit Price</div>'
         +'<input type="number" min="0" step="0.01" value="'+(it.unit_price||0)+'" style="width:80px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px;color:var(--text);text-align:right" onchange="_arUpdateField('+idx+',\'unit_price\',this.value)">'
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">'
+        +'<div style="font-size:9px;color:var(--text3);text-align:right">Disc($)/sp</div>'
+        +'<input type="number" min="0" step="0.01" value="'+_disc+'" style="width:72px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px;color:var(--text);text-align:right" onchange="_arUpdateField('+idx+',\'discount\',this.value)">'
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">'
+        +'<div style="font-size:9px;color:var(--text3);text-align:right">Amount</div>'
+        +'<div id="ar-amt-'+idx+'" style="width:80px;font-size:12px;font-weight:700;color:var(--accent2);padding:5px 0;text-align:right">$'+_amt.toLocaleString('en-US',{minimumFractionDigits:2})+'</div>'
+        +'</div>'
         +'<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);flex-shrink:0;cursor:pointer">'
         +'<input type="checkbox" '+(it.is_gift?'checked':'')+' onchange="_arUpdateField('+idx+',\'is_gift\',this.checked)"> Gift</label>'
         +'<span onclick="_arRemoveItem('+idx+')" style="cursor:pointer;color:var(--danger);padding:0 4px;flex-shrink:0" title="Xoá sản phẩm này">✕</span>'
@@ -2487,8 +2503,13 @@ window._arUpdateField=function(idx,field,val){
   if(!_arItems[idx])return;
   if(field==='qty')_arItems[idx].qty=Math.max(1,parseInt(val)||1);
   else if(field==='unit_price')_arItems[idx].unit_price=Math.max(0,parseFloat(val)||0);
+  else if(field==='discount')_arItems[idx].discount=Math.max(0,parseFloat(val)||0);
   else if(field==='is_gift')_arItems[idx].is_gift=!!val;
-  _arItems[idx].amount=(_arItems[idx].qty||1)*(_arItems[idx].unit_price||0)-(_arItems[idx].discount||0);
+  // amount = qty * (unit_price - discount/sp) — khớp logic invoice.html
+  _arItems[idx].amount=Math.max(0,(_arItems[idx].qty||1)*((_arItems[idx].unit_price||0)-(_arItems[idx].discount||0)));
+  // Cập nhật live amount display mà không re-render toàn bộ
+  var amtEl=document.getElementById('ar-amt-'+idx);
+  if(amtEl)amtEl.textContent='$'+_arItems[idx].amount.toLocaleString('en-US',{minimumFractionDigits:2});
   _renderArTotals();
 };
 
@@ -2501,8 +2522,20 @@ window._arRemoveItem=function(idx){
 function _renderArTotals(){
   const el=document.getElementById('ar-totals');
   if(!el)return;
-  const subtotal=_arItems.reduce(function(s,it){return s+(it.amount!=null?it.amount:(it.qty||1)*(it.unit_price||0)-(it.discount||0));},0);
-  el.innerHTML='Tổng tạm tính: <b style="color:var(--accent2)">$'+subtotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+'</b> ('+_arItems.length+' sản phẩm)';
+  const inv=INVOICES.find(function(i){return i.id===_arInvoiceId;});
+  const extraDiscount=inv?Math.max(0,inv.extra_discount||0):0;
+  const taxPct=inv?(inv.tax_pct||0):0;
+  const subtotal=_arItems.reduce(function(s,it){return s+(it.amount||0);},0);
+  const total=subtotal*(1+taxPct/100)-extraDiscount;
+  const deposit=inv?(inv.deposit||0):0;
+  const balanceDue=total-deposit;
+  el.innerHTML=
+    'Subtotal: <b>$'+subtotal.toLocaleString('en-US',{minimumFractionDigits:2})+'</b>'
+    +(extraDiscount>0?' &nbsp;|&nbsp; Extra Discount: <b style="color:var(--danger)">-$'+extraDiscount.toLocaleString('en-US',{minimumFractionDigits:2})+'</b>':'')
+    +(taxPct>0?' &nbsp;Tax: '+taxPct+'%':'')
+    +' &nbsp;|&nbsp; <b style="font-size:13px;color:var(--accent2)">Total: $'+total.toLocaleString('en-US',{minimumFractionDigits:2})+'</b>'
+    +' &nbsp;|&nbsp; Deposit: $'+deposit.toLocaleString('en-US',{minimumFractionDigits:2})
+    +' &nbsp;|&nbsp; <b style="color:var(--warn)">Balance Due: $'+balanceDue.toLocaleString('en-US',{minimumFractionDigits:2})+'</b>';
 }
 
 async function confirmApproveAfterReview(){
@@ -2529,6 +2562,7 @@ async function confirmApproveAfterReview(){
       await sb.from('invoice_items').update({
         qty:it.qty,
         unit_price:it.unit_price,
+        discount:it.discount||0,
         amount:it.amount,
         is_gift:it.is_gift||false
       }).eq('id',it.id);
@@ -2594,7 +2628,7 @@ async function approveInvoice(id,status){
 
     // Gọi Edge Function sync sang Finance khi approved
     try{
-      const {data:items}=await sb.from('invoice_items').select('*').eq('invoice_id',id);
+      const {data:items}=await sb.from('invoice_items').select('*').eq('invoice_id',id).order('id',{ascending:true});
       // Resolve sale_rep: lookup từ PROFILES, fetch từ DB nếu chưa có (race condition guard)
       const saleId=inv.sale_id||inv.created_by||null;
       let saleRepName=inv.sale_rep||inv.submitted_by||'';
