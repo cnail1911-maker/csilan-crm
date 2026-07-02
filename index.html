@@ -2320,7 +2320,7 @@ function renderClosedeal(){
     if(cdFilterPayment!=='all'&&inv.payment_status!==cdFilterPayment)return false;
     if(cdFilterOrder!=='all'&&inv.order_status!==cdFilterOrder)return false;
     if(cdSearchInv){const q=cdSearchInv.toLowerCase();if(!((inv.invoice_no||'').toLowerCase().includes(q)||(inv.customer_name||'').toLowerCase().includes(q)||(inv.business_name||'').toLowerCase().includes(q)))return false;}
-    if(cdFilterMonth!=='all'){const m=new Date(inv.created_at).getMonth()+1;if(m!==parseInt(cdFilterMonth))return false;}
+    if(cdFilterMonth!=='all'){const m=inv.billing_month?parseInt(inv.billing_month.split('-')[1]):(new Date(inv.created_at).getMonth()+1);if(m!==parseInt(cdFilterMonth))return false;}
     if(cdFilterYear!=='all'){const y=new Date(inv.created_at).getFullYear();if(y!==parseInt(cdFilterYear))return false;}
     return true;
   });
@@ -2350,7 +2350,7 @@ function renderClosedeal(){
       +'<td style="font-size:10px;font-family:monospace;color:var(--accent2);font-weight:600">'+(inv.invoice_no||'—')+'<\/td>'
       +'<td>'+(inv.business_name||'—')+'<\/td>'
       +'<td style="color:var(--text)">'+(inv.customer_name||'—')+'<\/td>'
-      +'<td style="text-align:center;font-size:11px">'+(invDate.getMonth()+1)+'<\/td>'
+      +'<td style="text-align:center;font-size:11px">'+(inv.billing_month?parseInt(inv.billing_month.split('-')[1]):(invDate.getMonth()+1))+'<\/td>'
       +'<td style="text-align:center;font-size:11px">'+invDate.getFullYear()+'<\/td>'
       +'<td style="color:var(--accent2);font-weight:700">$'+(inv.total||0).toLocaleString('en-US')+'<\/td>'
       +'<td style="font-size:11px;color:var(--success)">$'+(inv.deposit||0).toLocaleString('en-US')+'<\/td>'
@@ -2395,7 +2395,7 @@ function renderClosedeal(){
     +'<div class="stats-row">'
     +'<div class="stat-card sc2" style="cursor:pointer;border:'+(cdFilterOrder==='all'&&cdFilterPayment==='all'?'2px solid var(--accent2)':'1px solid var(--border)')+'" onclick="cdFilterOrder=\'all\';cdFilterPayment=\'all\';cdPage=1;render()"><div class="stat-label">Đơn đã duyệt<\/div><div class="stat-val" style="color:var(--accent2)">'+enriched.length+'<\/div>'+(cdFilterOrder==='all'&&cdFilterPayment==='all'?'<div style="font-size:9px;color:var(--accent2)">▼ Tất cả<\/div>':'')+'<\/div>'
     +'<div class="stat-card sc0"><div class="stat-label">Doanh thu<\/div><div class="stat-val" style="color:var(--brand2);font-size:18px">$'+totalRevenue.toLocaleString('en-US')+'<\/div><\/div>'
-    +'<div class="stat-card sc3" style="cursor:pointer;border:'+(cdFilterMonth===String(new Date().getMonth()+1)?'2px solid var(--warn)':'1px solid var(--border)')+'" onclick="(function(){var m=String(new Date().getMonth()+1);cdFilterMonth=(cdFilterMonth===m?\'all\':m);cdPage=1;render();})()"><div class="stat-label">Invoice tháng này<\/div><div class="stat-val" style="color:var(--warn)">'+INVOICES.filter(function(i){return i.type==='invoice'&&i.approval_status==='approved'&&new Date(i.created_at).getMonth()===new Date().getMonth();}).length+'<\/div>'+(cdFilterMonth===String(new Date().getMonth()+1)?'<div style="font-size:9px;color:var(--warn)">▼ Lọc<\/div>':'')+'<\/div>'
+    +'<div class="stat-card sc3" style="cursor:pointer;border:'+(cdFilterMonth===String(new Date().getMonth()+1)?'2px solid var(--warn)':'1px solid var(--border)')+'" onclick="(function(){var m=String(new Date().getMonth()+1);cdFilterMonth=(cdFilterMonth===m?\'all\':m);cdPage=1;render();})()"><div class="stat-label">Invoice tháng này<\/div><div class="stat-val" style="color:var(--warn)">'+INVOICES.filter(function(i){if(i.type!=='invoice'||i.approval_status!=='approved')return false;var m=i.billing_month?parseInt(i.billing_month.split('-')[1])-1:new Date(i.created_at).getMonth();return m===new Date().getMonth();}).length+'<\/div>'+(cdFilterMonth===String(new Date().getMonth()+1)?'<div style="font-size:9px;color:var(--warn)">▼ Lọc<\/div>':'')+'<\/div>'
     +'<div class="stat-card sc1" style="cursor:pointer;border:'+(cdFilterOrder==='Đã nhận hàng'?'2px solid var(--accent2)':'1px solid var(--border)')+'" onclick="cdFilterOrder=(cdFilterOrder===\'Đã nhận hàng\'?\'all\':\'Đã nhận hàng\');cdPage=1;render()"><div class="stat-label">Đã nhận hàng<\/div><div class="stat-val" style="color:var(--accent2)">'+INVOICES.filter(function(i){return i.order_status==='Đã nhận hàng';}).length+'<\/div>'+(cdFilterOrder==='Đã nhận hàng'?'<div style="font-size:9px;color:var(--accent2)">▼ Lọc<\/div>':'')+'<\/div>'
     +'<\/div>';
 
