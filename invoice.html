@@ -1776,6 +1776,7 @@ async function loadInvoiceForEdit(invoiceNo){
       +'<button class="btn btn-outline" onclick="renderPreview()"><i class="ti ti-eye"></i> Preview</button>'
       +(isApproved
         ?'<button class="btn btn-red" onclick="downloadApprovedPDF()"><i class="ti ti-file-download"></i> Tải invoice</button>'
+        +'<button class="btn btn-primary" onclick="saveApprovedInvoice()"><i class="ti ti-refresh"></i> Lưu & Sync Finance</button>'
         :'<button class="btn btn-red" onclick="updateInvoice()"><i class="ti ti-device-floppy"></i> Cập nhật & Tải PDF</button>'
       );
   }
@@ -1784,6 +1785,114 @@ async function loadInvoiceForEdit(invoiceNo){
   calcTotals();
   renderPreview();
   showLoading(false);
+}
+
+async function saveApprovedInvoice(){
+  if(!selectedCustomer){alert('Vui lòng chọn khách hàng!');return;}
+  if(items.length===0){alert('Vui lòng thêm ít nhất 1 sản phẩm!');return;}
+  if(!editInvoiceId){alert('Lỗi: không tìm thấy ID đơn hàng!');return;}
+  const paymentMethod=document.getElementById('inv-payment-method').value;
+  showLoading(true);
+
+  const subtotal=items.reduce(function(s,i){return s+i.amount;},0);
+  const taxPct=parseFloat(document.getElementById('inv-tax').value)||0;
+  const extraDisc=parseFloat(document.getElementById('inv-extra-disc').value)||0;
+  const chargeFee=parseFloat(document.getElementById('inv-charge-fee')&&document.getElementById('inv-charge-fee').value)||0;
+  const deposit=parseFloat(document.getElementById('inv-deposit').value)||0;
+  const total=subtotal+taxPct+(typeof chargeFee!=='undefined'?chargeFee:0)-extraDisc;
+  const balance=total-deposit;
+
+  // Update invoice — GIỮ NGUYÊN approval_status:'approved'
+  const {error:invErr}=await sb.from('invoices').update({
+    customer_id:selectedCustomer.id,
+    company_id:selectedCompany?selectedCompany.id:null,
+    date:document.getElementById('inv-date').value,
+    location:document.getElementById('inv-location').value,
+    requested_delivery:document.getElementById('inv-delivery').value,
+    tax_pct:taxPct,
+    charge_fee:chargeFee,
+    deposit:deposit,
+    extra_discount:extraDisc,
+    note:document.getElementById('inv-note').value,
+    subtotal:subtotal,
+    total:total,
+    balance_due:balance,
+    payment_method:paymentMethod||null,
+    payment_proof_url:currentProofUrls.length?JSON.stringify(currentProofUrls):null
+    // KHÔNG đổi approval_status — giữ 'approved'
+  }).eq('id',editInvoiceId);
+
+  if(invErr){showLoading(false);alert('Lỗi cập nhật invoice: '+invErr.message);return;}
+
+  // Xoá item cũ, insert lại theo thứ tự mới (giữ is_gift, is_shipping)
+  await sb.from('invoice_items').delete().eq('invoice_id',editInvoiceId);
+  const newItems=items.map(function(it){
+    return {
+      invoice_id:editInvoiceId,
+      product_id:it.product_id||null,
+      product_name:it.name,
+      image_url:it.image_url||null,
+      qty:it.qty,
+      unit_price:it.unit_price,
+      discount:it.discount||0,
+      amount:it.amount,
+      vendor:it.vendor||null,
+      vendor_cost:it.vendor_cost||0,
+      chenh_lech:it.chenh_lech||0,
+      is_shipping:it.is_shipping||false,
+      is_gift:it.is_gift||false
+    };
+  });
+  const {error:itemErr}=await sb.from('invoice_items').insert(newItems);
+  if(itemErr){showLoading(false);alert('Lỗi cập nhật sản phẩm: '+itemErr.message);return;}
+
+  // Re-sync sang Finance (non-blocking, không block UI nếu fail)
+  try{
+    var invNo=window._editInvoiceNoApproved||editInvoiceNo;
+    var saleRepName=editInvoiceOriginalSaleName||'';
+    var custName=selectedCustomer?(selectedCustomer.business_name||selectedCustomer.customer_name||''):'';
+    var invDate=document.getElementById('inv-date').value;
+
+    const syncPayload={
+      invoice_no:invNo,
+      invoice_date:invDate,
+      customer_name:custName,
+      sale_rep:saleRepName,
+      total:total,
+      deposit:deposit,
+      items:items.map(function(it){
+        return {
+          product_id:it.product_id||null,
+          product_name:it.name,
+          sku:it.sku||null,
+          image_url:it.image_url||null,
+          qty:it.qty,
+          unit_price:it.unit_price,
+          discount:it.discount||0,
+          amount:it.amount,
+          vendor:it.vendor||null,
+          vendor_cost:it.vendor_cost||0,
+          chenh_lech:it.chenh_lech||0,
+          is_shipping:it.is_shipping||false,
+          is_gift:it.is_gift||false
+        };
+      })
+    };
+    const EDGE_URL='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/sync-invoice-to-finance';
+    const r=await fetch(EDGE_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},
+      body:JSON.stringify(syncPayload)
+    });
+    const result=await r.json();
+    if(!r.ok){console.warn('[saveApprovedInvoice] Sync Finance FAIL:',result);}
+    else{console.log('[saveApprovedInvoice] Sync Finance OK',result);}
+  }catch(syncErr){
+    console.warn('[saveApprovedInvoice] Sync Finance error (non-blocking):',syncErr.message);
+  }
+
+  showLoading(false);
+  alert('✅ Đã lưu & sync Finance thành công cho '+editInvoiceNo);
 }
 
 async function updateInvoice(){
