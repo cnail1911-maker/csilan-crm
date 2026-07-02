@@ -103,6 +103,8 @@ body{font-family:Arial,sans-serif;background:var(--cream);color:var(--dark);font
 .btn-red:hover{background:#a93226;border-color:#a93226}
 .btn-outline{border-color:var(--red);color:var(--red)}
 .btn-outline:hover{background:#FEF5F5}
+.btn-green{background:#27AE60;color:#fff;border-color:#27AE60}
+.btn-green:hover{background:#1e8449;border-color:#1e8449}
 .sidebar-footer{padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px}
 .sidebar-footer .btn{flex:1;justify-content:center}
 
@@ -417,7 +419,9 @@ table.inv-table tr:last-child td{border-bottom:none}
             </div>
             <div id="inv-proof-status" style="font-size:10.5px;color:var(--gray);margin-top:4px"></div>
           </div>
-          <div></div>
+          <div class="field" id="inv-sale-rep-field" style="display:none"><label>Sale Rep</label>
+            <select id="inv-sale-rep-select" onchange="_onSaleRepChange()" style="width:100%;background:var(--light);border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size:12px;color:var(--dark)"></select>
+          </div>
         </div>
         <div id="inv-zelle-qr-box" style="display:none;margin:-2px 0 12px;text-align:center;background:#fff;border:1px solid #E8E0D8;border-radius:8px;padding:10px">
           <img id="inv-zelle-qr-img" src="" style="max-width:200px;width:100%">
@@ -426,6 +430,12 @@ table.inv-table tr:last-child td{border-bottom:none}
         <div class="field-row">
           <div class="field"><label>Extra Discount ($)</label><input type="number" id="inv-extra-disc" value="0" min="0" oninput="calcTotals()"></div>
           <div class="field"><label>Charge Fee ($)</label><input type="number" id="inv-charge-fee" value="0" min="0" placeholder="0" oninput="calcTotals()"></div>
+        </div>
+        <div class="field-row" id="inv-billing-month-row" style="display:none">
+          <div class="field"><label>Billing Month (MM/YYYY)</label>
+            <input type="month" id="inv-billing-month" style="background:var(--light);border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size:12px;color:var(--dark);width:100%">
+          </div>
+          <div></div>
         </div>
         <div class="field-row">
           <div class="field"><label>Bảo hành</label>
@@ -1739,6 +1749,7 @@ async function loadInvoiceForEdit(invoiceNo){
   if(inv.warranty_months&&document.getElementById('inv-warranty'))document.getElementById('inv-warranty').value=String(inv.warranty_months||12);
   if(inv.note)document.getElementById('inv-note').value=inv.note;
   if(inv.payment_method)document.getElementById('inv-payment-method').value=inv.payment_method;
+  if(inv.date){var _bm=inv.date.slice(0,7);var bmEl=document.getElementById('inv-billing-month');if(bmEl)bmEl.value=_bm;}
   currentProofUrls=parseProofUrls(inv.payment_proof_url);
   updateZelleQrDisplay();
   refreshProofStatus();
@@ -1778,7 +1789,7 @@ async function loadInvoiceForEdit(invoiceNo){
       +(isApproved
         ?'<button class="btn btn-red" onclick="downloadApprovedPDF()"><i class="ti ti-file-download"></i> Tải invoice</button>'
         +(currentProfile&&['manager','admin','leader'].includes(currentProfile.role)
-          ?'<button class="btn btn-primary" onclick="saveApprovedInvoice()"><i class="ti ti-refresh"></i> Lưu & Sync Finance</button>'
+          ?'<button class="btn btn-green" onclick="saveApprovedInvoice()"><i class="ti ti-refresh"></i> Lưu & Sync Finance</button>'
           :'')
         :'<button class="btn btn-red" onclick="updateInvoice()"><i class="ti ti-device-floppy"></i> Cập nhật & Tải PDF</button>'
       );
@@ -1795,28 +1806,32 @@ async function loadInvoiceForEdit(invoiceNo){
       _approvedEditProfiles=(profs||[]).filter(function(p){return p.full_name;});
     }catch(e){_approvedEditProfiles=[];}
     _renderSaleRepDropdown(inv.sale_id||null);
+    var bmRow=document.getElementById('inv-billing-month-row');if(bmRow)bmRow.style.display='';
   }
 
   showLoading(false);
 }
 
 function _renderSaleRepDropdown(currentSaleId){
-  var existing=document.getElementById('inv-sale-rep-row');
-  if(existing)existing.remove();
-  if(!_approvedEditProfiles.length)return;
-  var noteField=document.getElementById('inv-note');
-  if(!noteField)return;
-  var row=document.createElement('div');
-  row.id='inv-sale-rep-row';
-  row.style.cssText='margin-top:10px;padding:10px;background:#FFF8F0;border:1px solid #E8C99A;border-radius:8px';
-  var opts=_approvedEditProfiles.map(function(p){
+  var sel=document.getElementById('inv-sale-rep-select');
+  var field=document.getElementById('inv-sale-rep-field');
+  if(!sel||!field)return;
+  if(!_approvedEditProfiles.length){field.style.display='none';return;}
+  sel.innerHTML=_approvedEditProfiles.map(function(p){
     var label=(p.nickname||p.full_name)+(p.code?' ('+p.code+')':'');
-    var sel=p.id===currentSaleId?' selected':'';
-    return '<option value="'+p.id+'"'+sel+'>'+label+'</option>';
+    var selected=p.id===currentSaleId?' selected':'';
+    return '<option value="'+p.id+'"'+selected+'>'+label+'</option>';
   }).join('');
-  row.innerHTML='<label style="font-size:11px;color:#888;text-transform:uppercase;display:block;margin-bottom:4px">Sale Rep (chỉ Manager/Leader chỉnh được)</label>'
-    +'<select id="inv-sale-rep-select" style="width:100%;background:#fff;border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size:12px;color:var(--dark)">'+opts+'</select>';
-  noteField.parentElement.parentElement.appendChild(row);
+  field.style.display='';
+}
+
+function _onSaleRepChange(){
+  // Cập nhật Sale Rep trên preview ngay khi chọn
+  var sel=document.getElementById('inv-sale-rep-select');
+  if(!sel)return;
+  var prof=_approvedEditProfiles.find(function(p){return p.id===sel.value;});
+  if(prof){editInvoiceOriginalSaleName=prof.nickname||prof.full_name;}
+  renderPreview();
 }
 
 async function saveApprovedInvoice(){
@@ -1851,7 +1866,8 @@ async function saveApprovedInvoice(){
     balance_due:balance,
     payment_method:paymentMethod||null,
     payment_proof_url:currentProofUrls.length?JSON.stringify(currentProofUrls):null,
-    sale_id:selectedSaleId||undefined
+    sale_id:selectedSaleId||undefined,
+    billing_month:(function(){var bm=document.getElementById('inv-billing-month');return bm&&bm.value?bm.value:undefined;})()
     // KHÔNG đổi approval_status — giữ 'approved'
   }).eq('id',editInvoiceId);
 
@@ -1893,6 +1909,7 @@ async function saveApprovedInvoice(){
     const syncPayload={
       invoice_no:invNo,
       invoice_date:invDate,
+      billing_month:(function(){var bm=document.getElementById('inv-billing-month');return bm&&bm.value?bm.value:invDate.slice(0,7);})()||invDate.slice(0,7),
       customer_name:custName,
       sale_rep:saleRepName,
       total:total,
