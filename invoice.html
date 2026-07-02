@@ -1866,9 +1866,9 @@ async function saveApprovedInvoice(){
     balance_due:balance,
     payment_method:paymentMethod||null,
     payment_proof_url:currentProofUrls.length?JSON.stringify(currentProofUrls):null,
-    sale_id:selectedSaleId||undefined,
-    billing_month:(function(){var bm=document.getElementById('inv-billing-month');return bm&&bm.value?bm.value:undefined;})()
+    sale_id:selectedSaleId||undefined
     // KHÔNG đổi approval_status — giữ 'approved'
+    // billing_month KHÔNG lưu vào invoices (không có cột này) — chỉ gửi qua sync payload
   }).eq('id',editInvoiceId);
 
   if(invErr){showLoading(false);alert('Lỗi cập nhật invoice: '+invErr.message);return;}
