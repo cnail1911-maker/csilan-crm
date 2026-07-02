@@ -1671,6 +1671,7 @@ function hideMobilePreview(){
 let editInvoiceId=null;
 let editInvoiceNo=null;
 let editInvoiceOriginalSaleName=null;
+let _approvedEditProfiles=[]; // profiles load khi sửa đơn approved, dùng cho dropdown sale rep
 
 // Tải PDF invoice đã approved — dùng mã INVC chính thức
 async function downloadApprovedPDF(){
@@ -1786,7 +1787,36 @@ async function loadInvoiceForEdit(invoiceNo){
   renderItems();
   calcTotals();
   renderPreview();
+
+  // Nếu đơn đã approved và người dùng có quyền sửa → load danh sách profiles cho dropdown sale rep
+  if(editApprovalStatus==='approved'&&currentProfile&&['manager','admin','leader'].includes(currentProfile.role)){
+    try{
+      const {data:profs}=await sb.from('profiles').select('id,full_name,nickname,code').eq('is_active',true).order('full_name');
+      _approvedEditProfiles=(profs||[]).filter(function(p){return p.full_name;});
+    }catch(e){_approvedEditProfiles=[];}
+    _renderSaleRepDropdown(inv.sale_id||null);
+  }
+
   showLoading(false);
+}
+
+function _renderSaleRepDropdown(currentSaleId){
+  var existing=document.getElementById('inv-sale-rep-row');
+  if(existing)existing.remove();
+  if(!_approvedEditProfiles.length)return;
+  var noteField=document.getElementById('inv-note');
+  if(!noteField)return;
+  var row=document.createElement('div');
+  row.id='inv-sale-rep-row';
+  row.style.cssText='margin-top:10px;padding:10px;background:#FFF8F0;border:1px solid #E8C99A;border-radius:8px';
+  var opts=_approvedEditProfiles.map(function(p){
+    var label=(p.nickname||p.full_name)+(p.code?' ('+p.code+')':'');
+    var sel=p.id===currentSaleId?' selected':'';
+    return '<option value="'+p.id+'"'+sel+'>'+label+'</option>';
+  }).join('');
+  row.innerHTML='<label style="font-size:11px;color:#888;text-transform:uppercase;display:block;margin-bottom:4px">Sale Rep (chỉ Manager/Leader chỉnh được)</label>'
+    +'<select id="inv-sale-rep-select" style="width:100%;background:#fff;border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size:12px;color:var(--dark)">'+opts+'</select>';
+  noteField.parentElement.parentElement.appendChild(row);
 }
 
 async function saveApprovedInvoice(){
@@ -1820,7 +1850,8 @@ async function saveApprovedInvoice(){
     total:total,
     balance_due:balance,
     payment_method:paymentMethod||null,
-    payment_proof_url:currentProofUrls.length?JSON.stringify(currentProofUrls):null
+    payment_proof_url:currentProofUrls.length?JSON.stringify(currentProofUrls):null,
+    sale_id:selectedSaleId||undefined
     // KHÔNG đổi approval_status — giữ 'approved'
   }).eq('id',editInvoiceId);
 
@@ -1851,7 +1882,11 @@ async function saveApprovedInvoice(){
   // Re-sync sang Finance (non-blocking, không block UI nếu fail)
   try{
     var invNo=window._editInvoiceNoApproved||editInvoiceNo;
-    var saleRepName=editInvoiceOriginalSaleName||'';
+    // Lấy sale_id + full_name từ dropdown (nếu manager đã chọn đổi sale rep)
+    var saleRepSelect=document.getElementById('inv-sale-rep-select');
+    var selectedSaleId=saleRepSelect?saleRepSelect.value:null;
+    var selectedProf=selectedSaleId&&_approvedEditProfiles.find(function(p){return p.id===selectedSaleId;});
+    var saleRepName=selectedProf?selectedProf.full_name:(editInvoiceOriginalSaleName||'');
     var custName=selectedCustomer?(selectedCustomer.business_name||selectedCustomer.customer_name||''):'';
     var invDate=document.getElementById('inv-date').value;
 
