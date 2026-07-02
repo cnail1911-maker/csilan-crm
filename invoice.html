@@ -1776,7 +1776,9 @@ async function loadInvoiceForEdit(invoiceNo){
       +'<button class="btn btn-outline" onclick="renderPreview()"><i class="ti ti-eye"></i> Preview</button>'
       +(isApproved
         ?'<button class="btn btn-red" onclick="downloadApprovedPDF()"><i class="ti ti-file-download"></i> Tải invoice</button>'
-        +'<button class="btn btn-primary" onclick="saveApprovedInvoice()"><i class="ti ti-refresh"></i> Lưu & Sync Finance</button>'
+        +(currentProfile&&['manager','admin','leader'].includes(currentProfile.role)
+          ?'<button class="btn btn-primary" onclick="saveApprovedInvoice()"><i class="ti ti-refresh"></i> Lưu & Sync Finance</button>'
+          :'')
         :'<button class="btn btn-red" onclick="updateInvoice()"><i class="ti ti-device-floppy"></i> Cập nhật & Tải PDF</button>'
       );
   }
