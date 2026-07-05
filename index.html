@@ -8550,7 +8550,8 @@ window.addEventListener('resize',function(){
       // P1
       var p1b=5310000/22*ngay;
       var p1=_scType==='thu'?p1b*0.85:p1b;
-      var p2a=500000,p2b=1240000;
+      var congRatio=ngay/22;
+      var p2a=Math.round(500000*congRatio),p2b=Math.round(1240000*congRatio);
       var p3b=_scChuyen?300000:0;
       var p3c=_scKPI?500000:0;
       // Target: DT san pham + HS (1 giuong=$1450)
@@ -8582,8 +8583,9 @@ window.addEventListener('resize',function(){
       }
       var h='';
       h+=row('P1 - Luong co ban'+(ngay!==22?' ('+ngay+' ngay)':''),p1,(_scType==='thu'?'85% x ':'')+ngay+' ngay');
-      h+=row('P2A - Phu cap an uong & di lai',p2a,'Co dinh');
-      h+=row('P2B - Phu cap chuc nang',p2b,'Co dinh');
+      var p2Sub=ngay===22?'Co dinh (22/22)':ngay+'/22 ngay cong';
+      h+=row('P2A - Phu cap an uong & di lai',p2a,p2Sub);
+      h+=row('P2B - Phu cap chuc nang',p2b,p2Sub);
       h+=row('P2C - Phu cap nang luc',p2c,'Level '+lvl);
       h+=row('P3B - Thuong chuyen can',p3b,_scChuyen?'Dung gio du thang':'Khong dat');
       h+=row('P3C - Thuong KPI',p3c,_scKPI?'>=70 diem':'Chua dat');
