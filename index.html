@@ -8507,6 +8507,12 @@ window.addEventListener('resize',function(){
       </div>
 
       <div class="sc-field">
+        <div class="sc-label">Tổng chênh lệch (USD)</div>
+        <input type="number" class="sc-input" id="sc-chenhlech" value="0" min="0" step="0.01" oninput="scCalc()">
+        <div class="sc-note">Tổng (giá bán − giá chuẩn) của các SP bán chênh. Bonus = chênh × 30% × 25,000đ. Nếu chưa đạt target → chỉ nhận 50%.</div>
+      </div>
+
+      <div class="sc-field">
         <div class="sc-label">Đi đúng giờ đủ tháng?</div>
         <div class="sc-toggle">
           <div class="sc-toggle-btn active" id="sc-chuyen-yes" onclick="scSetChuyen(true)">✅ Có — +300.000đ</div>
@@ -8570,11 +8576,17 @@ window.addEventListener('resize',function(){
         hsB=(hs*hsPPB+hsEx)*25000;
       }
       // Bonus 1% tren DT san pham
-      var b1=dt*0.01*(dat?1.0:0.5)*25000;
-      // Thuong nong
+      var b1=dt*0.01*25000;
+      // Bonus chenh lech 30%
+      var chenhEl=document.getElementById('sc-chenhlech');
+      var chenhVal=Math.max(0,parseFloat(chenhEl?chenhEl.value:0)||0);
+      var bChenh=chenhVal*0.3*25000;
+      // Thuong nong (giu nguyen rule cu: >=140% -> $100, >=200% -> $200)
       var tn=0;
       if(dtTong>0){var pv=dtTong/target;if(pv>=2.0)tn=200*25000;else if(pv>=1.4)tn=100*25000;}
-      var p3a=b1+hsB+tn;
+      // Chua dat target: giam 50% b1 + headspa + chenh lech, thuong nong = 0
+      if(!dat){b1=b1*0.5;hsB=hsB*0.5;bChenh=bChenh*0.5;tn=0;}
+      var p3a=b1+hsB+bChenh+tn;
       var total=p1+p2a+p2b+p2c+p3a+p3b+p3c;
       var lvl=p2c===0?1:p2c===500000?2:p2c===1000000?3:p2c===1500000?4:5;
       // Render rows
@@ -8590,14 +8602,15 @@ window.addEventListener('resize',function(){
       h+=row('P3B - Thuong chuyen can',p3b,_scChuyen?'Dung gio du thang':'Khong dat');
       h+=row('P3C - Thuong KPI',p3c,_scKPI?'>=70 diem':'Chua dat');
       // P3A breakdown
-      var hasPb=dt>0||hs>0||tn>0;
+      var hasPb=dt>0||hs>0||tn>0||chenhVal>0;
       if(hasPb){
         h+='<div style="font-size:10px;color:var(--text3);text-transform:uppercase;padding:8px 0 4px;font-weight:600">P3A - Thuong doanh thu<\/div>';
-        if(dt>0) h+=row('Bonus 1% DT san pham '+(dat?'(dat target)':'(chua dat 50%)'),b1,usd(dt)+' x 1% x '+(dat?'100%':'50%'));
+        if(dt>0) h+=row('Bonus 1% DT san pham '+(dat?'(dat target)':'(chua dat, x50%)'),b1,usd(dt)+' x 1%'+(dat?'':' x50%'));
         if(hs>0){
           var hsLbl='Bonus Headspa: '+hs+' giuong x $'+hsPPB+(hsEx>0?' + $'+hsEx:'');
-          h+=row(hsLbl,hsB,usd(hs*hsPPB+hsEx)+' x 25,000d');
+          h+=row(hsLbl+(dat?'':' (x50%)'),hsB,usd(hs*hsPPB+hsEx)+' x 25,000d'+(dat?'':' x50%'));
         }
+        if(chenhVal>0) h+=row('Bonus chenh lech 30%'+(dat?'':' (x50%)'),bChenh,usd(chenhVal)+' x 30%'+(dat?'':' x50%'));
         if(tn>0) h+=row('Thuong nong',tn,dtTong/target>=2.0?'Vuot 100% target +$200':'Vuot 40% target +$100');
       } else {
         h+='<div class="sc-row"><span class="sc-row-label">P3A - Thuong doanh thu<\/span><span class="sc-row-val zero">0d<\/span><\/div>';
