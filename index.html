@@ -2985,46 +2985,69 @@ async function openInvEdit(id){
   const existing=document.getElementById('inv-edit-modal');
   if(existing)existing.remove();
 
+  const total=inv.total||0;
   const modal=document.createElement('div');
   modal.className='modal-overlay';modal.id='inv-edit-modal';
+  modal.onclick=function(e){if(e.target===modal)modal.remove();};
   const box=document.createElement('div');
-  box.className='modal';box.style.width='480px';
+  box.className='modal';box.style.cssText='width:520px;max-width:95vw';
   box.onclick=function(e){e.stopPropagation();};
 
+  // Header
   const header=document.createElement('div');header.className='modal-header';
   const h3=document.createElement('h3');h3.textContent='Cập nhật đơn hàng';
-  const invNo=document.createElement('div');
-  invNo.style.cssText='font-size:11px;color:var(--text3);font-family:monospace';
-  invNo.textContent=inv.invoice_no||'';
+  const invNoEl=document.createElement('div');
+  invNoEl.style.cssText='font-size:11px;color:var(--text3);font-family:monospace';
+  invNoEl.textContent=inv.invoice_no||'';
   const closeX=document.createElement('button');
   closeX.className='btn';closeX.style.cssText='padding:4px 8px';
   closeX.innerHTML='<i class="ti ti-x"></i>';
   closeX.onclick=function(){modal.remove();};
-  header.appendChild(h3);header.appendChild(invNo);header.appendChild(closeX);
+  header.appendChild(h3);header.appendChild(invNoEl);header.appendChild(closeX);
 
+  // Body
   const body=document.createElement('div');body.className='modal-body';
-  const row=document.createElement('div');row.className='field-row';
+
+  // Row 1: Payment Status + Order Status
+  const row1=document.createElement('div');row1.className='field-row';
   const f1=document.createElement('div');f1.className='field';
-  f1.innerHTML='<label>Payment Status<\/label><select id="ie-pay"><option value="">-- Chọn --</option>'
+  f1.innerHTML='<label>Payment Status</label><select id="ie-pay">'
     +['Paid in Full','Deposit Paid','Partially Paid','Cancelled'].map(function(s){
       return '<option value="'+s+'"'+(inv.payment_status===s?' selected':'')+'>'+s+'</option>';
     }).join('')+'</select>';
   const f2=document.createElement('div');f2.className='field';
-  f2.innerHTML='<label>Order Status<\/label><select id="ie-ord"><option value="">-- Chọn --</option>'
+  f2.innerHTML='<label>Order Status</label><select id="ie-ord"><option value="">-- Chọn --</option>'
     +['Đang sản xuất','Đang giao','Đã nhận hàng'].map(function(s){
       return '<option value="'+s+'"'+(inv.order_status===s?' selected':'')+'>'+s+'</option>';
     }).join('')+'</select>';
-  const f3=document.createElement('div');f3.className='field';
-  f3.innerHTML='<label>Tracking Number<\/label><input id="ie-track" value="'+(inv.tracking_number||'')+'" placeholder="Nhập tracking number...">';
-  row.appendChild(f1);row.appendChild(f2);
-  body.appendChild(row);body.appendChild(f3);
+  row1.appendChild(f1);row1.appendChild(f2);
 
+  // Row 2: Deposit + Balance Due
+  const row2=document.createElement('div');row2.className='field-row';
+  const f4=document.createElement('div');f4.className='field';
+  f4.innerHTML='<label>Deposit ($)</label><input type="number" id="ie-deposit" min="0" step="0.01" value="'+(inv.deposit||0)+'">';
+  const f5=document.createElement('div');f5.className='field';
+  f5.innerHTML='<label>Balance Due ($)</label><input type="number" id="ie-balance" min="0" step="0.01" value="'+(inv.balance_due!=null?inv.balance_due:Math.max(0,total-(inv.deposit||0)))+'" readonly style="background:var(--surface2);color:var(--text3)">';
+  row2.appendChild(f4);row2.appendChild(f5);
+
+  // Row 3: Tracking
+  const row3=document.createElement('div');row3.className='field-row';
+  const f3=document.createElement('div');f3.className='field';
+  f3.innerHTML='<label>Tracking Number</label><input id="ie-track" value="'+(inv.tracking_number||'')+'" placeholder="Nhập tracking number...">';
+  row3.appendChild(f3);
+
+  // Row 4: Ghi chú (full width)
+  const row4=document.createElement('div');row4.style.cssText='padding:0 16px 14px';
+  row4.innerHTML='<label style="font-size:11px;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Ghi chú</label>'
+    +'<input id="ie-note" value="'+(inv.note||'').replace(/"/g,'"')+'" placeholder="Ghi chú đơn hàng..." style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">';
+
+  body.appendChild(row1);body.appendChild(row2);body.appendChild(row3);body.appendChild(row4);
+
+  // Footer
   const footer=document.createElement('div');footer.className='modal-footer';
-  const closeBtn=document.createElement('button');
-  closeBtn.className='btn';closeBtn.textContent='Đóng';
+  const closeBtn=document.createElement('button');closeBtn.className='btn';closeBtn.textContent='Đóng';
   closeBtn.onclick=function(){modal.remove();};
-  const saveBtn=document.createElement('button');
-  saveBtn.className='btn btn-primary';
+  const saveBtn=document.createElement('button');saveBtn.className='btn btn-primary';
   saveBtn.innerHTML='<i class="ti ti-device-floppy"></i> Lưu';
   saveBtn.onclick=function(){saveInvEdit(id);};
   footer.appendChild(closeBtn);footer.appendChild(saveBtn);
@@ -3032,6 +3055,20 @@ async function openInvEdit(id){
   box.appendChild(header);box.appendChild(body);box.appendChild(footer);
   modal.appendChild(box);
   document.body.appendChild(modal);
+
+  // Auto calc balance + auto Payment Status
+  const depInput=document.getElementById('ie-deposit');
+  const balInput=document.getElementById('ie-balance');
+  const paySelect=document.getElementById('ie-pay');
+  if(depInput&&balInput){
+    depInput.addEventListener('input',function(){
+      const dep=Math.max(0,parseFloat(depInput.value)||0);
+      const bal=Math.max(0,total-dep);
+      balInput.value=bal.toFixed(2);
+      if(bal===0){if(paySelect)paySelect.value='Paid in Full';}
+      else if(dep>0&&dep<total&&paySelect&&paySelect.value==='Paid in Full'){paySelect.value='Deposit Paid';}
+    });
+  }
 }
 
 async function saveInvEdit(id){
@@ -3040,10 +3077,16 @@ async function saveInvEdit(id){
   const oldTracking=oldInv.tracking_number||'';
   const oldOrderStatus=oldInv.order_status||'';
   const oldPaymentStatus=oldInv.payment_status||'';
+  const _deposit=parseFloat((document.getElementById('ie-deposit')&&document.getElementById('ie-deposit').value)||oldInv.deposit||0)||0;
+  const _balance=parseFloat((document.getElementById('ie-balance')&&document.getElementById('ie-balance').value)||(oldInv.balance_due!=null?oldInv.balance_due:Math.max(0,(oldInv.total||0)-_deposit)))||0;
+  const _note=(document.getElementById('ie-note')&&document.getElementById('ie-note').value)||oldInv.note||null;
   const update={
     payment_status:document.getElementById('ie-pay').value||null,
     order_status:document.getElementById('ie-ord').value||null,
-    tracking_number:document.getElementById('ie-track').value||null
+    tracking_number:document.getElementById('ie-track').value||null,
+    deposit:_deposit,
+    balance_due:_balance,
+    note:_note||null
   };
   await sb.from('invoices').update(update).eq('id',parseInt(id)||id);
   const inv=INVOICES.find(function(i){return i.id===id;});
