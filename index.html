@@ -2405,7 +2405,7 @@ function renderClosedeal(){
   // Main table
   html+='<div class="content"><div class="panel"><div class="panel-header"><h2>Đơn hàng đã duyệt <span style="color:var(--accent2)">'+enriched.length+'<\/span><\/h2><\/div>'
     +(enriched.length===0?'<div class="empty-state"><i class="ti ti-trophy"></i>Chưa có đơn hàng nào được duyệt<\/div>'
-      :'<div class="table-scroll-always"><table><colgroup><col width="95"><col width="110"><col width="95"><col width="45"><col width="45"><col width="75"><col width="65"><col width="65"><col width="90"><col width="85"><col width="65"><col width="65"><col width="60">'+(isManager?'<col width="115">':'')+'</colgroup>'
+      :'<div class="table-scroll-always"><table><colgroup><col width="95"><col width="110"><col width="95"><col width="45"><col width="45"><col width="75"><col width="65"><col width="65"><col width="90"><col width="85"><col width="65"><col width="65"><col width="140"><col width="60">'+(isManager?'<col width="115">':'')+'</colgroup>'
       +'<thead><tr><th>Mã đơn<\/th><th>Business Name<\/th><th>Customer<\/th><th style="text-align:center">Month<\/th><th style="text-align:center">Year<\/th><th>Revenue<\/th><th>Deposit<\/th><th>Balance Due<\/th><th>Payment Status<\/th><th>Order Status<\/th><th>Tracking<\/th><th>Sale<\/th><th>Ghi chú<\/th>'+(isManager?'<th><\/th>':'')+'<\/tr></thead>'
       +'<tbody>'+rows+'</tbody><\/table><\/div>'
       +pgBar(enriched.length,cdPage,PAGE_SIZE,'setCdPage'))
