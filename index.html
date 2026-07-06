@@ -2346,7 +2346,7 @@ function renderClosedeal(){
     const invDate=new Date(inv.created_at);
     const payBadge={'Paid in Full':'b-won','Deposit Paid':'b-calling','Partially Paid':'b-followup','Cancelled':'b-lost'};
     const ordBadge={'Đang sản xuất':'b-followup','Đang giao':'b-calling','Đã nhận hàng':'b-won'};
-    rows+='<tr>'
+    rows+='<tr style="cursor:pointer" onclick="openInvEdit('+inv.id+')" onmouseover="this.style.background=\'rgba(108,92,231,0.06)\'" onmouseout="this.style.background=\'\'">'
       +'<td style="font-size:10px;font-family:monospace;color:var(--accent2);font-weight:600">'+(inv.invoice_no||'—')+'<\/td>'
       +'<td>'+(inv.business_name||'—')+'<\/td>'
       +'<td style="color:var(--text)">'+(inv.customer_name||'—')+'<\/td>'
@@ -2362,9 +2362,9 @@ function renderClosedeal(){
       +'<td style="font-size:11px;color:var(--text2);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+(inv.note||'')+'">'+((inv.note||'').slice(0,40)||(inv.note?inv.note:'—'))+'<\/td>'
       +(isManager
         ?'<td style="white-space:nowrap"><div style="display:flex;gap:3px">'
-          +'<button class="btn" style="padding:2px 6px;font-size:10px" onclick="openInvEdit('+inv.id+')" title="Cập nhật tracking/status">✏️<\/button>'
+          +'<button class="btn" style="padding:2px 6px;font-size:10px" onclick="event.stopPropagation();openInvEdit('+inv.id+')" title="Cập nhật tracking/status">✏️<\/button>'
           +'<button class="btn" style="padding:2px 6px;font-size:10px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="editInvoicePage(\''+inv.invoice_no+'\')" title="Tải invoice PDF"><i class="ti ti-file-download"><\/i><\/button>'
-          +'<button class="btn" style="padding:2px 6px;font-size:10px;border-color:rgba(116,185,255,0.4);color:#74b9ff" onclick="window._openSendEmailModal('+inv.id+')" title="Gửi Email"><i class="ti ti-mail"><\/i><\/button>'
+          +'<button class="btn" style="padding:2px 6px;font-size:10px;border-color:rgba(116,185,255,0.4);color:#74b9ff" onclick="event.stopPropagation();window._openSendEmailModal('+inv.id+')" title="Gửi Email"><i class="ti ti-mail"><\/i><\/button>'
           +'<\/div><\/td>'
         :'<td style="white-space:nowrap"><button class="btn" style="padding:2px 6px;font-size:10px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="editInvoicePage(\''+inv.invoice_no+'\')" title="Tải invoice PDF"><i class="ti ti-file-download"><\/i><\/button><\/td>'
       )
