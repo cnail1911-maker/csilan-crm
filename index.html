@@ -2359,7 +2359,7 @@ function renderClosedeal(){
       +'<td>'+(inv.order_status?'<span class="badge '+(ordBadge[inv.order_status]||'b-new')+'">'+inv.order_status+'<\/span>':'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--text3)">'+(inv.tracking_number||'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--text2)">'+((inv.assigned_profile&&inv.assigned_profile.full_name)?inv.assigned_profile.full_name.split(' ').pop():'—')+'<\/td>'
-      +'<td style="font-size:11px;color:var(--text2);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+(inv.note||'')+'">'+((inv.note||'').slice(0,40)||(inv.note?inv.note:'—'))+'<\/td>'
+      +'<td style="font-size:11px;color:var(--text2);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+(inv.note||'').replace(/"/g,'&quot;')+'">'+((inv.note||'').slice(0,40)||(inv.note?inv.note:'—'))+'<\/td>'
       +(isManager
         ?'<td style="white-space:nowrap"><div style="display:flex;gap:3px">'
           +'<button class="btn" style="padding:2px 6px;font-size:10px" onclick="event.stopPropagation();openInvEdit('+inv.id+')" title="Cập nhật tracking/status">✏️<\/button>'
@@ -3039,7 +3039,7 @@ async function openInvEdit(id){
   // Row 4: Ghi chú (full width)
   const row4=document.createElement('div');row4.style.cssText='padding:0 16px 14px';
   row4.innerHTML='<label style="font-size:11px;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Ghi chú</label>'
-    +'<input id="ie-note" value="'+(inv.note||'').replace(/"/g,'"')+'" placeholder="Ghi chú đơn hàng..." style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">';
+    +'<input id="ie-note" value="'+(inv.note||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;')+'" placeholder="Ghi chú đơn hàng..." style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">';
 
   body.appendChild(row1);body.appendChild(row2);body.appendChild(row3);body.appendChild(row4);
 
