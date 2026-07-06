@@ -5314,36 +5314,30 @@ async function _kpiFetchInvoices(fromDate,toDate){
   var uid=currentUser&&currentUser.id;
   var fromD=fromDate.slice(0,10);
   var toD=toDate.slice(0,10);
+  var kpiYM=fromD.slice(0,7); // "YYYY-MM" — tháng cần lọc
   var result=[];
   try{
-    // Query theo created_at
-    var q1=sb.from('invoices')
-      .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
+    // Fetch rộng ±1 tháng theo date, rồi filter chính xác theo billing_month (nếu có) hoặc date
+    var extFrom=new Date(fromD);extFrom.setMonth(extFrom.getMonth()-1);
+    var extTo=new Date(toD);extTo.setMonth(extTo.getMonth()+1);
+    var ef=extFrom.toISOString().slice(0,10);
+    var et=extTo.toISOString().slice(0,10);
+    var q=sb.from('invoices')
+      .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date,billing_month')
       .eq('type','invoice')
-      .gte('created_at',fromD+'T00:00:00+00:00')
-      .lte('created_at',toD+'T23:59:59+00:00');
-    if(!isM)q1=q1.eq('sale_id',uid);
-    var r1=await q1.limit(2000);
-    // Query theo date field (invoice không có created_at)
-    var q2=sb.from('invoices')
-      .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date')
-      .eq('type','invoice')
-      .gte('date',fromD)
-      .lte('date',toD);
-    if(!isM)q2=q2.eq('sale_id',uid);
-    var r2=await q2.limit(2000);
-    // Merge dedup
-    var seen=new Set();
-    var merged=[];
-    [(r1.data||[]),(r2.data||[])].forEach(function(arr){
-      arr.forEach(function(i){
-        if(!seen.has(i.id)){seen.add(i.id);merged.push(i);}
-      });
+      .eq('approval_status','approved')
+      .gte('date',ef)
+      .lte('date',et);
+    if(!isM)q=q.eq('sale_id',uid);
+    var r=await q.limit(5000);
+    if(r.error)console.warn('[KPI fetch]',r.error.message);
+    var all=r.data||[];
+    // Ưu tiên billing_month nếu có, fallback date
+    result=all.filter(function(i){
+      var ym=i.billing_month?i.billing_month.slice(0,7):i.date?i.date.slice(0,7):null;
+      return ym===kpiYM;
     });
-    if(r1.error)console.warn('[KPI q1]',r1.error.message);
-    if(r2.error)console.warn('[KPI q2]',r2.error.message);
-    result=merged;
-    console.log('[KPI fetch] '+fromD+' to '+toD+': '+result.length+' invoices (q1:'+( r1.data||[]).length+' q2:'+(r2.data||[]).length+')');
+    console.log('[KPI fetch] '+kpiYM+': '+result.length+'/'+all.length+' invoices');
   }catch(err){
     console.error('[KPI fetch error]',err);
   }
