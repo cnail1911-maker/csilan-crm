@@ -2359,6 +2359,7 @@ function renderClosedeal(){
       +'<td>'+(inv.order_status?'<span class="badge '+(ordBadge[inv.order_status]||'b-new')+'">'+inv.order_status+'<\/span>':'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--text3)">'+(inv.tracking_number||'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--text2)">'+((inv.assigned_profile&&inv.assigned_profile.full_name)?inv.assigned_profile.full_name.split(' ').pop():'—')+'<\/td>'
+      +'<td style="font-size:11px;color:var(--text2);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+(inv.note||'')+'">'+((inv.note||'').slice(0,40)||(inv.note?inv.note:'—'))+'<\/td>'
       +(isManager
         ?'<td style="white-space:nowrap"><div style="display:flex;gap:3px">'
           +'<button class="btn" style="padding:2px 6px;font-size:10px" onclick="openInvEdit('+inv.id+')" title="Cập nhật tracking/status">✏️<\/button>'
@@ -2405,7 +2406,7 @@ function renderClosedeal(){
   html+='<div class="content"><div class="panel"><div class="panel-header"><h2>Đơn hàng đã duyệt <span style="color:var(--accent2)">'+enriched.length+'<\/span><\/h2><\/div>'
     +(enriched.length===0?'<div class="empty-state"><i class="ti ti-trophy"></i>Chưa có đơn hàng nào được duyệt<\/div>'
       :'<div class="table-scroll-always"><table><colgroup><col width="95"><col width="110"><col width="95"><col width="45"><col width="45"><col width="75"><col width="65"><col width="65"><col width="90"><col width="85"><col width="65"><col width="65"><col width="60">'+(isManager?'<col width="115">':'')+'</colgroup>'
-      +'<thead><tr><th>Mã đơn<\/th><th>Business Name<\/th><th>Customer<\/th><th style="text-align:center">Month<\/th><th style="text-align:center">Year<\/th><th>Revenue<\/th><th>Deposit<\/th><th>Balance Due<\/th><th>Payment Status<\/th><th>Order Status<\/th><th>Tracking<\/th><th>Sale<\/th>'+(isManager?'<th><\/th>':'')+'<\/tr></thead>'
+      +'<thead><tr><th>Mã đơn<\/th><th>Business Name<\/th><th>Customer<\/th><th style="text-align:center">Month<\/th><th style="text-align:center">Year<\/th><th>Revenue<\/th><th>Deposit<\/th><th>Balance Due<\/th><th>Payment Status<\/th><th>Order Status<\/th><th>Tracking<\/th><th>Sale<\/th><th>Ghi chú<\/th>'+(isManager?'<th><\/th>':'')+'<\/tr></thead>'
       +'<tbody>'+rows+'</tbody><\/table><\/div>'
       +pgBar(enriched.length,cdPage,PAGE_SIZE,'setCdPage'))
     +'<\/div><\/div>';
