@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C-Silan · Hệ thống nội bộ</title>
+<style>
+  :root{
+    --sidebar-bg:#12161c;
+    --sidebar-bg-2:#191f27;
+    --sidebar-line:#232a34;
+    --text-dim:#8891a0;
+    --text-bright:#eef1f5;
+    --accent:#2dd4bf;
+    --accent-dim:#1a3d38;
+    --content-bg:#f4f6f8;
+    --danger:#ef4444;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    display:flex;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--content-bg);
+    color:var(--text-bright);
+    overflow:hidden;
+  }
+
+  /* ===== Sidebar ===== */
+  #sidebar{
+    width:230px;
+    min-width:230px;
+    background:linear-gradient(180deg,var(--sidebar-bg),var(--sidebar-bg-2));
+    display:flex;
+    flex-direction:column;
+    border-right:1px solid var(--sidebar-line);
+    transition:width .18s ease, min-width .18s ease;
+    z-index:20;
+  }
+  body.collapsed #sidebar{width:64px;min-width:64px;}
+
+  #brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:18px 16px;
+    border-bottom:1px solid var(--sidebar-line);
+    white-space:nowrap;
+    overflow:hidden;
+  }
+  #brand .mark{
+    width:34px;height:34px;flex:0 0 34px;
+    border-radius:9px;
+    background:conic-gradient(from 210deg,var(--accent),#0ea5a0 60%,var(--accent));
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:14px;color:#0b1210;
+    letter-spacing:-.5px;
+  }
+  #brand .txt{overflow:hidden;}
+  #brand .txt .l1{font-weight:700;font-size:14.5px;letter-spacing:.2px;}
+  #brand .txt .l2{font-size:11px;color:var(--text-dim);margin-top:1px;}
+  body.collapsed #brand .txt{display:none;}
+
+  nav{flex:1;padding:14px 10px;overflow-y:auto;}
+  .nav-label{
+    font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;
+    color:#57616f;padding:6px 10px 8px;font-weight:600;
+    white-space:nowrap;overflow:hidden;
+  }
+  body.collapsed .nav-label{display:none;}
+
+  .nav-item{
+    display:flex;align-items:center;gap:12px;
+    padding:10px 11px;margin-bottom:3px;
+    border-radius:9px;cursor:pointer;
+    color:var(--text-dim);
+    font-size:13.5px;font-weight:500;
+    border:1px solid transparent;
+    white-space:nowrap;overflow:hidden;
+    position:relative;
+  }
+  .nav-item:hover{background:#1d2530;color:var(--text-bright);}
+  .nav-item.active{
+    background:var(--accent-dim);
+    color:var(--accent);
+    border-color:#215750;
+  }
+  .nav-item.active::before{
+    content:"";position:absolute;left:-10px;top:8px;bottom:8px;width:3px;
+    background:var(--accent);border-radius:2px;
+  }
+  .nav-item .ic{
+    width:19px;height:19px;flex:0 0 19px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .nav-item .ic svg{width:100%;height:100%;}
+  .nav-item .lbl{overflow:hidden;text-overflow:ellipsis;}
+  body.collapsed .nav-item .lbl{display:none;}
+  body.collapsed .nav-item{justify-content:center;}
+  body.collapsed .nav-item.active::before{left:-10px;}
+
+  #sidebar-foot{
+    padding:10px;border-top:1px solid var(--sidebar-line);
+    display:flex;flex-direction:column;gap:4px;
+  }
+  #collapseBtn{
+    display:flex;align-items:center;gap:10px;
+    padding:9px 11px;border-radius:9px;cursor:pointer;
+    color:var(--text-dim);font-size:12.5px;background:none;border:none;
+    font-family:inherit;width:100%;text-align:left;
+  }
+  #collapseBtn:hover{background:#1d2530;color:var(--text-bright);}
+  #collapseBtn .ic{width:19px;height:19px;flex:0 0 19px;display:flex;align-items:center;justify-content:center;transition:transform .18s;}
+  body.collapsed #collapseBtn .ic{transform:rotate(180deg);}
+  body.collapsed #collapseBtn .lbl{display:none;}
+
+  /* ===== Main area ===== */
+  #main{flex:1;display:flex;flex-direction:column;min-width:0;height:100%;}
+
+  #topbar{
+    height:52px;flex:0 0 52px;
+    background:#fff;border-bottom:1px solid #e3e7ec;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 18px;
+  }
+  #topbar .crumb{
+    font-size:13px;color:#1c2430;font-weight:600;
+    display:flex;align-items:center;gap:8px;
+  }
+  #topbar .crumb .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);}
+  #topbar .actions{display:flex;gap:8px;}
+  .tbtn{
+    display:flex;align-items:center;gap:6px;
+    font-size:12px;font-weight:600;color:#4b5563;
+    background:#f4f6f8;border:1px solid #e3e7ec;
+    padding:6px 11px;border-radius:7px;cursor:pointer;
+    font-family:inherit;
+  }
+  .tbtn:hover{background:#eceff2;color:#1c2430;}
+  .tbtn svg{width:13px;height:13px;}
+
+  #frame-wrap{flex:1;position:relative;background:var(--content-bg);}
+  iframe{width:100%;height:100%;border:none;display:block;background:#fff;}
+
+  #home-view{
+    display:none;height:100%;overflow-y:auto;
+    padding:44px 48px;
+  }
+  #home-view.show{display:block;}
+  #home-view h1{
+    font-size:22px;color:#12161c;margin:0 0 4px;letter-spacing:-.3px;
+  }
+  #home-view p.sub{color:#68717d;font-size:13.5px;margin:0 0 30px;}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;max-width:920px;}
+  .card{
+    background:#fff;border:1px solid #e3e7ec;border-radius:12px;
+    padding:20px;cursor:pointer;transition:.15s;
+  }
+  .card:hover{border-color:var(--accent);box-shadow:0 4px 18px -6px rgba(16,24,32,.12);transform:translateY(-1px);}
+  .card .ic{
+    width:38px;height:38px;border-radius:10px;background:var(--accent-dim);
+    display:flex;align-items:center;justify-content:center;margin-bottom:14px;
+  }
+  .card .ic svg{width:19px;height:19px;color:var(--accent);}
+  .card h3{margin:0 0 4px;font-size:14.5px;color:#12161c;}
+  .card p{margin:0;font-size:12px;color:#8891a0;line-height:1.4;}
+
+  #loading{
+    position:absolute;inset:0;background:var(--content-bg);
+    display:flex;align-items:center;justify-content:center;
+    flex-direction:column;gap:10px;
+  }
+  #loading.hide{display:none;}
+  .spinner{
+    width:26px;height:26px;border-radius:50%;
+    border:3px solid #dfe3e8;border-top-color:var(--accent);
+    animation:spin .7s linear infinite;
+  }
+  #loading span{font-size:12px;color:#8891a0;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  @media (max-width:760px){
+    #sidebar{position:fixed;top:0;bottom:0;left:0;transform:translateX(-100%);width:230px;min-width:230px;box-shadow:0 0 0 100vmax rgba(0,0,0,0);}
+    body.mobile-open #sidebar{transform:translateX(0);box-shadow:0 0 40px rgba(0,0,0,.35);}
+    body.collapsed #sidebar{width:230px;min-width:230px;}
+    body.collapsed #brand .txt,body.collapsed .nav-item .lbl,body.collapsed .nav-label,body.collapsed #collapseBtn .lbl{display:block;}
+    #main{width:100%;}
+    #menuBtn{display:flex !important;}
+  }
+  #menuBtn{
+    display:none;align-items:center;justify-content:center;
+    width:30px;height:30px;border-radius:7px;border:1px solid #e3e7ec;
+    background:#fff;cursor:pointer;margin-right:6px;
+  }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="brand">
+    <div class="mark">CS</div>
+    <div class="txt">
+      <div class="l1">C-Silan</div>
+      <div class="l2">Hệ thống nội bộ</div>
+    </div>
+  </div>
+
+  <nav>
+    <div class="nav-label">Điều hướng</div>
+
+    <div class="nav-item" data-target="home">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg></span>
+      <span class="lbl">Trang chủ</span>
+    </div>
+
+    <div class="nav-item" data-target="crm" data-src="https://cnail1911-maker.github.io/csilan-crm/index.html?v=39">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c.6-3.6 3.3-5.8 6.5-5.8s5.9 2.2 6.5 5.8"/><circle cx="17.5" cy="7.5" r="2.4"/><path d="M15.6 14.3c2.5.2 4.5 2.2 5 5.5"/></svg></span>
+      <span class="lbl">CRM</span>
+    </div>
+
+    <div class="nav-item" data-target="finance" data-src="https://albuspham66-lab.github.io/cslian-ops/cslian-finance.html">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 14.5h4"/></svg></span>
+      <span class="lbl">Finance</span>
+    </div>
+
+    <div class="nav-item" data-target="ops" data-src="https://albuspham66-lab.github.io/cslian-ops/">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 13.5a7.6 7.6 0 0 0 .07-1l1.9-1.5-1.9-3.3-2.3.6a7.7 7.7 0 0 0-1.7-1l-.4-2.3h-3.8l-.4 2.3a7.7 7.7 0 0 0-1.7 1l-2.3-.6-1.9 3.3 1.9 1.5a7.6 7.6 0 0 0 0 2l-1.9 1.5 1.9 3.3 2.3-.6a7.7 7.7 0 0 0 1.7 1l.4 2.3h3.8l.4-2.3a7.7 7.7 0 0 0 1.7-1l2.3.6 1.9-3.3-1.9-1.5c.03-.3.05-.66.07-1Z"/></svg></span>
+      <span class="lbl">OPS</span>
+    </div>
+
+    <div class="nav-item" data-target="invoice" data-src="https://cnail1911-maker.github.io/csilan-crm/invoice.html">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2.5h9l3 3v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>
+      <span class="lbl">Invoice</span>
+    </div>
+  </nav>
+
+  <div id="sidebar-foot">
+    <button id="collapseBtn">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 5 8 12l7 7"/></svg></span>
+      <span class="lbl">Thu gọn</span>
+    </button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="topbar">
+    <div class="crumb">
+      <button id="menuBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1c2430" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <span class="dot"></span>
+      <span id="crumbText">Trang chủ</span>
+    </div>
+    <div class="actions">
+      <button class="tbtn" id="reloadBtn" title="Tải lại module">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+        Tải lại
+      </button>
+      <button class="tbtn" id="newTabBtn" title="Mở module trong tab mới">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"/></svg>
+        Tab mới
+      </button>
+    </div>
+  </div>
+
+  <div id="frame-wrap">
+
+    <div id="home-view" class="show">
+      <h1>Chào anh Calvin 👋</h1>
+      <p class="sub">Chọn module bên dưới hoặc từ thanh điều hướng bên trái.</p>
+      <div class="cards">
+        <div class="card" data-target="crm" data-src="https://cnail1911-maker.github.io/csilan-crm/index.html?v=39">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c.6-3.6 3.3-5.8 6.5-5.8s5.9 2.2 6.5 5.8"/><circle cx="17.5" cy="7.5" r="2.4"/><path d="M15.6 14.3c2.5.2 4.5 2.2 5 5.5"/></svg></div>
+          <h3>CRM</h3>
+          <p>Quản lý khách hàng, đội sales C01–C09, lịch gọi.</p>
+        </div>
+        <div class="card" data-target="finance" data-src="https://albuspham66-lab.github.io/cslian-ops/cslian-finance.html">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 14.5h4"/></svg></div>
+          <h3>Finance</h3>
+          <p>Hoá đơn, lương, tạm ứng, báo cáo tài chính.</p>
+        </div>
+        <div class="card" data-target="ops" data-src="https://albuspham66-lab.github.io/cslian-ops/">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 13.5a7.6 7.6 0 0 0 .07-1l1.9-1.5-1.9-3.3-2.3.6a7.7 7.7 0 0 0-1.7-1l-.4-2.3h-3.8l-.4 2.3a7.7 7.7 0 0 0-1.7 1l-2.3-.6-1.9 3.3 1.9 1.5a7.6 7.6 0 0 0 0 2l-1.9 1.5 1.9 3.3 2.3-.6a7.7 7.7 0 0 0 1.7 1l.4 2.3h3.8l.4-2.3a7.7 7.7 0 0 0 1.7-1l2.3.6 1.9-3.3-1.9-1.5c.03-.3.05-.66.07-1Z"/></svg></div>
+          <h3>OPS</h3>
+          <p>Vận hành, KPI, lương, salary estimator.</p>
+        </div>
+        <div class="card" data-target="invoice" data-src="https://cnail1911-maker.github.io/csilan-crm/invoice.html">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2.5h9l3 3v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></div>
+          <h3>Invoice</h3>
+          <p>Xem &amp; gửi hoá đơn cho khách hàng.</p>
+        </div>
+      </div>
+    </div>
+
+    <iframe id="appFrame" style="display:none;"></iframe>
+
+    <div id="loading" class="hide">
+      <div class="spinner"></div>
+      <span>Đang tải module...</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const body = document.body;
+  const sidebar = document.getElementById('sidebar');
+  const navItems = document.querySelectorAll('.nav-item[data-target]');
+  const cards = document.querySelectorAll('.card[data-target]');
+  const frame = document.getElementById('appFrame');
+  const homeView = document.getElementById('home-view');
+  const loading = document.getElementById('loading');
+  const crumbText = document.getElementById('crumbText');
+  const collapseBtn = document.getElementById('collapseBtn');
+  const menuBtn = document.getElementById('menuBtn');
+  const reloadBtn = document.getElementById('reloadBtn');
+  const newTabBtn = document.getElementById('newTabBtn');
+
+  const labels = { home:'Trang chủ', crm:'CRM', finance:'Finance', ops:'OPS', invoice:'Invoice' };
+  let currentTarget = 'home';
+  let currentSrc = '';
+
+  function setActive(target){
+    navItems.forEach(n => n.classList.toggle('active', n.dataset.target === target));
+  }
+
+  function openModule(target, src){
+    currentTarget = target;
+    currentSrc = src || '';
+    setActive(target);
+    crumbText.textContent = labels[target] || target;
+
+    if(target === 'home'){
+      homeView.classList.add('show');
+      frame.style.display = 'none';
+      loading.classList.add('hide');
+      newTabBtn.style.display = 'none';
+      reloadBtn.style.display = 'none';
+    } else {
+      homeView.classList.remove('show');
+      newTabBtn.style.display = 'flex';
+      reloadBtn.style.display = 'flex';
+      loading.classList.remove('hide');
+      frame.style.display = 'none';
+      frame.src = src;
+    }
+
+    try{ localStorage.setItem('csilan_hub_last', target); }catch(e){}
+    if(body.classList.contains('mobile-open')) body.classList.remove('mobile-open');
+  }
+
+  frame.addEventListener('load', function(){
+    loading.classList.add('hide');
+    frame.style.display = 'block';
+  });
+
+  navItems.forEach(n => n.addEventListener('click', () => openModule(n.dataset.target, n.dataset.src)));
+  cards.forEach(c => c.addEventListener('click', () => openModule(c.dataset.target, c.dataset.src)));
+
+  collapseBtn.addEventListener('click', () => body.classList.toggle('collapsed'));
+  menuBtn.addEventListener('click', () => body.classList.toggle('mobile-open'));
+
+  reloadBtn.addEventListener('click', () => {
+    if(currentSrc){
+      loading.classList.remove('hide');
+      frame.style.display = 'none';
+      frame.src = currentSrc;
+    }
+  });
+
+  newTabBtn.addEventListener('click', () => {
+    if(currentSrc) window.open(currentSrc, '_blank');
+  });
+
+  // Restore last visited module
+  try{
+    const last = localStorage.getItem('csilan_hub_last');
+    if(last && labels[last] && last !== 'home'){
+      const srcMap = {
+        crm:'https://cnail1911-maker.github.io/csilan-crm/index.html?v=39',
+        finance:'https://albuspham66-lab.github.io/cslian-ops/cslian-finance.html',
+        ops:'https://albuspham66-lab.github.io/cslian-ops/',
+        invoice:'https://cnail1911-maker.github.io/csilan-crm/invoice.html'
+      };
+      openModule(last, srcMap[last]);
+    } else {
+      setActive('home');
+    }
+  }catch(e){ setActive('home'); }
+})();
+</script>
+
+</body>
+</html>
