@@ -7869,9 +7869,9 @@ async function renderDailyData(){
     tableRows+='<tr style="background:var(--surface)">'
       +'<td style="font-weight:600;color:var(--text);cursor:pointer" onclick="document.querySelectorAll(&quot;.ddr-'+sale.id+'&quot;).forEach(function(r){r.style.display=r.style.display===&quot;none&quot;?&quot;&quot;:&quot;none&quot;})">'+(sale.full_name||sale.nickname||'')+'</td>'
       +'<td style="font-weight:600;color:var(--accent2);cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;unique&quot;)">'+allUnique.size+'</td>'
-      +'<td style="cursor:pointer" onclick="window._dailyOpenNewPot('+_sid+')">'
+      +'<td style="cursor:pointer;overflow:hidden" onclick="window._dailyOpenNewPot('+_sid+')">'
         +'<b style="color:var(--success)">'+newPotIds.size+'</b>'
-        +(potBreakStr?'<div style="font-size:9px;color:var(--text3);white-space:nowrap">'+potBreakStr+'</div>':'')
+        +(potBreakStr?'<div style="font-size:9px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+potBreakStr+'</div>':'')
       +'</td>'
       +'<td style="color:var(--warn);cursor:pointer" onclick="window._dailyOpenFollow('+_sid+')">'+followIds.size+'</td>'
       +'<td style="text-align:center;cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;allinv&quot;)">'+allInvCount+'</td>'
@@ -7921,9 +7921,9 @@ async function renderDailyData(){
       tableRows+='<tr class="ddr-'+sale.id+'" style="font-size:11px;color:var(--text3);display:none">'
         +'<td style="padding-left:28px">'+dt+'</td>'
         +'<td style="color:'+(cnt>0?'var(--accent2)':'var(--text3)')+';cursor:pointer" onclick="window._dailyOpenDay('+_dtSid+',&quot;unique&quot;)">'+cnt+'</td>'
-        +'<td style="cursor:pointer" onclick="window._dailyOpenDay('+_dtSid+',&quot;newpot&quot;)">'
+        +'<td style="cursor:pointer;overflow:hidden" onclick="window._dailyOpenDay('+_dtSid+',&quot;newpot&quot;)">'
           +'<span style="color:'+(nPot>0?'var(--success)':'var(--text3)')+'">'+nPot+'</span>'
-          +(dtBreakStr?'<span style="font-size:9px;color:var(--text3);margin-left:4px">'+dtBreakStr+'</span>':'')
+          +(dtBreakStr?'<span style="font-size:9px;color:var(--text3);margin-left:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;max-width:90px;vertical-align:middle">'+dtBreakStr+'</span>':'')
         +'</td>'
         +'<td style="color:'+(fPot>0?'var(--warn)':'var(--text3)')+';cursor:pointer" onclick="window._dailyOpenDay('+_dtSid+',&quot;follow&quot;)">'+fPot+'</td>'
         +'<td style="text-align:center;cursor:pointer" onclick="window._dailyOpenDay('+_dtSid+',&quot;allinv&quot;)">'+dtAllInv+'</td>'
@@ -7934,8 +7934,8 @@ async function renderDailyData(){
 
   const dc=document.getElementById('daily-content');
   if(!dc)return;
-  dc.innerHTML='<div class="table-scroll-always" style="margin-top:4px"><table><colgroup>'
-    +'<col style="min-width:140px"><col style="min-width:90px"><col style="min-width:120px"><col style="min-width:90px"><col style="min-width:80px"><col style="min-width:80px">'
+  dc.innerHTML='<div class="table-scroll-always" style="margin-top:4px"><table style="table-layout:fixed;width:100%;min-width:660px"><colgroup>'
+    +'<col width="160"><col width="100"><col width="160"><col width="90"><col width="80"><col width="80">'
     +'</colgroup><thead><tr>'
     +'<th>Sale</th><th>Data thao tác</th>'
     +'<th style="color:var(--success)">Pot.New</th>'
