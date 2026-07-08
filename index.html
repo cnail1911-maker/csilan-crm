@@ -7660,10 +7660,18 @@ window._dailyOpenDay=function(key,type){
   var sale=PROFILES.find(function(p){return p.id===parts[0];});
   var dt=parts[1]||'';
   var label='',ids=[];
-  if(type==='unique'){label='Data thao tác '+dt+' — '+(sale?sale.full_name:'');ids=d.ids;}
-  else if(type==='newpot'){label='Pot.New '+dt+' — '+(sale?sale.full_name:'');ids=d.newPotIds;}
-  else if(type==='follow'){label='Pot.Old '+dt+' — '+(sale?sale.full_name:'');ids=d.followIds;}
-  var customers=ids.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);
+  var customers=[];
+  if(type==='unique'){label='Data '+dt+' — '+(sale?sale.full_name:'');customers=d.ids.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);}
+  else if(type==='newpot'){label='Pot.New '+dt+' — '+(sale?sale.full_name:'');customers=d.newPotIds.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);}
+  else if(type==='follow'){label='Pot.Old '+dt+' — '+(sale?sale.full_name:'');customers=d.followIds.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);}
+  else if(type==='allinv'||type==='invoice'){
+    label=(type==='invoice'?'Invoice approved ':'Báo giá ')+dt+' — '+(sale?sale.full_name:'');
+    var seen2=new Set();
+    d.saleInvs.filter(function(inv){return type==='allinv'||inv.approval_status==='approved';}).forEach(function(inv){
+      var c=CUSTOMERS.find(function(x){return x.id===inv.customer_id;});
+      if(c&&!seen2.has(c.id)){seen2.add(c.id);customers.push(Object.assign({},c,{_inv:inv}));}
+    });
+  }
   if(!customers.length){alert('Không có dữ liệu chi tiết.');return;}
   _kpiOpenListModal(label,customers,'unique',parts[0],1);
 };
@@ -7707,10 +7715,10 @@ window._dailyOpenCustList=function(saleId,type){
   } else if(type==='potential'){
     label='Potential — '+(sale?sale.full_name:'');
     customers=d.potKpiIds.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);
-  } else if(type==='quotation'||type==='invoice'){
-    label=(type==='quotation'?'Quotation':'Invoice')+' — '+(sale?sale.full_name:'');
+  } else if(type==='allinv'||type==='invoice'){
+    label=(type==='invoice'?'Invoice approved':'Báo giá')+' — '+(sale?sale.full_name:'');
     var filtInvs=d.saleInvs.filter(function(inv){
-      return type==='quotation'?inv.type==='quotation':(inv.type==='invoice'||!inv.type);
+      return type==='invoice'?inv.approval_status==='approved':true;
     });
     // Map invoice → customer object (kèm _inv để modal hiện số tiền)
     var seen=new Set();
@@ -7738,8 +7746,8 @@ async function renderDailyData(){
   const fSaleDaily=window._dailySale||'all';
   const US_OFFSET_MS=7*60*60*1000;
 
-  var _fromD=new Date(fFrom+'T00:00:00');_fromD.setDate(_fromD.getDate()-1);
-  var _toD=new Date(fTo+'T23:59:59');_toD.setDate(_toD.getDate()+1);
+  var _fromD=new Date(fFrom+'T00:00:00Z');_fromD.setUTCDate(_fromD.getUTCDate()-1);
+  var _toD=new Date(fTo+'T23:59:59Z');_toD.setUTCDate(_toD.getUTCDate()+1);
   const fromDt=_fromD.toISOString().slice(0,19);
   const toDt=_toD.toISOString().slice(0,19);
 
@@ -7749,18 +7757,33 @@ async function renderDailyData(){
       :PROFILES.filter(function(p){return p.id===fSaleDaily;}))
     :[currentProfile];
 
-  // ── Fetch per-sale (song song) để tránh bị cắt bởi limit ──
+  // Abbreviate potential type names
+  function abbrevPot(name){
+    if(!name)return name;
+    var map={'Pedicure Spa & Package':'Ped','Part & Accessories':'Part','Padset':'Pad','HeadSpa Bed':'Head','Furniture':'Fur','Massage Chair':'Mas'};
+    return map[name]||name;
+  }
+
+  // Date list: T2-T6 only, using UTC noon to avoid timezone bugs
+  function addDay(ds){var d=new Date(ds+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);}
+  var dates=[];
+  var _ds=fFrom;
+  while(_ds<=fTo){
+    var dow=new Date(_ds+'T12:00:00Z').getUTCDay();
+    if(dow!==0&&dow!==6)dates.push(_ds);
+    _ds=addDay(_ds);
+  }
+
+  // Parallel fetch: potHist + invoices + per-sale call_logs
   const potHistQ=sb.from('potential_history')
     .select('customer_id,assigned_to_id,potential,recalled_at')
     .gte('recalled_at',fromDt.slice(0,7)+'-01')
-    .lte('recalled_at',toDt)
-    .limit(20000);
+    .lte('recalled_at',toDt).limit(20000);
 
   const invQ=sb.from('invoices')
     .select('sale_id,customer_id,invoice_no,created_at,date,total,type,approval_status')
     .eq('type','invoice')
-    .gte('created_at',fromDt).lte('created_at',toDt)
-    .limit(5000);
+    .gte('created_at',fromDt).lte('created_at',toDt).limit(5000);
 
   const [potHistRes,invsRes,...logResults]=await Promise.all([
     potHistQ, invQ,
@@ -7768,16 +7791,15 @@ async function renderDailyData(){
       return sb.from('call_logs')
         .select('customer_id,sale_id,called_at')
         .eq('sale_id',sale.id)
-        .gte('called_at',fromDt).lte('called_at',toDt)
-        .limit(50000);
+        .gte('called_at',fromDt).lte('called_at',toDt).limit(100000);
     })
   ]);
 
   const potHist=potHistRes.data||[];
   const invs=invsRes.data||[];
 
-  // Build per-sale logs map
-  const saleLogsMap={};
+  // Build per-sale logs (convert UTC → US local date)
+  var saleLogsMap={};
   salesToShow.forEach(function(sale,idx){
     var raw=(logResults[idx]&&logResults[idx].data)||[];
     saleLogsMap[sale.id]=raw.filter(function(l){
@@ -7787,15 +7809,6 @@ async function renderDailyData(){
     });
   });
 
-  // Dates (bỏ T7 CN)
-  const dates=[];
-  var _d=new Date(fFrom);var _dEnd=new Date(fTo);
-  while(_d<=_dEnd){
-    var dow=_d.getDay();
-    if(dow!==0&&dow!==6)dates.push(_d.toISOString().slice(0,10));
-    _d.setDate(_d.getDate()+1);
-  }
-
   var tableRows='';
   window._dailyClickData=window._dailyClickData||{};
 
@@ -7803,7 +7816,7 @@ async function renderDailyData(){
     var saleLogs=saleLogsMap[sale.id]||[];
     var saleInvs=invs.filter(function(inv){return inv.sale_id===sale.id;});
 
-    // Data thao tác: unique customer per day (dedup)
+    // byDate: unique customer_id per US-local-day
     var byDate={};
     saleLogs.forEach(function(l){
       var day=new Date(new Date(l.called_at).getTime()-US_OFFSET_MS).toISOString().slice(0,10);
@@ -7812,7 +7825,7 @@ async function renderDailyData(){
     });
     var allUnique=new Set(saleLogs.map(function(l){return l.customer_id;}));
 
-    // Potential mới vs cũ (Pot.New / Pot.Old)
+    // Pot.New / Pot.Old
     var hadPotBefore=new Set();
     potHist.filter(function(h){return h.assigned_to_id===sale.id&&h.potential&&h.recalled_at&&h.recalled_at.slice(0,10)<fFrom;})
       .forEach(function(h){hadPotBefore.add(h.customer_id);});
@@ -7832,46 +7845,40 @@ async function renderDailyData(){
       if(saleLogs.some(function(l){return l.customer_id===cid;}))followIds.add(cid);
     });
 
-    // Potential breakdown (Pot.New)
+    // Pot.New breakdown (abbreviated)
     var potBreak={};
-    (POTENTIAL_OPTS||[]).forEach(function(opt){potBreak[opt]=0;});
     newPotIds.forEach(function(cid){
       var c=CUSTOMERS.find(function(x){return x.id===cid;});
-      if(c&&c.potential&&potBreak[c.potential]!==undefined)potBreak[c.potential]++;
+      if(c&&c.potential){var k=abbrevPot(c.potential);potBreak[k]=(potBreak[k]||0)+1;}
     });
-    var potBreakStr=Object.entries(potBreak).filter(function(e){return e[1]>0;}).map(function(e){return e[0]+': '+e[1];}).join(' | ')||'—';
+    var potBreakStr=Object.entries(potBreak).filter(function(e){return e[1]>0;}).map(function(e){return e[0]+':'+e[1];}).join(' | ')||'';
 
-    // Invoices: Báo giá = tất cả type=invoice; Invoice = chỉ approved
+    // Invoice counts
     var allInvCount=saleInvs.length;
     var approvedInvCount=saleInvs.filter(function(inv){return inv.approval_status==='approved';}).length;
 
-    // Store for click
     window._dailyClickData[sale.id]={
-      allUniqueIds:Array.from(allUnique),
-      newPotIds:Array.from(newPotIds),
-      followIds:Array.from(followIds),
-      potKpiIds:Array.from(newPotIds).concat(Array.from(followIds)),
-      saleInvs:saleInvs,
-      byDate:byDate
+      allUniqueIds:Array.from(allUnique),newPotIds:Array.from(newPotIds),
+      followIds:Array.from(followIds),potKpiIds:Array.from(newPotIds).concat(Array.from(followIds)),
+      saleInvs:saleInvs
     };
 
     var _sid="'"+sale.id+"'";
 
-    // Summary row (6 cols: Sale | Data | Pot.New | Pot.Old | Báo giá | Invoice)
-    tableRows+=
-      '<tr style="background:var(--surface)">'
-      +'<td style="font-weight:600;color:var(--text);cursor:pointer" onclick="document.querySelectorAll(&quot;.daily-day-row-'+sale.id+'&quot;).forEach(function(r){r.style.display=r.style.display===&quot;none&quot;?&quot;&quot;:&quot;none&quot;})">'+(sale.full_name||sale.nickname||'')+'</td>'
+    // Summary row (6 cols)
+    tableRows+='<tr style="background:var(--surface)">'
+      +'<td style="font-weight:600;color:var(--text);cursor:pointer" onclick="document.querySelectorAll(&quot;.ddr-'+sale.id+'&quot;).forEach(function(r){r.style.display=r.style.display===&quot;none&quot;?&quot;&quot;:&quot;none&quot;})">'+(sale.full_name||sale.nickname||'')+'</td>'
       +'<td style="font-weight:600;color:var(--accent2);cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;unique&quot;)">'+allUnique.size+'</td>'
       +'<td style="cursor:pointer" onclick="window._dailyOpenNewPot('+_sid+')">'
-        +'<span style="color:var(--success);font-weight:600">'+newPotIds.size+'</span>'
-        +(newPotIds.size>0?'<div style="font-size:9px;color:var(--text3);margin-top:2px">'+potBreakStr+'</div>':'')
+        +'<b style="color:var(--success)">'+newPotIds.size+'</b>'
+        +(potBreakStr?'<div style="font-size:9px;color:var(--text3);white-space:nowrap">'+potBreakStr+'</div>':'')
       +'</td>'
       +'<td style="color:var(--warn);cursor:pointer" onclick="window._dailyOpenFollow('+_sid+')">'+followIds.size+'</td>'
-      +'<td style="text-align:center">'+allInvCount+'</td>'
-      +'<td style="text-align:center;color:'+(approvedInvCount>0?'var(--success)':'var(--text3)')+'">'+approvedInvCount+'</td>'
+      +'<td style="text-align:center;cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;allinv&quot;)">'+allInvCount+'</td>'
+      +'<td style="text-align:center;color:'+(approvedInvCount>0?'var(--success)':'var(--text3)')+';cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;invoice&quot;)">'+approvedInvCount+'</td>'
       +'</tr>';
 
-    // Per-day breakdown
+    // Per-day rows
     var newPotByDate={};var followByDate={};
     dates.forEach(function(dt){newPotByDate[dt]=new Set();followByDate[dt]=new Set();});
 
@@ -7894,30 +7901,42 @@ async function renderDailyData(){
       var dtAllInv=saleInvs.filter(function(inv){var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');return d===dt;}).length;
       var dtApprInv=saleInvs.filter(function(inv){var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');return d===dt&&inv.approval_status==='approved';}).length;
 
-      // Store day-level data for click
-      var _dtKey=sale.id+'__'+dt;
-      window._dailyClickData[_dtKey]={
+      // Pot.New breakdown per day
+      var dtPotBreak={};
+      if(newPotByDate[dt])newPotByDate[dt].forEach(function(cid){
+        var c=CUSTOMERS.find(function(x){return x.id===cid;});
+        if(c&&c.potential){var k=abbrevPot(c.potential);dtPotBreak[k]=(dtPotBreak[k]||0)+1;}
+      });
+      var dtBreakStr=Object.entries(dtPotBreak).filter(function(e){return e[1]>0;}).map(function(e){return e[0]+':'+e[1];}).join(' | ');
+
+      var _key=sale.id+'__'+dt;
+      window._dailyClickData[_key]={
         ids:byDate[dt]?Array.from(byDate[dt]):[],
         newPotIds:newPotByDate[dt]?Array.from(newPotByDate[dt]):[],
         followIds:followByDate[dt]?Array.from(followByDate[dt]):[],
         saleInvs:saleInvs.filter(function(inv){var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');return d===dt;})
       };
-      var _dtSid="'"+sale.id+"__"+dt+"'";
+      var _dtSid="'"+sale.id+'__'+dt+"'";
 
-      tableRows+='<tr class="daily-day-row-'+sale.id+'" style="font-size:11px;color:var(--text3);display:none">'
+      tableRows+='<tr class="ddr-'+sale.id+'" style="font-size:11px;color:var(--text3);display:none">'
         +'<td style="padding-left:28px">'+dt+'</td>'
         +'<td style="color:'+(cnt>0?'var(--accent2)':'var(--text3)')+';cursor:pointer" onclick="window._dailyOpenDay('+_dtSid+',&quot;unique&quot;)">'+cnt+'</td>'
-        +'<td style="color:'+(nPot>0?'var(--success)':'var(--text3)')+';cursor:pointer" onclick="window._dailyOpenDay('+_dtSid+',&quot;newpot&quot;)">'+nPot+'</td>'
+        +'<td style="cursor:pointer" onclick="window._dailyOpenDay('+_dtSid+',&quot;newpot&quot;)">'
+          +'<span style="color:'+(nPot>0?'var(--success)':'var(--text3)')+'">'+nPot+'</span>'
+          +(dtBreakStr?'<span style="font-size:9px;color:var(--text3);margin-left:4px">'+dtBreakStr+'</span>':'')
+        +'</td>'
         +'<td style="color:'+(fPot>0?'var(--warn)':'var(--text3)')+';cursor:pointer" onclick="window._dailyOpenDay('+_dtSid+',&quot;follow&quot;)">'+fPot+'</td>'
-        +'<td style="text-align:center">'+dtAllInv+'</td>'
-        +'<td style="text-align:center;color:'+(dtApprInv>0?'var(--success)':'var(--text3)')+'">'+dtApprInv+'</td>'
+        +'<td style="text-align:center;cursor:pointer" onclick="window._dailyOpenDay('+_dtSid+',&quot;allinv&quot;)">'+dtAllInv+'</td>'
+        +'<td style="text-align:center;color:'+(dtApprInv>0?'var(--success)':'var(--text3)')+';cursor:pointer" onclick="window._dailyOpenDay('+_dtSid+',&quot;invoice&quot;)">'+dtApprInv+'</td>'
         +'</tr>';
     });
   });
 
   const dc=document.getElementById('daily-content');
   if(!dc)return;
-  dc.innerHTML='<div class="table-scroll-always" style="margin-top:4px"><table><thead><tr>'
+  dc.innerHTML='<div class="table-scroll-always" style="margin-top:4px"><table><colgroup>'
+    +'<col style="min-width:140px"><col style="min-width:90px"><col style="min-width:120px"><col style="min-width:90px"><col style="min-width:80px"><col style="min-width:80px">'
+    +'</colgroup><thead><tr>'
     +'<th>Sale</th><th>Data thao tác</th>'
     +'<th style="color:var(--success)">Pot.New</th>'
     +'<th style="color:var(--warn)">Pot.Old</th>'
