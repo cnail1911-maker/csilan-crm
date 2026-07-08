@@ -7652,6 +7652,22 @@ async function campAssignSelected(){
 
 // ── FIX 3+4: DAILY TAB ──
 // ── Mở modal danh sách khách từ Daily Report (click vào Data/Potential/Quotation/Invoice) ──
+window._dailyOpenDay=function(key,type){
+  // key = 'saleId__YYYY-MM-DD'
+  var d=window._dailyClickData&&window._dailyClickData[key];
+  if(!d)return;
+  var parts=key.split('__');
+  var sale=PROFILES.find(function(p){return p.id===parts[0];});
+  var dt=parts[1]||'';
+  var label='',ids=[];
+  if(type==='unique'){label='Data thao tác '+dt+' — '+(sale?sale.full_name:'');ids=d.ids;}
+  else if(type==='newpot'){label='Pot.New '+dt+' — '+(sale?sale.full_name:'');ids=d.newPotIds;}
+  else if(type==='follow'){label='Pot.Old '+dt+' — '+(sale?sale.full_name:'');ids=d.followIds;}
+  var customers=ids.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);
+  if(!customers.length){alert('Không có dữ liệu chi tiết.');return;}
+  _kpiOpenListModal(label,customers,'unique',parts[0],1);
+};
+
 window._dailyOpenNewPot=function(saleId){
   var d=window._dailyClickData&&window._dailyClickData[saleId];
   if(!d)return;
@@ -7720,195 +7736,199 @@ async function renderDailyData(){
   const fFrom=window._dailyFrom||defFrom.toISOString().slice(0,10);
   const fTo=window._dailyTo||today.toISOString().slice(0,10);
   const fSaleDaily=window._dailySale||'all';
+  const US_OFFSET_MS=7*60*60*1000;
 
   var _fromD=new Date(fFrom+'T00:00:00');_fromD.setDate(_fromD.getDate()-1);
   var _toD=new Date(fTo+'T23:59:59');_toD.setDate(_toD.getDate()+1);
   const fromDt=_fromD.toISOString().slice(0,19);
   const toDt=_toD.toISOString().slice(0,19);
-  const US_OFFSET_MS=7*60*60*1000;
-
-  const [logsRes,invsRes1,invsRes2,potHistRes]=await Promise.all([
-    sb.from('call_logs').select('customer_id,sale_id,called_at').gte('called_at',fromDt).lte('called_at',toDt).limit(10000),
-    sb.from('invoices').select('sale_id,customer_id,invoice_no,created_at,date,total,type').gte('created_at',fromDt).lte('created_at',toDt).limit(5000),
-    sb.from('invoices').select('sale_id,customer_id,invoice_no,created_at,date,total,type').is('created_at',null).gte('date',fFrom).lte('date',fTo).limit(2000),
-    // Lấy rộng hơn để có potential_history trước kỳ (dùng cho follow lại)
-    sb.from('potential_history').select('customer_id,assigned_to_id,potential,recalled_at').gte('recalled_at',fromDt.slice(0,7)+'-01').lte('recalled_at',toDt).limit(10000)
-  ]);
-
-  let logs=(logsRes.data||[]).filter(function(l){
-    if(!l.called_at)return false;
-    var localDate=new Date(new Date(l.called_at).getTime()-US_OFFSET_MS).toISOString().slice(0,10);
-    return localDate>=fFrom&&localDate<=fTo;
-  });
-  const invMap=new Map();
-  [...(invsRes1.data||[]),...(invsRes2.data||[])].forEach(function(i){
-    var k=(i.sale_id||'')+'_'+(i.created_at||i.date||'')+'_'+(i.total||0);
-    if(!invMap.has(k))invMap.set(k,i);
-  });
-  const invs=Array.from(invMap.values());
-  const potHist=potHistRes.data||[];
 
   const salesToShow=isManager
-    ?(fSaleDaily==='all'?PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}):PROFILES.filter(function(p){return p.id===fSaleDaily;}))
+    ?(fSaleDaily==='all'
+      ?PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';})
+      :PROFILES.filter(function(p){return p.id===fSaleDaily;}))
     :[currentProfile];
 
+  // ── Fetch per-sale (song song) để tránh bị cắt bởi limit ──
+  const potHistQ=sb.from('potential_history')
+    .select('customer_id,assigned_to_id,potential,recalled_at')
+    .gte('recalled_at',fromDt.slice(0,7)+'-01')
+    .lte('recalled_at',toDt)
+    .limit(20000);
+
+  const invQ=sb.from('invoices')
+    .select('sale_id,customer_id,invoice_no,created_at,date,total,type,approval_status')
+    .eq('type','invoice')
+    .gte('created_at',fromDt).lte('created_at',toDt)
+    .limit(5000);
+
+  const [potHistRes,invsRes,...logResults]=await Promise.all([
+    potHistQ, invQ,
+    ...salesToShow.map(function(sale){
+      return sb.from('call_logs')
+        .select('customer_id,sale_id,called_at')
+        .eq('sale_id',sale.id)
+        .gte('called_at',fromDt).lte('called_at',toDt)
+        .limit(50000);
+    })
+  ]);
+
+  const potHist=potHistRes.data||[];
+  const invs=invsRes.data||[];
+
+  // Build per-sale logs map
+  const saleLogsMap={};
+  salesToShow.forEach(function(sale,idx){
+    var raw=(logResults[idx]&&logResults[idx].data)||[];
+    saleLogsMap[sale.id]=raw.filter(function(l){
+      if(!l.called_at)return false;
+      var localDate=new Date(new Date(l.called_at).getTime()-US_OFFSET_MS).toISOString().slice(0,10);
+      return localDate>=fFrom&&localDate<=fTo;
+    });
+  });
+
+  // Dates (bỏ T7 CN)
   const dates=[];
-  const d=new Date(fFrom);const dEnd=new Date(fTo);
-  while(d<=dEnd){
-    var dow=d.getDay(); // 0=CN, 6=T7
-    if(dow!==0&&dow!==6)dates.push(d.toISOString().slice(0,10));
-    d.setDate(d.getDate()+1);
+  var _d=new Date(fFrom);var _dEnd=new Date(fTo);
+  while(_d<=_dEnd){
+    var dow=_d.getDay();
+    if(dow!==0&&dow!==6)dates.push(_d.toISOString().slice(0,10));
+    _d.setDate(_d.getDate()+1);
   }
 
-  let tableRows='';
-  const summary=[];
+  var tableRows='';
+  window._dailyClickData=window._dailyClickData||{};
 
   salesToShow.forEach(function(sale){
-    const saleLogs=(logs||[]).filter(function(l){return l.sale_id===sale.id;});
-    const saleInvs=(invs||[]).filter(function(inv){return inv.sale_id===sale.id;});
+    var saleLogs=saleLogsMap[sale.id]||[];
+    var saleInvs=invs.filter(function(inv){return inv.sale_id===sale.id;});
 
-    // ── DATA THAO TÁC: unique customer_id per day (1 data nhiều lần = 1 lần) ──
-    const byDate={};
+    // Data thao tác: unique customer per day (dedup)
+    var byDate={};
     saleLogs.forEach(function(l){
-      if(!l.called_at)return;
       var day=new Date(new Date(l.called_at).getTime()-US_OFFSET_MS).toISOString().slice(0,10);
-      if(!day)return;
       if(!byDate[day])byDate[day]=new Set();
       byDate[day].add(l.customer_id);
     });
-    const allUnique=new Set(saleLogs.map(function(l){return l.customer_id;}));
+    var allUnique=new Set(saleLogs.map(function(l){return l.customer_id;}));
 
-    // ── POTENTIAL: 3 loại ──
-    // 1. POTENTIAL MỚI: potential_since trong kỳ (lần đầu được set potential)
-    //    → check không có potential_history nào TRƯỚC fFrom cho customer này với assigned_to = sale
-    // 2. POTENTIAL FOLLOW LẠI: đã là potential từ trước (potential_since < fFrom)
-    //    VÀ có call_log trong kỳ
-    // 3. BỎ POTENTIAL: customer trong potential_history trong kỳ mà potential=null/rỗng
-    //    (tức là sale đã xoá potential trong kỳ)
+    // Potential mới vs cũ (Pot.New / Pot.Old)
+    var hadPotBefore=new Set();
+    potHist.filter(function(h){return h.assigned_to_id===sale.id&&h.potential&&h.recalled_at&&h.recalled_at.slice(0,10)<fFrom;})
+      .forEach(function(h){hadPotBefore.add(h.customer_id);});
+    CUSTOMERS.filter(function(c){return c.assigned_to===sale.id&&c.potential&&c.potential_since&&c.potential_since<fFrom;})
+      .forEach(function(c){hadPotBefore.add(c.id);});
 
-    // Set customer_id đã có potential TRƯỚC kỳ (từ potential_history hoặc CUSTOMERS.potential_since < fFrom)
-    const hadPotentialBefore=new Set();
-    potHist.filter(function(h){
-      return h.assigned_to_id===sale.id&&h.potential&&h.recalled_at&&h.recalled_at.slice(0,10)<fFrom;
-    }).forEach(function(h){hadPotentialBefore.add(h.customer_id);});
+    var newPotIds=new Set();
     CUSTOMERS.filter(function(c){
-      return c.assigned_to===sale.id&&c.potential&&c.potential_since&&c.potential_since<fFrom;
-    }).forEach(function(c){hadPotentialBefore.add(c.id);});
-
-    // Potential mới trong kỳ: potential_since trong [fFrom, fTo], chưa từng là potential trước đó
-    const newPotIds=new Set();
-    CUSTOMERS.filter(function(c){
-      return c.assigned_to===sale.id&&c.potential&&c.potential_since&&c.potential_since>=fFrom&&c.potential_since<=fTo&&!hadPotentialBefore.has(c.id);
+      return c.assigned_to===sale.id&&c.potential&&c.potential_since&&c.potential_since>=fFrom&&c.potential_since<=fTo&&!hadPotBefore.has(c.id);
     }).forEach(function(c){newPotIds.add(c.id);});
-    // Potential mới từ history (đã recall nhưng potential_since đầu tiên trong kỳ)
     potHist.filter(function(h){
-      return h.assigned_to_id===sale.id&&h.potential&&h.recalled_at&&h.recalled_at.slice(0,10)>=fFrom&&h.recalled_at.slice(0,10)<=fTo&&!hadPotentialBefore.has(h.customer_id);
+      return h.assigned_to_id===sale.id&&h.potential&&h.recalled_at&&h.recalled_at.slice(0,10)>=fFrom&&h.recalled_at.slice(0,10)<=fTo&&!hadPotBefore.has(h.customer_id);
     }).forEach(function(h){newPotIds.add(h.customer_id);});
 
-    // Follow lại: đã là potential từ trước + có call_log trong kỳ
-    const followIds=new Set();
-    hadPotentialBefore.forEach(function(cid){
+    var followIds=new Set();
+    hadPotBefore.forEach(function(cid){
       if(saleLogs.some(function(l){return l.customer_id===cid;}))followIds.add(cid);
     });
 
-    // Bỏ potential: có trong history trong kỳ với potential=null/rỗng (bị thu hồi/xoá)
-    const removedPotIds=new Set();
-    potHist.filter(function(h){
-      return h.assigned_to_id===sale.id&&!h.potential&&h.recalled_at&&h.recalled_at.slice(0,10)>=fFrom&&h.recalled_at.slice(0,10)<=fTo;
-    }).forEach(function(h){removedPotIds.add(h.customer_id);});
-
-    const invCount=saleInvs.length;
-    summary.push({sale:sale,total:allUnique.size,newPot:newPotIds.size,follow:followIds.size,removedPot:removedPotIds.size,invs:invCount,byDate:byDate,newPotIds:newPotIds,followIds:followIds,removedPotIds:removedPotIds,saleInvs:saleInvs});
-
-    // Per-day breakdown — bỏ cuối tuần (0=CN, 6=T7)
-    const newPotByDate={};const followByDate={};const removedByDate={};
-    dates.forEach(function(dt){newPotByDate[dt]=new Set();followByDate[dt]=new Set();removedByDate[dt]=new Set();});
-
-    // New pot per day
-    CUSTOMERS.filter(function(c){
-      return c.assigned_to===sale.id&&c.potential&&c.potential_since&&newPotIds.has(c.id);
-    }).forEach(function(c){
-      var day=c.potential_since.slice(0,10);
-      if(newPotByDate[day])newPotByDate[day].add(c.id);
+    // Potential breakdown (Pot.New)
+    var potBreak={};
+    (POTENTIAL_OPTS||[]).forEach(function(opt){potBreak[opt]=0;});
+    newPotIds.forEach(function(cid){
+      var c=CUSTOMERS.find(function(x){return x.id===cid;});
+      if(c&&c.potential&&potBreak[c.potential]!==undefined)potBreak[c.potential]++;
     });
-    potHist.filter(function(h){
-      return h.assigned_to_id===sale.id&&h.potential&&newPotIds.has(h.customer_id)&&h.recalled_at;
-    }).forEach(function(h){
-      var day=h.recalled_at.slice(0,10);
-      if(newPotByDate[day])newPotByDate[day].add(h.customer_id);
-    });
+    var potBreakStr=Object.entries(potBreak).filter(function(e){return e[1]>0;}).map(function(e){return e[0]+': '+e[1];}).join(' | ')||'—';
 
-    // Follow per day
+    // Invoices: Báo giá = tất cả type=invoice; Invoice = chỉ approved
+    var allInvCount=saleInvs.length;
+    var approvedInvCount=saleInvs.filter(function(inv){return inv.approval_status==='approved';}).length;
+
+    // Store for click
+    window._dailyClickData[sale.id]={
+      allUniqueIds:Array.from(allUnique),
+      newPotIds:Array.from(newPotIds),
+      followIds:Array.from(followIds),
+      potKpiIds:Array.from(newPotIds).concat(Array.from(followIds)),
+      saleInvs:saleInvs,
+      byDate:byDate
+    };
+
+    var _sid="'"+sale.id+"'";
+
+    // Summary row (6 cols: Sale | Data | Pot.New | Pot.Old | Báo giá | Invoice)
+    tableRows+=
+      '<tr style="background:var(--surface)">'
+      +'<td style="font-weight:600;color:var(--text);cursor:pointer" onclick="document.querySelectorAll(&quot;.daily-day-row-'+sale.id+'&quot;).forEach(function(r){r.style.display=r.style.display===&quot;none&quot;?&quot;&quot;:&quot;none&quot;})">'+(sale.full_name||sale.nickname||'')+'</td>'
+      +'<td style="font-weight:600;color:var(--accent2);cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;unique&quot;)">'+allUnique.size+'</td>'
+      +'<td style="cursor:pointer" onclick="window._dailyOpenNewPot('+_sid+')">'
+        +'<span style="color:var(--success);font-weight:600">'+newPotIds.size+'</span>'
+        +(newPotIds.size>0?'<div style="font-size:9px;color:var(--text3);margin-top:2px">'+potBreakStr+'</div>':'')
+      +'</td>'
+      +'<td style="color:var(--warn);cursor:pointer" onclick="window._dailyOpenFollow('+_sid+')">'+followIds.size+'</td>'
+      +'<td style="text-align:center">'+allInvCount+'</td>'
+      +'<td style="text-align:center;color:'+(approvedInvCount>0?'var(--success)':'var(--text3)')+'">'+approvedInvCount+'</td>'
+      +'</tr>';
+
+    // Per-day breakdown
+    var newPotByDate={};var followByDate={};
+    dates.forEach(function(dt){newPotByDate[dt]=new Set();followByDate[dt]=new Set();});
+
+    CUSTOMERS.filter(function(c){return c.assigned_to===sale.id&&c.potential&&newPotIds.has(c.id)&&c.potential_since;}).forEach(function(c){
+      var day=c.potential_since.slice(0,10);if(newPotByDate[day])newPotByDate[day].add(c.id);
+    });
+    potHist.filter(function(h){return h.assigned_to_id===sale.id&&h.potential&&newPotIds.has(h.customer_id)&&h.recalled_at;}).forEach(function(h){
+      var day=h.recalled_at.slice(0,10);if(newPotByDate[day])newPotByDate[day].add(h.customer_id);
+    });
     saleLogs.forEach(function(l){
-      if(!hadPotentialBefore.has(l.customer_id))return;
+      if(!hadPotBefore.has(l.customer_id))return;
       var day=new Date(new Date(l.called_at).getTime()-US_OFFSET_MS).toISOString().slice(0,10);
       if(followByDate[day])followByDate[day].add(l.customer_id);
     });
 
-    // Removed per day
-    potHist.filter(function(h){
-      return h.assigned_to_id===sale.id&&!h.potential&&h.recalled_at&&removedPotIds.has(h.customer_id);
-    }).forEach(function(h){
-      var day=h.recalled_at.slice(0,10);
-      if(removedByDate[day])removedByDate[day].add(h.customer_id);
-    });
-
-    let dayRows='';
     dates.forEach(function(dt){
       var cnt=(byDate[dt]&&byDate[dt].size)||0;
       var nPot=newPotByDate[dt]?newPotByDate[dt].size:0;
       var fPot=followByDate[dt]?followByDate[dt].size:0;
-      var rPot=removedByDate[dt]?removedByDate[dt].size:0;
-      var dtInvs=(invs||[]).filter(function(inv){var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');return inv.sale_id===sale.id&&d===dt&&(inv.type==='invoice'||!inv.type);}).length;
-      var dtQuotes=(invs||[]).filter(function(inv){var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');return inv.sale_id===sale.id&&d===dt&&inv.type==='quotation';}).length;
-      dayRows+='<tr class="daily-day-row-'+sale.id+'" style="font-size:11px;color:var(--text3);display:none">'
-        +'<td style="padding-left:32px">'+dt+'</td>'
-        +'<td style="color:'+(cnt>0?'var(--accent2)':'var(--text3)')+'">'+cnt+'</td>'
-        +'<td style="color:'+(nPot>0?'var(--success)':'var(--text3)')+'">'+nPot+'</td>'
-        +'<td style="color:'+(fPot>0?'var(--warn)':'var(--text3)')+'">'+fPot+'</td>'
-        +'<td style="color:'+(rPot>0?'var(--danger)':'var(--text3)')+'">'+rPot+'</td>'
-        +'<td style="text-align:center">'+dtQuotes+'</td>'
-        +'<td style="text-align:center">'+dtInvs+'</td></tr>';
+      var dtAllInv=saleInvs.filter(function(inv){var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');return d===dt;}).length;
+      var dtApprInv=saleInvs.filter(function(inv){var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');return d===dt&&inv.approval_status==='approved';}).length;
+
+      // Store day-level data for click
+      var _dtKey=sale.id+'__'+dt;
+      window._dailyClickData[_dtKey]={
+        ids:byDate[dt]?Array.from(byDate[dt]):[],
+        newPotIds:newPotByDate[dt]?Array.from(newPotByDate[dt]):[],
+        followIds:followByDate[dt]?Array.from(followByDate[dt]):[],
+        saleInvs:saleInvs.filter(function(inv){var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');return d===dt;})
+      };
+      var _dtSid="'"+sale.id+"__"+dt+"'";
+
+      tableRows+='<tr class="daily-day-row-'+sale.id+'" style="font-size:11px;color:var(--text3);display:none">'
+        +'<td style="padding-left:28px">'+dt+'</td>'
+        +'<td style="color:'+(cnt>0?'var(--accent2)':'var(--text3)')+';cursor:pointer" onclick="window._dailyOpenDay('+_dtSid+',&quot;unique&quot;)">'+cnt+'</td>'
+        +'<td style="color:'+(nPot>0?'var(--success)':'var(--text3)')+';cursor:pointer" onclick="window._dailyOpenDay('+_dtSid+',&quot;newpot&quot;)">'+nPot+'</td>'
+        +'<td style="color:'+(fPot>0?'var(--warn)':'var(--text3)')+';cursor:pointer" onclick="window._dailyOpenDay('+_dtSid+',&quot;follow&quot;)">'+fPot+'</td>'
+        +'<td style="text-align:center">'+dtAllInv+'</td>'
+        +'<td style="text-align:center;color:'+(dtApprInv>0?'var(--success)':'var(--text3)')+'">'+dtApprInv+'</td>'
+        +'</tr>';
     });
-
-    const quoteCount=saleInvs.filter(function(inv){return inv.type==='quotation';}).length;
-    const realInvCount=saleInvs.filter(function(inv){return inv.type==='invoice'||!inv.type;}).length;
-
-    window._dailyClickData=window._dailyClickData||{};
-    var _npArr=Array.from(newPotIds);var _fArr=Array.from(followIds);
-    window._dailyClickData[sale.id]={
-      allUniqueIds:Array.from(allUnique),
-      newPotIds:_npArr,followIds:_fArr,
-      potKpiIds:_npArr.concat(_fArr), // alias cho _dailyOpenCustList('potential')
-      removedPotIds:Array.from(removedPotIds),saleInvs:saleInvs
-    };
-
-    var _sid="'"+sale.id+"'";
-    tableRows+=
-      '<tr style="background:var(--surface)">'
-      +'<td style="font-weight:600;color:var(--text);cursor:pointer" onclick="document.querySelectorAll(&quot;.daily-day-row-&quot;+'+_sid+').forEach(function(r){r.style.display=r.style.display===&quot;none&quot;?&quot;&quot;:&quot;none&quot;})">'+(sale.full_name||sale.nickname||'')+'</td>'
-      +'<td style="font-weight:600;color:var(--accent2);cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;unique&quot;)">'+allUnique.size+'</td>'
-      +'<td style="color:var(--success);cursor:pointer" onclick="window._dailyOpenNewPot('+_sid+')">'+newPotIds.size+'</td>'
-      +'<td style="color:var(--warn);cursor:pointer" onclick="window._dailyOpenFollow('+_sid+')">'+followIds.size+'</td>'
-      +'<td style="color:var(--danger);cursor:pointer" onclick="window._dailyOpenRemoved('+_sid+')">'+removedPotIds.size+'</td>'
-      +'<td style="text-align:center;cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;quotation&quot;)">'+quoteCount+'</td>'
-      +'<td style="text-align:center;color:'+(realInvCount>0?'var(--success)':'var(--text3)')+';cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;invoice&quot;)">'+realInvCount+'</td>'
-      +'</tr>'
-      // expand rows inserted directly as <tr> elements (no wrapper needed)
-      // (dayRows contains complete <tr> elements)
-      +dayRows;
   });
 
-  // Render vào daily-content (container đã render bởi render() shell)
   const dc=document.getElementById('daily-content');
   if(!dc)return;
-
-  var contentHtml='<div class="table-scroll-always" style="margin-top:4px"><table><thead><tr>'
-    +'<th>Sale</th><th>Data thao tác</th><th style="color:var(--success)">Pot. mới</th><th style="color:var(--warn)">Follow lại</th><th style="color:var(--danger)">Bỏ Pot.</th><th>Báo giá</th><th>Invoice</th>'
+  dc.innerHTML='<div class="table-scroll-always" style="margin-top:4px"><table><thead><tr>'
+    +'<th>Sale</th><th>Data thao tác</th>'
+    +'<th style="color:var(--success)">Pot.New</th>'
+    +'<th style="color:var(--warn)">Pot.Old</th>'
+    +'<th>Báo giá</th>'
+    +'<th>Invoice</th>'
     +'</tr></thead><tbody>'+tableRows+'</tbody></table></div>'
-    +'<div style="margin-top:10px;font-size:11px;color:var(--text3)">Ghi chú: <span style="color:var(--success)">■</span> Potential mới · <span style="color:var(--warn)">■</span> Follow lại (pot. cũ có thao tác trong kỳ) · <span style="color:var(--danger)">■</span> Bỏ potential · Data thao tác: unique khách/ngày (gọi nhiều lần vẫn đếm 1)</div>';
-
-  dc.innerHTML=contentHtml;
+    +'<div style="margin-top:10px;font-size:11px;color:var(--text3)">'
+    +'<span style="color:var(--success)">■</span> Pot.New = potential mới trong kỳ &nbsp;·&nbsp; '
+    +'<span style="color:var(--warn)">■</span> Pot.Old = potential cũ có thao tác trong kỳ &nbsp;·&nbsp; '
+    +'Báo giá = đơn tạo · Invoice = đơn approved &nbsp;·&nbsp; Data = unique khách/ngày'
+    +'</div>';
 }
 
 // ── FIX 5: SCHEDULE TAB ──
