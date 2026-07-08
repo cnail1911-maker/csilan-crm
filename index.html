@@ -7863,29 +7863,16 @@ async function renderDailyData(){
       +'</tr>';
   });
 
-  // Render phần lọc và bảng
-  const m=document.getElementById('main-content');
-  if(!m)return;
+  // Render vào daily-content (container đã render bởi render() shell)
+  const dc=document.getElementById('daily-content');
+  if(!dc)return;
 
-  var filterHtml='<div class="topbar"><div class="topbar-title">📊 Daily Report</div></div>'
-    +'<div class="content" style="padding-bottom:60px">'
-    +'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;align-items:center">'
-    +'<input type="date" id="daily-from" value="'+fFrom+'" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 10px;color:var(--text);font-size:12px">'
-    +'<span style="color:var(--text3)">→</span>'
-    +'<input type="date" id="daily-to" value="'+fTo+'" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 10px;color:var(--text);font-size:12px">';
-  if(isManager){
-    filterHtml+='<select id="daily-sale" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 10px;color:var(--text);font-size:12px"><option value="all">Tất cả sale</option>'
-      +PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fSaleDaily===p.id?' selected':'')+'>'+((p.nickname||p.full_name||'').split(' ').pop())+'</option>';}).join('')+'</select>';
-  }
-  filterHtml+='<button class="btn btn-primary" style="font-size:12px;padding:6px 14px" onclick="window._dailyFrom=document.getElementById(&quot;daily-from&quot;).value;window._dailyTo=document.getElementById(&quot;daily-to&quot;).value;var ds=document.getElementById(&quot;daily-sale&quot;);window._dailySale=ds?ds.value:&quot;all&quot;;renderDailyData()"><i class="ti ti-search"></i> Lọc</button>'
-    +'</div>'
-    +'<div class="table-scroll-always"><table><thead><tr>'
+  var contentHtml='<div class="table-scroll-always" style="margin-top:4px"><table><thead><tr>'
     +'<th>Sale</th><th>Data thao tác</th><th style="color:var(--success)">Pot. mới</th><th style="color:var(--warn)">Follow lại</th><th style="color:var(--danger)">Bỏ Pot.</th><th>Báo giá</th><th>Invoice</th>'
     +'</tr></thead><tbody>'+tableRows+'</tbody></table></div>'
-    +'<div style="margin-top:10px;font-size:11px;color:var(--text3)">Ghi chú: <span style="color:var(--success)">■</span> Potential mới · <span style="color:var(--warn)">■</span> Follow lại (pot. cũ có thao tác trong kỳ) · <span style="color:var(--danger)">■</span> Bỏ potential · Data thao tác: unique khách/ngày (gọi nhiều lần vẫn đếm 1)</div>'
-    +'</div>';
+    +'<div style="margin-top:10px;font-size:11px;color:var(--text3)">Ghi chú: <span style="color:var(--success)">■</span> Potential mới · <span style="color:var(--warn)">■</span> Follow lại (pot. cũ có thao tác trong kỳ) · <span style="color:var(--danger)">■</span> Bỏ potential · Data thao tác: unique khách/ngày (gọi nhiều lần vẫn đếm 1)</div>';
 
-  m.innerHTML=filterHtml;
+  dc.innerHTML=contentHtml;
 }
 
 // ── FIX 5: SCHEDULE TAB ──
