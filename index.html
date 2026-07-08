@@ -1544,10 +1544,10 @@ document.addEventListener('click',function(e){
     }catch(e){console.warn('[notif] realtime error',e);}
   }
 
-  window._notifPush=async function(userId,title,body,page){
+  window._notifPush=async function(userId,title,body,page,customerId){
     if(!userId){console.warn('[notif] push: userId null/undefined');return;}
     try{
-      var res=await sb.from('notifications').insert({user_id:userId,title:title,body:body,page:page||null});
+      var res=await sb.from('notifications').insert({user_id:userId,title:title,body:body,page:page||null,customer_id:customerId||null});
       if(res.error){console.warn('[notif] push DB error',res.error);}
       else{console.log('[notif] push OK → user',userId,'title:',title);}
     }catch(e){console.warn('[notif] push error',e);}
@@ -4730,7 +4730,7 @@ async function custAssignToSale(saleId,saleName){
       var stStr=c.state||'';
       var title='📋 Bạn được giao khách mới';
       var body='Bạn vừa nhận được khách hàng '+(c.customer_name||c.business_name||'')+(c.ma_kh?' '+c.ma_kh:'')+(stStr?' ở '+stStr:'')+' có nhu cầu về '+potStr+(c.assigned_deadline?' - Deadline đến ngày '+dlStr:'');
-      return window._notifPush(saleId,title,body,'customers');
+      return window._notifPush(saleId,title,body,'customers',c.id);
     });
     Promise.all(notifPromises).catch(function(e){console.warn('[assign notif]',e);});
   }
@@ -7422,7 +7422,22 @@ window._notifPageClick=function(id){
   if(window._notifMarkRead)window._notifMarkRead(id);
   var list=window._getNotifs?window._getNotifs():[];
   var n=list.find(function(x){return x.id===id;});
-  if(n&&n.page&&n.page!=='notifications')setPage(n.page);
+  if(!n)return;
+  if(n.page&&n.page!=='notifications')setPage(n.page);
+  if(n.customer_id){
+    var custId=typeof n.customer_id==='string'?parseInt(n.customer_id):n.customer_id;
+    setTimeout(function(){
+      var cust=CUSTOMERS.find(function(c){return c.id===custId;});
+      if(cust){
+        selId=custId;
+        render();
+      }else{
+        sb.from('customers').select('*').eq('id',custId).single().then(function(res){
+          if(res.data){CUSTOMERS.push(res.data);selId=custId;render();}
+        });
+      }
+    },300);
+  }
 };
 
 function renderGuide(){
@@ -7679,29 +7694,25 @@ async function renderDailyData(){
   const fTo=window._dailyTo||today.toISOString().slice(0,10);
   const fSaleDaily=window._dailySale||'all';
 
-  // Mở rộng 1 ngày để bắt log US timezone (UTC-5 đến UTC-10)
-  // Log lúc 23:00 US = sáng hôm sau UTC → cần query từ ngày trước
   var _fromD=new Date(fFrom+'T00:00:00');_fromD.setDate(_fromD.getDate()-1);
   var _toD=new Date(fTo+'T23:59:59');_toD.setDate(_toD.getDate()+1);
   const fromDt=_fromD.toISOString().slice(0,19);
   const toDt=_toD.toISOString().slice(0,19);
-  // Để lọc lại theo local date, dùng offset US (trung bình -7h = EST/CST/PST)
-  const US_OFFSET_MS=7*60*60*1000; // UTC-7 làm baseline
+  const US_OFFSET_MS=7*60*60*1000;
 
-  // Tối ưu: fetch song song, invoice tách 2 query để tránh OR chậm
   const [logsRes,invsRes1,invsRes2,potHistRes]=await Promise.all([
     sb.from('call_logs').select('customer_id,sale_id,called_at').gte('called_at',fromDt).lte('called_at',toDt).limit(10000),
     sb.from('invoices').select('sale_id,customer_id,invoice_no,created_at,date,total,type').gte('created_at',fromDt).lte('created_at',toDt).limit(5000),
     sb.from('invoices').select('sale_id,customer_id,invoice_no,created_at,date,total,type').is('created_at',null).gte('date',fFrom).lte('date',fTo).limit(2000),
-    sb.from('potential_history').select('customer_id,assigned_to_id,potential,recalled_at').gte('recalled_at',fromDt).lte('recalled_at',toDt).limit(5000)
+    // Lấy rộng hơn để có potential_history trước kỳ (dùng cho follow lại)
+    sb.from('potential_history').select('customer_id,assigned_to_id,potential,recalled_at').gte('recalled_at',fromDt.slice(0,7)+'-01').lte('recalled_at',toDt).limit(10000)
   ]);
-  // Lọc lại theo local US date (UTC-7 baseline)
+
   let logs=(logsRes.data||[]).filter(function(l){
     if(!l.called_at)return false;
     var localDate=new Date(new Date(l.called_at).getTime()-US_OFFSET_MS).toISOString().slice(0,10);
     return localDate>=fFrom&&localDate<=fTo;
   });
-  // Merge invoices dedup by sale_id+date
   const invMap=new Map();
   [...(invsRes1.data||[]),...(invsRes2.data||[])].forEach(function(i){
     var k=(i.sale_id||'')+'_'+(i.created_at||i.date||'')+'_'+(i.total||0);
@@ -7725,97 +7736,156 @@ async function renderDailyData(){
     const saleLogs=(logs||[]).filter(function(l){return l.sale_id===sale.id;});
     const saleInvs=(invs||[]).filter(function(inv){return inv.sale_id===sale.id;});
 
-    // Số khách unique thao tác trong kỳ
+    // ── DATA THAO TÁC: unique customer_id per day (1 data nhiều lần = 1 lần) ──
     const byDate={};
     saleLogs.forEach(function(l){
       if(!l.called_at)return;
-      // Dùng local US date thay vì UTC date
-      const day=new Date(new Date(l.called_at).getTime()-US_OFFSET_MS).toISOString().slice(0,10);
+      var day=new Date(new Date(l.called_at).getTime()-US_OFFSET_MS).toISOString().slice(0,10);
       if(!day)return;
       if(!byDate[day])byDate[day]=new Set();
       byDate[day].add(l.customer_id);
     });
     const allUnique=new Set(saleLogs.map(function(l){return l.customer_id;}));
 
-    // KPI Potential — unique customer_id từ potential_history trong kỳ
-    // + khách hiện tại có potential != null, assigned_to = sale, potential_since trong kỳ
-    const potKpiIds=new Set();
-    // Từ potential_history (đã bị thu hồi trong kỳ)
-    (potHist||[]).filter(function(h){return h.assigned_to_id===sale.id&&h.potential;}).forEach(function(h){potKpiIds.add(h.customer_id);});
-    // Từ CUSTOMERS hiện tại (chưa bị thu hồi, potential_since trong kỳ)
-    CUSTOMERS.filter(function(c){
-      return c.assigned_to===sale.id&&c.potential&&c.potential_since&&c.potential_since>=fFrom&&c.potential_since<=fTo;
-    }).forEach(function(c){potKpiIds.add(c.id);});
+    // ── POTENTIAL: 3 loại ──
+    // 1. POTENTIAL MỚI: potential_since trong kỳ (lần đầu được set potential)
+    //    → check không có potential_history nào TRƯỚC fFrom cho customer này với assigned_to = sale
+    // 2. POTENTIAL FOLLOW LẠI: đã là potential từ trước (potential_since < fFrom)
+    //    VÀ có call_log trong kỳ
+    // 3. BỎ POTENTIAL: customer trong potential_history trong kỳ mà potential=null/rỗng
+    //    (tức là sale đã xoá potential trong kỳ)
 
-    // Breakdown theo loại potential
-    const potentialBreakdown={};
-    POTENTIAL_OPTS.forEach(function(opt){potentialBreakdown[opt]=0;});
-    // Từ history
-    (potHist||[]).filter(function(h){return h.assigned_to_id===sale.id&&h.potential;}).forEach(function(h){
-      if(potentialBreakdown[h.potential]!==undefined)potentialBreakdown[h.potential]++;
-    });
-    // Từ current (không double count)
+    // Set customer_id đã có potential TRƯỚC kỳ (từ potential_history hoặc CUSTOMERS.potential_since < fFrom)
+    const hadPotentialBefore=new Set();
+    potHist.filter(function(h){
+      return h.assigned_to_id===sale.id&&h.potential&&h.recalled_at&&h.recalled_at.slice(0,10)<fFrom;
+    }).forEach(function(h){hadPotentialBefore.add(h.customer_id);});
     CUSTOMERS.filter(function(c){
-      return c.assigned_to===sale.id&&c.potential&&c.potential_since&&c.potential_since>=fFrom&&c.potential_since<=fTo;
-    }).forEach(function(c){
-      if(potentialBreakdown[c.potential]!==undefined)potentialBreakdown[c.potential]++;
+      return c.assigned_to===sale.id&&c.potential&&c.potential_since&&c.potential_since<fFrom;
+    }).forEach(function(c){hadPotentialBefore.add(c.id);});
+
+    // Potential mới trong kỳ: potential_since trong [fFrom, fTo], chưa từng là potential trước đó
+    const newPotIds=new Set();
+    CUSTOMERS.filter(function(c){
+      return c.assigned_to===sale.id&&c.potential&&c.potential_since&&c.potential_since>=fFrom&&c.potential_since<=fTo&&!hadPotentialBefore.has(c.id);
+    }).forEach(function(c){newPotIds.add(c.id);});
+    // Potential mới từ history (đã recall nhưng potential_since đầu tiên trong kỳ)
+    potHist.filter(function(h){
+      return h.assigned_to_id===sale.id&&h.potential&&h.recalled_at&&h.recalled_at.slice(0,10)>=fFrom&&h.recalled_at.slice(0,10)<=fTo&&!hadPotentialBefore.has(h.customer_id);
+    }).forEach(function(h){newPotIds.add(h.customer_id);});
+
+    // Follow lại: đã là potential từ trước + có call_log trong kỳ
+    const followIds=new Set();
+    hadPotentialBefore.forEach(function(cid){
+      if(saleLogs.some(function(l){return l.customer_id===cid;}))followIds.add(cid);
     });
+
+    // Bỏ potential: có trong history trong kỳ với potential=null/rỗng (bị thu hồi/xoá)
+    const removedPotIds=new Set();
+    potHist.filter(function(h){
+      return h.assigned_to_id===sale.id&&!h.potential&&h.recalled_at&&h.recalled_at.slice(0,10)>=fFrom&&h.recalled_at.slice(0,10)<=fTo;
+    }).forEach(function(h){removedPotIds.add(h.customer_id);});
 
     const invCount=saleInvs.length;
-    summary.push({sale:sale,total:allUnique.size,potential:potKpiIds.size,invs:invCount,byDate:byDate,potentialBreakdown:potentialBreakdown,allUniqueIds:allUnique,potKpiIds:potKpiIds,saleInvs:saleInvs});
+    summary.push({sale:sale,total:allUnique.size,newPot:newPotIds.size,follow:followIds.size,removedPot:removedPotIds.size,invs:invCount,byDate:byDate,newPotIds:newPotIds,followIds:followIds,removedPotIds:removedPotIds,saleInvs:saleInvs});
 
-        // Potential per day breakdown
-    const potByDate={};
-    dates.forEach(function(dt){potByDate[dt]={ids:new Set(),breakdown:{}};(POTENTIAL_OPTS||[]).forEach(function(opt){potByDate[dt].breakdown[opt]=0;});});
-    (potHist||[]).filter(function(h){return h.assigned_to_id===sale.id&&h.potential;}).forEach(function(h){
-      const day=h.recalled_at?h.recalled_at.slice(0,10):'';
-      if(potByDate[day]){potByDate[day].ids.add(h.customer_id);if(potByDate[day].breakdown[h.potential]!==undefined)potByDate[day].breakdown[h.potential]++;}
+    // Per-day breakdown
+    const newPotByDate={};const followByDate={};const removedByDate={};
+    dates.forEach(function(dt){newPotByDate[dt]=new Set();followByDate[dt]=new Set();removedByDate[dt]=new Set();});
+
+    // New pot per day
+    CUSTOMERS.filter(function(c){
+      return c.assigned_to===sale.id&&c.potential&&c.potential_since&&newPotIds.has(c.id);
+    }).forEach(function(c){
+      var day=c.potential_since.slice(0,10);
+      if(newPotByDate[day])newPotByDate[day].add(c.id);
     });
-    CUSTOMERS.filter(function(c){return c.assigned_to===sale.id&&c.potential&&c.potential_since&&c.potential_since>=fFrom&&c.potential_since<=fTo;}).forEach(function(c){
-      const day=c.potential_since?c.potential_since.slice(0,10):'';
-      if(potByDate[day]&&!potByDate[day].ids.has(c.id)){potByDate[day].ids.add(c.id);if(potByDate[day].breakdown[c.potential]!==undefined)potByDate[day].breakdown[c.potential]++;}
+    potHist.filter(function(h){
+      return h.assigned_to_id===sale.id&&h.potential&&newPotIds.has(h.customer_id)&&h.recalled_at;
+    }).forEach(function(h){
+      var day=h.recalled_at.slice(0,10);
+      if(newPotByDate[day])newPotByDate[day].add(h.customer_id);
+    });
+
+    // Follow per day
+    saleLogs.forEach(function(l){
+      if(!hadPotentialBefore.has(l.customer_id))return;
+      var day=new Date(new Date(l.called_at).getTime()-US_OFFSET_MS).toISOString().slice(0,10);
+      if(followByDate[day])followByDate[day].add(l.customer_id);
+    });
+
+    // Removed per day
+    potHist.filter(function(h){
+      return h.assigned_to_id===sale.id&&!h.potential&&h.recalled_at&&removedPotIds.has(h.customer_id);
+    }).forEach(function(h){
+      var day=h.recalled_at.slice(0,10);
+      if(removedByDate[day])removedByDate[day].add(h.customer_id);
     });
 
     let dayRows='';
     dates.forEach(function(dt){
-      const cnt=(byDate[dt]&&byDate[dt].size)||0;
-      const dtPot=potByDate[dt]?potByDate[dt].ids.size:0;
-      const dtPotStr=potByDate[dt]?Object.entries(potByDate[dt].breakdown).filter(function(e){return e[1]>0;}).map(function(e){return e[0]+': '+e[1];}).join(' | '):'';
-      const dtInvs=(invs||[]).filter(function(inv){
-        var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');
-        return inv.sale_id===sale.id&&d===dt&&(inv.type==='invoice'||!inv.type);
-      }).length;
-      const dtQuotes=(invs||[]).filter(function(inv){
-        var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');
-        return inv.sale_id===sale.id&&d===dt&&inv.type==='quotation';
-      }).length;
-      dayRows+='<tr style="font-size:11px;color:var(--text3)">'        +'<td style="padding-left:32px">'+dt+'<\/td>'        +'<td style="color:'+(cnt>0?'var(--accent2)':'var(--text3)')+'">'+cnt+'<\/td>'        +'<td style="color:'+(dtPot>0?'var(--warn)':'var(--text3)')+'">'+dtPot+'<\/td>'        +'<td style="font-size:10px">'+dtPotStr+'<\/td>'        +'<td style="text-align:center">'+dtQuotes+'<\/td>'        +'<td style="text-align:center">'+dtInvs+'<\/td><\/tr>';
-    })
+      var cnt=(byDate[dt]&&byDate[dt].size)||0;
+      var nPot=newPotByDate[dt]?newPotByDate[dt].size:0;
+      var fPot=followByDate[dt]?followByDate[dt].size:0;
+      var rPot=removedByDate[dt]?removedByDate[dt].size:0;
+      var dtInvs=(invs||[]).filter(function(inv){var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');return inv.sale_id===sale.id&&d===dt&&(inv.type==='invoice'||!inv.type);}).length;
+      var dtQuotes=(invs||[]).filter(function(inv){var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');return inv.sale_id===sale.id&&d===dt&&inv.type==='quotation';}).length;
+      dayRows+='<tr style="font-size:11px;color:var(--text3)">'
+        +'<td style="padding-left:32px">'+dt+'</td>'
+        +'<td style="color:'+(cnt>0?'var(--accent2)':'var(--text3)')+'">'+cnt+'</td>'
+        +'<td style="color:'+(nPot>0?'var(--success)':'var(--text3)')+'">'+nPot+'</td>'
+        +'<td style="color:'+(fPot>0?'var(--warn)':'var(--text3)')+'">'+fPot+'</td>'
+        +'<td style="color:'+(rPot>0?'var(--danger)':'var(--text3)')+'">'+rPot+'</td>'
+        +'<td style="text-align:center">'+dtQuotes+'</td>'
+        +'<td style="text-align:center">'+dtInvs+'</td></tr>';
+    });
 
-    const potBreakStr=Object.entries(potentialBreakdown).filter(function(e){return e[1]>0;}).map(function(e){return e[0]+': '+e[1];}).join(' | ')||'—';
     const quoteCount=saleInvs.filter(function(inv){return inv.type==='quotation';}).length;
     const realInvCount=saleInvs.filter(function(inv){return inv.type==='invoice'||!inv.type;}).length;
 
     window._dailyClickData=window._dailyClickData||{};
-    window._dailyClickData[sale.id]={allUniqueIds:Array.from(allUnique),potKpiIds:Array.from(potKpiIds),saleInvs:saleInvs};
+    window._dailyClickData[sale.id]={allUniqueIds:Array.from(allUnique),newPotIds:Array.from(newPotIds),followIds:Array.from(followIds),removedPotIds:Array.from(removedPotIds),saleInvs:saleInvs};
 
-    tableRows+='<tr style="border-top:2px solid var(--border)">'
-      +'<td><strong style="color:var(--text)">'+sale.full_name+'</strong><\/td>'
-      +'<td style="font-weight:700;color:var(--accent2);cursor:'+(allUnique.size>0?'pointer':'default')+'" '+(allUnique.size>0?'onclick="window._dailyOpenCustList(\''+sale.id+'\',\'unique\')"':'')+'>'+allUnique.size+'<\/td>'
-      +'<td style="color:var(--warn);cursor:'+(potKpiIds.size>0?'pointer':'default')+'" '+(potKpiIds.size>0?'onclick="window._dailyOpenCustList(\''+sale.id+'\',\'potential\')"':'')+'>'+potKpiIds.size+'<\/td>'
-      +'<td style="font-size:10px;color:var(--text3);cursor:'+(potKpiIds.size>0?'pointer':'default')+'" '+(potKpiIds.size>0?'onclick="window._dailyOpenCustList(\''+sale.id+'\',\'potential\')"':'')+'>'+potBreakStr+'<\/td>'
-      +'<td style="font-weight:600;color:#4fc3f7;text-align:center;cursor:'+(quoteCount>0?'pointer':'default')+'" '+(quoteCount>0?'onclick="window._dailyOpenCustList(\''+sale.id+'\',\'quotation\')"':'')+'>'+quoteCount+'<\/td>'
-      +'<td style="font-weight:600;color:var(--brand2);text-align:center;cursor:'+(realInvCount>0?'pointer':'default')+'" '+(realInvCount>0?'onclick="window._dailyOpenCustList(\''+sale.id+'\',\'invoice\')"':'')+'>'+realInvCount+'<\/td>'
-      +'<\/tr>'+dayRows;
+    tableRows+=
+      '<tr style="cursor:pointer;background:var(--surface)" onclick="'
+        +"var el=document.getElementById('daily-expand-'+"+JSON.stringify(sale.id)+"+');if(el)el.style.display=el.style.display==='none'?'':'none';"
+      +'">'
+      +'<td style="font-weight:600;color:var(--text)">'+((sale.nickname||sale.full_name||'').split(' ').pop())+'</td>'
+      +'<td style="font-weight:600;color:var(--accent2)">'+allUnique.size+'</td>'
+      +'<td style="color:var(--success)">'+newPotIds.size+'</td>'
+      +'<td style="color:var(--warn)">'+followIds.size+'</td>'
+      +'<td style="color:var(--danger)">'+removedPotIds.size+'</td>'
+      +'<td style="text-align:center">'+quoteCount+'</td>'
+      +'<td style="text-align:center;color:'+(realInvCount>0?'var(--success)':'var(--text3)')+'">'+realInvCount+'</td>'
+      +'</tr>'
+      +'<tr id="daily-expand-'+sale.id+'" style="display:none">'
+      +'<td colspan="7" style="padding:0">'+dayRows+'</td>'
+      +'</tr>';
   });
 
-  const dc=document.getElementById('daily-content');
-  if(dc){
-    dc.innerHTML='<div class="panel"><div class="panel-header"><h2>Daily Report <span style="font-size:11px;color:var(--text3);font-weight:400">'+fFrom+' → '+fTo+'<\/span><\/h2><\/div>'
-      +'<div class="table-scroll-always"><table><colgroup><col width="160"><col width="120"><col width="80"><col><col width="70"><col width="80"></colgroup>'
-      +'<thead><tr><th>Sale / Ngày<\/th><th>Data thao tác (unique)<\/th><th>Potential<\/th><th>Potential chi tiết<\/th><th style="text-align:center">Quotation<\/th><th style="text-align:center">Invoice<\/th><\/tr></thead>'
-      +'<tbody>'+tableRows+'</tbody><\/table><\/div><\/div>';
+  // Render phần lọc và bảng
+  const m=document.getElementById('main-content');
+  if(!m)return;
+
+  var filterHtml='<div class="topbar"><div class="topbar-title">📊 Daily Report</div></div>'
+    +'<div class="content" style="padding-bottom:60px">'
+    +'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;align-items:center">'
+    +'<input type="date" id="daily-from" value="'+fFrom+'" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 10px;color:var(--text);font-size:12px">'
+    +'<span style="color:var(--text3)">→</span>'
+    +'<input type="date" id="daily-to" value="'+fTo+'" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 10px;color:var(--text);font-size:12px">';
+  if(isManager){
+    filterHtml+='<select id="daily-sale" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 10px;color:var(--text);font-size:12px"><option value="all">Tất cả sale</option>'
+      +PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}).map(function(p){return '<option value="'+p.id+'"'+(fSaleDaily===p.id?' selected':'')+'>'+((p.nickname||p.full_name||'').split(' ').pop())+'</option>';}).join('')+'</select>';
   }
+  filterHtml+='<button class="btn btn-primary" style="font-size:12px;padding:6px 14px" onclick="window._dailyFrom=document.getElementById(&quot;daily-from&quot;).value;window._dailyTo=document.getElementById(&quot;daily-to&quot;).value;var ds=document.getElementById(&quot;daily-sale&quot;);window._dailySale=ds?ds.value:&quot;all&quot;;renderDailyData()"><i class="ti ti-search"></i> Lọc</button>'
+    +'</div>'
+    +'<div class="table-scroll-always"><table><thead><tr>'
+    +'<th>Sale</th><th>Data thao tác</th><th style="color:var(--success)">Pot. mới</th><th style="color:var(--warn)">Follow lại</th><th style="color:var(--danger)">Bỏ Pot.</th><th>Báo giá</th><th>Invoice</th>'
+    +'</tr></thead><tbody>'+tableRows+'</tbody></table></div>'
+    +'<div style="margin-top:10px;font-size:11px;color:var(--text3)">Ghi chú: <span style="color:var(--success)">■</span> Potential mới · <span style="color:var(--warn)">■</span> Follow lại (pot. cũ có thao tác trong kỳ) · <span style="color:var(--danger)">■</span> Bỏ potential · Data thao tác: unique khách/ngày (gọi nhiều lần vẫn đếm 1)</div>'
+    +'</div>';
+
+  m.innerHTML=filterHtml;
 }
 
 // ── FIX 5: SCHEDULE TAB ──
