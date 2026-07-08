@@ -7861,7 +7861,7 @@ async function renderDailyData(){
       var rPot=removedByDate[dt]?removedByDate[dt].size:0;
       var dtInvs=(invs||[]).filter(function(inv){var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');return inv.sale_id===sale.id&&d===dt&&(inv.type==='invoice'||!inv.type);}).length;
       var dtQuotes=(invs||[]).filter(function(inv){var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');return inv.sale_id===sale.id&&d===dt&&inv.type==='quotation';}).length;
-      dayRows+='<tr style="font-size:11px;color:var(--text3)">'
+      dayRows+='<tr class="daily-day-row-'+sale.id+'" style="font-size:11px;color:var(--text3);display:none">'
         +'<td style="padding-left:32px">'+dt+'</td>'
         +'<td style="color:'+(cnt>0?'var(--accent2)':'var(--text3)')+'">'+cnt+'</td>'
         +'<td style="color:'+(nPot>0?'var(--success)':'var(--text3)')+'">'+nPot+'</td>'
@@ -7883,10 +7883,10 @@ async function renderDailyData(){
       removedPotIds:Array.from(removedPotIds),saleInvs:saleInvs
     };
 
-    var _sid=JSON.stringify(sale.id);
+    var _sid="'"+sale.id+"'";
     tableRows+=
       '<tr style="background:var(--surface)">'
-      +'<td style="font-weight:600;color:var(--text);cursor:pointer" onclick="var el=document.getElementById(&quot;daily-expand-&quot;+'+_sid+');if(el)el.style.display=el.style.display===&quot;none&quot;?&quot;&quot;:&quot;none&quot;">'+( sale.nickname||sale.full_name||'')+'</td>'
+      +'<td style="font-weight:600;color:var(--text);cursor:pointer" onclick="document.querySelectorAll(&quot;.daily-day-row-&quot;+'+_sid+').forEach(function(r){r.style.display=r.style.display===&quot;none&quot;?&quot;&quot;:&quot;none&quot;})">'+(sale.full_name||sale.nickname||'')+'</td>'
       +'<td style="font-weight:600;color:var(--accent2);cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;unique&quot;)">'+allUnique.size+'</td>'
       +'<td style="color:var(--success);cursor:pointer" onclick="window._dailyOpenNewPot('+_sid+')">'+newPotIds.size+'</td>'
       +'<td style="color:var(--warn);cursor:pointer" onclick="window._dailyOpenFollow('+_sid+')">'+followIds.size+'</td>'
@@ -7894,9 +7894,9 @@ async function renderDailyData(){
       +'<td style="text-align:center;cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;quotation&quot;)">'+quoteCount+'</td>'
       +'<td style="text-align:center;color:'+(realInvCount>0?'var(--success)':'var(--text3)')+';cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;invoice&quot;)">'+realInvCount+'</td>'
       +'</tr>'
-      +'<tr id="daily-expand-'+sale.id+'" style="display:none">'
-      +'<td colspan="7" style="padding:0">'+dayRows+'</td>'
-      +'</tr>';
+      // expand rows inserted directly as <tr> elements (no wrapper needed)
+      // (dayRows contains complete <tr> elements)
+      +dayRows;
   });
 
   // Render vào daily-content (container đã render bởi render() shell)
