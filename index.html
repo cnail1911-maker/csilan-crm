@@ -7652,6 +7652,33 @@ async function campAssignSelected(){
 
 // ── FIX 3+4: DAILY TAB ──
 // ── Mở modal danh sách khách từ Daily Report (click vào Data/Potential/Quotation/Invoice) ──
+window._dailyOpenNewPot=function(saleId){
+  var d=window._dailyClickData&&window._dailyClickData[saleId];
+  if(!d)return;
+  var sale=PROFILES.find(function(p){return p.id===saleId;});
+  var customers=d.newPotIds.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);
+  if(!customers.length){alert('Không có dữ liệu.');return;}
+  _kpiOpenListModal('Potential mới — '+(sale?sale.full_name:''),customers,'potential',saleId,1);
+};
+
+window._dailyOpenFollow=function(saleId){
+  var d=window._dailyClickData&&window._dailyClickData[saleId];
+  if(!d)return;
+  var sale=PROFILES.find(function(p){return p.id===saleId;});
+  var customers=d.followIds.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);
+  if(!customers.length){alert('Không có dữ liệu.');return;}
+  _kpiOpenListModal('Follow lại — '+(sale?sale.full_name:''),customers,'potential',saleId,1);
+};
+
+window._dailyOpenRemoved=function(saleId){
+  var d=window._dailyClickData&&window._dailyClickData[saleId];
+  if(!d)return;
+  var sale=PROFILES.find(function(p){return p.id===saleId;});
+  var customers=d.removedPotIds.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);
+  if(!customers.length){alert('Không có dữ liệu.');return;}
+  _kpiOpenListModal('Bỏ Potential — '+(sale?sale.full_name:''),customers,'unique',saleId,1);
+};
+
 window._dailyOpenCustList=function(saleId,type){
   var d=window._dailyClickData&&window._dailyClickData[saleId];
   if(!d)return;
@@ -7727,7 +7754,11 @@ async function renderDailyData(){
 
   const dates=[];
   const d=new Date(fFrom);const dEnd=new Date(fTo);
-  while(d<=dEnd){dates.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1);}
+  while(d<=dEnd){
+    var dow=d.getDay(); // 0=CN, 6=T7
+    if(dow!==0&&dow!==6)dates.push(d.toISOString().slice(0,10));
+    d.setDate(d.getDate()+1);
+  }
 
   let tableRows='';
   const summary=[];
@@ -7789,7 +7820,7 @@ async function renderDailyData(){
     const invCount=saleInvs.length;
     summary.push({sale:sale,total:allUnique.size,newPot:newPotIds.size,follow:followIds.size,removedPot:removedPotIds.size,invs:invCount,byDate:byDate,newPotIds:newPotIds,followIds:followIds,removedPotIds:removedPotIds,saleInvs:saleInvs});
 
-    // Per-day breakdown
+    // Per-day breakdown — bỏ cuối tuần (0=CN, 6=T7)
     const newPotByDate={};const followByDate={};const removedByDate={};
     dates.forEach(function(dt){newPotByDate[dt]=new Set();followByDate[dt]=new Set();removedByDate[dt]=new Set();});
 
@@ -7844,19 +7875,24 @@ async function renderDailyData(){
     const realInvCount=saleInvs.filter(function(inv){return inv.type==='invoice'||!inv.type;}).length;
 
     window._dailyClickData=window._dailyClickData||{};
-    window._dailyClickData[sale.id]={allUniqueIds:Array.from(allUnique),newPotIds:Array.from(newPotIds),followIds:Array.from(followIds),removedPotIds:Array.from(removedPotIds),saleInvs:saleInvs};
+    var _npArr=Array.from(newPotIds);var _fArr=Array.from(followIds);
+    window._dailyClickData[sale.id]={
+      allUniqueIds:Array.from(allUnique),
+      newPotIds:_npArr,followIds:_fArr,
+      potKpiIds:_npArr.concat(_fArr), // alias cho _dailyOpenCustList('potential')
+      removedPotIds:Array.from(removedPotIds),saleInvs:saleInvs
+    };
 
+    var _sid=JSON.stringify(sale.id);
     tableRows+=
-      '<tr style="cursor:pointer;background:var(--surface)" onclick="'
-        +"var el=document.getElementById('daily-expand-'+"+JSON.stringify(sale.id)+"+');if(el)el.style.display=el.style.display==='none'?'':'none';"
-      +'">'
-      +'<td style="font-weight:600;color:var(--text)">'+((sale.nickname||sale.full_name||'').split(' ').pop())+'</td>'
-      +'<td style="font-weight:600;color:var(--accent2)">'+allUnique.size+'</td>'
-      +'<td style="color:var(--success)">'+newPotIds.size+'</td>'
-      +'<td style="color:var(--warn)">'+followIds.size+'</td>'
-      +'<td style="color:var(--danger)">'+removedPotIds.size+'</td>'
-      +'<td style="text-align:center">'+quoteCount+'</td>'
-      +'<td style="text-align:center;color:'+(realInvCount>0?'var(--success)':'var(--text3)')+'">'+realInvCount+'</td>'
+      '<tr style="background:var(--surface)">'
+      +'<td style="font-weight:600;color:var(--text);cursor:pointer" onclick="var el=document.getElementById(&quot;daily-expand-&quot;+'+_sid+');if(el)el.style.display=el.style.display===&quot;none&quot;?&quot;&quot;:&quot;none&quot;">'+( sale.nickname||sale.full_name||'')+'</td>'
+      +'<td style="font-weight:600;color:var(--accent2);cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;unique&quot;)">'+allUnique.size+'</td>'
+      +'<td style="color:var(--success);cursor:pointer" onclick="window._dailyOpenNewPot('+_sid+')">'+newPotIds.size+'</td>'
+      +'<td style="color:var(--warn);cursor:pointer" onclick="window._dailyOpenFollow('+_sid+')">'+followIds.size+'</td>'
+      +'<td style="color:var(--danger);cursor:pointer" onclick="window._dailyOpenRemoved('+_sid+')">'+removedPotIds.size+'</td>'
+      +'<td style="text-align:center;cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;quotation&quot;)">'+quoteCount+'</td>'
+      +'<td style="text-align:center;color:'+(realInvCount>0?'var(--success)':'var(--text3)')+';cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;invoice&quot;)">'+realInvCount+'</td>'
       +'</tr>'
       +'<tr id="daily-expand-'+sale.id+'" style="display:none">'
       +'<td colspan="7" style="padding:0">'+dayRows+'</td>'
