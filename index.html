@@ -7554,16 +7554,15 @@ async function renderSystemRefresh(){
         +'<div style="font-size:13px;font-weight:600;color:var(--text)">'+(p.full_name||'—')+'</div>'
         +'<div style="font-size:10px;color:var(--text3)">'+(p.role||'')+(p.code?' · '+p.code:'')+'</div>'
         +'</div>'
-        +'<button class="btn" id="'+_btnId+'" data-uid="'+p.id+'" data-name="'+((p.full_name||'').replace(/"/g,'&quot;'))+'" style="padding:3px 9px;font-size:11px" title="Đổi mật khẩu"><i class="ti ti-key"></i></button>'
-        +'<button class="btn" data-uid="'+p.id+'" data-nick="'+((p.nickname||'').replace(/"/g,'&quot;'))+'" style="padding:3px 9px;font-size:11px;margin-left:4px" title="Đổi nickname" onclick="window._sysChangeNickname(this.dataset.uid,this.dataset.nick)"><i class="ti ti-pencil"></i></button>'
+        +'<button class="btn sys-btn-pw" data-id="'+p.id+'" style="padding:3px 9px;font-size:11px" title="Đổi mật khẩu"><i class="ti ti-key"></i></button>'
+        +'<button class="btn sys-btn-nick" data-id="'+p.id+'" style="padding:3px 9px;font-size:11px;margin-left:4px" title="Đổi nickname"><i class="ti ti-pencil"></i></button>'
         +'</div>';
     }).join('');
-    // Event delegation for password change buttons
-    accEl.querySelectorAll('[data-uid]').forEach(function(btn){
-      btn.addEventListener('click',function(){window._sysChangePassword(this.dataset.uid,this.dataset.name);});
-    });
+    // Store profs for event delegation lookup
+    accEl._profs=profs;
+    accEl.querySelectorAll('.sys-btn-pw').forEach(function(b){b.addEventListener('click',function(e){e.stopPropagation();var pr=accEl._profs.find(function(x){return x.id===this.dataset.id;},this);window._sysChangePassword(this.dataset.id,pr?pr.full_name||pr.email:'');});});
+    accEl.querySelectorAll('.sys-btn-nick').forEach(function(b){b.addEventListener('click',function(e){e.stopPropagation();var pr=accEl._profs.find(function(x){return x.id===this.dataset.id;},this);window._sysChangeNickname(this.dataset.id,pr?pr.nickname||'':'');});});
   }
-
   // ── Panel Login logs ──
   var logEl=document.getElementById('sys-login-logs');
   if(logEl){
