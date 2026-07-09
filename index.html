@@ -7181,30 +7181,58 @@ async function doRecall(){
 
 
 
+function _sysToggleSection(id,iconId){
+  var el=document.getElementById(id);
+  var ic=document.getElementById(iconId);
+  if(!el)return;
+  var hidden=el.style.display==='none';
+  el.style.display=hidden?'':'none';
+  if(ic)ic.className='ti ti-chevron-'+(hidden?'up':'down');
+}
+
 function renderSystem(){
   return '<div class="topbar"><div class="topbar-title"><i class="ti ti-settings" style="margin-right:6px"></i>System<\/div>'
     +'<button class="btn" onclick="renderSystemRefresh()" style="font-size:12px"><i class="ti ti-refresh"></i> Refresh<\/button>'
     +'<\/div>'
     +'<div class="content">'
-    +_renderThemePanel()
+    // ── 1. Tài khoản + Lịch sử (đầu trang, luôn mở) ──
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
     +'<div class="panel">'
-    +'<div class="panel-header"><h2><i class="ti ti-users" style="margin-right:6px"></i>Tài khoản</h2><\/div>'
-    +'<div id="sys-accounts" style="padding:14px"><div style="color:var(--text3);font-size:13px">Đang tải...</div><\/div>'
+    +'<div class="panel-header" style="cursor:pointer" onclick="_sysToggleSection(\'sys-accounts\',\'sys-acc-ic\')">'
+    +'<h2><i class="ti ti-users" style="margin-right:6px"></i>Tài khoản<\/h2>'
+    +'<i class="ti ti-chevron-up" id="sys-acc-ic" style="color:var(--text3)"><\/i>'
+    +'<\/div>'
+    +'<div id="sys-accounts" style="padding:14px"><div style="color:var(--text3);font-size:13px">Đang tải...<\/div><\/div>'
     +'<\/div>'
     +'<div class="panel">'
-    +'<div class="panel-header"><h2><i class="ti ti-history" style="margin-right:6px"></i>Lịch sử truy cập</h2><div style="font-size:11px;color:var(--text3)">50 lần đăng nhập gần nhất<\/div><\/div>'
-    +'<div id="sys-login-logs" style="padding:14px"><div style="color:var(--text3);font-size:13px">Đang tải...</div><\/div>'
+    +'<div class="panel-header" style="cursor:pointer" onclick="_sysToggleSection(\'sys-login-logs\',\'sys-log-ic\')">'
+    +'<h2><i class="ti ti-history" style="margin-right:6px"></i>Lịch sử truy cập<\/h2>'
+    +'<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--text3)">50 lần gần nhất<\/span><i class="ti ti-chevron-up" id="sys-log-ic" style="color:var(--text3)"><\/i><\/div>'
+    +'<\/div>'
+    +'<div id="sys-login-logs" style="padding:14px"><div style="color:var(--text3);font-size:13px">Đang tải...<\/div><\/div>'
     +'<\/div>'
     +'<\/div>'
+    // ── 2. Giao diện (collapsible, mặc định ẩn) ──
     +'<div class="panel" style="margin-bottom:14px">'
-    +'<div class="panel-header"><h2>Supabase Usage<\/h2><div style="font-size:11px;color:var(--text3)">Free tier: 500MB DB · 1GB Storage per project<\/div><\/div>'
-    +'<div id="sys-usage" style="padding:14px"><div style="color:var(--text3);font-size:13px">Loading...<\/div><\/div>'
+    +'<div class="panel-header" style="cursor:pointer" onclick="_sysToggleSection(\'sys-theme-body\',\'sys-theme-ic\')">'
+    +'<h2><i class="ti ti-palette" style="margin-right:6px"></i>Giao diện & Màu sắc<\/h2>'
+    +'<i class="ti ti-chevron-down" id="sys-theme-ic" style="color:var(--text3)"><\/i>'
     +'<\/div>'
+    +'<div id="sys-theme-body" style="display:none">'+_renderThemePanelBody()+'<\/div>'
+    +'<\/div>'
+    // ── 3. Supabase Usage (collapsible, mặc định ẩn) ──
+    +'<div class="panel" style="margin-bottom:14px">'
+    +'<div class="panel-header" style="cursor:pointer" onclick="_sysToggleSection(\'sys-usage-body\',\'sys-usage-ic\')">'
+    +'<h2>Supabase Usage<\/h2>'
+    +'<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--text3)">Free tier: 500MB DB · 1GB Storage<\/span><i class="ti ti-chevron-down" id="sys-usage-ic" style="color:var(--text3)"><\/i><\/div>'
+    +'<\/div>'
+    +'<div id="sys-usage-body" style="display:none">'
+    +'<div id="sys-usage" style="padding:14px"><div style="color:var(--text3);font-size:13px">Loading...<\/div><\/div>'
+    +'<\/div><\/div>'
     +'<\/div>';
 }
 
-function _renderThemePanel(){
+function _renderThemePanelBody(){
   var t={};try{t=JSON.parse(localStorage.getItem('csilan_theme')||'{}');}catch(e){}
   function cur(k,d){return t[k]||d;}
   var presets=[
@@ -7239,9 +7267,7 @@ function _renderThemePanel(){
       +' oninput="if(this.value.match(/^#[0-9a-fA-F]{6}$/))document.getElementById(\'theme-'+key+'\').value=this.value">'
       +'<\/div><\/div>';
   }
-  return '<div class="panel" style="margin-bottom:14px">'
-    +'<div class="panel-header"><h2><i class="ti ti-palette" style="margin-right:6px"></i>Giao diện & Màu sắc<\/h2><\/div>'
-    +'<div style="padding:16px 20px">'
+  return '<div style="padding:16px 20px">'
     +'<div style="margin-bottom:18px">'
     +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Bộ màu nhanh<\/div>'
     +'<div style="display:flex;flex-wrap:wrap;gap:8px">'+presetHtml+'<\/div>'
@@ -7269,7 +7295,14 @@ function _renderThemePanel(){
     +'<button class="btn" style="border-color:rgba(0,184,148,0.4);color:var(--success)" onclick="window._saveTheme()"><i class="ti ti-check"><\/i> Lưu & Áp dụng<\/button>'
     +'<button class="btn" style="border-color:rgba(255,118,117,0.3);color:var(--danger)" onclick="window._resetTheme()"><i class="ti ti-refresh"><\/i> Khôi phục mặc định<\/button>'
     +'<\/div>'
-    +'<\/div><\/div>';
+    +'<\/div>';
+}
+
+function _renderThemePanel(){
+  return '<div class="panel" style="margin-bottom:14px">'
+    +'<div class="panel-header"><h2><i class="ti ti-palette" style="margin-right:6px"></i>Giao diện & Màu sắc<\/h2><\/div>'
+    +_renderThemePanelBody()
+    +'<\/div>';
 }
 
 window._applyThemePreset=function(jsonStr){
