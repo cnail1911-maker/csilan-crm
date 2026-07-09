@@ -1795,17 +1795,21 @@ async function initApp(user){
     var sysNav=document.getElementById('nav-system');
     if(sysNav&&(currentProfile.role==='manager'||currentProfile.role==='admin'))sysNav.style.display='flex';
   }
-  // ── Switch account: hiện nếu có tài khoản đã lưu ──
-  try{
-    var _savedAccs=JSON.parse(localStorage.getItem('crm_switch_accounts')||'[]');
-    if(_savedAccs.length>0){
-      var sa=document.getElementById('btn-switch-account');
-      if(sa)sa.style.display='inline-flex';
-      var saMobile=document.getElementById('nav-switch-account-mobile');
-      if(saMobile)saMobile.style.display='flex';
-    }
-  }catch(e){}
+  // ── Switch account: hiện cho manager/admin/leader luôn; sale/affiliate thấy nếu có saved accounts ──
   window._canAddAccount=!!(currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader'));
+  var _showSwitch=window._canAddAccount;
+  if(!_showSwitch){
+    try{
+      var _savedAccs=JSON.parse(localStorage.getItem('crm_switch_accounts')||'[]');
+      if(_savedAccs.length>0)_showSwitch=true;
+    }catch(e){}
+  }
+  if(_showSwitch){
+    var sa=document.getElementById('btn-switch-account');
+    if(sa)sa.style.display='inline-flex';
+    var saMobile=document.getElementById('nav-switch-account-mobile');
+    if(saMobile)saMobile.style.display='flex';
+  }
 
   // ── TICKER ENGINE ──
   (function(){
