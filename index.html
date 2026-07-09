@@ -1520,11 +1520,10 @@ window._renderSwitchAccountList=function(){
         ?'<img src="'+_prof.avatar_url+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">'
         :'<div style="width:32px;height:32px;border-radius:50%;background:var(--brand);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;color:#fff;flex-shrink:0">'+initial+'</div>';
       html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;'+(isCurrent?'background:rgba(108,92,231,0.12)':'')+'" onmouseover="this.style.background=\'rgba(255,255,255,0.05)\'" onmouseout="this.style.background=\''+(isCurrent?'rgba(108,92,231,0.12)':'transparent')+'\'" onclick="window._switchToAccount(\''+a.email.replace(/'/g,"\\'")+'\',\''+a.refresh_token+'\')">'
-        +'<div class="avatar av-0" style="width:30px;height:30px;font-size:12px;flex-shrink:0">'+initial+'<\/div>'
         +avatarHtml
         +'<div style="flex:1;min-width:0;overflow:hidden">'
         +'<div style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;text-overflow:ellipsis;overflow:hidden">'+displayName+'<\/div>'
-        +'<div style="font-size:10px;color:var(--text3);white-space:nowrap;text-overflow:ellipsis;overflow:hidden">'+a.email+'<\/div>'
+        +(displayName!==a.email?'<div style="font-size:10px;color:var(--text3);white-space:nowrap;text-overflow:ellipsis;overflow:hidden">'+a.email+'<\/div>':'')
         +(isCurrent?'<div style="font-size:10px;color:var(--brand2)">Đang dùng<\/div>':'')+'<\/div>'
         +(isCurrent?'':'<button onclick="event.stopPropagation();window._removeSwitchAccount(\''+a.email.replace(/'/g,"\\'")+'\')" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;flex-shrink:0" title="Xóa khỏi danh sách"><i class="ti ti-x"><\/i><\/button>')
         +'<\/div>';
@@ -7452,28 +7451,71 @@ window._saveTheme=function(){
   showNotif('Đã áp dụng giao diện mới');
 };
 
-window._sysChangeNickname=async function(userId,currentNick){
-  var newNick=prompt('Đổi nickname — Nhập nickname mới (để trống để xóa nickname):',currentNick||'');
-  if(newNick===null)return; // bấm Cancel
-  showLoading(true);
-  try{
-    var {error}=await sb.from('profiles').update({nickname:newNick||null}).eq('id',userId);
-    showLoading(false);
-    if(error)alert('Lỗi: '+error.message);
-    else{
-      alert('✅ Đã cập nhật nickname thành công');
-      renderSystemRefresh(); // refresh lại danh sách
-    }
-  }catch(e){showLoading(false);alert('Lỗi: '+e.message);}
+window._sysChangeNickname=function(userId,currentNick){
+  var old=document.getElementById('sys-edit-modal');if(old)old.remove();
+  var m=document.createElement('div');
+  m.id='sys-edit-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center';
+  m.innerHTML='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:22px;width:300px;max-width:90vw">'
+    +'<h3 style="margin:0 0 14px;font-size:14px;color:var(--text)">Đổi Nickname</h3>'
+    +'<label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">NICKNAME MỚI</label>'
+    +'<input id="sys-nick-input" value="'+(currentNick||'')+'" placeholder="Để trống để xóa nickname" style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 10px;color:var(--text);font-size:13px;outline:none;margin-bottom:14px">'
+    +'<div id="sys-nick-err" style="font-size:11px;color:var(--danger);margin-bottom:8px;display:none"></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +'<button class="btn" onclick="document.getElementById(&quot;sys-edit-modal&quot;).remove()">Hủy</button>'
+    +'<button class="btn btn-primary" id="sys-nick-btn" onclick="window._doSaveNickname(&quot;'+userId+'&quot;)">Lưu</button>'
+    +'</div></div>';
+  document.body.appendChild(m);
+  setTimeout(function(){var el=document.getElementById('sys-nick-input');if(el){el.focus();el.select();}},80);
 };
 
-window._sysChangePassword=async function(userId,fullName){
-  var newPw=prompt('Đổi mật khẩu cho "'+fullName+'" — Nhập mật khẩu mới (tối thiểu 6 ký tự):');
-  if(!newPw)return;
-  if(newPw.length<6){alert('Mật khẩu tối thiểu 6 ký tự!');return;}
-  var confirm2=prompt('Nhập lại mật khẩu để xác nhận:');
-  if(newPw!==confirm2){alert('Mật khẩu không khớp!');return;}
-  showLoading(true);
+window._doSaveNickname=async function(userId){
+  var input=document.getElementById('sys-nick-input');
+  var btn=document.getElementById('sys-nick-btn');
+  var err=document.getElementById('sys-nick-err');
+  if(!input||!btn)return;
+  btn.disabled=true;btn.textContent='Đang lưu...';
+  try{
+    var {error}=await sb.from('profiles').update({nickname:input.value.trim()||null}).eq('id',userId);
+    if(error){err.textContent='Lỗi: '+error.message;err.style.display='';btn.disabled=false;btn.textContent='Lưu';return;}
+    document.getElementById('sys-edit-modal').remove();
+    showNotif('✅ Đã cập nhật nickname');
+    renderSystemRefresh();
+  }catch(e){err.textContent='Lỗi: '+e.message;err.style.display='';btn.disabled=false;btn.textContent='Lưu';}
+};
+
+window._sysChangePassword=function(userId,fullName){
+  var old=document.getElementById('sys-edit-modal');if(old)old.remove();
+  var m=document.createElement('div');
+  m.id='sys-edit-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center';
+  m.innerHTML='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:22px;width:300px;max-width:90vw">'
+    +'<h3 style="margin:0 0 4px;font-size:14px;color:var(--text)">Đổi mật khẩu</h3>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:14px">'+fullName+'</div>'
+    +'<label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">MẬT KHẨU MỚI</label>'
+    +'<input id="sys-pw1" type="password" placeholder="Tối thiểu 6 ký tự" style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 10px;color:var(--text);font-size:13px;outline:none;margin-bottom:10px">'
+    +'<label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">XÁC NHẬN MẬT KHẨU</label>'
+    +'<input id="sys-pw2" type="password" placeholder="Nhập lại mật khẩu" style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 10px;color:var(--text);font-size:13px;outline:none;margin-bottom:10px">'
+    +'<div id="sys-pw-err" style="font-size:11px;color:var(--danger);margin-bottom:8px;display:none"></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +'<button class="btn" onclick="document.getElementById(&quot;sys-edit-modal&quot;).remove()">Hủy</button>'
+    +'<button class="btn btn-primary" id="sys-pw-btn" onclick="window._doSavePw(&quot;'+userId+'&quot;)">Đổi mật khẩu</button>'
+    +'</div></div>';
+  document.body.appendChild(m);
+  setTimeout(function(){var el=document.getElementById('sys-pw1');if(el)el.focus();},80);
+};
+
+window._doSavePw=async function(userId){
+  var pw1=document.getElementById('sys-pw1');
+  var pw2=document.getElementById('sys-pw2');
+  var btn=document.getElementById('sys-pw-btn');
+  var err=document.getElementById('sys-pw-err');
+  if(!pw1||!pw2||!btn)return;
+  var newPw=pw1.value;
+  if(!newPw||newPw.length<6){err.textContent='Mật khẩu tối thiểu 6 ký tự!';err.style.display='';return;}
+  if(newPw!==pw2.value){err.textContent='Mật khẩu không khớp!';err.style.display='';return;}
+  btn.disabled=true;btn.textContent='Đang đổi...';
+  var _doActualSave=async function(){
   try{
     var {data:sess}=await sb.auth.getSession();
     var token=sess&&sess.session&&sess.session.access_token;
@@ -7483,10 +7525,11 @@ window._sysChangePassword=async function(userId,fullName){
       body:JSON.stringify({target_user_id:userId,new_password:newPw})
     });
     var result=await res.json();
-    showLoading(false);
-    if(res.ok)alert('✅ Đã đổi mật khẩu thành công cho "'+fullName+'"');
-    else alert('❌ Lỗi: '+(result.error||result.message||'Unknown error'));
-  }catch(e){showLoading(false);alert('Lỗi: '+e.message);}
+    if(res.ok){document.getElementById('sys-edit-modal').remove();showNotif('✅ Đã đổi mật khẩu thành công');}
+    else{err.textContent='❌ '+(result.error||result.message||'Unknown error');err.style.display='';btn.disabled=false;btn.textContent='Đổi mật khẩu';}
+  }catch(e){err.textContent='Lỗi: '+e.message;err.style.display='';btn.disabled=false;btn.textContent='Đổi mật khẩu';}
+  };
+  _doActualSave();
 };
 
 window._resetTheme=function(){
