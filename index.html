@@ -1399,7 +1399,7 @@ window._switchToAccount=async function(email,refreshToken){
   }
   showLoading(true);
   try{
-    // Lưu token mới nhất của user HIỆN TẠI trước khi switch
+    // Lưu token mới nhất của user hiện tại
     if(currentUser){
       var curSessRes=await sb.auth.getSession();
       var curSess=curSessRes.data&&curSessRes.data.session;
@@ -1407,8 +1407,7 @@ window._switchToAccount=async function(email,refreshToken){
         window._saveSwitchAccount(currentUser.email,curSess.refresh_token);
       }
     }
-
-    // Verify refresh token hợp lệ bằng REST API
+    // Verify token đích bằng REST API
     var rawRes=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=refresh_token',{
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON},
@@ -1416,33 +1415,25 @@ window._switchToAccount=async function(email,refreshToken){
     });
     var rawData=await rawRes.json();
     if(!rawRes.ok||!rawData.access_token){
-      alert('Phiên đăng nhập của "'+email+'" đã hết hạn, vui lòng đăng nhập lại tài khoản này.');
+      alert('Phiên đăng nhập của "'+email+'" đã hết hạn, vui lòng đăng nhập lại.');
       window._removeSwitchAccount(email);
       showLoading(false);
       return;
     }
-
-    // Lưu token mới vào localStorage theo format Supabase SDK
-    // SDK tự pick up khi reload (BOOT: getSession() sẽ đọc từ localStorage)
-    var storageKey='sb-ajsakaddylbpppxlidfe-auth-token';
-    var sessionObj={
+    // Lưu token mới vào saveSwitchAccount
+    window._saveSwitchAccount(email,rawData.refresh_token);
+    // Lưu pending switch vào sessionStorage để BOOT xử lý sau reload
+    sessionStorage.setItem('_crm_pending_switch',JSON.stringify({
       access_token:rawData.access_token,
       refresh_token:rawData.refresh_token,
-      expires_in:rawData.expires_in||3600,
-      expires_at:Math.floor(Date.now()/1000)+(rawData.expires_in||3600),
-      token_type:'bearer',
-      user:rawData.user||{}
-    };
-    localStorage.setItem(storageKey,JSON.stringify(sessionObj));
-    window._saveSwitchAccount(email,rawData.refresh_token);
-
-    // Dừng polling trước reload
+      email:email
+    }));
+    // Dừng polling
     if(typeof stopPoll==='function')try{stopPoll();}catch(e){}
     if(typeof stopRealtime==='function')try{stopRealtime();}catch(e){}
     if(window._notifResetRealtimeSub)window._notifResetRealtimeSub();
     window._channelsInit={};
-
-    setTimeout(function(){location.reload();},150);
+    setTimeout(function(){location.reload();},100);
   }catch(e){
     alert('Lỗi chuyển tài khoản: '+e.message);
     showLoading(false);
@@ -8280,7 +8271,17 @@ window.addEventListener('resize',function(){
 });
 
 // BOOT
+// BOOT
 (async function(){
+  // Xử lý pending account switch (từ _switchToAccount)
+  var _pending=null;
+  try{_pending=JSON.parse(sessionStorage.getItem('_crm_pending_switch')||'null');}catch(e){}
+  if(_pending&&_pending.access_token){
+    sessionStorage.removeItem('_crm_pending_switch');
+    try{
+      await sb.auth.setSession({access_token:_pending.access_token,refresh_token:_pending.refresh_token});
+    }catch(e){console.warn('[switch-boot] setSession error',e);}
+  }
   const {data:{session}}=await sb.auth.getSession();
   if(session&&session.user)await initApp(session.user);
 })();
