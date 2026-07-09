@@ -8279,7 +8279,12 @@ window.addEventListener('resize',function(){
   if(_pending&&_pending.access_token){
     sessionStorage.removeItem('_crm_pending_switch');
     try{
-      await sb.auth.setSession({access_token:_pending.access_token,refresh_token:_pending.refresh_token});
+      var swResult=await sb.auth.setSession({access_token:_pending.access_token,refresh_token:_pending.refresh_token});
+      var swSess=swResult&&swResult.data&&swResult.data.session;
+      if(swSess&&swSess.user){
+        await initApp(swSess.user);
+        return;
+      }
     }catch(e){console.warn('[switch-boot] setSession error',e);}
   }
   const {data:{session}}=await sb.auth.getSession();
