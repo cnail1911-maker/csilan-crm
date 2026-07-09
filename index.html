@@ -1440,6 +1440,60 @@ window._switchToAccount=async function(email,refreshToken){
   }
 };
 
+window._showAddAccountModal=function(){
+  document.getElementById('switch-account-dropdown').style.display='none';
+  var old=document.getElementById('add-account-modal');if(old)old.remove();
+  var m=document.createElement('div');
+  m.id='add-account-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center';
+  m.innerHTML='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:24px;width:320px;max-width:90vw">'
+    +'<h3 style="margin:0 0 16px;font-size:15px;color:var(--text)">Thêm tài khoản</h3>'
+    +'<div style="margin-bottom:10px"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">EMAIL</label>'
+    +'<input id="add-acc-email" type="email" placeholder="sale@email.com" style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;outline:none"></div>'
+    +'<div style="margin-bottom:16px"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">MẬT KHẨU</label>'
+    +'<input id="add-acc-pass" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;outline:none"></div>'
+    +'<div id="add-acc-err" style="font-size:12px;color:var(--danger);margin-bottom:10px;display:none"></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +'<button class="btn" onclick="document.getElementById(&quot;add-account-modal&quot;).remove()">Hủy</button>'
+    +'<button class="btn btn-primary" id="add-acc-btn" onclick="window._doAddAccount()"><i class="ti ti-login"></i> Thêm</button>'
+    +'</div></div>';
+  document.body.appendChild(m);
+  setTimeout(function(){var el=document.getElementById('add-acc-email');if(el)el.focus();},100);
+};
+
+window._doAddAccount=async function(){
+  var email=(document.getElementById('add-acc-email').value||'').trim();
+  var pass=document.getElementById('add-acc-pass').value||'';
+  var errEl=document.getElementById('add-acc-err');
+  var btn=document.getElementById('add-acc-btn');
+  if(!email||!pass){errEl.textContent='Vui lòng nhập đầy đủ email và mật khẩu.';errEl.style.display='';return;}
+  btn.disabled=true;btn.textContent='Đang xử lý...';
+  try{
+    // Đăng nhập thử bằng REST API (không đụng session hiện tại)
+    var res=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=password',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON},
+      body:JSON.stringify({email:email,password:pass})
+    });
+    var data=await res.json();
+    if(!res.ok||!data.access_token){
+      errEl.textContent='Đăng nhập thất bại: '+(data.error_description||data.msg||'Sai email hoặc mật khẩu');
+      errEl.style.display='';
+      btn.disabled=false;btn.innerHTML='<i class="ti ti-login"></i> Thêm';
+      return;
+    }
+    // Lưu refresh_token cho tài khoản mới (không switch, chỉ lưu)
+    window._saveSwitchAccount(email,data.refresh_token);
+    document.getElementById('add-account-modal').remove();
+    showNotif('✅ Đã thêm tài khoản '+email+' vào danh sách chuyển đổi');
+    // Refresh dropdown
+    window._renderSwitchDropdown();
+  }catch(e){
+    errEl.textContent='Lỗi: '+e.message;errEl.style.display='';
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-login"></i> Thêm';
+  }
+};
+
 window._toggleSwitchAccountDropdown=function(){
   var dd=document.getElementById('switch-account-dropdown');
   if(!dd)return;
@@ -1467,7 +1521,7 @@ window._renderSwitchAccountList=function(){
         +'<\/div>';
     });
   }
-  html+='<div style="border-top:1px solid var(--border);margin-top:6px;padding:8px 14px;font-size:11px;color:var(--text3);cursor:pointer" onclick="document.getElementById(\'switch-account-dropdown\').style.display=\'none\';doLogout()"><i class="ti ti-plus"><\/i> Đăng nhập tài khoản khác<\/div>';
+  html+='<div style="border-top:1px solid var(--border);margin-top:6px;padding:8px 14px;font-size:11px;color:var(--text3);cursor:pointer" onclick="window._showAddAccountModal()"><i class="ti ti-plus"><\/i> Thêm tài khoản (không logout)<\/div>';
   html+='<\/div>';
   dd.innerHTML=html;
 };
