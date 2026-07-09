@@ -1399,7 +1399,7 @@ window._switchToAccount=async function(email,refreshToken){
   }
   showLoading(true);
   try{
-    // Lưu token mới nhất của user HIỆN TẠI trước khi switch (tránh mất do SDK rotate)
+    // Lưu token mới nhất của user HIỆN TẠI trước khi switch
     if(currentUser){
       var curSessRes=await sb.auth.getSession();
       var curSess=curSessRes.data&&curSessRes.data.session;
@@ -1407,7 +1407,8 @@ window._switchToAccount=async function(email,refreshToken){
         window._saveSwitchAccount(currentUser.email,curSess.refresh_token);
       }
     }
-    // Dùng REST API để đổi token, tránh SDK reset internal state của user cũ
+
+    // Verify refresh token hợp lệ bằng REST API
     var rawRes=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=refresh_token',{
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON},
@@ -1420,15 +1421,28 @@ window._switchToAccount=async function(email,refreshToken){
       showLoading(false);
       return;
     }
-    // Set session với token mới lấy từ REST API
-    await sb.auth.setSession({access_token:rawData.access_token,refresh_token:rawData.refresh_token});
+
+    // Lưu token mới vào localStorage theo format Supabase SDK
+    // SDK tự pick up khi reload (BOOT: getSession() sẽ đọc từ localStorage)
+    var storageKey='sb-ajsakaddylbpppxlidfe-auth-token';
+    var sessionObj={
+      access_token:rawData.access_token,
+      refresh_token:rawData.refresh_token,
+      expires_in:rawData.expires_in||3600,
+      expires_at:Math.floor(Date.now()/1000)+(rawData.expires_in||3600),
+      token_type:'bearer',
+      user:rawData.user||{}
+    };
+    localStorage.setItem(storageKey,JSON.stringify(sessionObj));
     window._saveSwitchAccount(email,rawData.refresh_token);
-    // Dừng polling/realtime trước khi reload để tránh spam 401 với token cũ
+
+    // Dừng polling trước reload
     if(typeof stopPoll==='function')try{stopPoll();}catch(e){}
     if(typeof stopRealtime==='function')try{stopRealtime();}catch(e){}
     if(window._notifResetRealtimeSub)window._notifResetRealtimeSub();
     window._channelsInit={};
-    setTimeout(function(){location.reload();},100);
+
+    setTimeout(function(){location.reload();},150);
   }catch(e){
     alert('Lỗi chuyển tài khoản: '+e.message);
     showLoading(false);
