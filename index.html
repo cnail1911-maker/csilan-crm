@@ -1521,7 +1521,7 @@ window._renderSwitchAccountList=function(){
         +'<\/div>';
     });
   }
-  html+='<div style="border-top:1px solid var(--border);margin-top:6px;padding:8px 14px;font-size:11px;color:var(--text3);cursor:pointer" onclick="window._showAddAccountModal()"><i class="ti ti-plus"><\/i> Thêm tài khoản (không logout)<\/div>';
+  if(window._canAddAccount)html+='<div style="border-top:1px solid var(--border);margin-top:6px;padding:8px 14px;font-size:11px;color:var(--text3);cursor:pointer" onclick="window._showAddAccountModal()"><i class="ti ti-plus"><\/i> Thêm tài khoản<\/div>';
   html+='<\/div>';
   dd.innerHTML=html;
 };
@@ -1779,13 +1779,17 @@ async function initApp(user){
     var sysNav=document.getElementById('nav-system');
     if(sysNav&&(currentProfile.role==='manager'||currentProfile.role==='admin'))sysNav.style.display='flex';
   }
-  // ── Switch account: chỉ dành cho manager/admin ──
-  if(currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin')){
-    var sa=document.getElementById('btn-switch-account');
-    if(sa)sa.style.display='inline-flex';
-    var saMobile=document.getElementById('nav-switch-account-mobile');
-    if(saMobile)saMobile.style.display='flex';
-  }
+  // ── Switch account: hiện nếu có tài khoản đã lưu ──
+  try{
+    var _savedAccs=JSON.parse(localStorage.getItem('crm_switch_accounts')||'[]');
+    if(_savedAccs.length>0){
+      var sa=document.getElementById('btn-switch-account');
+      if(sa)sa.style.display='inline-flex';
+      var saMobile=document.getElementById('nav-switch-account-mobile');
+      if(saMobile)saMobile.style.display='flex';
+    }
+  }catch(e){}
+  window._canAddAccount=!!(currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader'));
 
   // ── TICKER ENGINE ──
   (function(){
