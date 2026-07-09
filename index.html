@@ -1399,15 +1399,30 @@ window._switchToAccount=async function(email,refreshToken){
   }
   showLoading(true);
   try{
-    const {data,error}=await sb.auth.setSession({refresh_token:refreshToken,access_token:''});
-    if(error||!data.session){
+    // Lưu token mới nhất của user HIỆN TẠI trước khi switch (tránh mất do SDK rotate)
+    if(currentUser){
+      var curSessRes=await sb.auth.getSession();
+      var curSess=curSessRes.data&&curSessRes.data.session;
+      if(curSess&&curSess.refresh_token){
+        window._saveSwitchAccount(currentUser.email,curSess.refresh_token);
+      }
+    }
+    // Dùng REST API để đổi token, tránh SDK reset internal state của user cũ
+    var rawRes=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=refresh_token',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON},
+      body:JSON.stringify({refresh_token:refreshToken})
+    });
+    var rawData=await rawRes.json();
+    if(!rawRes.ok||!rawData.access_token){
       alert('Phiên đăng nhập của "'+email+'" đã hết hạn, vui lòng đăng nhập lại tài khoản này.');
       window._removeSwitchAccount(email);
       showLoading(false);
       return;
     }
-    // Cập nhật refresh_token mới nhất (Supabase tự xoay token sau mỗi lần dùng)
-    window._saveSwitchAccount(email,data.session.refresh_token);
+    // Set session với token mới lấy từ REST API
+    await sb.auth.setSession({access_token:rawData.access_token,refresh_token:rawData.refresh_token});
+    window._saveSwitchAccount(email,rawData.refresh_token);
     location.reload();
   }catch(e){
     alert('Lỗi chuyển tài khoản: '+e.message);
