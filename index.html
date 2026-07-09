@@ -1354,8 +1354,8 @@ async function doLogin(){
   if(error){errEl.textContent=error.message;errEl.style.display='block';btn.disabled=false;btn.textContent='Đăng nhập';return;}
   await initApp(data.user);
   // Lưu account vào danh sách switch — chỉ cho manager/admin
-  if(data.session&&currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin')){
-    window._saveSwitchAccount(email,data.session.refresh_token);
+  if(data.session&&currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader')){
+    window._saveSwitchAccountFull(email,data.session.refresh_token,currentProfile.full_name||email);
   }
 }
 async function doLogout(){
@@ -1513,10 +1513,19 @@ window._renderSwitchAccountList=function(){
   } else {
     accounts.forEach(function(a){
       var isCurrent=currentUser&&currentUser.email===a.email;
-      var initial=a.email.charAt(0).toUpperCase();
+      var displayName=a.full_name&&a.full_name!==a.email?a.full_name:a.email;
+      var initial=displayName.charAt(0).toUpperCase();
+      var _prof=PROFILES.find(function(p){return p.email===a.email;});
+      var avatarHtml=(_prof&&_prof.avatar_url)
+        ?'<img src="'+_prof.avatar_url+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">'
+        :'<div style="width:32px;height:32px;border-radius:50%;background:var(--brand);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;color:#fff;flex-shrink:0">'+initial+'</div>';
       html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;'+(isCurrent?'background:rgba(108,92,231,0.12)':'')+'" onmouseover="this.style.background=\'rgba(255,255,255,0.05)\'" onmouseout="this.style.background=\''+(isCurrent?'rgba(108,92,231,0.12)':'transparent')+'\'" onclick="window._switchToAccount(\''+a.email.replace(/'/g,"\\'")+'\',\''+a.refresh_token+'\')">'
         +'<div class="avatar av-0" style="width:30px;height:30px;font-size:12px;flex-shrink:0">'+initial+'<\/div>'
-        +'<div style="flex:1;min-width:0;overflow:hidden"><div style="font-size:12.5px;color:var(--text);white-space:nowrap;text-overflow:ellipsis;overflow:hidden">'+a.email+'<\/div>'+(isCurrent?'<div style="font-size:10px;color:var(--brand2)">Đang dùng<\/div>':'')+'<\/div>'
+        +avatarHtml
+        +'<div style="flex:1;min-width:0;overflow:hidden">'
+        +'<div style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;text-overflow:ellipsis;overflow:hidden">'+displayName+'<\/div>'
+        +'<div style="font-size:10px;color:var(--text3);white-space:nowrap;text-overflow:ellipsis;overflow:hidden">'+a.email+'<\/div>'
+        +(isCurrent?'<div style="font-size:10px;color:var(--brand2)">Đang dùng<\/div>':'')+'<\/div>'
         +(isCurrent?'':'<button onclick="event.stopPropagation();window._removeSwitchAccount(\''+a.email.replace(/'/g,"\\'")+'\')" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;flex-shrink:0" title="Xóa khỏi danh sách"><i class="ti ti-x"><\/i><\/button>')
         +'<\/div>';
     });
@@ -7435,6 +7444,21 @@ window._saveTheme=function(){
   showNotif('Đã áp dụng giao diện mới');
 };
 
+window._sysChangeNickname=async function(userId,currentNick){
+  var newNick=prompt('Đổi nickname — Nhập nickname mới (để trống để xóa nickname):',currentNick||'');
+  if(newNick===null)return; // bấm Cancel
+  showLoading(true);
+  try{
+    var {error}=await sb.from('profiles').update({nickname:newNick||null}).eq('id',userId);
+    showLoading(false);
+    if(error)alert('Lỗi: '+error.message);
+    else{
+      alert('✅ Đã cập nhật nickname thành công');
+      renderSystemRefresh(); // refresh lại danh sách
+    }
+  }catch(e){showLoading(false);alert('Lỗi: '+e.message);}
+};
+
 window._sysChangePassword=async function(userId,fullName){
   var newPw=prompt('Đổi mật khẩu cho "'+fullName+'" — Nhập mật khẩu mới (tối thiểu 6 ký tự):');
   if(!newPw)return;
@@ -7480,6 +7504,7 @@ async function renderSystemRefresh(){
         +'<div style="font-size:10px;color:var(--text3)">'+(p.role||'')+(p.code?' · '+p.code:'')+'</div>'
         +'</div>'
         +'<button class="btn" id="'+_btnId+'" data-uid="'+p.id+'" data-name="'+((p.full_name||'').replace(/"/g,'&quot;'))+'" style="padding:3px 9px;font-size:11px" title="Đổi mật khẩu"><i class="ti ti-key"></i></button>'
+        +'<button class="btn" data-uid="'+p.id+'" data-nick="'+((p.nickname||'').replace(/"/g,'&quot;'))+'" style="padding:3px 9px;font-size:11px;margin-left:4px" title="Đổi nickname" onclick="window._sysChangeNickname(this.dataset.uid,this.dataset.nick)"><i class="ti ti-pencil"></i></button>'
         +'</div>';
     }).join('');
     // Event delegation for password change buttons
