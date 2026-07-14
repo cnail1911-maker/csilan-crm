@@ -14,6 +14,7 @@
 <title>C-Silan CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   const SUPABASE_URL  = 'https://ajsakaddylbpppxlidfe.supabase.co';
@@ -3724,7 +3725,19 @@ function renderCampaign(){
   });
 
   // Campaign cards HTML
-  const campCards=campList.map(function(s){
+  // Tách "Invalid" campaign ra khỏi danh sách thông thường
+  var invalidCamp=null;
+  var regularCampList=campList.filter(function(s){
+    if(s.name==='Invalid'){invalidCamp=s;return false;}
+    return true;
+  });
+  // Đếm invalid realtime từ CUSTOMERS (luôn mới nhất)
+  var invalidCustomers=CUSTOMERS.filter(function(c){return c.lead_status==='Invalid Lead';});
+  var invalidCount=invalidCustomers.length;
+  // Recent 5 khách được đưa vào Invalid (sort theo updated_at)
+  var recentInvalid=invalidCustomers.slice().sort(function(a,b){return (b.updated_at||b.created_at||'').localeCompare(a.updated_at||a.created_at||'');}).slice(0,5);
+
+  const campCards=regularCampList.map(function(s){
     const contactPct=s.total?Math.round(s.called/s.total*100):0;
     const potPct=s.total?Math.round(s.potential/s.total*100):0;
     const convPct=s.total?Math.round(s.closedeal/s.total*100):0;
@@ -3750,6 +3763,9 @@ function renderCampaign(){
       +'<div style="width:'+convPct+'%;background:linear-gradient(90deg,var(--brand),var(--accent2));height:4px;border-radius:4px"><\/div>'
       +'<\/div>'
       +'<div style="font-size:10px;color:var(--text3);text-align:right;margin-top:3px">'+convPct+'% conversion<\/div>'
+      +(isManager?'<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);display:flex;justify-content:flex-end">'
+        +'<button class="btn" style="font-size:11px;padding:3px 10px" onclick="event.stopPropagation();window._campExportExcel(&quot;'+encodeURIComponent(s.name)+'&quot;)" title="Xuất Excel"><i class="ti ti-table-export"></i> Excel<\/button>'
+        +'<\/div>':'')
       +'<\/div>';
   }).join('');
 
@@ -3771,7 +3787,26 @@ function renderCampaign(){
     +'<i class="ti ti-chevron-right" style="font-size:18px;color:var(--text3)"></i>'
     +'<\/div><\/div><\/div>'
     // Campaign cards grid
-    +(campList.length===0?'<div class="empty-state"><i class="ti ti-speakerphone"></i>Chưa có campaign nào<\/div>'
+    // Panel "Invalid" campaign — đặc biệt, không deadline
+    +'<div class="panel" style="margin-bottom:14px;border-left:3px solid var(--danger);cursor:pointer" onclick="window._campShowDetail(&quot;Invalid&quot;)">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+    +'<div style="display:flex;align-items:center;gap:10px">'
+    +'<div style="width:36px;height:36px;border-radius:10px;background:rgba(255,118,117,0.12);display:flex;align-items:center;justify-content:center;font-size:18px">⛔<\/div>'
+    +'<div><div style="font-size:14px;font-weight:700;color:var(--danger)">Invalid Lead<\/div>'
+    +'<div style="font-size:11px;color:var(--text3)">Tự động cập nhật · Không deadline<\/div><\/div>'
+    +'<\/div>'
+    +'<div style="display:flex;gap:16px;align-items:center">'
+    +'<div style="text-align:center"><div style="font-size:22px;font-weight:700;color:var(--danger)">'+invalidCount+'<\/div><div style="font-size:10px;color:var(--text3)">KH<\/div><\/div>'
+    +(isManager?'<button class="btn" style="font-size:11px;padding:3px 10px" onclick="event.stopPropagation();window._campExportExcel(&quot;Invalid&quot;)" title="Xuất Excel"><i class="ti ti-table-export"><\/i> Excel<\/button>':'')
+    +'<i class="ti ti-chevron-right" style="font-size:18px;color:var(--text3)"><\/i>'
+    +'<\/div><\/div>'
+    // Recent Invalid list
+    +(recentInvalid.length>0?'<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)">'
+      +'<div style="font-size:10px;color:var(--text3);margin-bottom:6px">🕐 Vừa chuyển vào:</div>'
+      +recentInvalid.map(function(c){return '<div style="font-size:11px;color:var(--text2);padding:2px 0">'+(c.business_name||c.customer_name||'—')+'<span style="color:var(--text3);font-size:10px;margin-left:6px">'+(c.state||'')+'<\/span><\/div>';}).join('')
+      +'<\/div>':'')
+    +'<\/div>'
+    +(regularCampList.length===0?'<div class="empty-state"><i class="ti ti-speakerphone"></i>Chưa có campaign nào<\/div>'
       :'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">'+campCards+'<\/div>')
     +'<\/div>'
     // Slide panel for create
@@ -3791,6 +3826,87 @@ function renderCampaign(){
 }
 
 // Sale chip dropdown
+window._campExportExcel=async function(encodedName){
+  var campName=decodeURIComponent(encodedName);
+  showLoading(true);
+  try{
+    // Lấy danh sách khách của campaign từ CUSTOMERS cache + DB
+    var custs=CUSTOMERS.filter(function(c){
+      if(campName==='Invalid')return c.lead_status==='Invalid Lead';
+      return c.campaign_name===campName;
+    });
+    if(!custs.length){
+      // Fallback fetch từ DB
+      var qResult=campName==='Invalid'
+        ?await sb.from('customers').select('*,assigned_profile:profiles!assigned_to(full_name)').eq('lead_status','Invalid Lead').limit(5000)
+        :await sb.from('customers').select('*,assigned_profile:profiles!assigned_to(full_name)').eq('campaign_name',campName).limit(5000);
+      custs=qResult.data||[];
+    }
+
+    // Build rows
+    var headers=['Mã KH','Business Name','Customer Name','Phone','State','Status','Sub Status','Lead Status','Potential','Sale phụ trách','Campaign','Deadline','Ghi chú'];
+    var rows=custs.map(function(c){
+      return [
+        c.ma_kh||'',
+        c.business_name||'',
+        c.customer_name||'',
+        c.cellphone?String(c.cellphone):'',
+        c.state||'',
+        c.status||'',
+        c.sub_status||'',
+        c.lead_status||'',
+        c.potential||'',
+        (c.assigned_profile&&c.assigned_profile.full_name)||(PROFILES.find(function(p){return p.id===c.assigned_to;})||{}).full_name||'',
+        c.campaign_name||'',
+        c.assigned_deadline||'',
+        c.description||''
+      ];
+    });
+
+    // SheetJS
+    var XLSX=window.XLSX;
+    if(!XLSX){showLoading(false);alert('SheetJS chưa load. Vui lòng thử lại sau 2 giây.');return;}
+    var wb=XLSX.utils.book_new();
+    var wsData=[headers].concat(rows);
+    var ws=XLSX.utils.aoa_to_sheet(wsData);
+
+    // Style header (row 1): đỏ đậm, chữ trắng, bold
+    var range=XLSX.utils.decode_range(ws['!ref']);
+    for(var C=range.s.c;C<=range.e.c;C++){
+      var addr=XLSX.utils.encode_cell({r:0,c:C});
+      if(!ws[addr])ws[addr]={v:headers[C],t:'s'};
+      ws[addr].s={
+        fill:{patternType:'solid',fgColor:{rgb:'C00000'}},
+        font:{bold:true,color:{rgb:'FFFFFF'},name:'Arial',sz:11},
+        alignment:{horizontal:'center',vertical:'center',wrapText:false},
+        border:{bottom:{style:'thin',color:{rgb:'FFFFFF'}}}
+      };
+    }
+    // Style data rows: alternating
+    for(var R=1;R<=rows.length;R++){
+      for(var C2=range.s.c;C2<=range.e.c;C2++){
+        var addr2=XLSX.utils.encode_cell({r:R,c:C2});
+        if(ws[addr2]){
+          ws[addr2].s={
+            fill:{patternType:'solid',fgColor:{rgb:R%2===0?'F2F2F2':'FFFFFF'}},
+            font:{name:'Arial',sz:10},
+            alignment:{vertical:'center'}
+          };
+        }
+      }
+    }
+    // Freeze row 1
+    ws['!freeze']={xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};
+    // Col widths
+    ws['!cols']=[{wch:10},{wch:25},{wch:20},{wch:14},{wch:10},{wch:10},{wch:14},{wch:14},{wch:16},{wch:20},{wch:16},{wch:12},{wch:30}];
+
+    XLSX.utils.book_append_sheet(wb,ws,campName.slice(0,31));
+    var fileName='Campaign_'+campName.replace(/[^a-zA-Z0-9]/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xlsx';
+    XLSX.writeFile(wb,fileName,{bookType:'xlsx',type:'binary',cellStyles:true});
+    showLoading(false);
+  }catch(e){showLoading(false);alert('Lỗi xuất Excel: '+e.message);console.error(e);}
+};
+
 window._campSaleDropdown=function(btn){
   var dd=document.getElementById('camp-sale-dd');
   if(!dd)return;
@@ -6772,6 +6888,14 @@ async function saveDetail(customerId){
   try{
     var {error:custErr}=await sb.from('customers').update(update).eq('id',customerId);
     if(custErr)throw custErr;
+    // Auto-campaign Invalid: nếu lead_status = 'Invalid Lead' → tự chuyển vào campaign "Invalid"
+    if(update.lead_status==='Invalid Lead'){
+      var invUpdate={campaign_name:'Invalid',assigned_deadline:null};
+      sb.from('customers').update(invUpdate).eq('id',customerId).then(function(){});
+      // Cập nhật local cache luôn
+      var _iidx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
+      if(_iidx>=0)Object.assign(CUSTOMERS[_iidx],invUpdate);
+    }
     // Log activity background — không chặn UI
     var logPayload={customer_id:customerId,sale_id:currentUser.id,note:note||null,call_result:result||null,called_at:new Date().toISOString()};
     sb.from('call_logs').insert(logPayload).then(function(){}).catch(function(e){console.warn('[log]',e);});
