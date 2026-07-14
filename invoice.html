@@ -537,6 +537,7 @@ const {createClient}=supabase;
 const sb=createClient(SUPABASE_URL,SUPABASE_ANON);
 
 // STATE
+const STATE_OPTS=['Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','Washington, D.C.','West Virginia','Wisconsin','Wyoming'];
 let currentUser=null,currentProfile=null;
 let COMPANIES=[],PRODUCTS=[],CUSTOMERS_CACHE=[];
 let currentProofUrls=[];
@@ -2185,57 +2186,101 @@ function openAddCust(prefill){
   var m=document.createElement('div');
   m.id='aff-cust-form-modal';
   m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
-  function field(label,id,val,type){
-    return '<div style="margin-bottom:10px"><label style="font-size:10px;color:var(--gray);text-transform:uppercase;display:block;margin-bottom:3px">'+label+'</label>'
-      +'<input id="cf-'+id+'" type="'+(type||'text')+'" value="'+(val||'')+'" style="width:100%;box-sizing:border-box;background:#f8f8f8;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--dark);outline:none"></div>';
+
+  var stateOpts='<option value="">-- Chọn State --</option>'
+    +STATE_OPTS.map(function(s){return '<option value="'+s+'"'+(c.state===s?' selected':'')+'>'+s+'</option>';}).join('');
+
+  function field(label,id,val,type,required){
+    var req=required?'<span style="color:var(--red)"> *</span>':'';
+    var inp='<input id="cf-'+id+'" type="'+(type||'text')+'" value="'+(val||'')+'"'+(required?' required':'')+' style="width:100%;box-sizing:border-box;background:#f8f8f8;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--dark);outline:none">';
+    return '<div style="margin-bottom:10px"><label style="font-size:10px;color:var(--gray);text-transform:uppercase;display:block;margin-bottom:3px">'+label+req+'</label>'+inp+'</div>';
   }
-  m.innerHTML='<div style="background:#fff;border-radius:12px;width:500px;max-width:100%;max-height:90vh;overflow-y:auto">'
+
+  m.innerHTML='<div style="background:#fff;border-radius:12px;width:520px;max-width:100%;max-height:90vh;overflow-y:auto">'
     +'<div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">'
     +'<div style="font-size:14px;font-weight:700;color:var(--dark)">'+(isEdit?'Sửa khách hàng':'Thêm khách hàng mới')+'</div>'
     +'<button onclick="document.getElementById(&quot;aff-cust-form-modal&quot;).remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--gray)">×</button>'
     +'</div>'
     +'<div style="padding:16px">'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">'
-    +field('Business Name *','biz',c.business_name)
-    +field('Customer Name','name',c.customer_name)
-    +field('Business Phone','bphone',c.business_phone,'tel')
-    +field('Cellphone','cell',c.cellphone,'tel')
-    +field('State','state',c.state)
-    +field('City','city',c.city)
-    +field('Address','addr',c.address)
-    +field('Zipcode','zip',c.zipcode)
+    +field('Business Name','biz',c.business_name,'text',true)
+    +field('Customer Name','name',c.customer_name,'text',true)
+    +field('Business Phone','bphone',c.business_phone,'tel',true)
+    +field('Cellphone','cell',c.cellphone,'tel',true)
+    // State: dropdown
+    +'<div style="margin-bottom:10px"><label style="font-size:10px;color:var(--gray);text-transform:uppercase;display:block;margin-bottom:3px">State <span style="color:var(--red)">*</span></label>'
+    +'<select id="cf-state" style="width:100%;box-sizing:border-box;background:#f8f8f8;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--dark);outline:none">'+stateOpts+'</select></div>'
+    +field('City','city',c.city,'text',true)
     +'</div>'
-    +field('Ghi chú','note',c.description)
+    +field('Address','addr',c.address,'text',true)
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">'
+    +field('Zipcode','zip',c.zipcode,'text',false)
+    +'</div>'
+    +'<div style="margin-bottom:10px"><label style="font-size:10px;color:var(--gray);text-transform:uppercase;display:block;margin-bottom:3px">Ghi chú</label>'
+    +'<textarea id="cf-note" rows="2" style="width:100%;box-sizing:border-box;background:#f8f8f8;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--dark);outline:none;resize:vertical">'+(c.description||'')+'</textarea></div>'
     +'<div id="cf-err" style="color:var(--red);font-size:11px;margin-bottom:8px;display:none"></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +'<div style="display:flex;gap:8px;justify-content:space-between;align-items:center">'
+    +(isEdit?'<button onclick="confirmDeleteAffCust('+c.id+')" style="background:#fff;border:1px solid #e74c3c;border-radius:8px;padding:8px 14px;font-size:12px;color:#e74c3c;cursor:pointer"><i class="ti ti-trash"></i> Xóa KH</button>':'<div></div>')
+    +'<div style="display:flex;gap:8px">'
     +'<button onclick="document.getElementById(&quot;aff-cust-form-modal&quot;).remove()" style="background:#f0f0f0;border:none;border-radius:8px;padding:8px 18px;font-size:12px;cursor:pointer">Hủy</button>'
     +'<button id="cf-save-btn" onclick="saveAffCust('+JSON.stringify(isEdit)+','+JSON.stringify(c.id||null)+')" style="background:var(--red);border:none;border-radius:8px;padding:8px 18px;font-size:12px;color:#fff;font-weight:600;cursor:pointer">Lưu</button>'
-    +'</div></div></div>';
+    +'</div></div></div></div>';
+
   document.body.appendChild(m);
   setTimeout(function(){var f=document.getElementById('cf-biz');if(f)f.focus();},80);
 }
+
 
 function openEditCust(id){
   var c=_affCusts.find(function(x){return x.id===id;});
   if(c)openAddCust(c);
 }
 
+async function confirmDeleteAffCust(id){
+  var c=_affCusts.find(function(x){return x.id===id;});
+  if(!c)return;
+  if(!confirm('Xóa khách hàng '+( c.business_name||c.customer_name||'')+'? Thao tác này không thể hoàn tác.'))return;
+  document.getElementById('aff-cust-form-modal').remove();
+  showLoading(true);
+  try{
+    var {error}=await sb.from('customers').delete().eq('id',id);
+    if(error)throw error;
+    _affCusts=_affCusts.filter(function(x){return x.id!==id;});
+    refreshAffStats();
+    filterAffCusts(_affCustSearch);
+    showLoading(false);
+  }catch(e){showLoading(false);alert('Lỗi xóa: '+e.message);}
+}
+
 async function saveAffCust(isEdit,custId){
   var btn=document.getElementById('cf-save-btn');
   var err=document.getElementById('cf-err');
   var biz=(document.getElementById('cf-biz').value||'').trim();
-  if(!biz){err.textContent='Business Name là bắt buộc!';err.style.display='';return;}
+  var nameVal=(document.getElementById('cf-name').value||'').trim();
+  var bphone=(document.getElementById('cf-bphone').value||'').trim();
+  var cell=(document.getElementById('cf-cell').value||'').trim();
+  var stateVal=(document.getElementById('cf-state').value||'').trim();
+  var city=(document.getElementById('cf-city').value||'').trim();
+  var addr=(document.getElementById('cf-addr').value||'').trim();
+  var missing=[];
+  if(!biz)missing.push('Business Name');
+  if(!nameVal)missing.push('Customer Name');
+  if(!bphone&&!cell)missing.push('Phone (Business hoặc Cellphone)');
+  if(!stateVal)missing.push('State');
+  if(!city)missing.push('City');
+  if(!addr)missing.push('Address');
+  if(missing.length){err.textContent='Vui lòng nhập: '+missing.join(', ');err.style.display='';return;}
   if(btn){btn.disabled=true;btn.textContent='Đang lưu...';}
   var payload={
     business_name:biz,
-    customer_name:document.getElementById('cf-name').value.trim()||null,
-    business_phone:document.getElementById('cf-bphone').value.trim()||null,
-    cellphone:document.getElementById('cf-cell').value.trim()||null,
-    state:document.getElementById('cf-state').value.trim()||null,
-    city:document.getElementById('cf-city').value.trim()||null,
-    address:document.getElementById('cf-addr').value.trim()||null,
-    zipcode:document.getElementById('cf-zip').value.trim()||null,
-    description:document.getElementById('cf-note').value.trim()||null,
+    customer_name:nameVal||null,
+    business_phone:bphone||null,
+    cellphone:cell||null,
+    state:stateVal||null,
+    city:city||null,
+    address:addr||null,
+    zipcode:(document.getElementById('cf-zip').value||'').trim()||null,
+    description:(document.getElementById('cf-note').value||'').trim()||null,
     assigned_to:currentUser.id,
     source:'affiliate'
   };
