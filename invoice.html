@@ -162,6 +162,16 @@ table.inv-table tr:last-child td{border-bottom:none}
 .team-icon-btn.danger:hover{color:#e74c3c}
 .team-icon-btn.success:hover{color:#27ae60}
 
+/* AFFILIATE CUST LIST PANEL */
+#aff-cust-panel{position:fixed;top:0;right:0;bottom:0;width:min(680px,96vw);background:#fff;border-left:1px solid var(--border);z-index:2000;display:flex;flex-direction:column;box-shadow:-4px 0 20px rgba(0,0,0,0.12);transform:translateX(100%);transition:transform 0.25s ease}
+#aff-cust-panel.open{transform:translateX(0)}
+#aff-cust-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1999}
+.aff-stat{display:flex;gap:8px;padding:10px 14px;background:#fafafa;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.aff-stat-item{flex:1;text-align:center;padding:6px 8px;background:#fff;border-radius:8px;border:1px solid var(--border);min-width:70px}
+.aff-stat-num{font-size:17px;font-weight:700;color:var(--red)}
+.aff-stat-label{font-size:9px;color:var(--gray);text-transform:uppercase;margin-top:1px}
+.aff-cust-row{display:grid;grid-template-columns:1fr auto;gap:6px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;align-items:start}
+.aff-cust-row:hover{background:#fff5f5}
 /* PRODUCT CATALOG (affiliate) */
 .catalog-overlay{display:none;position:fixed;inset:0;background:var(--cream);z-index:1000;flex-direction:column}
 .catalog-overlay.show{display:flex}
@@ -299,6 +309,9 @@ table.inv-table tr:last-child td{border-bottom:none}
           </button>
           <button id="catalog-btn" onclick="openCatalog()" style="display:none;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:7px;color:#fff;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;white-space:nowrap">
             <i class="ti ti-package"></i> Sản phẩm
+          </button>
+          <button id="custlist-btn" onclick="openCustList()" style="display:none;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:7px;color:#fff;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;white-space:nowrap">
+            <i class="ti ti-users"></i> Danh sách KH
           </button>
         </div>
       </div>
@@ -585,6 +598,8 @@ async function initApp(user){
     document.getElementById('affiliate-sale-section').style.display='block';
     document.getElementById('catalog-btn').style.display='inline-flex';
     document.getElementById('team-btn').style.display='inline-flex';
+    document.getElementById('custlist-btn').style.display='inline-flex';
+    await loadAffiliateCusts();
     await loadTeamMembers();
     refreshSaleDropdown();
   }
@@ -741,10 +756,13 @@ async function searchCustomer(q){
   const res=document.getElementById('cust-results');
   if(!q||q.length<2){res.style.display='none';return;}
   searchTimeout=setTimeout(async function(){
-    const {data}=await sb.from('customers')
+    var custQ=sb.from('customers')
       .select('id,ma_kh,customer_name,business_name,cellphone,business_phone,address,city,state,zipcode')
       .or('ma_kh.ilike.%'+q+'%,customer_name.ilike.%'+q+'%,cellphone.ilike.%'+q+'%,business_phone.ilike.%'+q+'%,business_name.ilike.%'+q+'%')
       .limit(8);
+    // Affiliate chỉ tìm trong KH của mình
+    if(window.isAffiliate&&currentUser)custQ=custQ.eq('assigned_to',currentUser.id);
+    const {data}=await custQ;
     if(!data||data.length===0){res.style.display='none';return;}
     res.innerHTML='';
     data.forEach(function(c){
@@ -2064,6 +2082,219 @@ function resetForm(){
   const {data:{session}}=await sb.auth.getSession();
   if(session&&session.user)await initApp(session.user);
 })();
+
+// ══════════════════════════════════════════════════════════
+// AFFILIATE CUSTOMER LIST
+// ══════════════════════════════════════════════════════════
+var _affCusts=[], _affInvs=[], _affCustSearch='';
+
+async function loadAffiliateCusts(){
+  if(!currentUser)return;
+  try{
+    var [custRes,invRes]=await Promise.all([
+      sb.from('customers').select('*').eq('assigned_to',currentUser.id).order('created_at',{ascending:false}).limit(2000),
+      sb.from('invoices').select('id,customer_id,total,approval_status,invoice_no,date').eq('sale_id',currentUser.id).limit(2000)
+    ]);
+    _affCusts=custRes.data||[];
+    _affInvs=invRes.data||[];
+    refreshAffStats();
+  }catch(e){console.warn('[aff-cust]',e);}
+}
+
+function refreshAffStats(){
+  var approved=_affInvs.filter(function(i){return i.approval_status==='approved';}).length;
+  var pending=_affInvs.filter(function(i){return i.approval_status==='pending';}).length;
+  var rejected=_affInvs.filter(function(i){return i.approval_status==='rejected';}).length;
+  var custWithInv=new Set(_affInvs.map(function(i){return i.customer_id;})).size;
+  document.getElementById('st-total').textContent=_affCusts.length;
+  document.getElementById('st-approved').textContent=approved;
+  document.getElementById('st-pending').textContent=pending;
+  document.getElementById('st-rejected').textContent=rejected;
+  document.getElementById('st-closedeal-kh').textContent=custWithInv;
+}
+
+function openCustList(){
+  document.getElementById('aff-cust-panel').classList.add('open');
+  document.getElementById('aff-cust-overlay').style.display='block';
+  renderAffCustList(_affCusts);
+}
+
+function closeCustList(){
+  document.getElementById('aff-cust-panel').classList.remove('open');
+  document.getElementById('aff-cust-overlay').style.display='none';
+}
+
+function filterAffCusts(q){
+  _affCustSearch=q.toLowerCase().trim();
+  var filtered=_affCusts.filter(function(c){
+    if(!_affCustSearch)return true;
+    return (c.business_name||'').toLowerCase().includes(_affCustSearch)
+      ||(c.customer_name||'').toLowerCase().includes(_affCustSearch)
+      ||(c.cellphone?String(c.cellphone):'').includes(_affCustSearch)
+      ||(c.business_phone?String(c.business_phone):'').includes(_affCustSearch)
+      ||(c.ma_kh||'').toLowerCase().includes(_affCustSearch);
+  });
+  renderAffCustList(filtered);
+}
+
+function renderAffCustList(custs){
+  var el=document.getElementById('aff-cust-list');
+  if(!el)return;
+  if(!custs.length){
+    el.innerHTML='<div style="text-align:center;padding:32px;color:var(--gray);font-size:13px">'+(_affCustSearch?'Không tìm thấy khách hàng':'Chưa có khách hàng nào. Bấm "Thêm KH" để thêm mới.')+'</div>';
+    return;
+  }
+  el.innerHTML=custs.map(function(c){
+    var invs=_affInvs.filter(function(i){return i.customer_id===c.id;});
+    var lastInv=invs.length?invs[0]:null;
+    var invBadge=lastInv
+      ?'<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:'+(lastInv.approval_status==='approved'?'rgba(0,184,148,0.12)':lastInv.approval_status==='rejected'?'rgba(99,110,114,0.12)':'rgba(253,203,110,0.15)')+';color:'+(lastInv.approval_status==='approved'?'#00b894':lastInv.approval_status==='rejected'?'#636e72':'#e17055')+'">'+(lastInv.approval_status==='approved'?'Approved':lastInv.approval_status==='rejected'?'Rejected':'Pending')+'</span>':'';
+    return '<div class="aff-cust-row" data-id="'+c.id+'">'
+      +'<div onclick="affSelectCust('+c.id+')">'
+      +'<div style="font-size:12px;font-weight:600;color:var(--dark)">'+(c.business_name||c.customer_name||'—')+'</div>'
+      +'<div style="font-size:11px;color:var(--gray);margin-top:2px">'
+        +(c.customer_name&&c.business_name?c.customer_name+' · ':'')
+        +(c.cellphone?c.cellphone:'')+(c.cellphone&&c.business_phone?' / ':' ')+(c.business_phone||'')
+      +'</div>'
+      +'<div style="font-size:10px;color:var(--gray);margin-top:2px">'+(c.state||'')+(c.city?' · '+c.city:'')
+        +(invs.length?' &nbsp;·&nbsp; <span style="color:var(--red)">'+invs.length+' đơn</span>':'')
+        +(lastInv?' $'+Number(lastInv.total||0).toLocaleString('en-US'):'')
+      +'</div>'
+      +'<div style="margin-top:3px">'+invBadge+'</div>'
+      +'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">'
+      +'<button onclick="affSelectCust('+c.id+')" style="background:var(--red);border:none;border-radius:6px;color:#fff;padding:4px 10px;font-size:10px;cursor:pointer;font-weight:600">Chọn</button>'
+      +'<button onclick="openEditCust('+c.id+')" style="background:#f0f0f0;border:none;border-radius:6px;color:var(--dark);padding:4px 10px;font-size:10px;cursor:pointer">Sửa</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function affSelectCust(id){
+  var c=_affCusts.find(function(x){return x.id===id;});
+  if(!c)return;
+  selectCustomer(c);
+  closeCustList();
+}
+
+// ── Add / Edit KH ──
+function openAddCust(prefill){
+  var isEdit=!!(prefill&&prefill.id);
+  var c=prefill||{};
+  var old=document.getElementById('aff-cust-form-modal');if(old)old.remove();
+  var m=document.createElement('div');
+  m.id='aff-cust-form-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+  function field(label,id,val,type){
+    return '<div style="margin-bottom:10px"><label style="font-size:10px;color:var(--gray);text-transform:uppercase;display:block;margin-bottom:3px">'+label+'</label>'
+      +'<input id="cf-'+id+'" type="'+(type||'text')+'" value="'+(val||'')+'" style="width:100%;box-sizing:border-box;background:#f8f8f8;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--dark);outline:none"></div>';
+  }
+  m.innerHTML='<div style="background:#fff;border-radius:12px;width:500px;max-width:100%;max-height:90vh;overflow-y:auto">'
+    +'<div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">'
+    +'<div style="font-size:14px;font-weight:700;color:var(--dark)">'+(isEdit?'Sửa khách hàng':'Thêm khách hàng mới')+'</div>'
+    +'<button onclick="document.getElementById(&quot;aff-cust-form-modal&quot;).remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--gray)">×</button>'
+    +'</div>'
+    +'<div style="padding:16px">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">'
+    +field('Business Name *','biz',c.business_name)
+    +field('Customer Name','name',c.customer_name)
+    +field('Business Phone','bphone',c.business_phone,'tel')
+    +field('Cellphone','cell',c.cellphone,'tel')
+    +field('State','state',c.state)
+    +field('City','city',c.city)
+    +field('Address','addr',c.address)
+    +field('Zipcode','zip',c.zipcode)
+    +'</div>'
+    +field('Ghi chú','note',c.description)
+    +'<div id="cf-err" style="color:var(--red);font-size:11px;margin-bottom:8px;display:none"></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +'<button onclick="document.getElementById(&quot;aff-cust-form-modal&quot;).remove()" style="background:#f0f0f0;border:none;border-radius:8px;padding:8px 18px;font-size:12px;cursor:pointer">Hủy</button>'
+    +'<button id="cf-save-btn" onclick="saveAffCust('+JSON.stringify(isEdit)+','+JSON.stringify(c.id||null)+')" style="background:var(--red);border:none;border-radius:8px;padding:8px 18px;font-size:12px;color:#fff;font-weight:600;cursor:pointer">Lưu</button>'
+    +'</div></div></div>';
+  document.body.appendChild(m);
+  setTimeout(function(){var f=document.getElementById('cf-biz');if(f)f.focus();},80);
+}
+
+function openEditCust(id){
+  var c=_affCusts.find(function(x){return x.id===id;});
+  if(c)openAddCust(c);
+}
+
+async function saveAffCust(isEdit,custId){
+  var btn=document.getElementById('cf-save-btn');
+  var err=document.getElementById('cf-err');
+  var biz=(document.getElementById('cf-biz').value||'').trim();
+  if(!biz){err.textContent='Business Name là bắt buộc!';err.style.display='';return;}
+  if(btn){btn.disabled=true;btn.textContent='Đang lưu...';}
+  var payload={
+    business_name:biz,
+    customer_name:document.getElementById('cf-name').value.trim()||null,
+    business_phone:document.getElementById('cf-bphone').value.trim()||null,
+    cellphone:document.getElementById('cf-cell').value.trim()||null,
+    state:document.getElementById('cf-state').value.trim()||null,
+    city:document.getElementById('cf-city').value.trim()||null,
+    address:document.getElementById('cf-addr').value.trim()||null,
+    zipcode:document.getElementById('cf-zip').value.trim()||null,
+    description:document.getElementById('cf-note').value.trim()||null,
+    assigned_to:currentUser.id,
+    source:'affiliate'
+  };
+  try{
+    var result;
+    if(isEdit&&custId){
+      var {data,error}=await sb.from('customers').update(payload).eq('id',custId).select().single();
+      if(error)throw error;
+      result=data;
+      var idx=_affCusts.findIndex(function(x){return x.id===custId;});
+      if(idx>=0)Object.assign(_affCusts[idx],payload);
+    }else{
+      var genMaKH='KH'+Date.now().toString().slice(-6);
+      payload.ma_kh=genMaKH;
+      payload.status='New';payload.sub_status='New Lead';
+      var {data:nd,error:ne}=await sb.from('customers').insert(payload).select().single();
+      if(ne)throw ne;
+      result=nd;
+      _affCusts.unshift(result);
+    }
+    document.getElementById('aff-cust-form-modal').remove();
+    refreshAffStats();
+    filterAffCusts(_affCustSearch);
+  }catch(e){
+    if(err){err.textContent='Lỗi: '+e.message;err.style.display='';}
+    if(btn){btn.disabled=false;btn.textContent='Lưu';}
+  }
+}
+
 </script>
+
+<!-- AFFILIATE CUST LIST PANEL -->
+<div id="aff-cust-overlay" onclick="closeCustList()"></div>
+<div id="aff-cust-panel">
+  <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--red);color:#fff;flex-shrink:0">
+    <div>
+      <div style="font-size:14px;font-weight:700">Danh sách khách hàng</div>
+      <div style="font-size:10px;opacity:0.8">Khách hàng của tôi</div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button onclick="openAddCust()" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);border-radius:7px;color:#fff;padding:5px 10px;font-size:11px;cursor:pointer;font-weight:600"><i class="ti ti-plus"></i> Thêm KH</button>
+      <button onclick="closeCustList()" style="background:none;border:1px solid rgba(255,255,255,0.3);border-radius:7px;color:#fff;padding:5px 9px;font-size:13px;cursor:pointer">×</button>
+    </div>
+  </div>
+  <!-- Stats -->
+  <div class="aff-stat" id="aff-stats">
+    <div class="aff-stat-item"><div class="aff-stat-num" id="st-total">0</div><div class="aff-stat-label">Tổng KH</div></div>
+    <div class="aff-stat-item"><div class="aff-stat-num" style="color:#00b894" id="st-approved">0</div><div class="aff-stat-label">Closedeal</div></div>
+    <div class="aff-stat-item"><div class="aff-stat-num" style="color:#fdcb6e" id="st-pending">0</div><div class="aff-stat-label">Pending</div></div>
+    <div class="aff-stat-item"><div class="aff-stat-num" style="color:#636e72" id="st-rejected">0</div><div class="aff-stat-label">Từ chối</div></div>
+    <div class="aff-stat-item"><div class="aff-stat-num" style="color:#e17055" id="st-closedeal-kh">0</div><div class="aff-stat-label">Đã có đơn</div></div>
+  </div>
+  <!-- Search -->
+  <div style="padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0">
+    <input id="aff-cust-search" type="text" placeholder="Tìm tên, phone, mã KH..." oninput="filterAffCusts(this.value)"
+      style="width:100%;box-sizing:border-box;background:#f8f8f8;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--dark);outline:none">
+  </div>
+  <!-- List -->
+  <div id="aff-cust-list" style="flex:1;overflow-y:auto"></div>
+</div>
 </body>
 </html>
