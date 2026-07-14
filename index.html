@@ -2325,6 +2325,7 @@ function renderCustomers(){
     +'<div class="search-wrap"><i class="ti ti-search"></i><input placeholder="Tìm tên, SĐT, mã KH, công ty..." id="main-search" oninput="doSearch(this.value)" value="'+(window._searchRaw||search)+'"><\/div>'
     +(isManager?'<button class="btn" onclick="doRecall()" style="border-color:rgba(255,118,117,0.4);color:var(--danger)"><i class="ti ti-rotate-clockwise"></i> Thu hồi hết hạn<\/button>':'')
     +'<button class="btn btn-primary" onclick="addOpen=true;render()"><i class="ti ti-plus"></i> Thêm khách<\/button>'
+    +(isManager?'<button class="btn" onclick="exportCustomers()" style="border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"><\/i> Excel<\/button>':'')
     +'<\/div>'
     +'<div class="stats-row" style="grid-template-columns:repeat('+(2+potBreakdown.length)+',1fr)">'
     +'<div class="stat-card sc0" style="cursor:pointer;border:'+(fPotential==='all'&&fStatus==='all'&&fLead==='all'?'2px solid var(--brand2)':'1px solid var(--border)')+'" onclick="fPotential=\'all\';fStatus=\'all\';fLead=\'all\';curPage=1;render()"><div class="stat-label">Tổng data<\/div><div class="stat-val" style="color:var(--brand2)">'+data.length+'<\/div><div class="stat-sub">được giao<\/div><\/div>'
@@ -2401,7 +2402,7 @@ function renderPotential(){
   });
 
   return '<div class="topbar"><div class="topbar-title">Tiềm năng<\/div>'
-    +'<div style="font-size:12px;color:var(--text2)">Khách đã tạo Invoice / Báo giá<\/div>'+saleFilter+'<\/div>'
+    +'<div style="font-size:12px;color:var(--text2)">Khách đã tạo Invoice / Báo giá<\/div>'+saleFilter+(isManager?'<button class="btn" onclick="exportPotential()" style="border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"><\/i> Excel<\/button>':'')+'<\/div>'
     +'<div class="stats-row stats-row-compact" style="grid-template-columns:repeat('+visiblePotCards+',1fr)">'+statsHtml+'<\/div>'
     +'<div class="content">'
     +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+potData.length+'<\/span> khách tiềm năng<\/h2><\/div>'
@@ -2498,7 +2499,7 @@ function renderClosedeal(){
       +'<\/tr>';
   });
 
-  let html='<div class="topbar"><div class="topbar-title">Closedeal<\/div><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+'<\/div><\/div>'
+  let html='<div class="topbar"><div class="topbar-title">Closedeal<\/div><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+(isManager?'<button class="btn" onclick="exportClosedeal()" style="border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"><\/i> Excel<\/button>':'')+'<\/div><\/div>'
     +'<div class="stats-row">'
     +'<div class="stat-card sc2" style="cursor:pointer;border:'+(cdFilterOrder==='all'&&cdFilterPayment==='all'?'2px solid var(--accent2)':'1px solid var(--border)')+'" onclick="cdFilterOrder=\'all\';cdFilterPayment=\'all\';cdPage=1;render()"><div class="stat-label">Đơn đã duyệt<\/div><div class="stat-val" style="color:var(--accent2)">'+enriched.length+'<\/div>'+(cdFilterOrder==='all'&&cdFilterPayment==='all'?'<div style="font-size:9px;color:var(--accent2)">▼ Tất cả<\/div>':'')+'<\/div>'
     +'<div class="stat-card sc0"><div class="stat-label">Doanh thu<\/div><div class="stat-val" style="color:var(--brand2);font-size:18px">$'+totalRevenue.toLocaleString('en-US')+'<\/div><\/div>'
@@ -5286,7 +5287,7 @@ function renderProducts(){
   return '<div class="topbar"><div class="topbar-title">'+(isManagerProd?'Quản lý sản phẩm':'Sản phẩm')+'<\/div>'
     +'<div class="search-wrap"><i class="ti ti-search"></i><input id="prod-mg-search" placeholder="Tìm SKU, tên sản phẩm..." oninput="clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){prodMgFilter(document.getElementById(&quot;prod-mg-search&quot;).value);},120)" value="'+prodSearch+'"><\/div>'
     +vendorFilter
-    +'<\/div>'
+    +(isManagerProd?'<button class="btn" onclick="exportProducts()" style="border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"><\/i> Excel<\/button>':'')+'<\/div>'
     // Row 1: Vendor stat cards
     +'<div class="stats-row" style="grid-template-columns:repeat('+(VENDOR_OPTS.length+1)+',1fr)">'+statsHtml+'<\/div>'
     // Row 2: SKU prefix cards (scroll ngang, chỉ hiện khi chọn vendor)
@@ -7689,6 +7690,159 @@ window._doSavePw=async function(userId){
   };
   _doActualSave();
 };
+
+
+// ══════════════════════════════════════════════════════════
+// EXPORT EXCEL CHUNG (ExcelJS)
+// ══════════════════════════════════════════════════════════
+async function exportToExcel(sheetName, columns, rows, fileName){
+  if(!window.ExcelJS){alert('ExcelJS chưa load, thử lại sau vài giây.');return;}
+  var wb=new ExcelJS.Workbook();
+  wb.creator='C-Silan CRM';
+  var ws=wb.addWorksheet(sheetName.slice(0,31));
+  ws.columns=columns;
+  // Style header
+  var hRow=ws.getRow(1);
+  hRow.height=22;
+  hRow.eachCell(function(cell){
+    cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFC00000'}};
+    cell.font={bold:true,color:{argb:'FFFFFFFF'},name:'Arial',size:11};
+    cell.alignment={horizontal:'center',vertical:'middle',wrapText:false};
+    cell.border={top:{style:'thin',color:{argb:'FFFFFFFF'}},bottom:{style:'thin',color:{argb:'FFFFFFFF'}},left:{style:'thin',color:{argb:'FFFFFFFF'}},right:{style:'thin',color:{argb:'FFFFFFFF'}}};
+  });
+  // Freeze row 1
+  ws.views=[{state:'frozen',ySplit:1,activeCell:'A2'}];
+  // Data rows
+  rows.forEach(function(r,idx){
+    var row=ws.addRow(r);
+    row.height=16;
+    var bg=idx%2===0?'FFFFFFFF':'FFF5F5F5';
+    row.eachCell({includeEmpty:true},function(cell){
+      cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg}};
+      cell.font={name:'Arial',size:10};
+      cell.alignment={vertical:'middle'};
+    });
+  });
+  // Download
+  var buf=await wb.xlsx.writeBuffer();
+  var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download=fileName+'_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  a.click();URL.revokeObjectURL(url);
+}
+
+// Export Khách hàng
+async function exportCustomers(){
+  showLoading(true);
+  try{
+    var data=CUSTOMERS;
+    var cols=[
+      {header:'Mã KH',key:'ma_kh',width:11},{header:'Business Name',key:'biz',width:26},
+      {header:'Customer Name',key:'name',width:22},{header:'Business Phone',key:'bphone',width:16},
+      {header:'Cellphone',key:'cell',width:14},{header:'State',key:'state',width:10},
+      {header:'City',key:'city',width:14},{header:'Status',key:'status',width:10},
+      {header:'Sub Status',key:'sub',width:16},{header:'Lead Status',key:'lead',width:14},
+      {header:'Potential',key:'pot',width:18},{header:'Campaign',key:'camp',width:16},
+      {header:'Deadline',key:'dl',width:12},{header:'Sale',key:'sale',width:20},
+      {header:'Ngày thêm',key:'date',width:12}
+    ];
+    var rows=data.map(function(c){
+      var saleName=(PROFILES.find(function(p){return p.id===c.assigned_to;})||{}).full_name||'';
+      return [c.ma_kh||'',c.business_name||'',c.customer_name||'',
+        c.business_phone?String(c.business_phone):'',c.cellphone?String(c.cellphone):'',
+        c.state||'',c.city||'',c.status||'',c.sub_status||'',c.lead_status||'',
+        c.potential||'',c.campaign_name||'',c.assigned_deadline||'',saleName,
+        c.created_at?(c.created_at.slice(0,10)):''];
+    });
+    showLoading(false);
+    await exportToExcel('Khách hàng',cols,rows,'CRM_KhachHang');
+  }catch(e){showLoading(false);alert('Lỗi: '+e.message);}
+}
+
+// Export Tiềm năng
+async function exportPotential(){
+  showLoading(true);
+  try{
+    var {data}=await sb.from('invoices')
+      .select('invoice_no,type,date,total,approval_status,sale_id,customer_id,customers!inner(ma_kh,business_name,customer_name,business_phone,cellphone,state)')
+      .limit(5000).order('date',{ascending:false});
+    var cols=[
+      {header:'Mã đơn',key:'inv',width:16},{header:'Ngày',key:'date',width:11},
+      {header:'Loại',key:'type',width:10},{header:'Mã KH',key:'ma_kh',width:11},
+      {header:'Business Name',key:'biz',width:26},{header:'Customer Name',key:'name',width:22},
+      {header:'Bus.Phone',key:'bphone',width:16},{header:'Cellphone',key:'cell',width:14},
+      {header:'State',key:'state',width:10},{header:'Total',key:'total',width:12},
+      {header:'Trạng thái',key:'status',width:14},{header:'Sale',key:'sale',width:20}
+    ];
+    var rows=(data||[]).map(function(inv){
+      var c=inv.customers||{};
+      var saleName=(PROFILES.find(function(p){return p.id===inv.sale_id;})||{}).full_name||'';
+      return [inv.invoice_no||'',inv.date||'',(inv.type==='quotation'?'Báo giá':'Invoice'),
+        c.ma_kh||'',c.business_name||'',c.customer_name||'',
+        c.business_phone?String(c.business_phone):'',c.cellphone?String(c.cellphone):'',
+        c.state||'',inv.total||0,inv.approval_status||'',saleName];
+    });
+    showLoading(false);
+    await exportToExcel('Tiềm năng',cols,rows,'CRM_TiemNang');
+  }catch(e){showLoading(false);alert('Lỗi: '+e.message);}
+}
+
+// Export Closedeal (Order)
+async function exportClosedeal(){
+  showLoading(true);
+  try{
+    var {data}=await sb.from('invoices')
+      .select('invoice_no,billing_month,date,total,deposit,payment_status,order_status,tracking_no,note,sale_id,customer_id,customers!inner(ma_kh,business_name,customer_name,business_phone,cellphone,state)')
+      .eq('approval_status','approved').eq('type','invoice')
+      .limit(5000).order('date',{ascending:false});
+    var cols=[
+      {header:'Mã đơn',key:'inv',width:16},{header:'Billing Month',key:'month',width:14},
+      {header:'Ngày',key:'date',width:11},{header:'Mã KH',key:'ma_kh',width:11},
+      {header:'Business Name',key:'biz',width:26},{header:'Customer Name',key:'name',width:22},
+      {header:'Bus.Phone',key:'bphone',width:16},{header:'Cellphone',key:'cell',width:14},
+      {header:'State',key:'state',width:10},{header:'Revenue',key:'total',width:12},
+      {header:'Deposit',key:'dep',width:12},{header:'Balance Due',key:'bal',width:12},
+      {header:'Payment',key:'pay',width:14},{header:'Order Status',key:'ord',width:16},
+      {header:'Tracking',key:'track',width:20},{header:'Sale',key:'sale',width:20},
+      {header:'Ghi chú',key:'note',width:30}
+    ];
+    var rows=(data||[]).map(function(inv){
+      var c=inv.customers||{};
+      var saleName=(PROFILES.find(function(p){return p.id===inv.sale_id;})||{}).full_name||'';
+      var bal=(inv.total||0)-(inv.deposit||0);
+      return [inv.invoice_no||'',inv.billing_month||'',inv.date||'',
+        c.ma_kh||'',c.business_name||'',c.customer_name||'',
+        c.business_phone?String(c.business_phone):'',c.cellphone?String(c.cellphone):'',
+        c.state||'',inv.total||0,inv.deposit||0,bal,
+        inv.payment_status||'',inv.order_status||'',inv.tracking_no||'',saleName,inv.note||''];
+    });
+    showLoading(false);
+    await exportToExcel('Closedeal',cols,rows,'CRM_Closedeal');
+  }catch(e){showLoading(false);alert('Lỗi: '+e.message);}
+}
+
+// Export Sản phẩm
+async function exportProducts(){
+  showLoading(true);
+  try{
+    var data=window._PROD_CACHE||[];
+    if(!data.length){
+      var {data:pd}=await sb.from('products').select('*').order('vendor',{ascending:true}).limit(5000);
+      data=pd||[];
+    }
+    var cols=[
+      {header:'SKU',key:'sku',width:14},{header:'Tên sản phẩm',key:'name',width:32},
+      {header:'Vendor',key:'vendor',width:16},{header:'Giá bán',key:'price',width:12},
+      {header:'Best Price',key:'best',width:12},{header:'Shipping',key:'ship',width:14},
+      {header:'Description',key:'desc',width:36}
+    ];
+    var rows=data.map(function(p){
+      return [p.sku||'',p.name||'',p.vendor||'',p.price||0,p.best_price||0,p.shipping||'',p.description||''];
+    });
+    showLoading(false);
+    await exportToExcel('Sản phẩm',cols,rows,'CRM_SanPham');
+  }catch(e){showLoading(false);alert('Lỗi: '+e.message);}
+}
 
 window._resetTheme=function(){
   localStorage.removeItem('csilan_theme');
