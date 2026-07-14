@@ -4599,7 +4599,7 @@ window._campShowDetail=function(campName){
   box.innerHTML='<div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0">'
     +'<div><div style="font-size:15px;font-weight:700">'+(isPool?'🌱 Active Pool':decoded)+'<\/div>'
     +'<div style="font-size:11px;color:var(--text3)">'+total+' khách<\/div><\/div>'
-    +'<div style="display:flex;gap:8px"><button class="btn" onclick="window._campExportCSV(\''+campName+'\')" style="font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-file-spreadsheet"></i> Export CSV<\/button>'
+    +'<div style="display:flex;gap:8px"><button class="btn" onclick="window._campExportExcel(encodeURIComponent(\''+campName+'\'))" style="font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"></i> Xuất Excel<\/button>'
     +'<button onclick="document.getElementById(\'camp-detail-modal\').style.display=\'none\'" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px">×<\/button><\/div><\/div>'
     // Stat cards — clickable as filters
     +'<div id="camp-stat-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;padding:12px;flex-shrink:0">'
