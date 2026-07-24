@@ -1886,7 +1886,7 @@ async function saveApprovedInvoice(){
     balance_due:balance,
     payment_method:paymentMethod||null,
     payment_proof_url:currentProofUrls.length?JSON.stringify(currentProofUrls):null,
-    sale_id:selectedSaleId||undefined,
+    sale_id:selectedSaleId||null, // Luôn update sale_id khi save approved invoice
     billing_month:(function(){var bm=document.getElementById('inv-billing-month');return bm&&bm.value?bm.value:null;})()
     // KHÔNG đổi approval_status — giữ 'approved'
   }).eq('id',editInvoiceId);
