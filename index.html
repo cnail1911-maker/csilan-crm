@@ -2785,11 +2785,17 @@ async function approveInvoice(id,status){
         if(!prof){
           // PROFILES chưa load xong — fetch trực tiếp
           try{
-            const {data:pd}=await sb.from('profiles').select('full_name').eq('id',saleId).single();
+            const {data:pd}=await sb.from('profiles').select('full_name,code').eq('id',saleId).single();
             if(pd)prof=pd;
           }catch(e2){console.warn('Profile fetch fallback error:',e2.message);}
         }
         if(prof&&prof.full_name)saleRepName=prof.full_name;
+      }
+      var saleCode=null;
+      // Lookup code riêng nếu chưa có từ prof (dùng sale_id để tìm trong PROFILES)
+      if(saleId){
+        var profWithCode=PROFILES.find(function(p){return p.id===saleId;});
+        if(profWithCode&&profWithCode.code)saleCode=profWithCode.code;
       }
 
       const payload={
@@ -2802,6 +2808,7 @@ async function approveInvoice(id,status){
         })(),
         customer_id:    inv.customer_id||null,
         sale_rep:       saleRepName,
+        sale_code:      saleCode,
         affiliate_member_name: inv.affiliate_member_name||null,
         total:          inv.total||0,
         deposit:        inv.deposit||0,
