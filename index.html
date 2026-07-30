@@ -2785,17 +2785,11 @@ async function approveInvoice(id,status){
         if(!prof){
           // PROFILES chưa load xong — fetch trực tiếp
           try{
-            const {data:pd}=await sb.from('profiles').select('full_name,code').eq('id',saleId).single();
+            const {data:pd}=await sb.from('profiles').select('full_name').eq('id',saleId).single();
             if(pd)prof=pd;
           }catch(e2){console.warn('Profile fetch fallback error:',e2.message);}
         }
         if(prof&&prof.full_name)saleRepName=prof.full_name;
-      }
-      var saleCode=null;
-      // Lookup code riêng nếu chưa có từ prof (dùng sale_id để tìm trong PROFILES)
-      if(saleId){
-        var profWithCode=PROFILES.find(function(p){return p.id===saleId;});
-        if(profWithCode&&profWithCode.code)saleCode=profWithCode.code;
       }
 
       const payload={
@@ -2808,7 +2802,6 @@ async function approveInvoice(id,status){
         })(),
         customer_id:    inv.customer_id||null,
         sale_rep:       saleRepName,
-        sale_code:      saleCode,
         affiliate_member_name: inv.affiliate_member_name||null,
         total:          inv.total||0,
         deposit:        inv.deposit||0,
@@ -9181,33 +9174,106 @@ window.addEventListener('resize',function(){
   </div>
 
   <!-- KPI & BONUS -->
-  <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:8px"><span style="background:rgba(0,184,148,0.15);border-radius:8px;padding:4px 8px;font-size:16px">🎯</span> Chỉ tiêu doanh số & Thưởng doanh thu</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-    <div style="background:rgba(0,206,201,0.06);border:1px solid rgba(0,206,201,0.2);border-radius:10px;padding:14px">
-      <div style="font-size:11px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">✅ Chính thức</div>
-      <div style="font-size:24px;font-weight:800;color:var(--accent)">5 đơn</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:2px">Doanh số ≥ <b>$23,500</b>/tháng</div>
-    </div>
-    <div style="background:rgba(253,203,110,0.06);border:1px solid rgba(253,203,110,0.2);border-radius:10px;padding:14px">
-      <div style="font-size:11px;color:var(--warn);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">🔄 Thử việc</div>
-      <div style="font-size:24px;font-weight:800;color:var(--warn)">4 đơn</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:2px">Doanh số ≥ <b>$19,975</b>/tháng</div>
-    </div>
-  </div>
-  <table class="def-table" style="margin-bottom:10px">
-    <thead><tr><th>Tình huống</th><th>Bonus nhận được</th><th>Ghi chú</th></tr></thead>
-    <tbody>
-      <tr><td class="val">Đạt Target (100%)</td><td style="color:var(--accent);font-weight:600">1% doanh thu — 100%</td><td class="val">Bao gồm phí vận chuyển</td></tr>
-      <tr><td class="val">Không đạt Target</td><td style="color:var(--warn);font-weight:600">1% doanh thu — 50%</td><td class="val">Vẫn có bonus, giảm nửa</td></tr>
-      <tr><td class="val">Vượt 40% Target</td><td style="color:var(--accent2);font-weight:600">+$100 thưởng nóng</td><td class="val">Cộng thêm ngoài bonus</td></tr>
-      <tr><td class="val">Vượt 100% Target</td><td style="color:var(--accent2);font-weight:600">+$200 thưởng nóng</td><td class="val">Cộng thêm ngoài bonus</td></tr>
-    </tbody>
-  </table>
-  <div style="background:rgba(0,206,201,0.06);border:1px solid rgba(0,206,201,0.15);border-radius:8px;padding:10px 12px;margin-bottom:18px;font-size:12px;color:var(--text2)">
-    💡 <b>Điều kiện:</b> Khách thanh toán 70%–100% giá trị đơn. Pre-Order cọc tối thiểu 30%–50%. Mọi giảm giá cần quản lý phê duyệt. Tỷ giá nội bộ: <b>25.000đ/USD</b>.
+  <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:8px"><span style="background:rgba(0,184,148,0.15);border-radius:8px;padding:4px 8px;font-size:16px">🎯</span> Cơ chế đánh giá & tính điểm KPI V4</div>
+
+  <!-- Tổng quan -->
+  <div style="background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:12px;color:var(--text2)">
+    <b style="color:var(--brand2)">Thang điểm 100</b> · Ca đêm 22:00–06:00 · T2–T6 · 22 ngày/tháng<br>
+    <b style="color:var(--accent2)">60%</b> Kết quả Doanh số &nbsp;+&nbsp; <b style="color:var(--warn)">40%</b> Hoạt động & Quá trình
   </div>
 
-  <!-- HEADSPA BED BOLSA -->
+  <!-- Nhóm A -->
+  <div style="font-size:12px;font-weight:700;color:var(--accent2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">📊 Nhóm A — Kết quả Doanh số (60% · Max 72 điểm · Có thể vượt 120%)</div>
+  <table class="def-table" style="margin-bottom:12px">
+    <thead><tr><th>Chỉ số</th><th>Mục tiêu/tháng</th><th>Trọng số</th><th>Công thức tính điểm</th><th>Điểm tối đa</th></tr></thead>
+    <tbody>
+      <tr><td class="val"><b>Doanh số thực thu</b></td><td class="val">$23,500</td><td class="val">40%</td><td class="val">(Doanh số thực tế / $23,500) × 40</td><td style="color:var(--accent2);font-weight:600">48 đ (cap 120%)</td></tr>
+      <tr><td class="val"><b>Số Order chốt</b></td><td class="val">5 đơn</td><td class="val">20%</td><td class="val">(Số Order thực tế / 5) × 20</td><td style="color:var(--accent2);font-weight:600">24 đ (cap 120%)</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Nhóm B -->
+  <div style="font-size:12px;font-weight:700;color:var(--warn);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">📋 Nhóm B — Hoạt động & Quá trình (40% · Max 40 điểm · Cap 100%)</div>
+  <table class="def-table" style="margin-bottom:12px">
+    <thead><tr><th>Chỉ số</th><th>Mục tiêu/tháng</th><th>Trọng số</th><th>Công thức tính điểm</th><th>Điểm tối đa</th></tr></thead>
+    <tbody>
+      <tr><td class="val"><b>Potential</b></td><td class="val">88 KH (4/ngày)</td><td class="val">10%</td><td class="val">(Số Potential thực tế / 88) × 10</td><td style="color:var(--warn);font-weight:600">10 đ</td></tr>
+      <tr><td class="val"><b>Báo giá hợp lệ</b></td><td class="val">18 BG/tháng</td><td class="val">10%</td><td class="val">(Số Báo giá thực tế / 18) × 10</td><td style="color:var(--warn);font-weight:600">10 đ</td></tr>
+      <tr><td class="val"><b>Talktime</b></td><td class="val">2,640 phút (120p/ngày)</td><td class="val">10%</td><td class="val">(Tổng phút gọi / 2,640) × 10</td><td style="color:var(--warn);font-weight:600">10 đ</td></tr>
+      <tr><td class="val"><b>Tổng cuộc gọi</b></td><td class="val">3,960 cuộc (180/ngày)</td><td class="val">5%</td><td class="val">(Tổng cuộc gọi / 3,960) × 5</td><td style="color:var(--warn);font-weight:600">5 đ</td></tr>
+      <tr><td class="val"><b>Kỷ luật CRM</b></td><td class="val">600–800 Data thô · Không bỏ rơi KH > 30 ngày</td><td class="val">5%</td><td class="val">Đánh giá theo tiêu chuẩn vi phạm CRM</td><td style="color:var(--warn);font-weight:600">5 đ</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Chế tài CRM -->
+  <div style="font-size:12px;font-weight:700;color:var(--danger);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">⚠️ Chế tài vi phạm CRM (Trừ thẳng vào điểm Nhóm B mục 7 — tối đa 5 điểm)</div>
+  <table class="def-table" style="margin-bottom:12px">
+    <thead><tr><th>Vi phạm</th><th>Mức trừ điểm</th></tr></thead>
+    <tbody>
+      <tr><td class="val">Không cập nhật Note/thông tin sau cuộc gọi Data thô</td><td style="color:var(--danger);font-weight:600">–1 điểm/lần</td></tr>
+      <tr><td class="val">Bỏ rơi khách Potential/Estimate quá 30 ngày không lên lịch gọi lại</td><td style="color:var(--danger);font-weight:600">–2 điểm/lần</td></tr>
+      <tr><td class="val">Gian lận dữ liệu CRM, báo giá ảo hoặc tự ý can thiệp trái phép</td><td style="color:var(--danger);font-weight:600">–5 điểm</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Phụ cấp KPI -->
+  <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">💰 Cơ chế Chi trả Phụ cấp hàng tháng</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+    <div style="background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.2);border-radius:10px;padding:14px">
+      <div style="font-size:11px;color:var(--success);font-weight:700;text-transform:uppercase;margin-bottom:6px">✅ KPI ≥ 80 điểm</div>
+      <div style="font-size:22px;font-weight:800;color:var(--success)">500.000đ</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">Phụ cấp KPI tháng đạt 100%</div>
+    </div>
+    <div style="background:rgba(255,118,117,0.06);border:1px solid rgba(255,118,117,0.2);border-radius:10px;padding:14px">
+      <div style="font-size:11px;color:var(--danger);font-weight:700;text-transform:uppercase;margin-bottom:6px">❌ KPI < 80 điểm</div>
+      <div style="font-size:22px;font-weight:800;color:var(--danger)">0đ</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">Không trừ lương, chỉ không nhận phụ cấp KPI</div>
+    </div>
+  </div>
+
+  <!-- Level Phụ cấp Chức vụ -->
+  <div style="font-size:12px;font-weight:700;color:var(--brand2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">🏅 Phụ cấp Chức vụ theo Level (Cố định trong Quý)</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+    <div style="flex:1;min-width:80px;background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2);border-radius:8px;padding:10px;text-align:center">
+      <div style="font-size:10px;color:var(--text3);font-weight:700">Level 1</div>
+      <div style="font-size:16px;font-weight:800;color:var(--text)">0đ</div>
+    </div>
+    <div style="flex:1;min-width:80px;background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2);border-radius:8px;padding:10px;text-align:center">
+      <div style="font-size:10px;color:var(--text3);font-weight:700">Level 2</div>
+      <div style="font-size:16px;font-weight:800;color:var(--brand2)">500K</div>
+    </div>
+    <div style="flex:1;min-width:80px;background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2);border-radius:8px;padding:10px;text-align:center">
+      <div style="font-size:10px;color:var(--text3);font-weight:700">Level 3</div>
+      <div style="font-size:16px;font-weight:800;color:var(--accent)">1,000K</div>
+    </div>
+    <div style="flex:1;min-width:80px;background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2);border-radius:8px;padding:10px;text-align:center">
+      <div style="font-size:10px;color:var(--text3);font-weight:700">Level 4</div>
+      <div style="font-size:16px;font-weight:800;color:var(--accent2)">1,500K</div>
+    </div>
+    <div style="flex:1;min-width:80px;background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2);border-radius:8px;padding:10px;text-align:center">
+      <div style="font-size:10px;color:var(--text3);font-weight:700">Level 5</div>
+      <div style="font-size:16px;font-weight:800;color:var(--warn)">2,000K</div>
+    </div>
+  </div>
+
+  <!-- Xét Level Quý -->
+  <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">📅 Xét Tăng/Giảm Level theo Quý (Điểm TB = TB cộng 3 tháng)</div>
+  <table class="def-table" style="margin-bottom:14px">
+    <thead><tr><th>Điểm TB Quý</th><th>Kết quả</th><th>Điều kiện thêm</th></tr></thead>
+    <tbody>
+      <tr><td style="color:var(--success);font-weight:600">≥ 80 điểm</td><td style="color:var(--success);font-weight:600">Tăng 1 Level</td><td class="val">Win Rate ≥ 20% trong Quý</td></tr>
+      <tr><td style="color:var(--warn);font-weight:600">70 – 79 điểm</td><td style="color:var(--warn);font-weight:600">Giữ nguyên Level</td><td class="val">—</td></tr>
+      <tr><td style="color:var(--danger);font-weight:600">< 70 điểm</td><td style="color:var(--danger);font-weight:600">Giảm 1 Level</td><td class="val">—</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Win Rate -->
+  <div style="background:rgba(0,206,201,0.06);border:1px solid rgba(0,206,201,0.2);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px">
+    <b style="color:var(--accent)">Win Rate (Tỷ lệ chuyển đổi Báo giá)</b> = Doanh số thực thu / Tổng Báo giá dự kiến × 100%<br>
+    <span style="color:var(--text2)">Mức tiêu chuẩn ngành: <b>20%–35%</b> · Cần đạt tối thiểu <b>20%</b> để được xét tăng Level</span>
+  </div>
+
+<!-- HEADSPA BED BOLSA -->
   <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:8px"><span style="background:rgba(116,185,255,0.15);border-radius:8px;padding:4px 8px;font-size:16px">🛏️</span> Thưởng đặc biệt — Headspa Bed Bolsa</div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:18px">
     <div style="background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">&lt; 10 giường</div><div style="font-size:20px;font-weight:800;color:var(--brand2)">$15</div><div style="font-size:10px;color:var(--text3)">mỗi giường</div></div>
