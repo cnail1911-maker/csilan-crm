@@ -3781,10 +3781,10 @@ function renderCampaign(){
       +'<div style="width:'+convPct+'%;background:linear-gradient(90deg,var(--brand),var(--accent2));height:4px;border-radius:4px"><\/div>'
       +'<\/div>'
       +'<div style="font-size:10px;color:var(--text3);text-align:right;margin-top:3px">'+convPct+'% conversion<\/div>'
-      +(isManager?'<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);display:flex;justify-content:flex-end;gap:6px">'
+      +'<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);display:flex;justify-content:flex-end;gap:6px">'
         +'<button class="btn" style="font-size:11px;padding:3px 10px;border-color:rgba(0,206,201,0.4);color:var(--accent)" onclick="event.stopPropagation();window._campShowReport(&quot;'+encodeURIComponent(s.name)+'&quot;)" title="Báo cáo"><i class="ti ti-chart-bar"></i> Báo cáo<\/button>'
-        +'<button class="btn" style="font-size:11px;padding:3px 10px" onclick="event.stopPropagation();window._campExportExcel(&quot;'+encodeURIComponent(s.name)+'&quot;)" title="Xuất Excel"><i class="ti ti-table-export"></i> Excel<\/button>'
-        +'<\/div>':'')
+        +(isManager?'<button class="btn" style="font-size:11px;padding:3px 10px" onclick="event.stopPropagation();window._campExportExcel(&quot;'+encodeURIComponent(s.name)+'&quot;)" title="Xuất Excel"><i class="ti ti-table-export"></i> Excel<\/button>':'')
+        +'<\/div>'
       +'<\/div>';
   }).join('');
 
@@ -3852,13 +3852,22 @@ function renderCampaign(){
 window._campShowReport=async function(encodedName){
   var campName=decodeURIComponent(encodedName);
   var isManager=!!(currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader'));
+  var isSale=!!(currentProfile&&(currentProfile.role==='sale'||currentProfile.role==='affiliate'));
   showLoading(true);
-  var q=sb.from('customers')
-    .select('id,ma_kh,business_name,customer_name,cellphone,business_phone,state,status,sub_status,lead_status,reason,potential,assigned_to,description,assigned_profile:profiles!assigned_to(full_name)')
-    .eq('campaign_name',campName).limit(5000);
-  if(!isManager&&currentUser)q=q.eq('assigned_to',currentUser.id);
-  var {data:custs}=await q;
-  custs=custs||[];
+
+  // Batch fetch - vượt qua Supabase 1000-row limit
+  var allCusts=[]; var bFrom=0; var bSize=1000;
+  while(true){
+    var bq=sb.from('customers')
+      .select('id,ma_kh,business_name,customer_name,cellphone,business_phone,state,status,sub_status,lead_status,reason,potential,assigned_to,description,assigned_profile:profiles!assigned_to(full_name)')
+      .eq('campaign_name',campName).range(bFrom,bFrom+bSize-1);
+    if(!isManager&&currentUser)bq=bq.eq('assigned_to',currentUser.id);
+    var {data:bd}=await bq;
+    if(!bd||!bd.length)break;
+    allCusts=allCusts.concat(bd);
+    if(bd.length<bSize)break;
+    bFrom+=bSize;
+  }
   showLoading(false);
 
   var existing=document.getElementById('camp-report-modal');if(existing)existing.remove();
@@ -3866,237 +3875,227 @@ window._campShowReport=async function(encodedName){
   modal.id='camp-report-modal';
   modal.style.cssText='position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,0.65);overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:20px';
 
-  var total=custs.length;
-  var lg={
-    closedeal:custs.filter(function(c){return c.lead_status==='Closedeal';}),
-    lost:custs.filter(function(c){return c.lead_status==='Lost';}),
-    noResp:custs.filter(function(c){return c.lead_status==='No Response';}),
-    busy:custs.filter(function(c){return c.lead_status==='Busy';}),
-    invalid:custs.filter(function(c){return c.lead_status==='Invalid Lead';}),
-    inProgress:custs.filter(function(c){return !c.lead_status||c.lead_status==='';})
-  };
-  var subOrder=['New Lead','No Answer','Contacting','Gatekeeper','Qualified','Appointment Set','Quotation Sent','Pending Decision','Follow Up'];
-  var subColors=['#b2bec3','#636e72','#74b9ff','#a29bfe','#00cec9','#00b894','#fdcb6e','#e17055','#6c5ce7'];
-  var sg={};
-  subOrder.forEach(function(s){sg[s]=custs.filter(function(c){return c.sub_status===s;});});
+  // Build sale/state lists for filter
+  var saleOpts='<option value="">Tất cả Sale</option>';
+  var saleSet={};
+  allCusts.forEach(function(c){if(c.assigned_to&&c.assigned_profile)saleSet[c.assigned_to]=c.assigned_profile.full_name||'';});
+  Object.entries(saleSet).forEach(function(e){saleOpts+='<option value="'+e[0]+'">'+e[1].split(' ').pop()+'</option>';});
+  var stateSet=new Set(); allCusts.forEach(function(c){if(c.state)stateSet.add(c.state);});
+  var stateOpts='<option value="">Tất cả State</option>';
+  Array.from(stateSet).sort().forEach(function(s){stateOpts+='<option value="'+s+'">'+s+'</option>';});
 
-  // Sale map
-  var saleMap={};
-  custs.forEach(function(c){
-    var sid=c.assigned_to||'__none__';
-    var sname=(c.assigned_profile&&c.assigned_profile.full_name)||'Chưa assign';
-    if(!saleMap[sid])saleMap[sid]={name:sname,custs:[]};
-    saleMap[sid].custs.push(c);
-  });
-  // State map
-  var stateMap={};
-  custs.forEach(function(c){var st=c.state||'N/A';if(!stateMap[st])stateMap[st]=[];stateMap[st].push(c);});
-  var stateArr=Object.entries(stateMap).sort(function(a,b){return b[1].length-a[1].length;}).slice(0,15);
+  // Store all data
+  window._crD={allCusts:allCusts,campName:campName};
 
-  // Store for click handlers
-  window._crD={custs:custs,lg:lg,sg:sg,saleMap:saleMap,stateMap:stateMap,campName:campName};
+  function buildDashboard(custs){
+    var total=custs.length;
+    var lg={
+      closedeal:custs.filter(function(c){return c.lead_status==='Closedeal';}),
+      lost:custs.filter(function(c){return c.lead_status==='Lost';}),
+      noResp:custs.filter(function(c){return c.lead_status==='No Response';}),
+      busy:custs.filter(function(c){return c.lead_status==='Busy';}),
+      invalid:custs.filter(function(c){return c.lead_status==='Invalid Lead';}),
+      inProgress:custs.filter(function(c){return !c.lead_status||c.lead_status==='';}),
+    };
+    var subOrder=['New Lead','No Answer','Contacting','Gatekeeper','Qualified','Appointment Set','Quotation Sent','Pending Decision','Follow Up'];
+    var subColors=['#b2bec3','#636e72','#74b9ff','#a29bfe','#00cec9','#00b894','#fdcb6e','#e17055','#6c5ce7'];
+    var sg={};subOrder.forEach(function(s){sg[s]=custs.filter(function(c){return c.sub_status===s;});});
+    var saleMap={};
+    custs.forEach(function(c){
+      var sid=c.assigned_to||'__none__';
+      var sname=(c.assigned_profile&&c.assigned_profile.full_name)||'Chưa assign';
+      if(!saleMap[sid])saleMap[sid]={name:sname,custs:[]};
+      saleMap[sid].custs.push(c);
+    });
+    var stateMap={};
+    custs.forEach(function(c){var st=c.state||'N/A';if(!stateMap[st])stateMap[st]=[];stateMap[st].push(c);});
+    var stateArr=Object.entries(stateMap).sort(function(a,b){return b[1].length-a[1].length;}).slice(0,15);
+    var reasonMap={};
+    custs.filter(function(c){return c.reason&&(c.lead_status==='Lost'||c.lead_status==='Busy');}).forEach(function(c){reasonMap[c.reason]=(reasonMap[c.reason]||0)+1;});
+    var reasonArr=Object.entries(reasonMap).sort(function(a,b){return b[1]-a[1];});
+    var reasonTotal=reasonArr.reduce(function(s,e){return s+e[1];},0);
 
-  function p(n){return total>0?Math.round(n/total*100):0;}
+    // Store for click handlers
+    window._crD.custs=custs;window._crD.lg=lg;window._crD.sg=sg;
+    window._crD.saleMap=saleMap;window._crD.stateMap=stateMap;
 
-  // Donut SVG for lead status
-  function donut(segments,size){
-    size=size||120;var r=48;var cx=size/2;var cy=size/2;
-    var total2=segments.reduce(function(s,x){return s+x.v;},0);
-    if(!total2)return '<svg width="'+size+'" height="'+size+'"><circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="18"/></svg>';
-    var svg='<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'">';
-    var angle=-90;
-    segments.forEach(function(seg){
-      var pct=seg.v/total2;var sweep=pct*360;
-      if(sweep<1)return;
-      var start=angle*Math.PI/180;var end=(angle+sweep)*Math.PI/180;
-      var x1=cx+r*Math.cos(start);var y1=cy+r*Math.sin(start);
-      var x2=cx+r*Math.cos(end);var y2=cy+r*Math.sin(end);
-      var large=sweep>180?1:0;
-      svg+='<path d="M'+cx+','+cy+' L'+x1+','+y1+' A'+r+','+r+',0,'+large+',1,'+x2+','+y2+' Z" fill="'+seg.color+'" opacity="0.85"/>';
+    function p(n){return total>0?Math.round(n/total*100):0;}
+    var connected=lg.closedeal.length+lg.lost.length;
+
+    // Donut SVG
+    var dSegs=[{v:lg.closedeal.length,color:'#00b894'},{v:lg.lost.length,color:'#e17055'},
+      {v:lg.noResp.length,color:'#636e72'},{v:lg.busy.length,color:'#fdcb6e'},
+      {v:lg.invalid.length,color:'#b2bec3'},{v:lg.inProgress.length,color:'#6c5ce7'}];
+    var r=48;var svg='<svg width="130" height="130" viewBox="0 0 130 130">';
+    var angle=-90;var cx=65;var cy=65;var dTotal=dSegs.reduce(function(s,x){return s+x.v;},0)||1;
+    dSegs.forEach(function(seg){
+      var pct=seg.v/dTotal;var sweep=pct*360;if(sweep<1)return;
+      var s2=angle*Math.PI/180;var e2=(angle+sweep)*Math.PI/180;
+      var x1=cx+r*Math.cos(s2);var y1=cy+r*Math.sin(s2);
+      var x2=cx+r*Math.cos(e2);var y2=cy+r*Math.sin(e2);
+      svg+='<path d="M'+cx+','+cy+' L'+x1+','+y1+' A'+r+','+r+',0,'+(sweep>180?1:0)+',1,'+x2+','+y2+' Z" fill="'+seg.color+'" opacity="0.85"/>';
       angle+=sweep;
     });
     svg+='<circle cx="'+cx+'" cy="'+cy+'" r="32" fill="var(--bg2,#1a1240)"/>';
-    svg+='<text x="'+cx+'" y="'+(cy+5)+'" text-anchor="middle" fill="white" font-size="13" font-weight="700">'+total2+'</text>';
-    svg+='</svg>';
-    return svg;
-  }
+    svg+='<text x="'+cx+'" y="'+(cy+5)+'" text-anchor="middle" fill="white" font-size="13" font-weight="700">'+total+'</text></svg>';
 
-  // Horizontal bar SVG
-  function hbar(items,maxW,barH){
-    maxW=maxW||260;barH=barH||18;var gap=6;
-    var maxV=Math.max.apply(null,items.map(function(i){return i.v||0;}));
-    if(!maxV)maxV=1;
-    var h=items.length*(barH+gap);
-    var svg='<svg width="'+(maxW+100)+'" height="'+h+'" style="overflow:visible">';
-    items.forEach(function(item,i){
-      var y=i*(barH+gap);var w=Math.round((item.v/maxV)*maxW)||0;
-      svg+='<rect x="0" y="'+y+'" width="'+w+'" height="'+barH+'" rx="4" fill="'+item.color+'" opacity="0.8"/>';
-      svg+='<text x="'+(w+6)+'" y="'+(y+barH/2+4)+'" fill="var(--text,#fff)" font-size="11">'+item.v+' ('+p(item.v)+'%)</text>';
-    });
-    svg+='</svg>';
-    return svg;
-  }
+    var leadLabels=[
+      {k:'closedeal',label:'✅ Closedeal',n:lg.closedeal.length,color:'#00b894'},
+      {k:'lost',label:'❌ Lost',n:lg.lost.length,color:'#e17055'},
+      {k:'noresp',label:'🔇 No Response',n:lg.noResp.length,color:'#636e72'},
+      {k:'busy',label:'⏳ Busy',n:lg.busy.length,color:'#fdcb6e'},
+      {k:'invalid',label:'🗑️ Invalid',n:lg.invalid.length,color:'#b2bec3'},
+      {k:'inprogress',label:'🔄 Đang follow',n:lg.inProgress.length,color:'#6c5ce7'},
+    ];
 
-  // Click handler builder — use data-key attribute to avoid JSON quoting issues
-  // click handled via data-crkey event delegation
-
-  var leadSegs=[
-    {v:lg.closedeal.length,color:'#00b894'},{v:lg.lost.length,color:'#e17055'},
-    {v:lg.noResp.length,color:'#636e72'},{v:lg.busy.length,color:'#fdcb6e'},
-    {v:lg.invalid.length,color:'#b2bec3'},{v:lg.inProgress.length,color:'#6c5ce7'}
-  ];
-  var leadLabels=[
-    {k:'closedeal',label:'✅ Closedeal',n:lg.closedeal.length,color:'#00b894'},
-    {k:'lost',label:'❌ Lost',n:lg.lost.length,color:'#e17055'},
-    {k:'noresp',label:'🔇 No Response',n:lg.noResp.length,color:'#636e72'},
-    {k:'busy',label:'⏳ Busy',n:lg.busy.length,color:'#fdcb6e'},
-    {k:'invalid',label:'🗑️ Invalid',n:lg.invalid.length,color:'#b2bec3'},
-    {k:'inprogress',label:'🔄 Đang follow',n:lg.inProgress.length,color:'#6c5ce7'},
-  ];
-
-  var html='<div style="background:var(--bg2);border-radius:14px;width:96vw;max-width:1100px;border:1px solid var(--border);overflow:hidden">';
-  // Header
-  html+='<div style="padding:14px 18px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'
-    +'<div><div style="font-size:15px;font-weight:700;color:var(--text)">📊 Báo cáo: '+campName+'</div>'
-    +'<div style="font-size:11px;color:var(--text3)">'+total+' data · '+new Date().toLocaleDateString('vi-VN')+'</div></div>'
-    +'<div style="display:flex;gap:8px">'
-    +'<button class="btn" data-crkey="__all__" style="font-size:11px;border-color:rgba(108,92,231,0.4);color:var(--brand2)"><i class="ti ti-list"></i> Xem tất cả</button>'
-    +'<button class="btn" onclick="window._crExportExcel()" style="font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"></i> Excel</button>'
-    +'<button onclick="document.getElementById(\'camp-report-modal\').remove()" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 12px">✕</button>'
-    +'</div></div>';
-
-  html+='<div style="padding:16px 18px;overflow-y:auto;max-height:calc(92vh - 70px)">';
-
-  // Row 1: Donut + Legend + KPI badges
-  var connected=lg.closedeal.length+lg.lost.length;
-  html+='<div style="display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center;margin-bottom:20px;background:var(--surface);border-radius:12px;padding:14px">';
-  html+=donut(leadSegs,130);
-  // Legend
-  html+='<div style="display:flex;flex-direction:column;gap:6px">';
-  leadLabels.forEach(function(l){
-    html+='<div class="cr-clickrow" data-crkey="'+l.k+'" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 8px;border-radius:6px">'
-      +'<div style="width:10px;height:10px;border-radius:50%;background:'+l.color+';flex-shrink:0"></div>'
-      +'<span style="font-size:12px;color:var(--text2);flex:1">'+l.label+'</span>'
-      +'<span style="font-size:13px;font-weight:700;color:'+l.color+'">'+l.n+'</span>'
-      +'<span style="font-size:10px;color:var(--text3);width:32px;text-align:right">'+p(l.n)+'%</span>'
-      +'</div>';
-  });
-  html+='</div>';
-  // KPI
-  html+='<div style="display:flex;flex-direction:column;gap:10px;min-width:120px">';
-  html+='<div style="text-align:center;background:rgba(0,184,148,0.1);border:1px solid rgba(0,184,148,0.3);border-radius:10px;padding:10px 16px">'
-    +'<div style="font-size:24px;font-weight:800;color:#00b894">'+p(connected)+'%</div>'
-    +'<div style="font-size:10px;color:var(--text3)">Tỉ lệ kết nối</div></div>';
-  html+='<div style="text-align:center;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.3);border-radius:10px;padding:10px 16px">'
-    +'<div style="font-size:24px;font-weight:800;color:var(--brand2)">'+(total>0?Math.round(lg.closedeal.length/total*100):0)+'%</div>'
-    +'<div style="font-size:10px;color:var(--text3)">Win Rate</div></div>';
-  html+='</div></div>';
-
-  // Row 2: Sub-status funnel bar
-  html+='<div style="background:var(--surface);border-radius:12px;padding:14px;margin-bottom:16px">';
-  html+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">🗺️ Hành trình Data</div>';
-  html+='<div style="display:flex;flex-direction:column;gap:8px">';
-  subOrder.forEach(function(ss,i){
-    var n=(sg[ss]||[]).length;var pct2=total>0?Math.round(n/total*100):0;
-    var barW=total>0?Math.round(n/total*100):0;
-    html+='<div class="cr-clickrow" data-crkey="sub__'+ss+'" style="cursor:pointer;display:grid;grid-template-columns:120px 1fr 60px;gap:8px;align-items:center;padding:3px 6px;border-radius:6px">'
-      +'<div style="font-size:11px;color:var(--text2);text-align:right">'+ss+'</div>'
-      +'<div style="background:rgba(255,255,255,0.06);border-radius:4px;height:18px;overflow:hidden">'
-      +'<div style="width:'+barW+'%;background:'+subColors[i]+';height:100%;border-radius:4px;opacity:0.8"></div></div>'
-      +'<div style="font-size:11px;color:'+subColors[i]+';font-weight:600">'+n+' <span style="color:var(--text3);font-weight:400">('+pct2+'%)</span></div>'
-      +'</div>';
-  });
-  html+='</div></div>';
-
-  // Row 3+4: Sale & State (side by side if manager)
-  if(isManager){
-    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">';
-    // Sale chart
-    html+='<div style="background:var(--surface);border-radius:12px;padding:14px">';
-    html+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">👥 Theo Sale</div>';
-    html+='<div style="display:flex;flex-direction:column;gap:6px">';
-    Object.entries(saleMap).sort(function(a,b){return b[1].custs.length-a[1].custs.length;}).forEach(function(entry){
-      var sid=entry[0],sd=entry[1],sc=sd.custs,sn=sc.length;
-      var scd=sc.filter(function(c){return c.lead_status==='Closedeal';}).length;
-      var slost=sc.filter(function(c){return c.lead_status==='Lost';}).length;
-      var scon=sn>0?Math.round((scd+slost)/sn*100):0;
-      var barW=total>0?Math.round(sn/total*100):0;
-      html+='<div class="cr-clickrow" data-crkey="sale__'+sid+'" style="cursor:pointer;padding:6px 8px;border-radius:8px">'
-        +'<div style="display:flex;justify-content:space-between;margin-bottom:3px">'
-        +'<span style="font-size:11px;font-weight:600;color:var(--text)">'+sd.name.split(' ').pop()+'</span>'
-        +'<span style="font-size:10px;color:var(--text3)">'+sn+' KH · <span style="color:var(--accent2)">'+scon+'% KN</span></span>'
-        +'</div>'
-        +'<div style="background:rgba(255,255,255,0.06);border-radius:4px;height:14px;overflow:hidden;display:flex;gap:0">'
-        +'<div style="width:'+Math.round(scd/sn*100||0)+'%;background:#00b894;height:100%"></div>'
-        +'<div style="width:'+Math.round(slost/sn*100||0)+'%;background:#e17055;height:100%"></div>'
-        +'<div style="width:'+Math.round((sn-scd-slost)/sn*100||0)+'%;background:rgba(255,255,255,0.08);height:100%"></div>'
-        +'</div></div>';
-    });
-    html+='</div></div>';
-    // State chart
-    html+='<div style="background:var(--surface);border-radius:12px;padding:14px">';
-    html+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">🗺️ Theo Tiểu bang (Top 15)</div>';
-    html+='<div style="display:flex;flex-direction:column;gap:5px;max-height:300px;overflow-y:auto">';
-    stateArr.forEach(function(entry){
-      var st=entry[0],sc=entry[1],sn=sc.length;
-      var scd=sc.filter(function(c){return c.lead_status==='Closedeal';}).length;
-      var slost=sc.filter(function(c){return c.lead_status==='Lost';}).length;
-      var scon=sn>0?Math.round((scd+slost)/sn*100):0;
-      var barW=total>0?Math.round(sn/total*100):0;
-      html+='<div class="cr-clickrow" data-crkey="state__'+st+'" style="cursor:pointer;padding:6px 8px;border-radius:8px">'
-        +'<div style="display:flex;justify-content:space-between;margin-bottom:3px">'
-        +'<span style="font-size:11px;font-weight:600;color:var(--text)">'+st+'</span>'
-        +'<span style="font-size:10px;color:var(--text3)">'+sn+' KH · <span style="color:var(--accent2)">'+scon+'% KN</span></span>'
-        +'</div>'
-        +'<div style="background:rgba(255,255,255,0.06);border-radius:4px;height:14px;overflow:hidden;display:flex">'
-        +'<div style="width:'+Math.round(scd/sn*100||0)+'%;background:#00b894;height:100%"></div>'
-        +'<div style="width:'+Math.round(slost/sn*100||0)+'%;background:#e17055;height:100%"></div>'
-        +'<div style="width:'+Math.round((sn-scd-slost)/sn*100||0)+'%;background:rgba(255,255,255,0.08);height:100%"></div>'
-        +'</div></div>';
-    });
-    html+='</div></div>';
-    html+='</div>'; // end grid
-  }
-
-  // Section: Reason breakdown (chỉ từ Lost + Busy)
-  var reasonMap={};
-  custs.filter(function(c){return c.reason&&(c.lead_status==='Lost'||c.lead_status==='Busy');}).forEach(function(c){
-    reasonMap[c.reason]=(reasonMap[c.reason]||0)+1;
-  });
-  var reasonArr=Object.entries(reasonMap).sort(function(a,b){return b[1]-a[1];});
-  var reasonTotal=reasonArr.reduce(function(s,e){return s+e[1];},0);
-  if(reasonArr.length>0){
-    html+='<div style="background:var(--surface);border-radius:12px;padding:14px;margin-bottom:16px">';
-    html+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">📌 Phân tích Reason (Lost + Busy — '+reasonTotal+' data)</div>';
-    html+='<div style="display:flex;flex-direction:column;gap:7px">';
-    reasonArr.forEach(function(entry,i){
-      var rn=entry[0],rv=entry[1];
-      var rpct=reasonTotal>0?Math.round(rv/reasonTotal*100):0;
-      var barW=rpct;
-      var color=i<3?'#e17055':i<7?'#fdcb6e':'#636e72';
-      html+='<div class="cr-clickrow" data-crkey="reason__'+rn.replace(/"/g,'&quot;')+'" style="cursor:pointer;display:grid;grid-template-columns:200px 1fr 70px;gap:8px;align-items:center;padding:3px 6px;border-radius:6px">'
-        +'<div style="font-size:11px;color:var(--text2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+rn+'">'+rn+'</div>'
-        +'<div style="background:rgba(255,255,255,0.06);border-radius:4px;height:16px;overflow:hidden">'
-        +'<div style="width:'+barW+'%;background:'+color+';height:100%;border-radius:4px;opacity:0.85"></div></div>'
-        +'<div style="font-size:11px;color:'+color+';font-weight:600">'+rv+' <span style="color:var(--text3);font-weight:400">('+rpct+'%)</span></div>'
+    var h='';
+    // Section 1: Donut
+    h+='<div style="background:var(--surface);border-radius:12px;padding:14px;margin-bottom:14px;display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center">';
+    h+=svg;
+    h+='<div style="display:flex;flex-direction:column;gap:5px">';
+    leadLabels.forEach(function(l){
+      h+='<div class="cr-clickrow" data-crkey="'+l.k+'" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:3px 8px;border-radius:6px">'
+        +'<div style="width:9px;height:9px;border-radius:50%;background:'+l.color+';flex-shrink:0"></div>'
+        +'<span style="font-size:11px;color:var(--text2);flex:1">'+l.label+'</span>'
+        +'<span style="font-size:13px;font-weight:700;color:'+l.color+'">'+l.n+'</span>'
+        +'<span style="font-size:10px;color:var(--text3);width:30px;text-align:right">'+p(l.n)+'%</span>'
         +'</div>';
     });
-    html+='</div></div>';
+    h+='</div>';
+    h+='<div style="display:flex;flex-direction:column;gap:8px;min-width:110px">'
+      +'<div style="text-align:center;background:rgba(0,184,148,0.1);border:1px solid rgba(0,184,148,0.3);border-radius:10px;padding:10px">'
+      +'<div style="font-size:22px;font-weight:800;color:#00b894">'+p(connected)+'%</div>'
+      +'<div style="font-size:9px;color:var(--text3)">Tỉ lệ kết nối</div></div>'
+      +'<div style="text-align:center;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.3);border-radius:10px;padding:10px">'
+      +'<div style="font-size:22px;font-weight:800;color:var(--brand2)">'+p(lg.closedeal.length)+'%</div>'
+      +'<div style="font-size:9px;color:var(--text3)">Win Rate</div></div>'
+      +'</div></div>';
+
+    // Section 2: Sub-status bars
+    h+='<div style="background:var(--surface);border-radius:12px;padding:14px;margin-bottom:14px">';
+    h+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:10px">🗺️ Hành trình Data</div>';
+    h+='<div style="display:flex;flex-direction:column;gap:7px">';
+    subOrder.forEach(function(ss,i){
+      var n=(sg[ss]||[]).length;var bw=total>0?Math.round(n/total*100):0;
+      h+='<div class="cr-clickrow" data-crkey="sub__'+ss+'" style="cursor:pointer;display:grid;grid-template-columns:130px 1fr 80px;gap:8px;align-items:center;padding:3px 6px;border-radius:6px">'
+        +'<div style="font-size:11px;color:var(--text2);text-align:right">'+ss+'</div>'
+        +'<div style="background:rgba(255,255,255,0.06);border-radius:4px;height:16px;overflow:hidden">'
+        +'<div style="width:'+bw+'%;background:'+subColors[i]+';height:100%;border-radius:4px;opacity:0.85"></div></div>'
+        +'<div style="font-size:11px;color:'+subColors[i]+';font-weight:600">'+n+' <span style="color:var(--text3);font-weight:400">('+bw+'%)</span></div>'
+        +'</div>';
+    });
+    h+='</div></div>';
+
+    // Section 3: Sale + State (only manager)
+    if(isManager){
+      h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">';
+      // Sale
+      h+='<div style="background:var(--surface);border-radius:12px;padding:14px">';
+      h+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:10px">👥 Theo Sale</div>';
+      h+='<div style="display:flex;flex-direction:column;gap:6px">';
+      Object.entries(saleMap).sort(function(a,b){return b[1].custs.length-a[1].custs.length;}).forEach(function(entry){
+        var sid=entry[0],sd=entry[1],sc=sd.custs,sn=sc.length;
+        var scd=sc.filter(function(c){return c.lead_status==='Closedeal';}).length;
+        var slost=sc.filter(function(c){return c.lead_status==='Lost';}).length;
+        var scon=sn>0?Math.round((scd+slost)/sn*100):0;
+        h+='<div class="cr-clickrow" data-crkey="sale__'+sid+'" style="cursor:pointer;padding:5px 8px;border-radius:8px">'
+          +'<div style="display:flex;justify-content:space-between;margin-bottom:3px">'
+          +'<span style="font-size:11px;font-weight:600;color:var(--text)">'+sd.name.split(' ').pop()+'</span>'
+          +'<span style="font-size:10px;color:var(--text3)">'+sn+' KH · <span style="color:var(--accent2)">'+scon+'% KN</span></span></div>'
+          +'<div style="background:rgba(255,255,255,0.06);border-radius:4px;height:12px;overflow:hidden;display:flex">'
+          +'<div style="width:'+Math.round(scd/sn*100||0)+'%;background:#00b894;height:100%"></div>'
+          +'<div style="width:'+Math.round(slost/sn*100||0)+'%;background:#e17055;height:100%"></div>'
+          +'<div style="width:'+Math.round((sn-scd-slost)/sn*100||0)+'%;background:rgba(255,255,255,0.06);height:100%"></div>'
+          +'</div></div>';
+      });
+      h+='</div></div>';
+      // State
+      h+='<div style="background:var(--surface);border-radius:12px;padding:14px">';
+      h+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:10px">🗺️ Theo Tiểu bang</div>';
+      h+='<div style="display:flex;flex-direction:column;gap:5px;max-height:300px;overflow-y:auto">';
+      stateArr.forEach(function(entry){
+        var st=entry[0],sc=entry[1],sn=sc.length;
+        var scd=sc.filter(function(c){return c.lead_status==='Closedeal';}).length;
+        var slost=sc.filter(function(c){return c.lead_status==='Lost';}).length;
+        var scon=sn>0?Math.round((scd+slost)/sn*100):0;
+        h+='<div class="cr-clickrow" data-crkey="state__'+st+'" style="cursor:pointer;padding:5px 8px;border-radius:8px">'
+          +'<div style="display:flex;justify-content:space-between;margin-bottom:3px">'
+          +'<span style="font-size:11px;font-weight:600;color:var(--text)">'+st+'</span>'
+          +'<span style="font-size:10px;color:var(--text3)">'+sn+' KH · <span style="color:var(--accent2)">'+scon+'% KN</span></span></div>'
+          +'<div style="background:rgba(255,255,255,0.06);border-radius:4px;height:12px;overflow:hidden;display:flex">'
+          +'<div style="width:'+Math.round(scd/sn*100||0)+'%;background:#00b894;height:100%"></div>'
+          +'<div style="width:'+Math.round(slost/sn*100||0)+'%;background:#e17055;height:100%"></div>'
+          +'<div style="width:'+Math.round((sn-scd-slost)/sn*100||0)+'%;background:rgba(255,255,255,0.06);height:100%"></div>'
+          +'</div></div>';
+      });
+      h+='</div></div>';
+      h+='</div>'; // end grid
+    }
+
+    // Section 4: Reason
+    if(reasonArr.length>0){
+      h+='<div style="background:var(--surface);border-radius:12px;padding:14px;margin-bottom:14px">';
+      h+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:10px">📌 Reason phân tích (Lost+Busy — '+reasonTotal+')</div>';
+      h+='<div style="display:flex;flex-direction:column;gap:7px">';
+      reasonArr.forEach(function(entry,i){
+        var rn=entry[0],rv=entry[1];
+        var rpct=reasonTotal>0?Math.round(rv/reasonTotal*100):0;
+        var color=i<3?'#e17055':i<7?'#fdcb6e':'#636e72';
+        h+='<div class="cr-clickrow" data-crkey="reason__'+rn.replace(/"/g,'&quot;')+'" style="cursor:pointer;display:grid;grid-template-columns:200px 1fr 70px;gap:8px;align-items:center;padding:3px 6px;border-radius:6px">'
+          +'<div style="font-size:11px;color:var(--text2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+rn+'">'+rn+'</div>'
+          +'<div style="background:rgba(255,255,255,0.06);border-radius:4px;height:16px;overflow:hidden">'
+          +'<div style="width:'+rpct+'%;background:'+color+';height:100%;border-radius:4px;opacity:0.85"></div></div>'
+          +'<div style="font-size:11px;color:'+color+';font-weight:600">'+rv+' <span style="color:var(--text3);font-weight:400">('+rpct+'%)</span></div>'
+          +'</div>';
+      });
+      h+='</div></div>';
+    }
+    h+='<div id="cr-cust-list"></div>';
+    return h;
   }
 
-  // Customer list (populated on click)
-  html+='<div id="cr-cust-list"></div>';
-  html+='</div></div>';
+  // Render filter + dashboard in modal
+  var innerHtml='<div style="background:var(--bg2);border-radius:14px;width:96vw;max-width:1100px;border:1px solid var(--border);overflow:hidden">';
+  // Header with filters
+  innerHtml+='<div style="padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+    +'<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text)">📊 Báo cáo: '+campName+'</div>'
+    +'<div style="font-size:11px;color:var(--text3)" id="cr-count-label">'+allCusts.length+' data · '+new Date().toLocaleDateString('vi-VN')+'</div></div>'
+    +(isManager?'<select id="cr-f-sale" onchange="window._crApplyFilter()" style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;color:var(--text)">'+saleOpts+'</select>':'')
+    +'<select id="cr-f-state" onchange="window._crApplyFilter()" style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;color:var(--text)">'+stateOpts+'</select>'
+    +'<button class="btn" data-crkey="__all__" style="font-size:11px;border-color:rgba(108,92,231,0.4);color:var(--brand2)"><i class="ti ti-list"></i> Xem tất cả</button>'
+    +'<button class="btn" onclick="window._crExportExcel()" style="font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"></i> Excel</button>'
+    +'<button onclick="document.getElementById(\'camp-report-modal\').remove()" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px">✕</button>'
+    +'</div>'
+    +'<div style="padding:14px 16px;overflow-y:auto;max-height:calc(92vh - 60px)" id="cr-dashboard">'+buildDashboard(allCusts)+'</div>'
+    +'</div>';
 
-  modal.innerHTML=html;
+  modal.innerHTML=innerHtml;
   document.body.appendChild(modal);
   modal.onclick=function(e){if(e.target===modal)modal.remove();};
-
-  // Event delegation — fix for onclick JSON issue
   modal.addEventListener('click',function(e){
     var row=e.target.closest('[data-crkey]');
     if(row){e.stopPropagation();window._crShowList(row.getAttribute('data-crkey'));}
   });
+
+  // Filter function: recompute and re-render dashboard
+  window._crApplyFilter=function(){
+    var sEl=document.getElementById('cr-f-sale');
+    var stEl=document.getElementById('cr-f-state');
+    var sf=sEl?sEl.value:''; var stf=stEl?stEl.value:'';
+    var filtered=window._crD.allCusts.filter(function(c){
+      if(sf&&c.assigned_to!==sf)return false;
+      if(stf&&(c.state||'')!==stf)return false;
+      return true;
+    });
+    var lbl=document.getElementById('cr-count-label');
+    if(lbl)lbl.textContent=filtered.length+' data (đã lọc) · '+new Date().toLocaleDateString('vi-VN');
+    var dash=document.getElementById('cr-dashboard');
+    if(dash)dash.innerHTML=buildDashboard(filtered);
+    // Re-attach event delegation after re-render
+    dash&&dash.querySelectorAll('[data-crkey]').forEach(function(el){
+      el.addEventListener('click',function(e){e.stopPropagation();window._crShowList(el.getAttribute('data-crkey'));});
+    });
+  };
 };
 
 window._crShowList=function(key){
@@ -4194,13 +4193,14 @@ window._crFilterList=function(){
 };
 
 window._crOpenCust=function(id){
-  var modal=document.getElementById('camp-report-modal');
-  if(modal)modal.style.display='none';
+  // Mở detail modal đè lên report modal (không ẩn report)
   var inCache=CUSTOMERS.find(function(c){return c.id===id;});
-  if(inCache){selId=id;window._detailNavSource='camp-report';render();}
-  else{
+  if(inCache){
+    selId=id;window._detailNavSource='camp-report';
+    renderDetailModal(id,{source:'camp-report'});
+  }else{
     sb.from('customers').select('*,assigned_profile:profiles!assigned_to(full_name)').eq('id',id).single().then(function(res){
-      if(res.data){CUSTOMERS.push(res.data);selId=id;window._detailNavSource='camp-report';render();}
+      if(res.data){CUSTOMERS.push(res.data);selId=id;window._detailNavSource='camp-report';renderDetailModal(id,{source:'camp-report'});}
     });
   }
 };
@@ -6896,7 +6896,7 @@ async function renderDetailModal(customerId,navCtx){
   if(existing)existing.remove();
   const modal=document.createElement('div');
   modal.className='modal-overlay';modal.id='detail-modal';
-  modal.style.zIndex='10003'; // above campaign modal (10002) and KPI list (10001)
+  modal.style.zIndex='10020'; // above report modal (10010), campaign modal (10002)
   document.body.appendChild(modal);
   // Store nav context for ◀ ▶ buttons
   if(navCtx){
