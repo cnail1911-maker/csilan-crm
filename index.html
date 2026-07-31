@@ -3781,7 +3781,8 @@ function renderCampaign(){
       +'<div style="width:'+convPct+'%;background:linear-gradient(90deg,var(--brand),var(--accent2));height:4px;border-radius:4px"><\/div>'
       +'<\/div>'
       +'<div style="font-size:10px;color:var(--text3);text-align:right;margin-top:3px">'+convPct+'% conversion<\/div>'
-      +(isManager?'<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);display:flex;justify-content:flex-end">'
+      +(isManager?'<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);display:flex;justify-content:flex-end;gap:6px">'
+        +'<button class="btn" style="font-size:11px;padding:3px 10px;border-color:rgba(0,206,201,0.4);color:var(--accent)" onclick="event.stopPropagation();window._campShowReport(&quot;'+encodeURIComponent(s.name)+'&quot;)" title="Báo cáo"><i class="ti ti-chart-bar"></i> Báo cáo<\/button>'
         +'<button class="btn" style="font-size:11px;padding:3px 10px" onclick="event.stopPropagation();window._campExportExcel(&quot;'+encodeURIComponent(s.name)+'&quot;)" title="Xuất Excel"><i class="ti ti-table-export"></i> Excel<\/button>'
         +'<\/div>':'')
       +'<\/div>';
@@ -3844,6 +3845,330 @@ function renderCampaign(){
 }
 
 // Sale chip dropdown
+
+// ══════════════════════════════════════════════════════════════
+// CAMPAIGN REPORT MODAL
+// ══════════════════════════════════════════════════════════════
+window._campShowReport=async function(encodedName){
+  var campName=decodeURIComponent(encodedName);
+  var isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
+  showLoading(true);
+
+  // Fetch tất cả KH của campaign (manager thấy tất cả, sale chỉ thấy mình)
+  var q=sb.from('customers')
+    .select('id,ma_kh,business_name,customer_name,cellphone,business_phone,state,status,sub_status,lead_status,potential,description,assigned_to,assigned_profile:profiles!assigned_to(full_name)')
+    .eq('campaign_name',campName).limit(5000);
+  if(!isManager&&currentUser)q=q.eq('assigned_to',currentUser.id);
+  var {data:custs}=await q;
+  custs=custs||[];
+  showLoading(false);
+
+  // Close existing
+  var existing=document.getElementById('camp-report-modal');if(existing)existing.remove();
+
+  var modal=document.createElement('div');
+  modal.id='camp-report-modal';
+  modal.style.cssText='position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,0.65);overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:20px';
+
+  // Compute metrics
+  var total=custs.length;
+  var leadGroups={
+    closedeal: custs.filter(function(c){return c.lead_status==='Closedeal';}),
+    lost:      custs.filter(function(c){return c.lead_status==='Lost';}),
+    noResp:    custs.filter(function(c){return c.lead_status==='No Response';}),
+    busy:      custs.filter(function(c){return c.lead_status==='Busy';}),
+    invalid:   custs.filter(function(c){return c.lead_status==='Invalid Lead';}),
+    inProgress:custs.filter(function(c){return !c.lead_status||c.lead_status==='';}),
+  };
+  var connected=leadGroups.closedeal.length+leadGroups.lost.length;
+  var notConnected=leadGroups.noResp.length+leadGroups.busy.length;
+
+  var subGroups={
+    'New Lead':       custs.filter(function(c){return c.sub_status==='New Lead';}),
+    'No Answer':      custs.filter(function(c){return c.sub_status==='No Answer';}),
+    'Contacting':     custs.filter(function(c){return c.sub_status==='Contacting';}),
+    'Gatekeeper':     custs.filter(function(c){return c.sub_status==='Gatekeeper';}),
+    'Qualified':      custs.filter(function(c){return c.sub_status==='Qualified';}),
+    'Appointment Set':custs.filter(function(c){return c.sub_status==='Appointment Set';}),
+    'Quotation Sent': custs.filter(function(c){return c.sub_status==='Quotation Sent';}),
+    'Pending Decision':custs.filter(function(c){return c.sub_status==='Pending Decision';}),
+    'Follow Up':      custs.filter(function(c){return c.sub_status==='Follow Up';}),
+  };
+
+  // Sale breakdown
+  var saleMap={};
+  custs.forEach(function(c){
+    var sid=c.assigned_to||'__none__';
+    var sname=(c.assigned_profile&&c.assigned_profile.full_name)||'Chưa assign';
+    if(!saleMap[sid])saleMap[sid]={name:sname,custs:[]};
+    saleMap[sid].custs.push(c);
+  });
+
+  // State breakdown
+  var stateMap={};
+  custs.forEach(function(c){
+    var st=c.state||'Unknown';
+    if(!stateMap[st])stateMap[st]=[];
+    stateMap[st].push(c);
+  });
+  var stateArr=Object.entries(stateMap).sort(function(a,b){return b[1].length-a[1].length;}).slice(0,20);
+
+  function pct(n){return total>0?Math.round(n/total*100):0;}
+  function statBadge(label,arr,color,key){
+    var n=arr.length;
+    return '<div class="cr-stat" onclick="window._crShowList('+JSON.stringify(key)+')" style="cursor:pointer;border-color:'+color+'22">'
+      +'<div style="font-size:20px;font-weight:700;color:'+color+'">'+n+'</div>'
+      +'<div style="font-size:10px;color:var(--text3)">'+pct(n)+'%</div>'
+      +'<div style="font-size:10px;color:var(--text2);margin-top:2px">'+label+'</div>'
+      +'</div>';
+  }
+
+  // Build HTML
+  var html='<div style="background:var(--bg2);border-radius:14px;width:96vw;max-width:1200px;border:1px solid var(--border);overflow:hidden">';
+  // Header
+  html+='<div style="padding:14px 18px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'
+    +'<div><div style="font-size:15px;font-weight:700;color:var(--text)">📊 Báo cáo Campaign: '+campName+'</div>'
+    +'<div style="font-size:11px;color:var(--text3)">'+total+' data · '+new Date().toLocaleDateString('vi-VN')+'</div></div>'
+    +'<div style="display:flex;gap:8px"><button class="btn" onclick="window._crExportExcel('+JSON.stringify(campName)+')" style="font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"></i> Xuất Excel</button>'
+    +'<button onclick="document.getElementById(\'camp-report-modal\').remove()" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 12px">× Đóng</button></div></div>';
+
+  html+='<div style="padding:16px 18px;overflow-y:auto;max-height:calc(92vh - 70px)">';
+
+  // Section 1: Lead Status Summary
+  html+='<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px">📌 Kết quả cuối (Lead Status)</div>';
+  html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
+    +statBadge('Closedeal ✅',leadGroups.closedeal,'#00b894','closedeal')
+    +statBadge('Lost ❌',leadGroups.lost,'#e17055','lost')
+    +statBadge('No Response 🔇',leadGroups.noResp,'#636e72','noresp')
+    +statBadge('Busy ⏳',leadGroups.busy,'#fdcb6e','busy')
+    +statBadge('Invalid 🗑️',leadGroups.invalid,'#b2bec3','invalid')
+    +statBadge('Đang follow 🔄',leadGroups.inProgress,'#6c5ce7','inprogress')
+    +'<div class="cr-stat" style="border-color:rgba(255,255,255,0.15)">'
+    +'<div style="font-size:20px;font-weight:700;color:var(--accent2)">'+pct(connected)+'%</div>'
+    +'<div style="font-size:10px;color:var(--text3)">Tỉ lệ</div>'
+    +'<div style="font-size:10px;color:var(--text2);margin-top:2px">Kết nối</div></div>'
+    +'</div>';
+
+  // Section 2: Hành trình (Sub-status)
+  html+='<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px">🗺️ Hành trình Data (Sub-status)</div>';
+  var subOrder=['New Lead','No Answer','Contacting','Gatekeeper','Qualified','Appointment Set','Quotation Sent','Pending Decision','Follow Up'];
+  var subColors=['#636e72','#b2bec3','#74b9ff','#a29bfe','#00cec9','#00b894','#fdcb6e','#e17055','#6c5ce7'];
+  html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">';
+  subOrder.forEach(function(ss,i){
+    var arr=subGroups[ss]||[];
+    var n=arr.length;
+    var key='sub__'+ss;
+    html+='<div class="cr-stat" onclick="window._crShowList('+JSON.stringify(key)+')" style="cursor:pointer;border-color:'+subColors[i]+'44;flex:0 0 auto;width:fit-content;padding:8px 12px">'
+      +'<div style="font-size:16px;font-weight:700;color:'+subColors[i]+'">'+n+'</div>'
+      +'<div style="font-size:9px;color:var(--text3)">'+pct(n)+'%</div>'
+      +'<div style="font-size:9px;color:var(--text2);margin-top:2px;white-space:nowrap">'+ss+'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+
+  // Section 3: By Sale (chỉ manager thấy multi-sale)
+  if(isManager){
+    html+='<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">👥 Theo Sale</div>';
+    html+='<div style="overflow-x:auto;margin-bottom:16px"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:rgba(108,92,231,0.15)">'
+      +'<th style="padding:7px 10px;text-align:left;color:var(--text3)">Sale</th>'
+      +'<th style="padding:7px 10px;text-align:center;color:var(--text3)">Tổng</th>'
+      +'<th style="padding:7px 10px;text-align:center;color:#00b894">Closedeal</th>'
+      +'<th style="padding:7px 10px;text-align:center;color:#e17055">Lost</th>'
+      +'<th style="padding:7px 10px;text-align:center;color:#636e72">No Resp</th>'
+      +'<th style="padding:7px 10px;text-align:center;color:#fdcb6e">Busy</th>'
+      +'<th style="padding:7px 10px;text-align:center;color:#b2bec3">Invalid</th>'
+      +'<th style="padding:7px 10px;text-align:center;color:#6c5ce7">Đang follow</th>'
+      +'<th style="padding:7px 10px;text-align:center;color:var(--accent2)">Kết nối%</th>'
+      +'<th style="padding:7px 10px;text-align:center;color:var(--accent)">Win Rate</th>'
+      +'</tr></thead><tbody>';
+    Object.entries(saleMap).sort(function(a,b){return b[1].custs.length-a[1].custs.length;}).forEach(function(entry){
+      var sid=entry[0],sd=entry[1];
+      var sc=sd.custs;var sn=sc.length;
+      var scd=sc.filter(function(c){return c.lead_status==='Closedeal';}).length;
+      var slost=sc.filter(function(c){return c.lead_status==='Lost';}).length;
+      var snr=sc.filter(function(c){return c.lead_status==='No Response';}).length;
+      var sbsy=sc.filter(function(c){return c.lead_status==='Busy';}).length;
+      var sinv=sc.filter(function(c){return c.lead_status==='Invalid Lead';}).length;
+      var sip=sc.filter(function(c){return !c.lead_status||c.lead_status==='';}).length;
+      var scon=sn>0?Math.round((scd+slost)/sn*100):0;
+      var swr=sn>0?Math.round(scd/sn*100):0;
+      var sk='sale__'+sid;
+      html+='<tr style="border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer" onclick="window._crShowList('+JSON.stringify(sk)+')" onmouseover="this.style.background=\'rgba(255,255,255,0.03)\'" onmouseout="this.style.background=\'\'">'
+        +'<td style="padding:7px 10px;font-weight:600;color:var(--text)">'+sd.name+'</td>'
+        +'<td style="padding:7px 10px;text-align:center">'+sn+'</td>'
+        +'<td style="padding:7px 10px;text-align:center;color:#00b894;font-weight:600">'+scd+'</td>'
+        +'<td style="padding:7px 10px;text-align:center;color:#e17055">'+slost+'</td>'
+        +'<td style="padding:7px 10px;text-align:center;color:#636e72">'+snr+'</td>'
+        +'<td style="padding:7px 10px;text-align:center;color:#fdcb6e">'+sbsy+'</td>'
+        +'<td style="padding:7px 10px;text-align:center;color:#b2bec3">'+sinv+'</td>'
+        +'<td style="padding:7px 10px;text-align:center;color:#6c5ce7">'+sip+'</td>'
+        +'<td style="padding:7px 10px;text-align:center;color:var(--accent2);font-weight:600">'+scon+'%</td>'
+        +'<td style="padding:7px 10px;text-align:center;color:var(--accent);font-weight:600">'+swr+'%</td>'
+        +'</tr>';
+    });
+    html+='</tbody></table></div>';
+  }
+
+  // Section 4: By State
+  html+='<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">🗺️ Theo Tiểu bang (Top 20)</div>';
+  html+='<div style="overflow-x:auto;margin-bottom:16px"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:rgba(108,92,231,0.15)">'
+    +'<th style="padding:7px 10px;text-align:left;color:var(--text3)">State</th>'
+    +'<th style="padding:7px 10px;text-align:center;color:var(--text3)">Tổng</th>'
+    +'<th style="padding:7px 10px;text-align:center;color:#00b894">Closedeal</th>'
+    +'<th style="padding:7px 10px;text-align:center;color:#e17055">Lost</th>'
+    +'<th style="padding:7px 10px;text-align:center;color:#636e72">No Resp</th>'
+    +'<th style="padding:7px 10px;text-align:center;color:#fdcb6e">Busy</th>'
+    +'<th style="padding:7px 10px;text-align:center;color:#b2bec3">Invalid</th>'
+    +'<th style="padding:7px 10px;text-align:center;color:#6c5ce7">Đang follow</th>'
+    +'<th style="padding:7px 10px;text-align:center;color:var(--accent2)">Kết nối%</th>'
+    +'</tr></thead><tbody>';
+  stateArr.forEach(function(entry){
+    var st=entry[0],sc=entry[1];var sn=sc.length;
+    var scd=sc.filter(function(c){return c.lead_status==='Closedeal';}).length;
+    var slost=sc.filter(function(c){return c.lead_status==='Lost';}).length;
+    var snr=sc.filter(function(c){return c.lead_status==='No Response';}).length;
+    var sbsy=sc.filter(function(c){return c.lead_status==='Busy';}).length;
+    var sinv=sc.filter(function(c){return c.lead_status==='Invalid Lead';}).length;
+    var sip=sc.filter(function(c){return !c.lead_status||c.lead_status==='';}).length;
+    var scon=sn>0?Math.round((scd+slost)/sn*100):0;
+    var sk='state__'+st;
+    html+='<tr style="border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer" onclick="window._crShowList('+JSON.stringify(sk)+')" onmouseover="this.style.background=\'rgba(255,255,255,0.03)\'" onmouseout="this.style.background=\'\'">'
+      +'<td style="padding:7px 10px;font-weight:600;color:var(--text)">'+st+'</td>'
+      +'<td style="padding:7px 10px;text-align:center">'+sn+'</td>'
+      +'<td style="padding:7px 10px;text-align:center;color:#00b894;font-weight:600">'+scd+'</td>'
+      +'<td style="padding:7px 10px;text-align:center;color:#e17055">'+slost+'</td>'
+      +'<td style="padding:7px 10px;text-align:center;color:#636e72">'+snr+'</td>'
+      +'<td style="padding:7px 10px;text-align:center;color:#fdcb6e">'+sbsy+'</td>'
+      +'<td style="padding:7px 10px;text-align:center;color:#b2bec3">'+sinv+'</td>'
+      +'<td style="padding:7px 10px;text-align:center;color:#6c5ce7">'+sip+'</td>'
+      +'<td style="padding:7px 10px;text-align:center;color:var(--accent2);font-weight:600">'+scon+'%</td>'
+      +'</tr>';
+  });
+  html+='</tbody></table></div>';
+
+  // Customer list panel (populated on click)
+  html+='<div id="cr-cust-list" style="display:none"></div>';
+
+  html+='</div></div>';
+  modal.innerHTML=html;
+  document.body.appendChild(modal);
+  modal.onclick=function(e){if(e.target===modal)modal.remove();};
+
+  // Store data for click handlers
+  window._crCampData={custs,leadGroups,subGroups,saleMap,stateMap,campName};
+};
+
+// Show customer list on click
+window._crShowList=function(key){
+  var d=window._crCampData;if(!d)return;
+  var custs=[];var label='';
+  if(key==='closedeal'){custs=d.leadGroups.closedeal;label='Closedeal';}
+  else if(key==='lost'){custs=d.leadGroups.lost;label='Lost';}
+  else if(key==='noresp'){custs=d.leadGroups.noResp;label='No Response';}
+  else if(key==='busy'){custs=d.leadGroups.busy;label='Busy';}
+  else if(key==='invalid'){custs=d.leadGroups.invalid;label='Invalid Lead';}
+  else if(key==='inprogress'){custs=d.leadGroups.inProgress;label='Đang follow';}
+  else if(key.startsWith('sub__')){var ss=key.slice(5);custs=d.subGroups[ss]||[];label='Sub-status: '+ss;}
+  else if(key.startsWith('sale__')){var sid=key.slice(6);var sd=d.saleMap[sid];custs=sd?sd.custs:[];label='Sale: '+(sd?sd.name:'?');}
+  else if(key.startsWith('state__')){var st=key.slice(7);custs=d.stateMap[st]||[];label='State: '+st;}
+  var el=document.getElementById('cr-cust-list');
+  if(!el)return;
+  if(!custs.length){el.innerHTML='<div style="padding:12px;color:var(--text3);font-size:12px">Không có khách hàng.</div>';el.style.display='';return;}
+  el.style.display='';
+  el.innerHTML='<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;padding-top:8px;border-top:1px solid var(--border)">📋 '+label+' — '+custs.length+' khách hàng</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:rgba(108,92,231,0.15)">'
+    +'<th style="padding:6px 10px;text-align:left">Mã KH</th><th style="padding:6px 10px;text-align:left">Business</th><th style="padding:6px 10px;text-align:left">Customer</th>'
+    +'<th style="padding:6px 10px;text-align:left">Phone</th><th style="padding:6px 10px;text-align:left">State</th>'
+    +'<th style="padding:6px 10px;text-align:left">Status</th><th style="padding:6px 10px;text-align:left">Sub-status</th>'
+    +'<th style="padding:6px 10px;text-align:left">Lead Status</th><th style="padding:6px 10px;text-align:left">Sale</th>'
+    +'</tr></thead><tbody>'
+    +custs.map(function(c){
+      var ls=c.lead_status||'';
+      var lsColor=ls==='Closedeal'?'#00b894':ls==='Lost'?'#e17055':ls==='No Response'?'#636e72':ls==='Busy'?'#fdcb6e':ls==='Invalid Lead'?'#b2bec3':'#6c5ce7';
+      return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+        +'<td style="padding:5px 10px;font-family:monospace;font-size:10px;color:var(--text3)">'+(c.ma_kh||'—')+'</td>'
+        +'<td style="padding:5px 10px;color:var(--text)">'+(c.business_name||'—')+'</td>'
+        +'<td style="padding:5px 10px;color:var(--text2)">'+(c.customer_name||'—')+'</td>'
+        +'<td style="padding:5px 10px;font-family:monospace;font-size:10px">'+(c.cellphone||c.business_phone||'—')+'</td>'
+        +'<td style="padding:5px 10px;color:var(--text2)">'+(c.state||'—')+'</td>'
+        +'<td style="padding:5px 10px"><span class="badge">'+(c.status||'—')+'</span></td>'
+        +'<td style="padding:5px 10px;color:var(--text2);font-size:10px">'+(c.sub_status||'—')+'</td>'
+        +'<td style="padding:5px 10px"><span style="color:'+lsColor+';font-size:10px;font-weight:600">'+(ls||'—')+'</span></td>'
+        +'<td style="padding:5px 10px;color:var(--text3);font-size:10px">'+((c.assigned_profile&&c.assigned_profile.full_name)||'—')+'</td>'
+        +'</tr>';
+    }).join('')
+    +'</tbody></table></div>';
+  el.scrollIntoView({behavior:'smooth',block:'start'});
+};
+
+// Export Excel for report
+window._crExportExcel=async function(campName){
+  var d=window._crCampData;if(!d||!window.ExcelJS){alert('Không có dữ liệu hoặc ExcelJS chưa load.');return;}
+  showLoading(true);
+  try{
+    var wb=new ExcelJS.Workbook();wb.creator='C-Silan CRM';
+
+    // Sheet 1: Summary
+    var ws1=wb.addWorksheet('Tổng quan');
+    ws1.columns=[{header:'Chỉ số',key:'name',width:25},{header:'Số lượng',key:'count',width:12},{header:'Tỉ lệ',key:'pct',width:10}];
+    var total=d.custs.length;
+    var rows1=[
+      ['Tổng data',total,'100%'],
+      ['Closedeal ✅',d.leadGroups.closedeal.length,Math.round(d.leadGroups.closedeal.length/total*100)+'%'],
+      ['Lost ❌',d.leadGroups.lost.length,Math.round(d.leadGroups.lost.length/total*100)+'%'],
+      ['No Response 🔇',d.leadGroups.noResp.length,Math.round(d.leadGroups.noResp.length/total*100)+'%'],
+      ['Busy ⏳',d.leadGroups.busy.length,Math.round(d.leadGroups.busy.length/total*100)+'%'],
+      ['Invalid Lead 🗑️',d.leadGroups.invalid.length,Math.round(d.leadGroups.invalid.length/total*100)+'%'],
+      ['Đang follow 🔄',d.leadGroups.inProgress.length,Math.round(d.leadGroups.inProgress.length/total*100)+'%'],
+    ];
+    var h1=ws1.getRow(1);h1.height=22;
+    h1.eachCell(function(cell){
+      cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFC00000'}};
+      cell.font={bold:true,color:{argb:'FFFFFFFF'},name:'Arial',size:11};
+      cell.alignment={horizontal:'center',vertical:'middle'};
+    });
+    ws1.views=[{state:'frozen',ySplit:1,activeCell:'A2'}];
+    rows1.forEach(function(r,i){
+      var row=ws1.addRow(r);row.height=16;
+      var bg=i%2===0?'FFFFFFFF':'FFF5F5F5';
+      row.eachCell(function(cell){cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg}};cell.font={name:'Arial',size:10};});
+    });
+
+    // Sheet 2: Danh sách đầy đủ
+    var ws2=wb.addWorksheet('Danh sách KH');
+    ws2.columns=[
+      {header:'Mã KH',key:'ma_kh',width:11},{header:'Business Name',key:'biz',width:26},
+      {header:'Customer Name',key:'name',width:22},{header:'Phone',key:'phone',width:15},
+      {header:'State',key:'state',width:10},{header:'Status',key:'status',width:10},
+      {header:'Sub-status',key:'sub',width:18},{header:'Lead Status',key:'lead',width:14},
+      {header:'Potential',key:'pot',width:16},{header:'Sale',key:'sale',width:20},
+    ];
+    var h2=ws2.getRow(1);h2.height=22;
+    h2.eachCell(function(cell){
+      cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFC00000'}};
+      cell.font={bold:true,color:{argb:'FFFFFFFF'},name:'Arial',size:11};
+      cell.alignment={horizontal:'center',vertical:'middle'};
+    });
+    ws2.views=[{state:'frozen',ySplit:1,activeCell:'A2'}];
+    d.custs.forEach(function(c,i){
+      var row=ws2.addRow([c.ma_kh||'',c.business_name||'',c.customer_name||'',
+        c.cellphone?String(c.cellphone):'',c.state||'',c.status||'',c.sub_status||'',
+        c.lead_status||'',c.potential||'',(c.assigned_profile&&c.assigned_profile.full_name)||'']);
+      row.height=16;
+      var bg=i%2===0?'FFFFFFFF':'FFF5F5F5';
+      row.eachCell(function(cell){cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg}};cell.font={name:'Arial',size:10};});
+    });
+
+    var buf=await wb.xlsx.writeBuffer();
+    var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');a.href=url;
+    a.download='BaoCao_'+campName.replace(/[^a-zA-Z0-9]/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xlsx';
+    a.click();URL.revokeObjectURL(url);
+    showLoading(false);
+  }catch(e){showLoading(false);alert('Lỗi: '+e.message);}
+};
+
 window._campExportExcel=async function(encodedName){
   var campName=decodeURIComponent(encodedName);
   showLoading(true);
