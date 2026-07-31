@@ -3782,7 +3782,7 @@ function renderCampaign(){
       +'<\/div>'
       +'<div style="font-size:10px;color:var(--text3);text-align:right;margin-top:3px">'+convPct+'% conversion<\/div>'
       +'<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);display:flex;justify-content:flex-end;gap:6px">'
-        +'<button class="btn" style="font-size:11px;padding:3px 10px;border-color:rgba(0,206,201,0.4);color:var(--accent)" onclick="event.stopPropagation();window._campShowReport(&quot;'+encodeURIComponent(s.name)+'&quot;)" title="Báo cáo"><i class="ti ti-chart-bar"></i> Báo cáo<\/button>'
+      +'<button class="btn" style="font-size:11px;padding:3px 10px;border-color:rgba(0,206,201,0.4);color:var(--accent)" onclick="window._campShowReport(&quot;'+encodeURIComponent(camp.name)+'&quot;)" title="Báo cáo"><i class="ti ti-chart-bar"></i> Báo cáo<\/button>'
         +(isManager?'<button class="btn" style="font-size:11px;padding:3px 10px" onclick="event.stopPropagation();window._campExportExcel(&quot;'+encodeURIComponent(s.name)+'&quot;)" title="Xuất Excel"><i class="ti ti-table-export"></i> Excel<\/button>':'')
         +'<\/div>'
       +'<\/div>';
@@ -4438,7 +4438,7 @@ function renderCampaignSale(uid,profId,isLeader){
       +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+total+' KH · Called: '+called+' · Potential: '+potential
       +(daysLeft!==null?'<span style="margin-left:8px;color:'+dlColor+'">'+(daysLeft<0?'Hết hạn '+Math.abs(daysLeft)+'d':daysLeft===0?'Hôm nay':daysLeft+'d còn')+'<\/span>':'')+'<\/div><\/div>'
       +'<div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">'
-      +'<button class="btn" style="font-size:11px;padding:3px 10px;border-color:rgba(0,206,201,0.4);color:var(--accent)" onclick="window._campShowReport(encodeURIComponent(camp.name))" title="Báo cáo"><i class="ti ti-chart-bar"></i> Báo cáo<\/button>'
+      +'<button class="btn" style="font-size:11px;padding:3px 10px;border-color:rgba(0,206,201,0.4);color:var(--accent)" onclick="window._campShowReport(&quot;'+encodeURIComponent(camp.name)+'&quot;)" title="Báo cáo"><i class="ti ti-chart-bar"></i> Báo cáo<\/button>'
       +'<i class="ti ti-chevron-down" id="'+id+'-chevron"></i>'
       +'<\/div><\/div>'
       +'<div id="'+id+'-list" style="display:none">'+_campSaleTable(camp.custs,true,camp.name.replace(/[^a-z0-9]/gi,'_'))+'<\/div><\/div>';
