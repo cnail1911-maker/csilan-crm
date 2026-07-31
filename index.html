@@ -4088,9 +4088,21 @@ window._crShowList=function(key){
   else if(key.startsWith('state__')){var st=key.slice(7);custs=d.stateMap[st]||[];label='State: '+st;}
   var el=document.getElementById('cr-cust-list');if(!el)return;
   if(!custs.length){el.innerHTML='<div style="padding:12px;color:var(--text3);font-size:12px;text-align:center">Không có khách hàng trong nhóm này.</div>';return;}
+  var _saleOpts='<option value="">Tất cả Sale</option>';
+  var _saleSet={}; custs.forEach(function(c){if(c.assigned_to&&c.assigned_profile)_saleSet[c.assigned_to]=c.assigned_profile.full_name||'';});
+  Object.entries(_saleSet).forEach(function(e){_saleOpts+='<option value="'+e[0]+'">'+e[1]+'</option>';});
+  var _stateOpts='<option value="">Tất cả State</option>';
+  var _stateSet=new Set(); custs.forEach(function(c){if(c.state)_stateSet.add(c.state);});
+  Array.from(_stateSet).sort().forEach(function(s){_stateOpts+='<option value="'+s+'">'+s+'</option>';});
+  window._crListCusts=custs;
   el.innerHTML='<div style="background:var(--surface);border-radius:12px;padding:14px;margin-top:4px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-    +'<div style="font-size:12px;font-weight:700;color:var(--text)">📋 '+label+' — '+custs.length+' khách hàng</div>'
+    +'<div style="font-size:12px;font-weight:700;color:var(--text)">📋 '+label+' — <span id=&quot;cr-list-count&quot;>'+custs.length+'</span> khách hàng</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
+    +'<select id="cr-f-sale" onchange="window._crFilterList()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text)">'+_saleOpts+'</select>'
+    +'<select id="cr-f-state" onchange="window._crFilterList()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text)">'+_stateOpts+'</select>'
+    +'<input id="cr-f-search" oninput="window._crFilterList()" placeholder="Tìm tên, phone..." style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text);flex:1;min-width:120px">'
+    +'</div>'
     +'<button onclick="document.getElementById(\'cr-cust-list\').innerHTML=\'\'" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px">✕ Đóng</button>'
     +'</div>'
     +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:rgba(108,92,231,0.15)">'
@@ -4102,12 +4114,12 @@ window._crShowList=function(key){
     +'<th style="padding:6px 10px;text-align:left">Sub-status</th>'
     +'<th style="padding:6px 10px;text-align:left">Lead Status</th>'
     +'<th style="padding:6px 10px;text-align:left">Sale</th>'
-    +'</tr></thead><tbody>'
+    +'</tr></thead><tbody id="cr-tbody">'
     +custs.map(function(c,i){
       var ls=c.lead_status||'';
       var lsc=ls==='Closedeal'?'#00b894':ls==='Lost'?'#e17055':ls==='No Response'?'#636e72':ls==='Busy'?'#fdcb6e':ls==='Invalid Lead'?'#b2bec3':'#6c5ce7';
       var bg=i%2===0?'':'rgba(255,255,255,0.02)';
-      return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);background:'+bg+'">'
+      return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);background:'+bg+';cursor:pointer" onclick="window._crOpenCust('+c.id+')">'
         +'<td style="padding:5px 10px;font-family:monospace;font-size:10px;color:var(--text3)">'+(c.ma_kh||'—')+'</td>'
         +'<td style="padding:5px 10px;color:var(--text);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.business_name||'—')+'</td>'
         +'<td style="padding:5px 10px;color:var(--text2)">'+(c.customer_name||'—')+'</td>'
@@ -4120,6 +4132,47 @@ window._crShowList=function(key){
     }).join('')
     +'</tbody></table></div></div>';
   el.scrollIntoView({behavior:'smooth',block:'start'});
+};
+
+window._crFilterList=function(){
+  var all=window._crListCusts||[];
+  var sf=document.getElementById('cr-f-sale');var stf=document.getElementById('cr-f-state');var sch=document.getElementById('cr-f-search');
+  var saleF=sf?sf.value:'';var stateF=stf?stf.value:'';var searchF=sch?sch.value.toLowerCase():'';
+  var filtered=all.filter(function(c){
+    if(saleF&&c.assigned_to!==saleF)return false;
+    if(stateF&&(c.state||'')!==stateF)return false;
+    if(searchF&&!((c.business_name||'').toLowerCase().includes(searchF)||(c.customer_name||'').toLowerCase().includes(searchF)||(c.cellphone?String(c.cellphone):'').includes(searchF)||(c.ma_kh||'').toLowerCase().includes(searchF)))return false;
+    return true;
+  });
+  var cnt=document.getElementById('cr-list-count');if(cnt)cnt.textContent=filtered.length;
+  var tbody=document.getElementById('cr-tbody');if(!tbody)return;
+  tbody.innerHTML=filtered.map(function(c,i){
+    var ls=c.lead_status||'';
+    var lsc=ls==='Closedeal'?'#00b894':ls==='Lost'?'#e17055':ls==='No Response'?'#636e72':ls==='Busy'?'#fdcb6e':ls==='Invalid Lead'?'#b2bec3':'#6c5ce7';
+    var bg=i%2===0?'':'rgba(255,255,255,0.02)';
+    return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);background:'+bg+';cursor:pointer" onclick="window._crOpenCust('+c.id+')">'
+      +'<td style="padding:5px 10px;font-family:monospace;font-size:10px;color:var(--text3)">'+(c.ma_kh||'—')+'</td>'
+      +'<td style="padding:5px 10px;color:var(--text);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.business_name||'—')+'</td>'
+      +'<td style="padding:5px 10px;color:var(--text2)">'+(c.customer_name||'—')+'</td>'
+      +'<td style="padding:5px 10px;font-family:monospace;font-size:10px">'+(c.cellphone||c.business_phone||'—')+'</td>'
+      +'<td style="padding:5px 10px;color:var(--text3)">'+(c.state||'—')+'</td>'
+      +'<td style="padding:5px 10px;color:var(--text2);font-size:10px">'+(c.sub_status||'—')+'</td>'
+      +'<td style="padding:5px 10px"><span style="color:'+lsc+';font-size:10px;font-weight:600">'+(ls||'—')+'</span></td>'
+      +'<td style="padding:5px 10px;color:var(--text3);font-size:10px">'+((c.assigned_profile&&c.assigned_profile.full_name)||'—')+'</td>'
+      +'</tr>';
+  }).join('');
+};
+
+window._crOpenCust=function(id){
+  var modal=document.getElementById('camp-report-modal');
+  if(modal)modal.style.display='none';
+  var inCache=CUSTOMERS.find(function(c){return c.id===id;});
+  if(inCache){selId=id;window._detailNavSource='camp-report';render();}
+  else{
+    sb.from('customers').select('*,assigned_profile:profiles!assigned_to(full_name)').eq('id',id).single().then(function(res){
+      if(res.data){CUSTOMERS.push(res.data);selId=id;window._detailNavSource='camp-report';render();}
+    });
+  }
 };
 
 window._crExportExcel=async function(){
