@@ -4423,10 +4423,7 @@ function renderCampaignSale(uid,profId,isLeader){
       +'<h2>🌱 Active Pool <span style="color:var(--accent2)">'+activePool.length+'<\/span><\/h2>'
       +'<i class="ti ti-chevron-down" id="pool-chevron"></i><\/div>'
       +'<div id="pool-list" style="display:none">'+_campSaleTable(activePool,false,'pool')+'<\/div><\/div>';
-      +'<div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">'
   }
-      +'<i class="ti ti-chevron-down" id="'+id+'-chevron"></i>'
-      +'<\/div><\/div>'
   var campSections=campList.map(function(camp){
     var total=camp.custs.length;
     var called=camp.custs.filter(function(c){return c.last_contacted;}).length;
