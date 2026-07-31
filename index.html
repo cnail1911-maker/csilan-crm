@@ -3854,7 +3854,7 @@ window._campShowReport=async function(encodedName){
   var isManager=!!(currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader'));
   showLoading(true);
   var q=sb.from('customers')
-    .select('id,ma_kh,business_name,customer_name,cellphone,business_phone,state,status,sub_status,lead_status,potential,assigned_to,description,assigned_profile:profiles!assigned_to(full_name)')
+    .select('id,ma_kh,business_name,customer_name,cellphone,business_phone,state,status,sub_status,lead_status,reason,potential,assigned_to,description,assigned_profile:profiles!assigned_to(full_name)')
     .eq('campaign_name',campName).limit(5000);
   if(!isManager&&currentUser)q=q.eq('assigned_to',currentUser.id);
   var {data:custs}=await q;
@@ -4058,6 +4058,32 @@ window._campShowReport=async function(encodedName){
     html+='</div>'; // end grid
   }
 
+  // Section: Reason breakdown (chỉ từ Lost + Busy)
+  var reasonMap={};
+  custs.filter(function(c){return c.reason&&(c.lead_status==='Lost'||c.lead_status==='Busy');}).forEach(function(c){
+    reasonMap[c.reason]=(reasonMap[c.reason]||0)+1;
+  });
+  var reasonArr=Object.entries(reasonMap).sort(function(a,b){return b[1]-a[1];});
+  var reasonTotal=reasonArr.reduce(function(s,e){return s+e[1];},0);
+  if(reasonArr.length>0){
+    html+='<div style="background:var(--surface);border-radius:12px;padding:14px;margin-bottom:16px">';
+    html+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">📌 Phân tích Reason (Lost + Busy — '+reasonTotal+' data)</div>';
+    html+='<div style="display:flex;flex-direction:column;gap:7px">';
+    reasonArr.forEach(function(entry,i){
+      var rn=entry[0],rv=entry[1];
+      var rpct=reasonTotal>0?Math.round(rv/reasonTotal*100):0;
+      var barW=rpct;
+      var color=i<3?'#e17055':i<7?'#fdcb6e':'#636e72';
+      html+='<div class="cr-clickrow" data-crkey="reason__'+rn.replace(/"/g,'&quot;')+'" style="cursor:pointer;display:grid;grid-template-columns:200px 1fr 70px;gap:8px;align-items:center;padding:3px 6px;border-radius:6px">'
+        +'<div style="font-size:11px;color:var(--text2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+rn+'">'+rn+'</div>'
+        +'<div style="background:rgba(255,255,255,0.06);border-radius:4px;height:16px;overflow:hidden">'
+        +'<div style="width:'+barW+'%;background:'+color+';height:100%;border-radius:4px;opacity:0.85"></div></div>'
+        +'<div style="font-size:11px;color:'+color+';font-weight:600">'+rv+' <span style="color:var(--text3);font-weight:400">('+rpct+'%)</span></div>'
+        +'</div>';
+    });
+    html+='</div></div>';
+  }
+
   // Customer list (populated on click)
   html+='<div id="cr-cust-list"></div>';
   html+='</div></div>';
@@ -4086,6 +4112,7 @@ window._crShowList=function(key){
   else if(key.startsWith('sub__')){var ss=key.slice(5);custs=d.sg[ss]||[];label='Sub: '+ss;}
   else if(key.startsWith('sale__')){var sid=key.slice(6);var sd=d.saleMap[sid];custs=sd?sd.custs:[];label=sd?sd.name:'?';}
   else if(key.startsWith('state__')){var st=key.slice(7);custs=d.stateMap[st]||[];label='State: '+st;}
+  else if(key.startsWith('reason__')){var rk=key.slice(8);custs=d.custs.filter(function(c){return c.reason===rk;});label='Reason: '+rk;}
   var el=document.getElementById('cr-cust-list');if(!el)return;
   if(!custs.length){el.innerHTML='<div style="padding:12px;color:var(--text3);font-size:12px;text-align:center">Không có khách hàng trong nhóm này.</div>';return;}
   var _saleOpts='<option value="">Tất cả Sale</option>';
@@ -4113,6 +4140,7 @@ window._crShowList=function(key){
     +'<th style="padding:6px 10px;text-align:left">State</th>'
     +'<th style="padding:6px 10px;text-align:left">Sub-status</th>'
     +'<th style="padding:6px 10px;text-align:left">Lead Status</th>'
+    +'<th style="padding:6px 10px;text-align:left">Reason</th>'
     +'<th style="padding:6px 10px;text-align:left">Sale</th>'
     +'</tr></thead><tbody id="cr-tbody">'
     +custs.map(function(c,i){
@@ -4127,6 +4155,7 @@ window._crShowList=function(key){
         +'<td style="padding:5px 10px;color:var(--text3)">'+(c.state||'—')+'</td>'
         +'<td style="padding:5px 10px;color:var(--text2);font-size:10px">'+(c.sub_status||'—')+'</td>'
         +'<td style="padding:5px 10px"><span style="color:'+lsc+';font-size:10px;font-weight:600">'+(ls||'—')+'</span></td>'
+        +'<td style="padding:5px 10px;color:var(--text3);font-size:10px;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.reason||'—')+'</td>'
         +'<td style="padding:5px 10px;color:var(--text3);font-size:10px">'+((c.assigned_profile&&c.assigned_profile.full_name)||'—')+'</td>'
         +'</tr>';
     }).join('')
@@ -4158,6 +4187,7 @@ window._crFilterList=function(){
       +'<td style="padding:5px 10px;color:var(--text3)">'+(c.state||'—')+'</td>'
       +'<td style="padding:5px 10px;color:var(--text2);font-size:10px">'+(c.sub_status||'—')+'</td>'
       +'<td style="padding:5px 10px"><span style="color:'+lsc+';font-size:10px;font-weight:600">'+(ls||'—')+'</span></td>'
+      +'<td style="padding:5px 10px;color:var(--text3);font-size:10px;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.reason||'—')+'</td>'
       +'<td style="padding:5px 10px;color:var(--text3);font-size:10px">'+((c.assigned_profile&&c.assigned_profile.full_name)||'—')+'</td>'
       +'</tr>';
   }).join('');
