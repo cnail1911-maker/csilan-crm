@@ -4420,7 +4420,7 @@ function renderCampaignSale(uid,profId,isLeader){
   if(activePool.length){
     poolHtml='<div class="panel" style="margin-bottom:14px;border-left:3px solid var(--accent2)">'
       +'<div class="panel-header" style="cursor:pointer" onclick="window._campSaleToggle(\'pool\')">'
-      +'<h2>🌱 Active Pool <span style="color:var(--accent2)">'+activePool.length+'<\/span><\/h2><div style="font-size:11px;color:var(--text3);margin-top:2px">Khách đã được đánh dấu Potential nhưng chưa được xếp vào Campaign — chờ Manager assign<\/div>'
+      +'<h2>🌱 Active Pool <span style="color:var(--accent2)">'+activePool.length+'<\/span><\/h2>'
       +'<i class="ti ti-chevron-down" id="pool-chevron"></i><\/div>'
       +'<div id="pool-list" style="display:none">'+_campSaleTable(activePool,false,'pool')+'<\/div><\/div>';
   }
