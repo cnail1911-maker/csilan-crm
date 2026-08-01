@@ -4063,7 +4063,7 @@ window._campShowReport=async function(encodedName){
     +(isManager?'<select id="cr-f-sale" onchange="window._crApplyFilter()" style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;color:var(--text)">'+saleOpts+'</select>':'')
     +'<select id="cr-f-state" onchange="window._crApplyFilter()" style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;color:var(--text)">'+stateOpts+'</select>'
     +'<button class="btn" data-crkey="__all__" style="font-size:11px;border-color:rgba(108,92,231,0.4);color:var(--brand2)"><i class="ti ti-list"></i> Xem tất cả</button>'
-    +'<button class="btn" onclick="window._crExportExcel()" style="font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"></i> Excel</button>'
+    +(isManager?'<button class="btn" onclick="window._crExportExcel()" style="font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"><\/i> Excel<\/button>':'')
     +'<button onclick="document.getElementById(\'camp-report-modal\').remove()" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px">✕</button>'
     +'</div>'
     +'<div style="padding:14px 16px;overflow-y:auto;max-height:calc(92vh - 60px)" id="cr-dashboard">'+buildDashboard(allCusts)+'</div>'
