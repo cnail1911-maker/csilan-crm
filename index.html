@@ -2958,7 +2958,7 @@ window._openSendEmailModal=function(invId){
 
   const modal=document.createElement('div');
   modal.className='modal-overlay';modal.id='send-email-modal';
-  modal.style.zIndex='10010';
+  modal.style.zIndex='10030';
 
   let html='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:14px;width:96vw;max-width:680px;max-height:90vh;display:flex;flex-direction:column;border:1px solid var(--border)">';
   html+='<div class="modal-header"><h3><i class="ti ti-mail"></i> Gửi Email — '+(inv.invoice_no||'')+(bizName?(' · '+bizName):'')+'</h3>';
@@ -5323,7 +5323,7 @@ function editPhone(customerId, field, currentVal){
   var label={'cellphone':'Cellphone','business_phone':'Business Phone','cellphone_2':'Cellphone 2'}[field]||field;
   var m=document.createElement('div');
   m.className='modal-overlay';m.id='edit-phone-modal';
-  m.style.zIndex='10010'; // trên detail-modal (10003)
+  m.style.zIndex='10030'; // trên detail-modal (10020)
   m.onclick=function(e){if(e.target===m)m.remove();};
   var saveBtn='<button class="btn btn-primary" id="edit-phone-save"><i class="ti ti-check"></i> Lưu<\/button>';
   m.innerHTML='<div class="modal" style="max-width:360px;width:100%">'
@@ -7500,7 +7500,7 @@ window._openSupportModal=function(customerId){
 
   var modal=document.createElement('div');
   modal.className='modal-overlay';modal.id='support-modal';
-  modal.style.zIndex='10005';
+  modal.style.zIndex='10030';
 
   var recipients=PROFILES.filter(function(p){
     return p.is_active!==false&&p.id!==currentUser.id&&
@@ -7585,7 +7585,7 @@ window._openSupportDetailPanel=function(reqId){
 
   var modal=document.createElement('div');
   modal.className='modal-overlay';modal.id='support-detail-modal';
-  modal.style.zIndex='10005';
+  modal.style.zIndex='10030';
 
   var statusLabel={pending:'Đang chờ',in_progress:'Đang xử lý',resolved:'Đã xử lý'}[req.status]||req.status;
   var statusColor={pending:'var(--warn)',in_progress:'var(--brand2)',resolved:'var(--success)'}[req.status]||'var(--text3)';
