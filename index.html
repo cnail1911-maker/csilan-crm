@@ -7251,6 +7251,8 @@ function validatePhone(phone,fieldName){
 }
 
 async function saveDetail(customerId){
+  var saveBtn=document.getElementById('detail-save-btn');
+  if(saveBtn){saveBtn.disabled=true;var _origBtnText=saveBtn.innerHTML;saveBtn.innerHTML='<i class="ti ti-loader-2"></i> Đang lưu...';}
   showLoading(true);
   // Đảm bảo customerId đúng type
   var numId=parseInt(customerId);
@@ -7359,8 +7361,12 @@ async function saveDetail(customerId){
       if(_iidx>=0)Object.assign(CUSTOMERS[_iidx],invUpdate);
     }
     // Log activity background — không chặn UI
-    var logPayload={customer_id:customerId,sale_id:currentUser.id,note:note||null,call_result:result||null,called_at:new Date().toISOString()};
-    sb.from('call_logs').insert(logPayload).then(function(){}).catch(function(e){console.warn('[log]',e);});
+    // Sanitize: không lưu giá trị mặc định dropdown
+    var cleanResult=result&&result!=='-- Chọn --'&&result!=='--Chọn--'?result:null;
+    var cleanNote=note&&note.trim()?note.trim():null;
+    // Chỉ insert call_log nếu có gì đó để lưu (tránh 400 khi cả 2 đều null)
+    var logPayload={customer_id:customerId,sale_id:currentUser.id,note:cleanNote,call_result:cleanResult,called_at:new Date().toISOString()};
+    sb.from('call_logs').insert(logPayload).then(function(){}).catch(function(e){console.warn('[call_log]',e.message||e);});
     // Cập nhật local CUSTOMERS
     const idx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
     if(idx>=0){
@@ -7372,6 +7378,7 @@ async function saveDetail(customerId){
     }
     // Update DOM trực tiếp
     _updateDetailDOM(customerId, update);
+    if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML=_origBtnText||'<i class="ti ti-device-floppy"></i> Lưu';}
     showCrmToast('✅ Đã lưu','Thông tin khách hàng đã cập nhật','success');
 
     // Nếu đang dùng campaign nav (◀ ▶) thì GIỮ modal mở — sale tự next
@@ -7449,6 +7456,7 @@ async function saveDetail(customerId){
     } else if(page==='daily')renderDailyData();
     else render();
   }catch(e){
+    if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML=_origBtnText||'<i class="ti ti-device-floppy"></i> Lưu';}
     console.error('[saveDetail] error:',e.message||e,'code:',e.code,'details:',e.details,'hint:',e.hint);
     var msg=e.message||JSON.stringify(e);
     // 400 thường do field không tồn tại trong bảng hoặc RLS
