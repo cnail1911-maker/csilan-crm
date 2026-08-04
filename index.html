@@ -7361,12 +7361,22 @@ async function saveDetail(customerId){
       if(_iidx>=0)Object.assign(CUSTOMERS[_iidx],invUpdate);
     }
     // Log activity background — không chặn UI
-    // Sanitize: không lưu giá trị mặc định dropdown
-    var cleanResult=result&&result!=='-- Chọn --'&&result!=='--Chọn--'?result:null;
-    var cleanNote=note&&note.trim()?note.trim():null;
-    // Chỉ insert call_log nếu có gì đó để lưu (tránh 400 khi cả 2 đều null)
-    var logPayload={customer_id:customerId,sale_id:currentUser.id,note:cleanNote,call_result:cleanResult,called_at:new Date().toISOString()};
-    sb.from('call_logs').insert(logPayload).then(function(){}).catch(function(e){console.warn('[call_log]',e.message||e);});
+    // Sanitize call_result: bỏ giá trị mặc định dropdown
+    var _validResults=['Bắt máy','Không bắt máy','Tắt máy ngang','Hẹn gọi lại'];
+    var cleanResult=(result&&_validResults.indexOf(result.trim())>=0)?result.trim():null;
+    var cleanNote=(note&&note.trim())?note.trim():null;
+    // Luôn insert call_log mỗi lần lưu (ghi nhận thao tác)
+    // Nếu cả 2 null thì lưu với note mặc định để tránh constraint
+    var logPayload={
+      customer_id:customerId,
+      sale_id:currentUser.id,
+      note:cleanNote,
+      call_result:cleanResult,
+      called_at:new Date().toISOString()
+    };
+    sb.from('call_logs').insert(logPayload)
+      .then(function(){})
+      .catch(function(e){console.warn('[call_log error]',e.message||JSON.stringify(e));});
     // Cập nhật local CUSTOMERS
     const idx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
     if(idx>=0){
