@@ -2261,8 +2261,8 @@ function renderCustomers(){
     // Filter Potential theo tháng (potential_since) — chỉ cho sale
     if(!isManager&&fPotMonth!=='all'){
       if(!c.potential_since)return false;
-      var ps=c.potential_since.slice(0,7); // "YYYY-MM"
-      if(ps!==fPotMonth)return false;
+      var _ps=c.potential_since.slice(0,7); // "YYYY-MM"
+      if(_ps!==fPotMonth)return false;
     }
     if(search&&!((c.customer_name||'').toLowerCase().includes(search))&&!((c.cellphone?String(c.cellphone):'').includes(search))&&!((c.business_phone||'').includes(search))&&!((c.cellphone_2||'').includes(search))&&!((c.business_name||'').toLowerCase().includes(search))&&!((c.ma_kh||'').toLowerCase().includes(search)))return false;
     return true;
@@ -2285,23 +2285,20 @@ function renderCustomers(){
   filterHtml+='<select class="fsel" onchange="fOverdue=this.value;curPage=1;render()"><option value="all">Tất cả quá hạn</option><option value="3-7"'+(fOverdue==='3-7'?' selected':'')+'>3-7 ngày</option><option value="8-14"'+(fOverdue==='8-14'?' selected':'')+'>8-14 ngày</option><option value="15-30"'+(fOverdue==='15-30'?' selected':'')+'>15-30 ngày</option><option value="30+"'+(fOverdue==='30+'?' selected':'')+'>30+ ngày</option></select>';
   // Filter tháng Potential — chỉ sale
   if(!isManager){
-    // Lấy tất cả tháng có potential_since từ data của sale
+    // Lấy tất cả tháng có potential_since từ CUSTOMERS của sale (dùng uid từ currentProfile)
+    var _uid2=currentProfile&&currentProfile.id;
     var potMonths=[...new Set(CUSTOMERS.filter(function(c){
-      if(c.approval_status==='pending')return false;
-      var uid=currentUser&&currentUser.id;
-      var profId=currentProfile&&currentProfile.id;
-      return (c.assigned_to===uid||c.assigned_to===profId)&&c.potential&&c.potential_since;
+      return c.assigned_to===_uid2&&c.potential&&c.potential.trim()&&c.potential_since;
     }).map(function(c){return c.potential_since.slice(0,7);}))].sort().reverse();
-    if(potMonths.length>0){
-      filterHtml+='<select class="fsel" onchange="fPotMonth=this.value;curPage=1;render()">'
-        +'<option value="all">Tất cả tháng</option>'
-        +potMonths.map(function(m){
-          var parts=m.split('-');
-          var label='T'+parseInt(parts[1])+'/'+parts[0];
-          return '<option value="'+m+'"'+(fPotMonth===m?' selected':'')+'>'+label+'</option>';
-        }).join('')
-        +'</select>';
-    }
+    // Luôn hiện dropdown tháng nếu có potential
+    filterHtml+='<select class="fsel" onchange="fPotMonth=this.value;curPage=1;render()">'
+      +'<option value="all">Tất cả tháng</option>'
+      +(potMonths.length>0?potMonths.map(function(m){
+        var parts=m.split('-');
+        var label='T'+parseInt(parts[1])+'/'+parts[0];
+        return '<option value="'+m+'"'+(fPotMonth===m?' selected':'')+'>'+label+'</option>';
+      }).join(''):'')
+      +'</select>';
   }
   if(isManager){
     filterHtml+='<select class="fsel" onchange="fSale=this.value;curPage=1;render()"><option value="all">Tất cả Sale</option><option value="__none__"'+(fSale==="__none__"?' selected':'')+'>Not Assigned</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
