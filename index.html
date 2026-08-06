@@ -1271,7 +1271,7 @@ const PAGE_SIZE=50;
 // STATE
 let currentUser=null,currentProfile=null,CUSTOMERS=[],PROFILES=[],PRODUCTS_ALL=[],INVOICES=[];
 window.currentUser=null;window.currentProfile=null;window.CUSTOMERS=CUSTOMERS;window.PROFILES=PROFILES;
-let page='customers',fStatus='all',fSale='all',fLead='all',fPotential='all',fBrand='all',fCampaign='all',fReason='all',fOverdue='all',search='',selId=null,addOpen=false;
+let page='customers',fStatus='all',fSale='all',fLead='all',fPotential='all',fBrand='all',fCampaign='all',fReason='all',fOverdue='all',fPotMonth='all',search='',selId=null,addOpen=false;
 if(!window._custSelected)window._custSelected=new Set();
 let cdSearchInv='';
 let _searchTimer=null;
@@ -2258,6 +2258,12 @@ function renderCustomers(){
     }
     if(fCampaign==='__none__'&&c.campaign_name)return false;
     if(fCampaign!=='all'&&fCampaign!=='__none__'&&c.campaign_name!==fCampaign)return false;
+    // Filter Potential theo tháng (potential_since) — chỉ cho sale
+    if(!isManager&&fPotMonth!=='all'){
+      if(!c.potential_since)return false;
+      var ps=c.potential_since.slice(0,7); // "YYYY-MM"
+      if(ps!==fPotMonth)return false;
+    }
     if(search&&!((c.customer_name||'').toLowerCase().includes(search))&&!((c.cellphone?String(c.cellphone):'').includes(search))&&!((c.business_phone||'').includes(search))&&!((c.cellphone_2||'').includes(search))&&!((c.business_name||'').toLowerCase().includes(search))&&!((c.ma_kh||'').toLowerCase().includes(search)))return false;
     return true;
   });
@@ -2277,6 +2283,26 @@ function renderCustomers(){
   filterHtml+='<select class="fsel" onchange="fBrand=this.value;curPage=1;render()"><option value="all">Tất cả Brand</option>'+BRAND_OPTS.map(function(b){return '<option value="'+b+'"'+(fBrand===b?' selected':'')+'>'+b+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fReason=this.value;curPage=1;render()"><option value="all">Tất cả Reason</option>'+REASON_OPTS.map(function(r){return '<option value="'+r+'"'+(fReason===r?' selected':'')+'>'+r+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fOverdue=this.value;curPage=1;render()"><option value="all">Tất cả quá hạn</option><option value="3-7"'+(fOverdue==='3-7'?' selected':'')+'>3-7 ngày</option><option value="8-14"'+(fOverdue==='8-14'?' selected':'')+'>8-14 ngày</option><option value="15-30"'+(fOverdue==='15-30'?' selected':'')+'>15-30 ngày</option><option value="30+"'+(fOverdue==='30+'?' selected':'')+'>30+ ngày</option></select>';
+  // Filter tháng Potential — chỉ sale
+  if(!isManager){
+    // Lấy tất cả tháng có potential_since từ data của sale
+    var potMonths=[...new Set(CUSTOMERS.filter(function(c){
+      if(c.approval_status==='pending')return false;
+      var uid=currentUser&&currentUser.id;
+      var profId=currentProfile&&currentProfile.id;
+      return (c.assigned_to===uid||c.assigned_to===profId)&&c.potential&&c.potential_since;
+    }).map(function(c){return c.potential_since.slice(0,7);}))].sort().reverse();
+    if(potMonths.length>0){
+      filterHtml+='<select class="fsel" onchange="fPotMonth=this.value;curPage=1;render()">'
+        +'<option value="all">Tất cả tháng</option>'
+        +potMonths.map(function(m){
+          var parts=m.split('-');
+          var label='T'+parseInt(parts[1])+'/'+parts[0];
+          return '<option value="'+m+'"'+(fPotMonth===m?' selected':'')+'>'+label+'</option>';
+        }).join('')
+        +'</select>';
+    }
+  }
   if(isManager){
     filterHtml+='<select class="fsel" onchange="fSale=this.value;curPage=1;render()"><option value="all">Tất cả Sale</option><option value="__none__"'+(fSale==="__none__"?' selected':'')+'>Not Assigned</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
     filterHtml+='<select class="fsel" onchange="fCampaign=this.value;curPage=1;render()"><option value="all">Tất cả Campaign</option><option value="__none__"'+(fCampaign==='__none__'?' selected':'')+'>Chưa thuộc chiến dịch nào</option>'+campNames.map(function(n){return '<option value="'+n+'"'+(fCampaign===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select>';
