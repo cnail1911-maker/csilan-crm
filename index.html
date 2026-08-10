@@ -9724,47 +9724,75 @@ window.addEventListener('resize',function(){
   </div>
 
   <!-- CẤU TRÚC THU NHẬP -->
-  <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:8px"><span style="background:rgba(108,92,231,0.15);border-radius:8px;padding:4px 8px;font-size:16px">💵</span> Cấu trúc thu nhập</div>
+  <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:8px"><span style="background:rgba(108,92,231,0.15);border-radius:8px;padding:4px 8px;font-size:16px">💰</span> Cấu trúc thu nhập</div>
+
+  <!-- Công thức tổng -->
   <div style="background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2);border-radius:10px;padding:14px;margin-bottom:10px">
-    <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Công thức tổng thu nhập</div>
-    <div style="font-size:14px;font-weight:700;color:var(--brand2);letter-spacing:0.5px">P1 + P2A + P2B + P2C + P3A + P3B + P3C</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Công thức tổng thu nhập (Gross)</div>
+    <div style="font-size:14px;font-weight:700;color:var(--brand2);letter-spacing:0.5px">P1 + P2A + P3D + P2B + P2C + P3A + P3B + P3C</div>
   </div>
-  <table class="def-table" style="margin-bottom:10px">
-    <thead><tr><th style="width:55px">Ký hiệu</th><th>Tên khoản</th><th>Mức tối đa</th><th>Ghi chú</th></tr></thead>
+
+  <!-- Bảng khoản lương -->
+  <table class="def-table" style="margin-bottom:14px">
+    <thead><tr><th>Ký hiệu</th><th>Tên khoản</th><th>Mức</th><th>Ghi chú</th></tr></thead>
     <tbody>
-      <tr><td><span class="g-badge" style="background:rgba(108,92,231,0.2);color:var(--brand2)">P1</span></td><td class="val">Lương cơ bản</td><td style="color:var(--accent2);font-weight:700">5.310.000đ</td><td class="val">Thực nhận = (5.310.000 ÷ 22) × ngày thực tế</td></tr>
-      <tr><td><span class="g-badge" style="background:rgba(0,206,201,0.15);color:var(--accent)">P2A</span></td><td class="val">Phụ cấp ăn uống & đi lại</td><td style="color:var(--accent2);font-weight:700">500.000đ</td><td class="val">Cố định hàng tháng</td></tr>
-      <tr><td><span class="g-badge" style="background:rgba(0,206,201,0.15);color:var(--accent)">P2B</span></td><td class="val">Phụ cấp chức năng</td><td style="color:var(--accent2);font-weight:700">1.240.000đ</td><td class="val">Cố định hàng tháng</td></tr>
-      <tr><td><span class="g-badge" style="background:rgba(0,206,201,0.15);color:var(--accent)">P2C</span></td><td class="val">Phụ cấp năng lực</td><td style="color:var(--accent2);font-weight:700">2.000.000đ</td><td class="val">Theo Level 1–5 (xem bên dưới)</td></tr>
-      <tr><td><span class="g-badge" style="background:rgba(253,203,110,0.15);color:var(--warn)">P3A</span></td><td class="val">Thưởng doanh thu (Bonus)</td><td style="color:var(--warn);font-weight:700">Không giới hạn</td><td class="val">1% doanh thu theo kết quả (xem mục KPI)</td></tr>
-      <tr><td><span class="g-badge" style="background:rgba(253,203,110,0.15);color:var(--warn)">P3B</span></td><td class="val">Thưởng chuyên cần</td><td style="color:var(--accent2);font-weight:700">300.000đ</td><td class="val">Đi đúng giờ đủ tháng</td></tr>
-      <tr><td><span class="g-badge" style="background:rgba(253,203,110,0.15);color:var(--warn)">P3C</span></td><td class="val">Thưởng KPI</td><td style="color:var(--accent2);font-weight:700">500.000đ</td><td class="val">Đạt từ 70 điểm KPI</td></tr>
+      <tr><td class="val"><b style="color:var(--brand2)">P1</b></td><td class="val">Lương cơ bản</td><td class="val" style="color:var(--brand2);font-weight:600">5.310.000đ</td><td class="val">(5.310.000 ÷ 22) × ngày công thực tế</td></tr>
+      <tr><td class="val"><b style="color:var(--accent)">P2A</b></td><td class="val">Phụ cấp ăn giữa ca</td><td class="val" style="color:var(--accent);font-weight:600">504.550đ</td><td class="val">Tỷ lệ ngày công/22 (không cố định)</td></tr>
+      <tr><td class="val"><b style="color:var(--accent)">P3D</b></td><td class="val">Phụ cấp đi lại / xăng xe <span style="background:rgba(0,206,201,0.15);color:var(--accent2);font-size:10px;padding:1px 5px;border-radius:4px">MỚI</span></td><td class="val" style="color:var(--accent);font-weight:600">200.000đ</td><td class="val">Tỷ lệ ngày công/22</td></tr>
+      <tr><td class="val"><b style="color:var(--accent)">P2B</b></td><td class="val">Tiền lương ca đêm</td><td class="val" style="color:var(--accent);font-weight:600">1.593.000đ</td><td class="val">Tỷ lệ ngày công/22 (không cố định)</td></tr>
+      <tr><td class="val"><b style="color:var(--warn)">P2C</b></td><td class="val">Phụ cấp năng lực (Level)</td><td class="val" style="color:var(--warn)">0đ → 2.000.000đ</td><td class="val">Level 1–5 xét theo Quý</td></tr>
+      <tr><td class="val"><b style="color:var(--success)">P3A</b></td><td class="val">Thưởng doanh thu (Bonus)</td><td class="val" style="color:var(--success);font-weight:600">Không giới hạn</td><td class="val">1% DT + chênh lệch + giường + vượt target</td></tr>
+      <tr><td class="val"><b style="color:var(--warn)">P3B</b></td><td class="val">Thưởng chuyên cần</td><td class="val" style="color:var(--warn)">300.000đ / 150.000đ / 0đ</td><td class="val">0 lần trễ / 1 lần / ≥2 lần</td></tr>
+      <tr><td class="val"><b style="color:var(--warn)">P3C</b></td><td class="val">Thưởng KPI</td><td class="val" style="color:var(--warn);font-weight:600">500.000đ</td><td class="val">Đạt ngưỡng điểm KPI (Manager set, mặc định 80đ)</td></tr>
     </tbody>
   </table>
-  <div style="margin-bottom:18px">
-    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">📊 Phụ cấp năng lực P2C theo Level</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <div style="flex:1;min-width:80px;background:rgba(255,118,117,0.08);border:1px solid rgba(255,118,117,0.2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--text3)">Level 1</div><div style="font-size:15px;font-weight:700;color:var(--text)">0đ</div></div>
-      <div style="flex:1;min-width:80px;background:rgba(253,203,110,0.08);border:1px solid rgba(253,203,110,0.2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--text3)">Level 2</div><div style="font-size:15px;font-weight:700;color:var(--warn)">500k</div></div>
-      <div style="flex:1;min-width:80px;background:rgba(0,206,201,0.08);border:1px solid rgba(0,206,201,0.2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--text3)">Level 3</div><div style="font-size:15px;font-weight:700;color:var(--accent)">1.000k</div></div>
-      <div style="flex:1;min-width:80px;background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--text3)">Level 4</div><div style="font-size:15px;font-weight:700;color:var(--brand2)">1.500k</div></div>
-      <div style="flex:1;min-width:80px;background:rgba(116,185,255,0.08);border:1px solid rgba(116,185,255,0.2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--text3)">Level 5</div><div style="font-size:15px;font-weight:700;color:#74b9ff">2.000k</div></div>
+
+  <!-- BHXH & Thuế TNCN -->
+  <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;margin-top:14px;display:flex;align-items:center;gap:8px"><span style="background:rgba(231,57,70,0.12);border-radius:8px;padding:4px 8px;font-size:16px">🏛️</span> BHXH & Thuế TNCN</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+    <div style="background:rgba(231,57,70,0.06);border:1px solid rgba(231,57,70,0.2);border-radius:10px;padding:12px">
+      <div style="font-size:12px;font-weight:700;color:var(--danger);margin-bottom:8px">🏥 BHXH / BHYT / BHTN</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.7">
+        Chỉ nhân viên <b>chính thức</b> đóng<br>
+        Mức: <b>10.5%</b> tính trên P1<br>
+        (BHXH 8% + BHYT 1.5% + BHTN 1%)<br>
+        <span style="color:var(--text3);font-size:11px">Thử việc: không đóng BHXH</span>
+      </div>
+    </div>
+    <div style="background:rgba(231,57,70,0.06);border:1px solid rgba(231,57,70,0.2);border-radius:10px;padding:12px">
+      <div style="font-size:12px;font-weight:700;color:var(--danger);margin-bottom:8px">📋 Thuế TNCN</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.7">
+        <b>Chính thức:</b> Biểu lũy tiến sau trừ BHXH &amp; giảm trừ (15.5tr bản thân + 6.2tr/người phụ thuộc)<br>
+        ≤10tr→5% · 10-30tr→10% · 30-60tr→20% · 60-100tr→30% · >100tr→35%<br>
+        <b>Thử việc:</b> khấu trừ thẳng 10% nếu ≥2 triệu/tháng
+      </div>
+    </div>
+  </div>
+  <div style="background:rgba(0,184,148,0.08);border:1px solid rgba(0,184,148,0.2);border-radius:8px;padding:10px;margin-bottom:14px;font-size:12px">
+    <b style="color:var(--success)">Lương Net (thực nhận)</b> = Tổng Gross − BHXH − Thuế TNCN
+  </div>
+
+  <!-- Chính sách thử việc -->
+  <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;margin-top:4px;display:flex;align-items:center;gap:8px"><span style="background:rgba(244,162,97,0.15);border-radius:8px;padding:4px 8px;font-size:16px">📋</span> Chính sách thử việc</div>
+  <div style="background:rgba(244,162,97,0.06);border:1px solid rgba(244,162,97,0.2);border-radius:10px;padding:14px;margin-bottom:14px">
+    <div style="font-size:12px;color:var(--text2);line-height:1.9">
+      Thời gian thử việc tối đa: <b>2 tháng</b><br>
+      <b>Cách tính lương thử việc:</b><br>
+      1. Tính đầy đủ 100% tất cả khoản: P1 + P2A + P3D + P2B + P2C + P3B + P3C<br>
+      2. Trừ 1 dòng duy nhất: <b style="color:var(--danger)">Điều chỉnh thử việc = −15% × (P1+P2A+P3D+P2B+P2C+P3B+P3C)</b><br>
+      3. Cộng thêm P3A (bonus doanh thu — nhận đủ 100%)<br>
+      4. Trừ thuế TNCN 10% (nếu tổng ≥2 triệu, không giảm trừ gia cảnh)<br>
+      <div style="margin-top:8px;background:rgba(244,162,97,0.1);border-radius:6px;padding:8px;font-size:11px">
+        <b>Ví dụ (đủ 22 ngày, Level 1, không bonus):</b><br>
+        Tổng cơ bản = 5.310.000 + 504.550 + 200.000 + 1.593.000 + 0 + 300.000 + 500.000 = <b>8.407.550đ</b><br>
+        Điều chỉnh thử việc = −15% × 8.407.550 = <b>−1.261.133đ</b><br>
+        Gross thử việc = 8.407.550 − 1.261.133 = <b>7.146.417đ</b><br>
+        Thuế TNCN 10% = −714.642đ → <b>Net ≈ 6.431.775đ</b>
+      </div>
     </div>
   </div>
 
-  <!-- THỬ VIỆC -->
-  <div style="background:rgba(255,118,117,0.06);border:1px solid rgba(255,118,117,0.18);border-radius:10px;padding:14px;margin-bottom:18px">
-    <div style="font-size:13px;font-weight:700;color:#FF7675;margin-bottom:8px">📋 Chính sách thử việc</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
-      <div style="background:rgba(0,0,0,0.15);border-radius:8px;padding:10px;text-align:center"><div style="font-size:11px;color:var(--text3)">Thời gian</div><div style="font-size:16px;font-weight:700;color:var(--text)">Tối đa 2 tháng</div></div>
-      <div style="background:rgba(0,0,0,0.15);border-radius:8px;padding:10px;text-align:center"><div style="font-size:11px;color:var(--text3)">Lương cơ bản</div><div style="font-size:16px;font-weight:700;color:#FF7675">85% chính thức</div></div>
-    </div>
-    <div style="font-size:11px;color:var(--text2);background:rgba(0,0,0,0.1);border-radius:6px;padding:8px 10px">
-      <b>Công thức:</b> (P1 × 85%) + P2A + P2B + P2C + P3B + P3C + P3A
-    </div>
-  </div>
-
-  <!-- KPI & BONUS -->
+<!-- KPI & BONUS -->
   <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:8px"><span style="background:rgba(0,184,148,0.15);border-radius:8px;padding:4px 8px;font-size:16px">🎯</span> Cơ chế đánh giá & tính điểm KPI V4</div>
 
   <!-- Tổng quan -->
@@ -10003,13 +10031,14 @@ window.addEventListener('resize',function(){
       var hs=Math.max(0,parseInt(document.getElementById('sc-headspa').value)||0);
       // P1
       var p1b=5310000/22*ngay;
-      var p1=_scType==='thu'?p1b*0.85:p1b;
+      var p1=p1b; // Thử việc: P1 vẫn 100%, điều chỉnh bằng dòng khấu trừ riêng
       var congRatio=ngay/22;
-      var p2a=Math.round(500000*congRatio),p2b=Math.round(1240000*congRatio);
+      var p2a=Math.round(504550*congRatio),p2b=Math.round(1593000*congRatio);
+      var p3d=Math.round(200000*congRatio);
       var p3b=_scChuyen?300000:0;
       var p3c=_scKPI?500000:0;
       // Target: DT san pham + HS (1 giuong=$1450)
-      var target=_scType==='thu'?19975:23500;
+      var target=23500; // Target như nhau cho thử việc và chính thức
       var dtHS=hs*1450;
       var dtTong=dt+dtHS;
       var dat=dtTong>=target;
@@ -10035,17 +10064,33 @@ window.addEventListener('resize',function(){
       // Chua dat target: giam 50% b1 + headspa + chenh lech, thuong nong = 0
       if(!dat){b1=b1*0.5;hsB=hsB*0.5;bChenh=bChenh*0.5;tn=0;}
       var p3a=b1+hsB+bChenh+tn;
-      var total=p1+p2a+p2b+p2c+p3a+p3b+p3c;
+      var grossBase=p1+p2a+p3d+p2b+p2c+p3b+p3c;
+      var dieuChinh=_scType==='thu'?-Math.round(grossBase*0.15):0;
+      var total=grossBase+dieuChinh+p3a;
+      // Thuế TNCN
+      var thue=0;
+      if(_scType==='thu'){if(total>=2000000)thue=Math.round(total*0.10);}
+      else{
+        var bhxh=Math.round(5310000*0.105);
+        var giamTru=15500000;
+        var chiu=Math.max(0,total-p3a-bhxh-giamTru);
+        if(chiu<=10000000)thue=Math.round(chiu*0.05);
+        else if(chiu<=30000000)thue=500000+Math.round((chiu-10000000)*0.10);
+        else if(chiu<=60000000)thue=2500000+Math.round((chiu-30000000)*0.20);
+        else thue=8500000+Math.round((chiu-60000000)*0.30);
+      }
+      var net=total-thue;
       var lvl=p2c===0?1:p2c===500000?2:p2c===1000000?3:p2c===1500000?4:5;
       // Render rows
       function row(label,val,sub){
         return '<div class="sc-row"><span class="sc-row-label">'+label+'<br><small style="color:var(--text3)">'+sub+'</small><\/span><span class="sc-row-val '+(val>0?'pos':'zero')+'">'+fmt(val)+'<\/span><\/div>';
       }
       var h='';
-      h+=row('P1 - Luong co ban'+(ngay!==22?' ('+ngay+' ngay)':''),p1,(_scType==='thu'?'85% x ':'')+ngay+' ngay');
+      h+=row('P1 - Luong co ban'+(ngay!==22?' ('+ngay+' ngay)':''),p1,ngay+' ngay cong');
       var p2Sub=ngay===22?'Co dinh (22/22)':ngay+'/22 ngay cong';
-      h+=row('P2A - Phu cap an uong & di lai',p2a,p2Sub);
-      h+=row('P2B - Phu cap chuc nang',p2b,p2Sub);
+      h+=row('P2A - Phu cap an giua ca',p2a,p2Sub);
+      h+=row('P3D - Phu cap di lai/xang xe',p3d,p2Sub);
+      h+=row('P2B - Tien luong ca dem',p2b,p2Sub);
       h+=row('P2C - Phu cap nang luc',p2c,'Level '+lvl);
       h+=row('P3B - Thuong chuyen can',p3b,_scChuyen?'Dung gio du thang':'Khong dat');
       h+=row('P3C - Thuong KPI',p3c,_scKPI?'>=70 diem':'Chua dat');
@@ -10070,7 +10115,11 @@ window.addEventListener('resize',function(){
         h+='<div style="background:rgba(0,0,0,0.15);border-radius:8px;padding:8px 10px;margin:8px 0;font-size:11px">'+st+'<br><span style="font-size:10px;color:var(--text3)">'+dtInfo+'<\/span><\/div>';
       }
       // Total
-      h+='<div class="sc-total"><div><div style="font-size:11px;color:rgba(240,238,255,0.5);margin-bottom:2px">TONG THU NHAP UOC TINH<\/div><div style="font-size:10px;color:var(--text3)">~ '+usd(total/25000)+' (ty gia 25,000d)<\/div><\/div><div style="font-size:22px;font-weight:800;color:var(--brand2)">'+fmt(total)+'<\/div><\/div>';
+      // Rows khấu trừ
+      if(_scType==='thu'&&dieuChinh!==0)h+=row('Dieu chinh thu viec (-15%)',dieuChinh,'P1+P2A+P3D+P2B+P2C+P3B+P3C x 15%');
+      else if(_scType!=='thu'){var bhxhAmt=Math.round(5310000*0.105);h+=row('BHXH/BHYT/BHTN (10.5% x P1)',-bhxhAmt,'Chi chinh thuc');}
+      if(thue>0)h+=row('Thue TNCN',-thue,_scType==='thu'?'Khau tru 10% (thu viec)':'Bieu luy tien');
+      h+='<div class="sc-total"><div><div style="font-size:11px;color:rgba(240,238,255,0.5);margin-bottom:2px">GROSS / NET UOC TINH<\/div><div style="font-size:10px;color:var(--text3)">Gross: '+fmt(total)+' ~ Net: '+fmt(net)+'<\/div><\/div><div style="font-size:22px;font-weight:800;color:var(--brand2)">'+fmt(net)+'<\/div><\/div>';
       document.getElementById('sc-result').innerHTML=h;
     };
     setTimeout(scCalc,0);
