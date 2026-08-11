@@ -268,7 +268,14 @@ table.inv-table tr:last-child td{border-bottom:none}
   .sidebar{display:none !important;}
   .preview-wrap{display:block !important; padding:0 !important; background:#fff !important; overflow:visible !important;}
   .preview-toolbar{display:none !important;}
-  #invoice-preview{display:block !important; box-shadow:none !important; margin:0 !important; padding:16px !important; min-height:auto !important;}
+  #invoice-preview{
+    display:block !important; box-shadow:none !important; margin:0 !important; padding:16px !important; min-height:auto !important;
+    /* Reset transform để tránh Chrome rasterize text thành ảnh */
+    transform:none !important;
+    -webkit-transform:none !important;
+    width:100% !important;
+    max-width:100% !important;
+  }
   .no-print{display:none !important;}
   .ship-detail-row{display:none !important;}
   .print-only{display:table-row !important;}
@@ -1886,7 +1893,7 @@ async function saveApprovedInvoice(){
     balance_due:balance,
     payment_method:paymentMethod||null,
     payment_proof_url:currentProofUrls.length?JSON.stringify(currentProofUrls):null,
-    sale_id:selectedSaleId||null, // Luôn update sale_id khi save approved invoice
+    sale_id:selectedSaleId||undefined, // Chỉ update sale_id khi có giá trị (undefined = Supabase bỏ qua field này)
     billing_month:(function(){var bm=document.getElementById('inv-billing-month');return bm&&bm.value?bm.value:null;})()
     // KHÔNG đổi approval_status — giữ 'approved'
   }).eq('id',editInvoiceId);
