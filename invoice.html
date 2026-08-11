@@ -1663,9 +1663,15 @@ async function saveAndDownload(action){
         // Đặt tên file cho PDF khi print (Chrome hỗ trợ qua title)
         var origTitle=document.title;
         document.title=invNo;
+        // Reset scale về 1 để tránh Chrome rasterize text thành ảnh
+        var origScale=getComputedStyle(document.documentElement).getPropertyValue('--inv-scale').trim();
+        document.documentElement.style.setProperty('--inv-scale','1');
         window.print();
-        // Restore title sau khi print dialog đóng
-        setTimeout(function(){document.title=origTitle;},1000);
+        // Restore sau khi print
+        setTimeout(function(){
+          document.title=origTitle;
+          if(origScale)document.documentElement.style.setProperty('--inv-scale',origScale);
+        },1000);
       }finally{
         clearTimeout(_loadTimeout);
         showLoading(false);
@@ -1720,9 +1726,12 @@ async function downloadApprovedPDF(){
   await new Promise(function(r){setTimeout(r,200);});
   var origTitle=document.title;
   document.title=invNo;
+  var origScale2=getComputedStyle(document.documentElement).getPropertyValue('--inv-scale').trim();
+  document.documentElement.style.setProperty('--inv-scale','1');
   window.print();
   setTimeout(function(){
     document.title=origTitle;
+    if(origScale2)document.documentElement.style.setProperty('--inv-scale',origScale2);
     if(poEl)poEl.value=origPo;
     renderPreview();
   },1000);
