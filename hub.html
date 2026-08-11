@@ -196,6 +196,11 @@
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2.5h9l3 3v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>
       <span>Invoice</span>
     </div>
+
+    <div class="nav-item" data-target="order" data-src="https://albuspham66-lab.github.io/cslian-ops/maison-vendor.html">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16l-1.5 11a2 2 0 0 1-2 1.8H7.5a2 2 0 0 1-2-1.8Z"/><path d="M8 7V5.5a4 4 0 0 1 8 0V7"/></svg></span>
+      <span>Order</span>
+    </div>
   </nav>
 
   <div class="actions">
@@ -236,6 +241,11 @@
         <h3>Invoice</h3>
         <p>Xem &amp; gửi hoá đơn cho khách hàng.</p>
       </div>
+      <div class="card" data-target="order" data-src="https://albuspham66-lab.github.io/cslian-ops/maison-vendor.html">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16l-1.5 11a2 2 0 0 1-2 1.8H7.5a2 2 0 0 1-2-1.8Z"/><path d="M8 7V5.5a4 4 0 0 1 8 0V7"/></svg></div>
+        <h3>Order</h3>
+        <p>Đặt hàng vendor.</p>
+      </div>
     </div>
   </div>
 
@@ -259,7 +269,7 @@
   const reloadBtn = document.getElementById('reloadBtn');
   const newTabBtn = document.getElementById('newTabBtn');
 
-  const labels = { home:'Trang chủ', crm:'CRM', finance:'Finance', ops:'OPS', invoice:'Invoice' };
+  const labels = { home:'Trang chủ', crm:'CRM', finance:'Finance', ops:'OPS', invoice:'Invoice', order:'Order' };
   let currentSrc = '';
 
   function setActive(target){
@@ -319,7 +329,8 @@
         crm:'https://cnail1911-maker.github.io/csilan-crm/index.html?v=39',
         finance:'https://albuspham66-lab.github.io/cslian-ops/cslian-finance.html',
         ops:'https://albuspham66-lab.github.io/cslian-ops/',
-        invoice:'https://cnail1911-maker.github.io/csilan-crm/invoice.html'
+        invoice:'https://cnail1911-maker.github.io/csilan-crm/invoice.html',
+        order:'https://albuspham66-lab.github.io/cslian-ops/maison-vendor.html'
       };
       openModule(last, srcMap[last]);
     } else {
