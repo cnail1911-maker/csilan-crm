@@ -2238,7 +2238,7 @@ function renderCustomers(){
   // Sale only sees approved+assigned customers
   let data=CUSTOMERS.filter(function(c){
     if(c.approval_status==='pending')return false;
-    if(!_ldrole){
+    if(!isManager){
       const uid=currentUser&&currentUser.id;
       if(!uid)return false;
       const profId=currentProfile&&currentProfile.id;
@@ -2294,7 +2294,7 @@ function renderCustomers(){
   filterHtml+='<select class="fsel" onchange="fReason=this.value;curPage=1;render()"><option value="all">Tất cả Reason</option>'+REASON_OPTS.map(function(r){return '<option value="'+r+'"'+(fReason===r?' selected':'')+'>'+r+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fOverdue=this.value;curPage=1;render()"><option value="all">Tất cả quá hạn</option><option value="3-7"'+(fOverdue==='3-7'?' selected':'')+'>3-7 ngày</option><option value="8-14"'+(fOverdue==='8-14'?' selected':'')+'>8-14 ngày</option><option value="15-30"'+(fOverdue==='15-30'?' selected':'')+'>15-30 ngày</option><option value="30+"'+(fOverdue==='30+'?' selected':'')+'>30+ ngày</option></select>';
   // Filter tháng Potential — chỉ sale
-  if(!_ldrole){
+  if(!isManager){
     // Lấy tất cả tháng có potential_since từ CUSTOMERS của sale (dùng uid từ currentProfile)
     var _uid2=currentProfile&&currentProfile.id;
     var potMonths=[...new Set(CUSTOMERS.filter(function(c){
@@ -2387,7 +2387,7 @@ function renderPotential(){
   const potData=CUSTOMERS.filter(function(c){
     if(!custWithInv.has(c.id))return false;
     if(c.approval_status==='pending')return false;
-    if(!_ldrole){
+    if(!isManager){
       const profId=currentProfile&&currentProfile.id;
       if(c.assigned_to!==uid&&c.assigned_to!==profId&&c.created_by!==uid&&c.created_by!==profId)return false;
     }
@@ -3731,7 +3731,7 @@ function renderCampaign(){
   const profId=currentProfile&&currentProfile.id;
 
   // ── SALE/LEADER VIEW ──
-  if(!_ldrole){
+  if(!isManager){
     return renderCampaignSale(uid,profId,isLeader);
   }
 
