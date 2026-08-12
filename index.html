@@ -2145,8 +2145,22 @@ async function loadInvoices(){
 }
 
 async function loadCustomers(){
+  var _ldrole=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const pageSize=1000;
-  // ── Load first page immediately so UI renders fast ──
+  // ── Sale: load 1 lần duy nhất (dữ liệu ít, không cần batch) ──
+  if(!_ldrole){
+    const {data,error}=await sb.from('customers')
+      .select('*, assigned_profile:profiles!assigned_to(id,full_name,role), last_contacted, campaign_name')
+      .eq('assigned_to',currentProfile.id)
+      .order('created_at',{ascending:false})
+      .limit(2000);
+    if(error){console.error('Customer load error:',error);CUSTOMERS=[];return;}
+    CUSTOMERS=data||[];
+    window.CUSTOMERS=CUSTOMERS;
+    console.log('[CRM] Sale customers loaded:',CUSTOMERS.length);
+    return;
+  }
+  // ── Manager/Admin/Leader: batch load ──
   const {data:firstPage,error:firstErr}=await sb.from('customers')
     .select('*, assigned_profile:profiles!assigned_to(id,full_name,role), last_contacted, campaign_name')
     .order('created_at',{ascending:false})
@@ -2155,7 +2169,6 @@ async function loadCustomers(){
   CUSTOMERS=firstPage||[];
   window.CUSTOMERS=CUSTOMERS;
 
-  // ── If there might be more, load in background without blocking UI ──
   if((firstPage||[]).length===pageSize){
     setTimeout(async function(){
       let from=pageSize;
@@ -2165,21 +2178,18 @@ async function loadCustomers(){
           .order('created_at',{ascending:false})
           .range(from,from+pageSize-1);
         if(error||!data||data.length===0)break;
-        // Merge: avoid duplicates
         const existingIds=new Set(CUSTOMERS.map(function(c){return c.id;}));
         const newOnes=data.filter(function(c){return !existingIds.has(c.id);});
         CUSTOMERS=CUSTOMERS.concat(newOnes);
         window.CUSTOMERS=CUSTOMERS;
         if(data.length<pageSize)break;
         from+=pageSize;
-        // Small delay to avoid hammering DB
         await new Promise(function(r){setTimeout(r,200);});
       }
       console.log('[CRM] Total customers loaded:',CUSTOMERS.length);
-      // Re-render badges and current page after full load
       updateBadges();
       if(window.page==='customers'||window.page==='pending')render();
-    },100); // start after initial render
+    },100);
   }
 
   CUSTOMERS=CUSTOMERS;
@@ -2228,7 +2238,7 @@ function renderCustomers(){
   // Sale only sees approved+assigned customers
   let data=CUSTOMERS.filter(function(c){
     if(c.approval_status==='pending')return false;
-    if(!isManager){
+    if(!_ldrole){
       const uid=currentUser&&currentUser.id;
       if(!uid)return false;
       const profId=currentProfile&&currentProfile.id;
@@ -2284,7 +2294,7 @@ function renderCustomers(){
   filterHtml+='<select class="fsel" onchange="fReason=this.value;curPage=1;render()"><option value="all">Tất cả Reason</option>'+REASON_OPTS.map(function(r){return '<option value="'+r+'"'+(fReason===r?' selected':'')+'>'+r+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="fOverdue=this.value;curPage=1;render()"><option value="all">Tất cả quá hạn</option><option value="3-7"'+(fOverdue==='3-7'?' selected':'')+'>3-7 ngày</option><option value="8-14"'+(fOverdue==='8-14'?' selected':'')+'>8-14 ngày</option><option value="15-30"'+(fOverdue==='15-30'?' selected':'')+'>15-30 ngày</option><option value="30+"'+(fOverdue==='30+'?' selected':'')+'>30+ ngày</option></select>';
   // Filter tháng Potential — chỉ sale
-  if(!isManager){
+  if(!_ldrole){
     // Lấy tất cả tháng có potential_since từ CUSTOMERS của sale (dùng uid từ currentProfile)
     var _uid2=currentProfile&&currentProfile.id;
     var potMonths=[...new Set(CUSTOMERS.filter(function(c){
@@ -2377,7 +2387,7 @@ function renderPotential(){
   const potData=CUSTOMERS.filter(function(c){
     if(!custWithInv.has(c.id))return false;
     if(c.approval_status==='pending')return false;
-    if(!isManager){
+    if(!_ldrole){
       const profId=currentProfile&&currentProfile.id;
       if(c.assigned_to!==uid&&c.assigned_to!==profId&&c.created_by!==uid&&c.created_by!==profId)return false;
     }
@@ -3721,7 +3731,7 @@ function renderCampaign(){
   const profId=currentProfile&&currentProfile.id;
 
   // ── SALE/LEADER VIEW ──
-  if(!isManager){
+  if(!_ldrole){
     return renderCampaignSale(uid,profId,isLeader);
   }
 
