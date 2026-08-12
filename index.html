@@ -2447,6 +2447,8 @@ function renderClosedeal(){
   let data=INVOICES.filter(function(inv){
     if(inv.type!=='invoice')return false;
     if(inv.approval_status!=='approved')return false;
+    // Sale chỉ thấy đơn của mình
+    if(!isManager&&currentProfile&&inv.sale_id!==currentProfile.id)return false;
     if(cdFilterPayment!=='all'&&inv.payment_status!==cdFilterPayment)return false;
     if(cdFilterOrder!=='all'&&inv.order_status!==cdFilterOrder)return false;
     if(cdSearchInv){const q=cdSearchInv.toLowerCase();if(!((inv.invoice_no||'').toLowerCase().includes(q)||(inv.customer_name||'').toLowerCase().includes(q)||(inv.business_name||'').toLowerCase().includes(q)))return false;}
