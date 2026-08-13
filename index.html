@@ -2164,7 +2164,7 @@ async function loadCustomers(){
   // ── Manager/Admin/Leader: batch load ──
   const {data:firstPage,error:firstErr}=await sb.from('customers')
     .select('*, assigned_profile:profiles!assigned_to(id,full_name,role), last_contacted, campaign_name')
-    .order('created_at',{ascending:false})
+    .order('id',{ascending:true})
     .range(0,pageSize-1);
   if(firstErr){console.error('Customer load error:',firstErr);CUSTOMERS=[];return;}
   CUSTOMERS=firstPage||[];
@@ -2173,19 +2173,31 @@ async function loadCustomers(){
   if((firstPage||[]).length===pageSize){
     setTimeout(async function(){
       let from=pageSize;
+      var retries=0;
       while(true){
-        const {data,error}=await sb.from('customers')
+        var batchRes=await sb.from('customers')
           .select('*, assigned_profile:profiles!assigned_to(id,full_name,role), last_contacted, campaign_name')
-          .order('created_at',{ascending:false})
+          .order('id',{ascending:true})
           .range(from,from+pageSize-1);
-        if(error||!data||data.length===0)break;
-        const existingIds=new Set(CUSTOMERS.map(function(c){return c.id;}));
-        const newOnes=data.filter(function(c){return !existingIds.has(c.id);});
+        if(batchRes.error){
+          console.warn('[CRM] Batch load error at from='+from+':',batchRes.error.message);
+          if(++retries<=3){
+            await new Promise(function(r){setTimeout(r,1000);});
+            continue;
+          }
+          break;
+        }
+        retries=0;
+        var bdata=batchRes.data;
+        if(!bdata||bdata.length===0)break;
+        var existingIds=new Set(CUSTOMERS.map(function(c){return c.id;}));
+        var newOnes=bdata.filter(function(c){return !existingIds.has(c.id);});
         CUSTOMERS=CUSTOMERS.concat(newOnes);
         window.CUSTOMERS=CUSTOMERS;
-        if(data.length<pageSize)break;
+        console.log('[CRM] Loaded batch from='+from+', total='+CUSTOMERS.length);
+        if(bdata.length<pageSize)break;
         from+=pageSize;
-        await new Promise(function(r){setTimeout(r,200);});
+        await new Promise(function(r){setTimeout(r,150);});
       }
       console.log('[CRM] Total customers loaded:',CUSTOMERS.length);
       updateBadges();
@@ -2367,7 +2379,7 @@ function renderCustomers(){
     +potBreakdown.map(function(x){return '<div class="stat-card '+x.sc+'" style="cursor:pointer;border:'+(fPotential===x.p?'2px solid var(--accent)':'1px solid var(--border)')+'" onclick="fPotential=(fPotential===\''+x.p+'\'?\'all\':\''+x.p+'\');fStatus=\'all\';fLead=\'all\';curPage=1;render()"><div class="stat-label" style="font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+x.p+'<\/div><div class="stat-val" style="color:var(--accent);font-size:22px">'+x.cnt+'<\/div>'+(fPotential===x.p?'<div style="font-size:9px;color:var(--accent)">▼ Lọc<\/div>':'')+'<\/div>';}).join('')
     +'<\/div>'
     +'<div class="content">'
-    +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+data.length+'<\/span> khách<\/h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+'<\/div><\/div>'
+    +'<div class="panel"><div class="panel-header"><h2>Danh sách <span style="color:var(--brand2)">'+data.length+'<\/span> khách'+(window._custLoading?' <span style="font-size:11px;color:var(--text3);font-weight:400;animation:spin 1s linear infinite">⟳ đang tải thêm dữ liệu...</span>':'')+'<\/h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+filterHtml+'<\/div><\/div>'
     +actionBar
     +(data.length===0?'<div class="empty-state"><i class="ti ti-inbox"></i>Không có khách hàng nào<\/div>'
       :'<div class="table-mobile-scroll"><table><colgroup>'+(isManager?'<col width="32">':'')+'<col width="78"><col width="115"><col width="110"><col width="95"><col width="68"><col width="70"><col width="72"><col width="72"><col width="72"><col width="70"><col width="40"><col width="80"></colgroup>'
