@@ -1344,6 +1344,7 @@ function setPage(p){page=p;document.querySelectorAll('.nav-item').forEach(functi
 
 // AUTH
 async function doLogin(){
+  if(typeof sb==='undefined'||!sb){var _e=document.getElementById('auth-error');if(_e){_e.textContent='Hệ thống đang tải, vui lòng chờ vài giây...';_e.style.display='block';}return;}
   const email=document.getElementById('login-email').value.trim();
   const pass=document.getElementById('login-pass').value;
   const btn=document.getElementById('login-btn');
