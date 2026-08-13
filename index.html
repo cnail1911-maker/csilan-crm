@@ -2173,31 +2173,36 @@ async function loadCustomers(){
   if((firstPage||[]).length===pageSize){
     setTimeout(async function(){
       let from=pageSize;
-      var retries=0;
+      var retries=0; var backoff=500;
       while(true){
         var batchRes=await sb.from('customers')
           .select('*, assigned_profile:profiles!assigned_to(id,full_name,role), last_contacted, campaign_name')
           .order('id',{ascending:true})
           .range(from,from+pageSize-1);
+        // Xử lý 429 (rate limit) với exponential backoff
         if(batchRes.error){
-          console.warn('[CRM] Batch load error at from='+from+':',batchRes.error.message);
-          if(++retries<=3){
-            await new Promise(function(r){setTimeout(r,1000);});
+          var is429=batchRes.error.message&&(batchRes.error.message.includes('429')||batchRes.error.code==='429');
+          console.warn('[CRM] Batch error at from='+from+' retry='+retries+':',batchRes.error.message);
+          if(++retries<=5){
+            var waitMs=is429?backoff*Math.pow(2,retries):1000;
+            console.log('[CRM] Waiting '+waitMs+'ms before retry...');
+            await new Promise(function(r){setTimeout(r,waitMs);});
             continue;
           }
+          console.error('[CRM] Batch load stopped after max retries at from='+from);
           break;
         }
-        retries=0;
+        retries=0; backoff=500;
         var bdata=batchRes.data;
         if(!bdata||bdata.length===0)break;
         var existingIds=new Set(CUSTOMERS.map(function(c){return c.id;}));
         var newOnes=bdata.filter(function(c){return !existingIds.has(c.id);});
         CUSTOMERS=CUSTOMERS.concat(newOnes);
         window.CUSTOMERS=CUSTOMERS;
-        console.log('[CRM] Loaded batch from='+from+', total='+CUSTOMERS.length);
         if(bdata.length<pageSize)break;
         from+=pageSize;
-        await new Promise(function(r){setTimeout(r,150);});
+        // Delay lớn hơn để tránh rate limit (500ms thay vì 150ms)
+        await new Promise(function(r){setTimeout(r,500);});
       }
       console.log('[CRM] Total customers loaded:',CUSTOMERS.length);
       updateBadges();
