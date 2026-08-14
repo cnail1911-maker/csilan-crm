@@ -2148,15 +2148,23 @@ async function loadInvoices(){
 async function loadCustomers(){
   var _ldrole=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const pageSize=1000;
-  // ── Sale: load 1 lần duy nhất (dữ liệu ít, không cần batch) ──
+  // ── Sale: batch load bằng range() để tránh cap "Max Rows" của Supabase (mặc định 1000/query) ──
   if(!_ldrole){
-    const {data,error}=await sb.from('customers')
-      .select('*, assigned_profile:profiles!assigned_to(id,full_name,role), last_contacted, campaign_name')
-      .eq('assigned_to',currentProfile.id)
-      .order('created_at',{ascending:false})
-      .limit(2000);
-    if(error){console.error('Customer load error:',error);CUSTOMERS=[];return;}
-    CUSTOMERS=data||[];
+    let saleFrom=0;
+    let saleAll=[];
+    while(true){
+      const {data:saleBatch,error:saleErr}=await sb.from('customers')
+        .select('*, assigned_profile:profiles!assigned_to(id,full_name,role), last_contacted, campaign_name')
+        .eq('assigned_to',currentProfile.id)
+        .order('created_at',{ascending:false})
+        .range(saleFrom,saleFrom+pageSize-1);
+      if(saleErr){console.error('Customer load error:',saleErr);break;}
+      if(!saleBatch||saleBatch.length===0)break;
+      saleAll=saleAll.concat(saleBatch);
+      if(saleBatch.length<pageSize)break;
+      saleFrom+=pageSize;
+    }
+    CUSTOMERS=saleAll;
     window.CUSTOMERS=CUSTOMERS;
     console.log('[CRM] Sale customers loaded:',CUSTOMERS.length);
     return;
