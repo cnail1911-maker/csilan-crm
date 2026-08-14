@@ -2856,6 +2856,7 @@ async function approveInvoice(id,status){
         })(),
         customer_id:    inv.customer_id||null,
         sale_rep:       saleRepName,
+        sale_code:      empCode!=='??'?empCode:null,
         affiliate_member_name: inv.affiliate_member_name||null,
         total:          inv.total||0,
         deposit:        inv.deposit||0,
@@ -3253,6 +3254,71 @@ async function openInvEdit(id){
   }
 }
 
+// Sync nhanh khi Deposit/Deposit2 thay đổi trên invoice ĐÃ APPROVED — gọi lại
+// sync-invoice-to-finance để Finance cập nhật balance_due/is_settled/
+// thang_tat_toan ngay tại thời điểm này (không chờ đến lần duyệt/sửa sau).
+async function syncDepositToFinance(inv,newDeposit,newDeposit2){
+  try{
+    const {data:items}=await sb.from('invoice_items').select('*').eq('invoice_id',inv.id).order('id',{ascending:true});
+    const saleId=inv.sale_id||inv.created_by||null;
+    let saleRepName=inv.sale_rep||inv.submitted_by||'';
+    let empCode='??';
+    if(saleId){
+      let prof=PROFILES.find(function(p){return p.id===saleId;});
+      if(!prof){
+        try{const {data:pd}=await sb.from('profiles').select('full_name,code').eq('id',saleId).single();if(pd)prof=pd;}
+        catch(e2){console.warn('Profile fetch fallback error:',e2.message);}
+      }
+      if(prof&&prof.full_name)saleRepName=prof.full_name;
+      if(prof&&prof.code)empCode=prof.code;
+    }
+    const cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;});
+    const payload={
+      invoice_id:     inv.id,
+      invoice_no:     inv.invoice_no,
+      invoice_date:   inv.invoice_date||(inv.created_at?inv.created_at.slice(0,10):null),
+      customer_name:  cust?(cust.business_name||cust.customer_name||''):(inv.customer_name||inv.ten_tiem||''),
+      customer_id:    inv.customer_id||null,
+      sale_rep:       saleRepName,
+      sale_code:      empCode!=='??'?empCode:null,
+      affiliate_member_name: inv.affiliate_member_name||null,
+      total:          inv.total||0,
+      deposit:        newDeposit||0,
+      deposit2:       newDeposit2||0,
+      tax:            inv.tax||0,
+      items:          (items||[]).map(function(it){
+        return{
+          product_id:   it.product_id||null,
+          sku:          it.sku||null,
+          image_url:    it.image_url||null,
+          product_name: it.product_name||'',
+          qty:          it.qty||1,
+          unit_price:   it.unit_price||0,
+          discount:     it.discount||0,
+          amount:       it.amount||((it.unit_price||0)*(it.qty||1)),
+          vendor:       it.vendor||null,
+          gia_ban_goc:  it.vendor_cost||0,
+          gia_ban_thuc: it.unit_price||0,
+          chenh_lech:   it.chenh_lech!=null?it.chenh_lech:((it.unit_price||0)-(it.vendor_cost||0))*(it.qty||1),
+          is_shipping:  it.is_shipping||false,
+          is_gift:      it.is_gift||false
+        };
+      }),
+    };
+    const EDGE_URL='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/sync-invoice-to-finance';
+    const r=await fetch(EDGE_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},
+      body:JSON.stringify(payload)
+    });
+    const result=await r.json();
+    if(!r.ok)console.warn('[Sync Finance - deposit2] FAIL:',result);
+    else console.log('[Sync Finance - deposit2] OK — is_settled:'+result.is_settled+' thang_tat_toan:'+result.thang_tat_toan,result);
+  }catch(e){
+    console.warn('[Sync Finance - deposit2] error:',e.message);
+  }
+}
+
 async function saveInvEdit(id){
   showLoading(true);
   const oldInv=INVOICES.find(function(i){return i.id===id;})||{};
@@ -3279,6 +3345,16 @@ async function saveInvEdit(id){
   await sb.from('invoices').update(update).eq('id',parseInt(id)||id);
   const inv=INVOICES.find(function(i){return i.id===id;});
   if(inv)Object.assign(inv,update);
+
+  // Nếu invoice đã approved (đã tồn tại bên Finance) và deposit/deposit2 vừa
+  // thay đổi → sync lại ngay để Finance cập nhật balance_due/is_settled/
+  // thang_tat_toan đúng thời điểm này (không chờ tới lần duyệt sau).
+  var depositChanged=(oldInv.deposit||0)!==_deposit||(oldInv.deposit2||0)!==_deposit2;
+  if(oldInv.approval_status==='approved'&&depositChanged){
+    syncDepositToFinance(oldInv,_deposit,_deposit2).catch(function(e){
+      console.warn('[Sync Finance - deposit2] error (non-blocking):',e.message);
+    });
+  }
 
   var invNo=oldInv.invoice_no||'';
   var saleId=oldInv.sale_id||oldInv.created_by;
