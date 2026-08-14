@@ -3325,8 +3325,10 @@ async function saveInvEdit(id){
   const oldTracking=oldInv.tracking_number||'';
   const oldOrderStatus=oldInv.order_status||'';
   const oldPaymentStatus=oldInv.payment_status||'';
-  const _deposit=parseFloat((document.getElementById('ie-deposit')&&document.getElementById('ie-deposit').value)||oldInv.deposit||0)||0;
-  const _deposit2=parseFloat((document.getElementById('ie-deposit2')&&document.getElementById('ie-deposit2').value)||oldInv.deposit2||0)||0;
+  const _depositInput=document.getElementById('ie-deposit');
+  const _deposit=_depositInput?(parseFloat(_depositInput.value)||0):(oldInv.deposit||0);
+  const _deposit2Input=document.getElementById('ie-deposit2');
+  const _deposit2=_deposit2Input?(parseFloat(_deposit2Input.value)||0):(oldInv.deposit2||0);
   const _balanceRaw=parseFloat((document.getElementById('ie-balance')&&document.getElementById('ie-balance').value))||0;
   const _balance=Math.max(0,_balanceRaw);
   const _note=(document.getElementById('ie-note')&&document.getElementById('ie-note').value)||oldInv.note||null;
