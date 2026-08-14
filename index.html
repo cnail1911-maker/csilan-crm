@@ -3352,6 +3352,14 @@ async function saveInvEdit(id){
   // thay đổi → sync lại ngay để Finance cập nhật balance_due/is_settled/
   // thang_tat_toan đúng thời điểm này (không chờ tới lần duyệt sau).
   var depositChanged=(oldInv.deposit||0)!==_deposit||(oldInv.deposit2||0)!==_deposit2;
+  console.log('[Sync Finance - deposit2] CHECK',{
+    invoice_no: oldInv.invoice_no,
+    approval_status: oldInv.approval_status,
+    oldDeposit: oldInv.deposit, newDeposit: _deposit,
+    oldDeposit2: oldInv.deposit2, newDeposit2: _deposit2,
+    depositChanged,
+    willSync: oldInv.approval_status==='approved'&&depositChanged
+  });
   if(oldInv.approval_status==='approved'&&depositChanged){
     syncDepositToFinance(oldInv,_deposit,_deposit2).catch(function(e){
       console.warn('[Sync Finance - deposit2] error (non-blocking):',e.message);
