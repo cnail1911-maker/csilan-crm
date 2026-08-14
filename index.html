@@ -2261,10 +2261,9 @@ function renderCustomers(){
       if(!uid)return false;
       const profId=currentProfile&&currentProfile.id;
       const isCreatedBy=c.created_by===uid||c.created_by===profId;
-      const hasPotential=c.potential&&c.potential.trim();
       const isAssigned=c.assigned_to===uid||c.assigned_to===profId;
-      // Sale thấy: KH tự thêm HOẶC KH có Potential được assign cho mình
-      if(!isCreatedBy&&!(hasPotential&&isAssigned))return false;
+      // Sale thấy: KH tự thêm HOẶC KH được assign cho mình (bất kể đã set Potential hay chưa)
+      if(!isCreatedBy&&!isAssigned)return false;
     }
     var normStatus=c.status==='Follow Up'?'Follow':c.status;
     if(fStatus!=='all'&&normStatus!==fStatus)return false;
@@ -4551,18 +4550,12 @@ window._campAddSale=function(id,name){
 function renderCampaignSale(uid,profId,isLeader){
   var myCampaigns={};
   var activePool=[];
-  var today2=new Date();today2.setHours(0,0,0,0);
   CUSTOMERS.forEach(function(c){
     if(c.approval_status==='pending')return;
     var isMe=c.assigned_to===uid||c.assigned_to===profId;
     if(!isMe)return;
     if(!c.campaign_name&&c.potential&&c.potential.trim()){activePool.push(c);return;}
     if(!c.campaign_name)return;
-    // Sale chỉ thấy campaign còn hiệu lực (deadline >= hôm nay)
-    if(c.assigned_deadline){
-      var dl=new Date(c.assigned_deadline);dl.setHours(0,0,0,0);
-      if(dl<today2)return; // hết hạn - không hiện với sale
-    }
     if(!myCampaigns[c.campaign_name])myCampaigns[c.campaign_name]={name:c.campaign_name,custs:[],deadline:c.assigned_deadline||''};
     myCampaigns[c.campaign_name].custs.push(c);
   });
