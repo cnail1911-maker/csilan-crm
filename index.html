@@ -2261,9 +2261,10 @@ function renderCustomers(){
       if(!uid)return false;
       const profId=currentProfile&&currentProfile.id;
       const isCreatedBy=c.created_by===uid||c.created_by===profId;
+      const hasPotential=c.potential&&c.potential.trim();
       const isAssigned=c.assigned_to===uid||c.assigned_to===profId;
-      // Sale thấy: KH tự thêm HOẶC KH được assign cho mình (bất kể đã set Potential hay chưa)
-      if(!isCreatedBy&&!isAssigned)return false;
+      // Sale thấy: KH tự thêm HOẶC KH có Potential được assign cho mình
+      if(!isCreatedBy&&!(hasPotential&&isAssigned))return false;
     }
     var normStatus=c.status==='Follow Up'?'Follow':c.status;
     if(fStatus!=='all'&&normStatus!==fStatus)return false;
