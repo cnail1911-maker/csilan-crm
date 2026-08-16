@@ -2801,6 +2801,10 @@ async function approveInvoice(id,status){
   showLoading(true);
   const inv=INVOICES.find(function(i){return i.id===id;});
   if(status==='approved'&&inv){
+    // Nếu invoice này ĐÃ TỪNG approved trước đó (đang duyệt lại sau khi bị
+    // revert) thì invoice_no cũ sắp bị thay bằng invoice_no mới — phải dọn
+    // record cũ bên Finance trước, nếu không sẽ để lại 1 dòng mồ côi vĩnh viễn.
+    const oldInvoiceNoBeforeReapprove=(inv.approval_status==='approved')?inv.invoice_no:null;
     // Generate invoice_no: INV + profiles.code (mã NV) + YYMMDD + -seq
     var now=new Date();
     var ds=String(now.getFullYear()).slice(2)+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0');
@@ -2928,6 +2932,21 @@ async function approveInvoice(id,status){
       const result=await r.json();
       if(!r.ok){console.warn('[Sync Finance] FAIL:',result);}
       else{console.log('[Sync Finance] OK — sale_rep:'+saleRepName+' matched_profile:'+result.matched_profile,result);}
+
+      // Dọn record CŨ bên Finance nếu đây là lượt duyệt LẠI (invoice_no vừa đổi)
+      if(oldInvoiceNoBeforeReapprove&&oldInvoiceNoBeforeReapprove!==newInvNo){
+        try{
+          const delR=await fetch(EDGE_URL,{
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},
+            body:JSON.stringify({op:'delete',invoice_no:oldInvoiceNoBeforeReapprove})
+          });
+          const delResult=await delR.json();
+          console.log('[Sync Finance] cleanup old invoice_no on re-approve:',oldInvoiceNoBeforeReapprove,delResult);
+        }catch(eDel){
+          console.warn('[Sync Finance] cleanup old invoice_no error (non-blocking):',eDel.message);
+        }
+      }
     }catch(e){
       console.warn('Sync Finance error (non-blocking):',e.message);
     }
@@ -7856,6 +7875,24 @@ async function deleteCustomer(id){
   if(!confirm('Xóa khách hàng này? Toàn bộ invoice và lịch sử cuộc gọi sẽ bị xóa. Không thể hoàn tác!'))return;
   showLoading(true);
   try{
+    // Trước khi xoá invoice trong CRM: nếu invoice nào đã approved (đã sync
+    // sang Finance) thì phải dọn record bên Finance trước, nếu không sẽ để
+    // lại record mồ côi vĩnh viễn bên orders/order_items.
+    var approvedInvNos=INVOICES.filter(function(i){return i.customer_id===id&&i.approval_status==='approved'&&i.invoice_no;}).map(function(i){return i.invoice_no;});
+    if(approvedInvNos.length>0){
+      var FIN_EDGE_URL='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/sync-invoice-to-finance';
+      await Promise.all(approvedInvNos.map(function(invNo){
+        return fetch(FIN_EDGE_URL,{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},
+          body:JSON.stringify({op:'delete',invoice_no:invNo})
+        }).then(function(r){return r.json();}).then(function(res){
+          console.log('[Sync Finance] cleanup on customer delete:',invNo,res);
+        }).catch(function(e){
+          console.warn('[Sync Finance] cleanup error (non-blocking):',invNo,e.message);
+        });
+      }));
+    }
     // Xóa dữ liệu liên quan song song trước khi xóa khách
     var invIds=INVOICES.filter(function(i){return i.customer_id===id;}).map(function(i){return i.id;});
     // Xóa tất cả bảng liên quan song song trước khi xóa khách
