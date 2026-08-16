@@ -2952,11 +2952,30 @@ async function approveInvoice(id,status){
     }
   }
 
-  // For rejected: update invoices only (customers not affected)
+  // For rejected/pending: update invoices — nếu invoice này VỪA bị revert
+  // khỏi 'approved' (đã từng sync sang Finance) thì phải dọn record bên
+  // Finance theo, nếu không sẽ để lại "hàng ma" ảnh hưởng KPI/bonus.
   if(status!=='approved'){
+    var wasApproved=inv&&inv.approval_status==='approved';
+    var invNoToClean=inv&&inv.invoice_no;
     await sb.from('invoices').update({approval_status:status}).eq('id',id);
     const iidx=INVOICES.findIndex(function(i){return i.id===id;});
     if(iidx>=0)INVOICES[iidx].approval_status=status;
+
+    if(wasApproved&&invNoToClean){
+      try{
+        const FIN_EDGE_URL='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/sync-invoice-to-finance';
+        const delR=await fetch(FIN_EDGE_URL,{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},
+          body:JSON.stringify({op:'delete',invoice_no:invNoToClean})
+        });
+        const delResult=await delR.json();
+        console.log('[Sync Finance] cleanup on unapprove:',invNoToClean,delResult);
+      }catch(eUnapprove){
+        console.warn('[Sync Finance] cleanup on unapprove error (non-blocking):',eUnapprove.message);
+      }
+    }
   }
   showLoading(false);render();
 }
