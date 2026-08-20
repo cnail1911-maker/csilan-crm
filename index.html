@@ -1227,6 +1227,7 @@ body.ticker-on .app{margin-top:32px}
       <div class="nav-item" onclick="setPage('alert')" id="nav-alert"><i class="ti ti-bell"></i> Cảnh báo <span class="nav-badge" id="badge-alert" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('products')" id="nav-products" style="display:none"><i class="ti ti-package"></i> Sản phẩm</div>
       <div class="nav-item" onclick="setPage('daily')" id="nav-daily"><i class="ti ti-calendar-stats"></i> Daily</div>
+      <div class="nav-item" onclick="setPage('game')" id="nav-game"><i class="ti ti-dice"></i> Game</div>
       <div class="nav-item" onclick="setPage('schedule')" id="nav-schedule"><i class="ti ti-calendar-event"></i> Lịch hẹn</div>
       <div class="nav-item" onclick="setPage('guide')" id="nav-guide"><i class="ti ti-book"></i> Hướng dẫn</div>
       <div class="nav-item" onclick="setPage('notifications')" id="nav-notif-tab"><i class="ti ti-bell"></i> Thông báo <span class="nav-badge" id="badge-notif" style="display:none">0</span></div>
@@ -1341,6 +1342,128 @@ function setPdPage(p){pdPage=p;render();}
 function setPipeP(s,p){pipePage[s]=p;render();}
 
 function setPage(p){page=p;document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});var el=document.getElementById('nav-'+p);if(el)el.classList.add('active');render();}
+
+// ═══════════════ MINI-GAME SYSTEM ═══════════════
+// CRM chỉ ĐỌC trực tiếp bảng game bên Finance DB (anon key, an toàn).
+// Mọi hành động GHI (quay, bốc hộp, đặt giá) đi qua edge function
+// game-action (service_role phía server, validate điều kiện) — tránh
+// gian lận qua DevTools vì CRM và Finance là 2 Supabase project khác
+// nhau, auth.uid() của CRM không map được sang RLS bên Finance.
+const GAME_FINANCE_URL='https://jggfmpihfisbusnbzyoi.supabase.co';
+const GAME_FINANCE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZ2ZtcGloZmlzYnVzbmJ6eW9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NTkxMzcsImV4cCI6MjA5NDQzNTEzN30.r4OAbgoMdJXyBpIZJaBstn_a1YRg9cR4SPDVvSrXV6M';
+const GAME_ACTION_URL='https://ajsakaddylbpppxlidfe.supabase.co/functions/v1/game-action';
+async function gameFinRead(pathAndQuery){
+  try{
+    const res=await fetch(GAME_FINANCE_URL+'/rest/v1/'+pathAndQuery,{headers:{'apikey':GAME_FINANCE_ANON,'Authorization':'Bearer '+GAME_FINANCE_ANON}});
+    if(!res.ok)return [];
+    return await res.json();
+  }catch(e){console.warn('[Game] read error:',e);return [];}
+}
+async function gameAction(action,extra){
+  try{
+    const res=await fetch(GAME_ACTION_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},
+      body:JSON.stringify(Object.assign({action:action,user_id:currentProfile&&currentProfile.id},extra||{}))});
+    return await res.json();
+  }catch(e){console.warn('[Game] action error:',e);return {ok:false,error:e.message};}
+}
+
+async function renderGamePage(){
+  const el=document.getElementById('game-content');
+  if(!el||!currentProfile){return;}
+  const uid=currentProfile.id;
+  const thisMonth=new Date().toISOString().slice(0,7);
+
+  el.innerHTML='<div style="display:flex;justify-content:center;padding:60px"><i class="ti ti-loader-2" style="font-size:32px;animation:spin 1s linear infinite"></i></div>';
+
+  try{
+    // ── 1. ĐUA XE — % target tháng này (đọc invoices từ INVOICES đã load sẵn trong CRM, target từ Finance) ──
+    const myInvoices=(INVOICES||[]).filter(function(i){return i.sale_id===uid&&i.type==='invoice'&&i.approval_status==='approved'&&i.billing_month===thisMonth;});
+    const myRevenue=myInvoices.reduce(function(s,i){return s+(parseFloat(i.total)||0);},0);
+    const targetRows=await gameFinRead('targets?user_id=eq.'+uid+'&period_key=eq.'+thisMonth+'&select=target_amount');
+    const myTarget=(targetRows[0]&&targetRows[0].target_amount)||0;
+    const pct=myTarget>0?Math.round((myRevenue/myTarget)*1000)/10:0;
+
+    // ── 2. VÉ VÀNG — khách của mình đang có cờ, chưa chốt ────────
+    const myGoldenCust=(CUSTOMERS||[]).filter(function(c){return (c.assigned_to===uid)&&c.is_golden_ticket&&c.lead_status!=='Closedeal';});
+
+    // ── 3. VÒNG QUAY — tính + đọc lượt hôm nay ────────────────────
+    const wheelCredit=await gameAction('compute_wheel_credits',{});
+    const wheelSessions=await gameFinRead('wheel_sessions?is_sale_game=eq.true&is_active=eq.true&select=id,name&limit=1');
+    const wheelSessionId=wheelSessions[0]?wheelSessions[0].id:null;
+    const wheelEntries=wheelSessionId?await gameFinRead('wheel_entries?session_id=eq.'+wheelSessionId+'&is_active=eq.true&select=label,image_url'):[];
+
+    // ── 4. HỘP BÍ MẬT — config đang active tháng này ───────────────
+    const boxConfigs=await gameFinRead('game_box_config?is_active=eq.true&period_key=eq.'+thisMonth+'&select=id&limit=1');
+    let boxCredit={ok:false,credits_earned:0};
+    if(boxConfigs[0]) boxCredit=await gameAction('compute_box_credits',{config_id:boxConfigs[0].id});
+    const boxCreditRows=boxConfigs[0]?await gameFinRead('game_box_draw_credits?user_id=eq.'+uid+'&config_id=eq.'+boxConfigs[0].id+'&select=credits_earned,credits_used'):[];
+    const boxAvailable=boxCreditRows[0]?(boxCreditRows[0].credits_earned-boxCreditRows[0].credits_used):0;
+
+    // ── 5. ĐẤU GIÁ — điểm tích luỹ quý này + item đang mở ─────────
+    const q=Math.ceil((new Date().getMonth()+1)/3);
+    const periodKey=new Date().getFullYear()+'-Q'+q;
+    const pointsRes=await gameAction('compute_points',{period_key:periodKey});
+    const auctionItems=await gameFinRead('game_auction_items?period_key=eq.'+periodKey+'&status=eq.open&select=id,title,description,starting_points,image_url');
+
+    el.innerHTML=''
+      +'<div class="stat-card" style="margin-bottom:14px"><h3>🏎️ Đua xe doanh số — '+thisMonth+'</h3>'
+      +'<div style="font-size:28px;font-weight:700;color:'+(pct>=100?'var(--accent2)':'var(--warn)')+'">'+pct+'%</div>'
+      +'<div style="color:var(--text2);font-size:13px">Doanh số $'+myRevenue.toLocaleString()+' / Target $'+myTarget.toLocaleString()+'</div>'
+      +'<div style="height:10px;background:var(--surface2);border-radius:6px;margin-top:10px;overflow:hidden"><div style="height:100%;width:'+Math.min(pct,100)+'%;background:var(--accent2)"></div></div>'
+      +'</div>'
+      +(myGoldenCust.length>0?('<div class="stat-card" style="margin-bottom:14px;border:1px solid gold"><h3>🎫 Vé vàng — '+myGoldenCust.length+' khách đang chờ chốt</h3>'
+        +myGoldenCust.map(function(c){return '<div style="padding:4px 0">'+(c.business_name||c.customer_name||'KH #'+c.id)+'</div>';}).join('')+'</div>'):'')
+      +'<div class="stat-card" style="margin-bottom:14px"><h3>🎡 Vòng quay may mắn</h3>'
+      +'<div>Lượt quay hôm nay: <b>'+((wheelCredit&&wheelCredit.available)||0)+'</b></div>'
+      +(wheelEntries.length>0?('<div style="margin-top:8px;font-size:12px;color:var(--text2)">Phần thưởng: '+wheelEntries.map(function(e){return e.label;}).join(', ')+'</div>'):'')
+      +'<button class="btn" style="margin-top:10px" onclick="window._gameSpin('+(wheelSessionId||'null')+')" '+((!wheelCredit||!wheelCredit.available||wheelCredit.available<=0||!wheelSessionId)?'disabled':'')+'>Quay ngay</button>'
+      +'<div id="game-wheel-result" style="margin-top:8px;font-weight:600"></div>'
+      +'</div>'
+      +'<div class="stat-card" style="margin-bottom:14px"><h3>🎁 Chiếc hộp bí mật</h3>'
+      +'<div>Lượt bốc thăm: <b>'+boxAvailable+'</b>'+(boxCredit&&boxCredit.is_consolation?' (hộp an ủi)':'')+'</div>'
+      +'<button class="btn" style="margin-top:10px" onclick="window._gameDrawBox('+(boxConfigs[0]?boxConfigs[0].id:'null')+')" '+(boxAvailable<=0?'disabled':'')+'>Bốc hộp</button>'
+      +'<div id="game-box-result" style="margin-top:8px;font-weight:600"></div>'
+      +'</div>'
+      +'<div class="stat-card" style="margin-bottom:14px"><h3>🔨 Đấu giá phần thưởng — '+periodKey+'</h3>'
+      +'<div>Điểm tích luỹ: <b>'+((pointsRes&&pointsRes.total_points)||0)+'</b></div>'
+      +(auctionItems.length===0?'<div style="color:var(--text2);font-size:13px;margin-top:8px">Chưa có phiên đấu giá nào đang mở</div>':
+        auctionItems.map(function(it){return '<div style="border-top:1px solid var(--border);padding:10px 0"><b>'+it.title+'</b><div style="font-size:12px;color:var(--text2)">'+(it.description||'')+' — Giá khởi điểm: '+it.starting_points+' điểm</div>'
+          +'<input type="number" id="bid-'+it.id+'" placeholder="Số điểm đặt" style="width:120px;margin-top:6px">'
+          +'<button class="btn" onclick="window._gameBid('+it.id+')">Đặt giá</button></div>';}).join(''))
+      +'</div>';
+  }catch(e){
+    console.error('[Game] render error:',e);
+    el.innerHTML='<div class="stat-card" style="margin-bottom:14px">Lỗi tải dữ liệu game: '+e.message+'</div>';
+  }
+}
+
+window._gameSpin=async function(sessionId){
+  if(!sessionId){alert('Chưa có vòng quay nào được cấu hình');return;}
+  const resultEl=document.getElementById('game-wheel-result');
+  if(resultEl)resultEl.textContent='Đang quay...';
+  const res=await gameAction('spin_wheel',{session_id:sessionId});
+  if(!res.ok){alert(res.error||'Lỗi quay');renderGamePage();return;}
+  if(resultEl)resultEl.textContent='🎉 Trúng: '+res.result;
+  setTimeout(renderGamePage,1500);
+};
+window._gameDrawBox=async function(configId){
+  if(!configId){alert('Chưa có đợt hộp bí mật nào');return;}
+  const resultEl=document.getElementById('game-box-result');
+  if(resultEl)resultEl.textContent='Đang mở hộp...';
+  const res=await gameAction('draw_box',{config_id:configId});
+  if(!res.ok){alert(res.error||'Lỗi bốc hộp');renderGamePage();return;}
+  if(resultEl)resultEl.textContent='🎁 '+res.prize_title+(res.prize_note?(' — '+res.prize_note):'');
+  setTimeout(renderGamePage,1500);
+};
+window._gameBid=async function(itemId){
+  const input=document.getElementById('bid-'+itemId);
+  const bidPoints=parseFloat(input?input.value:'0')||0;
+  if(bidPoints<=0){alert('Nhập số điểm hợp lệ');return;}
+  const res=await gameAction('place_bid',{item_id:itemId,bid_points:bidPoints});
+  if(!res.ok){alert(res.error||'Lỗi đặt giá');return;}
+  alert('Đặt giá thành công: '+res.bid_points+' điểm');
+  renderGamePage();
+};
 
 // AUTH
 async function doLogin(){
@@ -9437,6 +9560,7 @@ function render(){
   else if(page==='guide')m.innerHTML=renderGuide();
   else if(page==='notifications'){m.innerHTML=renderNotifPage();}
   else if(page==='system'){m.innerHTML=renderSystem();setTimeout(renderSystemRefresh,100);}
+  else if(page==='game'){m.innerHTML='<div class="topbar"><div class="topbar-title">🎮 Game<\/div><\/div><div class="content" id="game-content">Đang tải...<\/div>';renderGamePage();}
   else if(page==='daily'){
     // Render shell synchronously, load data async
     const isManagerD=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
