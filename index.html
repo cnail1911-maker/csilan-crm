@@ -1367,43 +1367,52 @@ async function gameAction(action,extra){
   }catch(e){console.warn('[Game] action error:',e);return {ok:false,error:e.message};}
 }
 
+let GAME_COMPUTE_CACHE={ts:0,wheelCredit:null,boxCredit:null,pointsRes:null};
+const GAME_CACHE_TTL=120000; // 2 phút — tránh tính lại credits/points mỗi lần mở tab
+
 async function renderGamePage(){
   const el=document.getElementById('game-content');
   if(!el||!currentProfile){return;}
   const uid=currentProfile.id;
   const thisMonth=new Date().toISOString().slice(0,7);
+  const q=Math.ceil((new Date().getMonth()+1)/3);
+  const periodKey=new Date().getFullYear()+'-Q'+q;
 
   el.innerHTML='<div style="display:flex;justify-content:center;padding:60px"><i class="ti ti-loader-2" style="font-size:32px;animation:spin 1s linear infinite"></i></div>';
 
   try{
-    // ── 1. ĐUA XE — % target tháng này (đọc invoices từ INVOICES đã load sẵn trong CRM, target từ Finance) ──
+    // ── 1. ĐUA XE — tính local từ INVOICES đã load sẵn, chỉ cần đọc target (song song với các mục khác) ──
     const myInvoices=(INVOICES||[]).filter(function(i){return i.sale_id===uid&&i.type==='invoice'&&i.approval_status==='approved'&&i.billing_month===thisMonth;});
     const myRevenue=myInvoices.reduce(function(s,i){return s+(parseFloat(i.total)||0);},0);
-    const targetRows=await gameFinRead('targets?user_id=eq.'+uid+'&period_key=eq.'+thisMonth+'&select=target_amount');
+
+    // ── 2. VÉ VÀNG — tính local, không cần gọi mạng ────────────────
+    const myGoldenCust=(CUSTOMERS||[]).filter(function(c){return (c.assigned_to===uid)&&c.is_golden_ticket&&c.lead_status!=='Closedeal';});
+
+    // ── Các lệnh đọc độc lập — chạy SONG SONG thay vì tuần tự ────────
+    const useCache=(Date.now()-GAME_COMPUTE_CACHE.ts)<GAME_CACHE_TTL;
+    const results=await Promise.all([
+      gameFinRead('targets?user_id=eq.'+uid+'&period_key=eq.'+thisMonth+'&select=target_amount'),
+      gameFinRead('wheel_sessions?is_sale_game=eq.true&is_active=eq.true&select=id,name&limit=1'),
+      gameFinRead('game_box_config?is_active=eq.true&period_key=eq.'+thisMonth+'&select=id&limit=1'),
+      gameFinRead('game_auction_items?period_key=eq.'+periodKey+'&status=eq.open&select=id,title,description,starting_points,image_url'),
+      useCache?Promise.resolve(GAME_COMPUTE_CACHE.wheelCredit):gameAction('compute_wheel_credits',{}),
+      useCache?Promise.resolve(GAME_COMPUTE_CACHE.pointsRes):gameAction('compute_points',{period_key:periodKey}),
+    ]);
+    const targetRows=results[0], wheelSessions=results[1], boxConfigs=results[2], auctionItems=results[3];
+    const wheelCredit=results[4], pointsRes=results[5];
     const myTarget=(targetRows[0]&&targetRows[0].target_amount)||0;
     const pct=myTarget>0?Math.round((myRevenue/myTarget)*1000)/10:0;
 
-    // ── 2. VÉ VÀNG — khách của mình đang có cờ, chưa chốt ────────
-    const myGoldenCust=(CUSTOMERS||[]).filter(function(c){return (c.assigned_to===uid)&&c.is_golden_ticket&&c.lead_status!=='Closedeal';});
-
-    // ── 3. VÒNG QUAY — tính + đọc lượt hôm nay ────────────────────
-    const wheelCredit=await gameAction('compute_wheel_credits',{});
-    const wheelSessions=await gameFinRead('wheel_sessions?is_sale_game=eq.true&is_active=eq.true&select=id,name&limit=1');
     const wheelSessionId=wheelSessions[0]?wheelSessions[0].id:null;
-    const wheelEntries=wheelSessionId?await gameFinRead('wheel_entries?session_id=eq.'+wheelSessionId+'&is_active=eq.true&select=label,image_url'):[];
-
-    // ── 4. HỘP BÍ MẬT — config đang active tháng này ───────────────
-    const boxConfigs=await gameFinRead('game_box_config?is_active=eq.true&period_key=eq.'+thisMonth+'&select=id&limit=1');
-    let boxCredit={ok:false,credits_earned:0};
-    if(boxConfigs[0]) boxCredit=await gameAction('compute_box_credits',{config_id:boxConfigs[0].id});
+    // compute_box_credits cần config_id nên phải chờ kết quả boxConfigs trước — chạy song song với việc đọc wheel_entries
+    const [wheelEntries,boxCredit]=await Promise.all([
+      wheelSessionId?gameFinRead('wheel_entries?session_id=eq.'+wheelSessionId+'&is_active=eq.true&select=label,image_url'):Promise.resolve([]),
+      boxConfigs[0]?(useCache?Promise.resolve(GAME_COMPUTE_CACHE.boxCredit):gameAction('compute_box_credits',{config_id:boxConfigs[0].id})):Promise.resolve({ok:false,credits_earned:0}),
+    ]);
     const boxCreditRows=boxConfigs[0]?await gameFinRead('game_box_draw_credits?user_id=eq.'+uid+'&config_id=eq.'+boxConfigs[0].id+'&select=credits_earned,credits_used'):[];
     const boxAvailable=boxCreditRows[0]?(boxCreditRows[0].credits_earned-boxCreditRows[0].credits_used):0;
 
-    // ── 5. ĐẤU GIÁ — điểm tích luỹ quý này + item đang mở ─────────
-    const q=Math.ceil((new Date().getMonth()+1)/3);
-    const periodKey=new Date().getFullYear()+'-Q'+q;
-    const pointsRes=await gameAction('compute_points',{period_key:periodKey});
-    const auctionItems=await gameFinRead('game_auction_items?period_key=eq.'+periodKey+'&status=eq.open&select=id,title,description,starting_points,image_url');
+    if(!useCache) GAME_COMPUTE_CACHE={ts:Date.now(),wheelCredit:wheelCredit,boxCredit:boxCredit,pointsRes:pointsRes};
 
     el.innerHTML=''
       +'<div class="stat-card" style="margin-bottom:14px"><h3>🏎️ Đua xe doanh số — '+thisMonth+'</h3>'
@@ -1442,6 +1451,7 @@ window._gameSpin=async function(sessionId){
   const resultEl=document.getElementById('game-wheel-result');
   if(resultEl)resultEl.textContent='Đang quay...';
   const res=await gameAction('spin_wheel',{session_id:sessionId});
+  GAME_COMPUTE_CACHE.ts=0; // credit vừa bị trừ — bỏ cache, tính lại lần render tới
   if(!res.ok){alert(res.error||'Lỗi quay');renderGamePage();return;}
   if(resultEl)resultEl.textContent='🎉 Trúng: '+res.result;
   setTimeout(renderGamePage,1500);
@@ -1451,6 +1461,7 @@ window._gameDrawBox=async function(configId){
   const resultEl=document.getElementById('game-box-result');
   if(resultEl)resultEl.textContent='Đang mở hộp...';
   const res=await gameAction('draw_box',{config_id:configId});
+  GAME_COMPUTE_CACHE.ts=0;
   if(!res.ok){alert(res.error||'Lỗi bốc hộp');renderGamePage();return;}
   if(resultEl)resultEl.textContent='🎁 '+res.prize_title+(res.prize_note?(' — '+res.prize_note):'');
   setTimeout(renderGamePage,1500);
