@@ -492,7 +492,7 @@ table.inv-table tr:last-child td{border-bottom:none}
       <div style="display:flex;gap:8px">
         <button class="btn" onclick="hideMobilePreview()"><i class="ti ti-arrow-left"></i> Chỉnh sửa</button>
         <button class="btn" onclick="window.open('index.html','_self')"><i class="ti ti-home"></i> Về CRM</button>
-        <button class="btn btn-red" onclick="editInvoiceId?updateInvoice():saveAndDownload('pdf')"><i class="ti ti-file-download"></i> Tải PDF</button>
+        <button class="btn btn-red" onclick="editInvoiceId?(window._editApprovalStatus==='approved'?downloadApprovedPDF():updateInvoice()):saveAndDownload('pdf')"><i class="ti ti-file-download"></i> Tải PDF</button>
       </div>
     </div>
     <div id="invoice-preview">
