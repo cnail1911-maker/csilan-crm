@@ -1367,7 +1367,7 @@ async function gameAction(action,extra){
   }catch(e){console.warn('[Game] action error:',e);return {ok:false,error:e.message};}
 }
 
-let GAME_COMPUTE_CACHE={ts:0,wheelCredit:null,boxCredit:null,pointsRes:null};
+let GAME_COMPUTE_CACHE={ts:0,wheelCredit:null,boxCredit:null,pointsRes:null,raceTarget:null};
 const GAME_CACHE_TTL=120000; // 2 phút — tránh tính lại credits/points mỗi lần mở tab
 
 async function renderGamePage(){
@@ -1391,16 +1391,16 @@ async function renderGamePage(){
     // ── Các lệnh đọc độc lập — chạy SONG SONG thay vì tuần tự ────────
     const useCache=(Date.now()-GAME_COMPUTE_CACHE.ts)<GAME_CACHE_TTL;
     const results=await Promise.all([
-      gameFinRead('targets?user_id=eq.'+uid+'&period_key=eq.'+thisMonth+'&select=target_amount'),
+      useCache?Promise.resolve(GAME_COMPUTE_CACHE.raceTarget):gameAction('get_race_target',{period_key:thisMonth}),
       gameFinRead('wheel_sessions?is_sale_game=eq.true&is_active=eq.true&select=id,name&limit=1'),
       gameFinRead('game_box_config?is_active=eq.true&period_key=eq.'+thisMonth+'&select=id&limit=1'),
       gameFinRead('game_auction_items?period_key=eq.'+periodKey+'&status=eq.open&select=id,title,description,starting_points,image_url'),
       useCache?Promise.resolve(GAME_COMPUTE_CACHE.wheelCredit):gameAction('compute_wheel_credits',{}),
       useCache?Promise.resolve(GAME_COMPUTE_CACHE.pointsRes):gameAction('compute_points',{period_key:periodKey}),
     ]);
-    const targetRows=results[0], wheelSessions=results[1], boxConfigs=results[2], auctionItems=results[3];
+    const raceTargetRes=results[0], wheelSessions=results[1], boxConfigs=results[2], auctionItems=results[3];
     const wheelCredit=results[4], pointsRes=results[5];
-    const myTarget=(targetRows[0]&&targetRows[0].target_amount)||0;
+    const myTarget=(raceTargetRes&&raceTargetRes.target_amount)||0;
     const pct=myTarget>0?Math.round((myRevenue/myTarget)*1000)/10:0;
 
     const wheelSessionId=wheelSessions[0]?wheelSessions[0].id:null;
@@ -1412,7 +1412,7 @@ async function renderGamePage(){
     const boxCreditRows=boxConfigs[0]?await gameFinRead('game_box_draw_credits?user_id=eq.'+uid+'&config_id=eq.'+boxConfigs[0].id+'&select=credits_earned,credits_used'):[];
     const boxAvailable=boxCreditRows[0]?(boxCreditRows[0].credits_earned-boxCreditRows[0].credits_used):0;
 
-    if(!useCache) GAME_COMPUTE_CACHE={ts:Date.now(),wheelCredit:wheelCredit,boxCredit:boxCredit,pointsRes:pointsRes};
+    if(!useCache) GAME_COMPUTE_CACHE={ts:Date.now(),wheelCredit:wheelCredit,boxCredit:boxCredit,pointsRes:pointsRes,raceTarget:raceTargetRes};
 
     el.innerHTML=''
       +'<div class="stat-card" style="margin-bottom:14px"><h3>🏎️ Đua xe doanh số — '+thisMonth+'</h3>'
