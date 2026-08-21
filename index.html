@@ -11278,11 +11278,25 @@ function startRealtime(){
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},function(payload){
         var m=payload.new;
         if(!m||!m.room_id)return;
-        // Nhận TẤT CẢ tin nhắn, kiểm tra sau — để catch tin nhắn mới khi chưa ở tab chat
+        // Nhận TẤT CẢ tin nhắn (bảng messages không filter theo room ở tầng
+        // Realtime), NHƯNG bắt buộc verify user có thực sự là thành viên
+        // room đó không trước khi xử lý — nếu không sẽ hiện popup + nội dung
+        // tin nhắn của người khác cho TẤT CẢ mọi người đang mở CRM (rò rỉ DM).
         var inRoom=rooms.find(function(r){return r.id===m.room_id;});
         if(!inRoom){
-          // Có thể là DM mới — load lại rooms rồi xử lý
-          if(!m._retried){m._retried=true;setTimeout(function(){loadRooms().then(function(){handleNewMsg(m);});},1000);}
+          // Có thể là DM mới được tạo — load lại rooms rồi verify LẠI membership
+          // trước khi xử lý. KHÔNG được gọi handleNewMsg() nếu sau khi reload
+          // vẫn không thấy room này — nghĩa là tin nhắn không thuộc về user này.
+          if(!m._retried){
+            m._retried=true;
+            setTimeout(function(){
+              loadRooms().then(function(){
+                var stillInRoom=rooms.find(function(r){return r.id===m.room_id;});
+                if(stillInRoom)handleNewMsg(m);
+                // else: user không phải thành viên room này — bỏ qua, không toast
+              });
+            },1000);
+          }
           return;
         }
         handleNewMsg(m);
