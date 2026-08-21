@@ -1299,7 +1299,11 @@ function lBadge(s){const m={'Closedeal':'b-closedeal','Lost':'b-lost','Invalid L
 function saleInitials(c){const n=(c.assigned_profile&&c.assigned_profile.full_name)||'?';return n.split(' ').map(function(w){return w[0];}).slice(-2).join('').toUpperCase();}
 function saleAvClass(pid){const idx=PROFILES.findIndex(function(p){return p.id===pid;});return AV_CLASSES[Math.max(0,idx)%AV_CLASSES.length];}
 function selOpts(arr,val,empty){
-  var normVal=val==='Follow Up'?'Follow':val; // backward compat
+  // "backward compat" chỉ áp dụng cho field Status (STATUS_OPTS có 'Follow') — data cũ
+  // lỡ lưu 'Follow Up' thay vì 'Follow'. KHÔNG được áp dụng cho Sub-status
+  // (SUBSTATUS_OPTS có 'Follow Up' là giá trị hợp lệ, đúng đắn) — nếu không sẽ
+  // luôn hiện "-- Chọn --" dù DB đã lưu đúng 'Follow Up'.
+  var normVal=(val==='Follow Up'&&arr.indexOf('Follow')>=0)?'Follow':val;
   var r='<option value="">'+(empty||'-- Chọn --')+'</option>';
   arr.forEach(function(o){r+='<option'+(normVal===o?' selected':'')+'>'+o+'</option>';});
   return r;
@@ -7723,27 +7727,20 @@ async function saveDetail(customerId){
     if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML=_origBtnText||'<i class="ti ti-device-floppy"></i> Lưu';}
     showCrmToast('✅ Đã lưu','Thông tin khách hàng đã cập nhật','success');
 
-    // Nếu đang dùng campaign nav (◀ ▶) thì GIỮ modal mở — sale tự next
-    var hasCampNav=window._campNavKey!==null&&window._campNavKey!==undefined;
-    if(!hasCampNav){
-      document.getElementById('detail-modal')&&document.getElementById('detail-modal').remove();
-      if(window._detailClockTimer){clearInterval(window._detailClockTimer);window._detailClockTimer=null;}
-      selId=null;
-    } else {
-      // Re-render shell để hiển thị data mới, giữ modal mở
-      var _modal=document.getElementById('detail-modal');
-      var _cust=CUSTOMERS.find(function(x){return x.id===customerId;});
-      if(_modal&&_cust){
-        var _isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
-        _renderDetailShell(_modal,_cust,_isM,[]);
-        // Fetch logs async để cập nhật sidebar
-        sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId).order('called_at',{ascending:false}).limit(25).then(function(res){
-          if(res.data)_renderDetailShell(_modal,_cust,_isM,res.data);
-        });
-      }
+    // Giữ modal mở sau khi Lưu (áp dụng cho mọi trường hợp, không chỉ campaign nav)
+    // — sale có thể sửa tiếp/xem lại ngay, tự đóng bằng nút X khi xong.
+    var _modal=document.getElementById('detail-modal');
+    var _cust=CUSTOMERS.find(function(x){return x.id===customerId;});
+    if(_modal&&_cust){
+      var _isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
+      _renderDetailShell(_modal,_cust,_isM,[]);
+      // Fetch logs async để cập nhật sidebar
+      sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId).order('called_at',{ascending:false}).limit(25).then(function(res){
+        if(res.data)_renderDetailShell(_modal,_cust,_isM,res.data);
+      });
     }
     // Append log mới vào sidebar ngay lập tức (chỉ khi không re-render shell)
-    if(!hasCampNav){
+    if(false){
       var lc=document.getElementById('detail-log-container');
       var lb=document.getElementById('detail-log-badge');
       if(lc&&(note||result)){
