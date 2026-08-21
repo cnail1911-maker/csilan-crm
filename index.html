@@ -1408,6 +1408,58 @@ function renderWheelSVG(entries){
     +'<svg id="game-wheel-svg" viewBox="0 0 300 300" style="width:100%;display:block;transition:transform 4s cubic-bezier(0.17,0.67,0.12,0.99);transform:rotate('+GAME_WHEEL_ROTATION+'deg);border-radius:50%;box-shadow:0 0 0 6px #2d2560,0 4px 20px rgba(0,0,0,.4)">'+slices+'<circle cx="150" cy="150" r="18" fill="#2d2560" stroke="#6c5ce7" stroke-width="3"/></svg>'
     +'</div>';
 }
+function renderRaceTrack(board,myUid){
+  if(!board||board.length===0){
+    return '<div class="muted" style="text-align:center;padding:20px;color:var(--text2)">Chưa có dữ liệu đội</div>';
+  }
+  var maxPct=Math.max(100,Math.max.apply(null,board.map(function(b){return b.pct;})));
+  var lanes=board.map(function(b,i){
+    var isMe=b.user_id===myUid;
+    var leftPct=Math.min(100,(b.pct/maxPct)*100);
+    var avatar=b.avatar_url
+      ?'<img src="'+b.avatar_url+'" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid '+(isMe?'#00b894':'#6c5ce7')+'">'
+      :'<div style="width:34px;height:34px;border-radius:50%;background:'+(isMe?'#00b894':'#6c5ce7')+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff">'+(b.full_name||'?').charAt(0)+'</div>';
+    var rankIcon=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    return '<div style="position:relative;height:44px;margin-bottom:6px">'
+      +'<div style="position:absolute;left:0;right:0;top:20px;height:4px;background:var(--surface2);border-radius:2px"></div>'
+      +'<div style="position:absolute;left:calc('+leftPct+'% - 17px);top:0;transition:left .6s ease;text-align:center;white-space:nowrap">'
+      +avatar
+      +'<div style="font-size:9px;margin-top:2px;color:'+(isMe?'#00b894':'var(--text2)')+';font-weight:'+(isMe?'700':'400')+'">'+rankIcon+(b.full_name||'')+(isMe?' (bạn)':'')+'</div>'
+      +'</div></div>';
+  }).join('');
+  var me=board.find(function(b){return b.user_id===myUid;});
+  return (me?('<div style="font-size:24px;font-weight:700;color:'+(me.pct>=100?'var(--accent2)':'var(--warn)')+'">'+me.pct+'%</div>'
+    +'<div style="color:var(--text2);font-size:13px;margin-bottom:14px">Doanh số $'+me.revenue.toLocaleString()+' / Target $'+me.target.toLocaleString()+'</div>'):'')
+    +'<div style="border:1px dashed var(--border);border-radius:10px;padding:14px 14px 4px;background:rgba(0,0,0,.15)">'
+    +'<div style="font-size:10px;color:var(--text2);margin-bottom:10px">🏁 ĐÍCH — thứ hạng toàn đội tháng này</div>'
+    +lanes+'</div>';
+}
+const BOX_STYLES=[
+  {label:'A',body:'#d63447',ribbon:'#f9ca24',pattern:'#ffffff22'},
+  {label:'B',body:'#f9ca24',ribbon:'#d63447',pattern:'#ffffff33'},
+  {label:'C',body:'#0aa8a3',ribbon:'#d63447',pattern:'#ffffff22'},
+];
+function renderGiftBoxes(available,configId){
+  if(!configId){
+    return '<div class="muted" style="text-align:center;padding:20px;color:var(--text2)">Chưa có đợt hộp bí mật tháng này</div>';
+  }
+  var boxesHtml=BOX_STYLES.map(function(s,i){
+    var disabled=available<=0;
+    return '<div id="giftbox-'+i+'" onclick="'+(disabled?'':'window._gameDrawBox('+configId+','+i+')')+'" style="cursor:'+(disabled?'not-allowed':'pointer')+';opacity:'+(disabled?'0.4':'1')+';text-align:center;flex:1;max-width:110px;transition:transform .15s" '+(disabled?'':'onmouseover="this.style.transform=\'translateY(-4px)\'" onmouseout="this.style.transform=\'translateY(0)\'"')+'>'
+      +'<svg viewBox="0 0 100 100" style="width:100%">'
+        +'<rect x="14" y="42" width="72" height="46" rx="3" fill="'+s.body+'"/>'
+        +'<rect x="14" y="42" width="72" height="46" rx="3" fill="url(#dots-'+i+')"/>'
+        +'<defs><pattern id="dots-'+i+'" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="1.6" fill="'+s.pattern+'"/></pattern></defs>'
+        +'<rect x="14" y="36" width="72" height="10" rx="2" fill="'+s.body+'" stroke="#00000022"/>'
+        +'<rect x="44" y="14" width="12" height="74" fill="'+s.ribbon+'"/>'
+        +'<path d="M50 18 C38 18 30 8 38 4 C44 1 50 8 50 18 C50 8 56 1 62 4 C70 8 62 18 50 18Z" fill="'+s.ribbon+'"/>'
+      +'</svg>'
+      +'<div style="margin-top:-6px;width:26px;height:26px;border-radius:50%;background:#f9ca24;color:#1a1240;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;margin-left:auto;margin-right:auto;border:2px solid #1a1240;position:relative;top:-10px">'+s.label+'</div>'
+    +'</div>';
+  }).join('');
+  return '<div style="display:flex;gap:14px;justify-content:center;margin-top:16px;flex-wrap:wrap">'+boxesHtml+'</div>'
+    +(available<=0?'':'<div class="muted" style="text-align:center;margin-top:6px;font-size:11px;color:var(--text2)">Chọn 1 hộp để mở</div>');
+}
 const GAME_CACHE_TTL=120000; // 2 phút — tránh tính lại credits/points mỗi lần mở tab
 
 async function renderGamePage(){
@@ -1422,8 +1474,7 @@ async function renderGamePage(){
 
   try{
     // ── 1. ĐUA XE — tính local từ INVOICES đã load sẵn, chỉ cần đọc target (song song với các mục khác) ──
-    const myInvoices=(INVOICES||[]).filter(function(i){return i.sale_id===uid&&i.type==='invoice'&&i.approval_status==='approved'&&i.billing_month===thisMonth;});
-    const myRevenue=myInvoices.reduce(function(s,i){return s+(parseFloat(i.total)||0);},0);
+    // (Doanh số/target cá nhân giờ lấy từ raceBoard trả về bởi get_race_leaderboard bên dưới)
 
     // ── 2. VÉ VÀNG — tính local, không cần gọi mạng ────────────────
     const myGoldenCust=(CUSTOMERS||[]).filter(function(c){return (c.assigned_to===uid)&&c.is_golden_ticket&&c.lead_status!=='Closedeal';});
@@ -1431,17 +1482,20 @@ async function renderGamePage(){
     // ── Các lệnh đọc độc lập — chạy SONG SONG thay vì tuần tự ────────
     const useCache=(Date.now()-GAME_COMPUTE_CACHE.ts)<GAME_CACHE_TTL;
     const results=await Promise.all([
-      useCache?Promise.resolve(GAME_COMPUTE_CACHE.raceTarget):gameAction('get_race_target',{period_key:thisMonth}),
+      useCache?Promise.resolve(GAME_COMPUTE_CACHE.raceBoard):gameAction('get_race_leaderboard',{period_key:thisMonth}),
       gameFinRead('wheel_sessions?is_sale_game=eq.true&is_active=eq.true&select=id,name&limit=1'),
       gameFinRead('game_box_config?is_active=eq.true&period_key=eq.'+thisMonth+'&select=id&limit=1'),
       gameFinRead('game_auction_items?period_key=eq.'+periodKey+'&status=eq.open&select=id,title,description,starting_points,image_url'),
       useCache?Promise.resolve(GAME_COMPUTE_CACHE.wheelCredit):gameAction('compute_wheel_credits',{}),
       useCache?Promise.resolve(GAME_COMPUTE_CACHE.pointsRes):gameAction('compute_points',{period_key:periodKey}),
     ]);
-    const raceTargetRes=results[0], wheelSessions=results[1], boxConfigs=results[2], auctionItems=results[3];
+    const raceBoardRes=results[0], wheelSessions=results[1], boxConfigs=results[2], auctionItems=results[3];
     const wheelCredit=results[4], pointsRes=results[5];
-    const myTarget=(raceTargetRes&&raceTargetRes.target_amount)||0;
-    const pct=myTarget>0?Math.round((myRevenue/myTarget)*1000)/10:0;
+    // Lấy danh sách người đã đặt giá cho từng phiên (kèm avatar/tên qua PROFILES đã load sẵn trong CRM)
+    const auctionBidsByItem=await Promise.all(auctionItems.map(function(it){
+      return gameFinRead('game_auction_bids?item_id=eq.'+it.id+'&select=user_id,bid_points,bid_at&order=bid_points.desc');
+    }));
+    const raceBoard=(raceBoardRes&&raceBoardRes.board)||[];
 
     const wheelSessionId=wheelSessions[0]?wheelSessions[0].id:null;
     // compute_box_credits cần config_id nên phải chờ kết quả boxConfigs trước — chạy song song với việc đọc wheel_entries
@@ -1452,13 +1506,11 @@ async function renderGamePage(){
     const boxCreditRows=boxConfigs[0]?await gameFinRead('game_box_draw_credits?user_id=eq.'+uid+'&config_id=eq.'+boxConfigs[0].id+'&select=credits_earned,credits_used'):[];
     const boxAvailable=boxCreditRows[0]?(boxCreditRows[0].credits_earned-boxCreditRows[0].credits_used):0;
 
-    if(!useCache) GAME_COMPUTE_CACHE={ts:Date.now(),wheelCredit:wheelCredit,boxCredit:boxCredit,pointsRes:pointsRes,raceTarget:raceTargetRes};
+    if(!useCache) GAME_COMPUTE_CACHE={ts:Date.now(),wheelCredit:wheelCredit,boxCredit:boxCredit,pointsRes:pointsRes,raceBoard:raceBoardRes};
 
     el.innerHTML=''
       +'<div class="stat-card" style="margin-bottom:14px"><h3>🏎️ Đua xe doanh số — '+thisMonth+'</h3>'
-      +'<div style="font-size:28px;font-weight:700;color:'+(pct>=100?'var(--accent2)':'var(--warn)')+'">'+pct+'%</div>'
-      +'<div style="color:var(--text2);font-size:13px">Doanh số $'+myRevenue.toLocaleString()+' / Target $'+myTarget.toLocaleString()+'</div>'
-      +'<div style="height:10px;background:var(--surface2);border-radius:6px;margin-top:10px;overflow:hidden"><div style="height:100%;width:'+Math.min(pct,100)+'%;background:var(--accent2)"></div></div>'
+      +renderRaceTrack(raceBoard,uid)
       +'</div>'
       +(myGoldenCust.length>0?('<div class="stat-card" style="margin-bottom:14px;border:1px solid gold"><h3>🎫 Vé vàng — '+myGoldenCust.length+' khách đang chờ chốt</h3>'
         +myGoldenCust.map(function(c){return '<div style="padding:4px 0">'+(c.business_name||c.customer_name||'KH #'+c.id)+'</div>';}).join('')+'</div>'):'')
@@ -1472,15 +1524,32 @@ async function renderGamePage(){
       +'</div>'
       +'<div class="stat-card" style="margin-bottom:14px"><h3>🎁 Chiếc hộp bí mật</h3>'
       +'<div>Lượt bốc thăm: <b>'+boxAvailable+'</b>'+(boxCredit&&boxCredit.is_consolation?' (hộp an ủi)':'')+'</div>'
-      +'<button class="btn" style="margin-top:10px" onclick="window._gameDrawBox('+(boxConfigs[0]?boxConfigs[0].id:'null')+')" '+(boxAvailable<=0?'disabled':'')+'>Bốc hộp</button>'
-      +'<div id="game-box-result" style="margin-top:8px;font-weight:600"></div>'
+      +renderGiftBoxes(boxAvailable,boxConfigs[0]?boxConfigs[0].id:null)
+      +'<div id="game-box-result" style="margin-top:14px;font-weight:600;text-align:center;font-size:16px"></div>'
       +'</div>'
       +'<div class="stat-card" style="margin-bottom:14px"><h3>🔨 Đấu giá phần thưởng — '+periodKey+'</h3>'
       +'<div>Điểm tích luỹ: <b>'+((pointsRes&&pointsRes.total_points)||0)+'</b></div>'
       +(auctionItems.length===0?'<div style="color:var(--text2);font-size:13px;margin-top:8px">Chưa có phiên đấu giá nào đang mở</div>':
-        auctionItems.map(function(it){return '<div style="border-top:1px solid var(--border);padding:10px 0"><b>'+it.title+'</b><div style="font-size:12px;color:var(--text2)">'+(it.description||'')+' — Giá khởi điểm: '+it.starting_points+' điểm</div>'
-          +'<input type="number" id="bid-'+it.id+'" placeholder="Số điểm đặt" style="width:120px;margin-top:6px">'
-          +'<button class="btn" onclick="window._gameBid('+it.id+')">Đặt giá</button></div>';}).join(''))
+        auctionItems.map(function(it,idx){
+          var bids=auctionBidsByItem[idx]||[];
+          var bidderRows=bids.map(function(b,bi){
+            var prof=(PROFILES||[]).find(function(p){return p.id===b.user_id;});
+            var name=prof?prof.full_name:'—';
+            var avatar=prof&&prof.avatar_url
+              ?'<img src="'+prof.avatar_url+'" style="width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px">'
+              :'<span style="display:inline-flex;width:22px;height:22px;border-radius:50%;background:#6c5ce7;color:#fff;font-size:10px;align-items:center;justify-content:center;vertical-align:middle;margin-right:6px">'+(name||'?').charAt(0)+'</span>';
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;font-size:12px'+(bi===0?';color:var(--accent2);font-weight:700':'')+'">'
+              +'<span>'+(bi===0?'👑 ':'')+avatar+name+'</span><span>'+b.bid_points.toLocaleString()+' điểm</span></div>';
+          }).join('');
+          return '<div style="border-top:1px solid var(--border);padding:12px 0">'
+            +'<b>'+it.title+'</b><div style="font-size:12px;color:var(--text2)">'+(it.description||'')+' — Giá khởi điểm: '+it.starting_points.toLocaleString()+' điểm</div>'
+            +(bidderRows?('<div style="margin-top:8px;padding:8px;background:rgba(0,0,0,.15);border-radius:6px">'+bidderRows+'</div>'):'<div class="muted" style="font-size:11px;margin-top:6px">Chưa có ai đặt giá</div>')
+            +'<div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+            +'<input type="number" id="bid-'+it.id+'" placeholder="Số điểm đặt" style="width:120px" oninput="var v=document.getElementById(\'bid-preview-'+it.id+'\');if(v)v.textContent=this.value?(parseFloat(this.value)||0).toLocaleString()+\' điểm\':\'\';">'
+            +'<span id="bid-preview-'+it.id+'" style="font-size:13px;font-weight:700;color:var(--accent2);min-width:60px"></span>'
+            +'<button class="btn" onclick="window._gameBid('+it.id+')">Đặt giá</button>'
+            +'</div></div>';
+        }).join(''))
       +'</div>';
   }catch(e){
     console.error('[Game] render error:',e);
@@ -1526,15 +1595,19 @@ window._gameSpin=async function(sessionId){
   },4100); // đợi animation quay (4s) xong mới hiện kết quả + mở lại nút
   setTimeout(renderGamePage,4600);
 };
-window._gameDrawBox=async function(configId){
+window._gameDrawBox=async function(configId,boxIdx){
   if(!configId){alert('Chưa có đợt hộp bí mật nào');return;}
+  // Disable toàn bộ hộp ngay khi bấm — tránh double-click bốc nhiều lần
+  BOX_STYLES.forEach(function(_,i){var el=document.getElementById('giftbox-'+i);if(el)el.style.pointerEvents='none';});
+  var clickedEl=boxIdx!==undefined?document.getElementById('giftbox-'+boxIdx):null;
+  if(clickedEl)clickedEl.style.transform='scale(1.08)';
   const resultEl=document.getElementById('game-box-result');
   if(resultEl)resultEl.textContent='Đang mở hộp...';
   const res=await gameAction('draw_box',{config_id:configId});
   GAME_COMPUTE_CACHE.ts=0;
   if(!res.ok){alert(res.error||'Lỗi bốc hộp');renderGamePage();return;}
-  if(resultEl)resultEl.textContent='🎁 '+res.prize_title+(res.prize_note?(' — '+res.prize_note):'');
-  setTimeout(renderGamePage,1500);
+  if(resultEl)resultEl.textContent='🎉 '+res.prize_title+(res.prize_note?(' — '+res.prize_note):'');
+  setTimeout(renderGamePage,1800);
 };
 window._gameBid=async function(itemId){
   const input=document.getElementById('bid-'+itemId);
