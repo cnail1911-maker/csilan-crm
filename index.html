@@ -3142,8 +3142,8 @@ async function approveInvoice(id,status){
       const payload={
         invoice_id:     id,
         invoice_no:     inv.invoice_no,
-        invoice_date:   inv.invoice_date||inv.created_at?.slice(0,10),
-        billing_month:  inv.billing_month, // MỚI — dùng đúng tháng DUYỆT, không để edge function tự suy ra
+        invoice_date:   inv.date, // ngày Sale nhập (cột `date`) — dùng cho order_date hiển thị bên OPS, KHÔNG dùng để tính billing_month
+        billing_month:  inv.billing_month, // tháng DUYỆT thật (đã set = created_at.slice(0,7) khi approve) — dùng riêng để tính doanh số/bonus, độc lập với invoice_date
         customer_name:  (function(){
           const cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;});
           return cust?(cust.business_name||cust.customer_name||''):(inv.customer_name||inv.ten_tiem||'');
@@ -3604,7 +3604,7 @@ async function syncDepositToFinance(inv,newDeposit,newDeposit2){
     const payload={
       invoice_id:     inv.id,
       invoice_no:     inv.invoice_no,
-      invoice_date:   inv.invoice_date||(inv.created_at?inv.created_at.slice(0,10):null),
+      invoice_date:   inv.date, // ngày Sale nhập — cho order_date bên OPS, không dùng tính billing_month
       billing_month:  inv.billing_month, // giữ nguyên tháng đã chốt lúc duyệt, không để đổi khi sửa deposit sau này
       customer_name:  cust?(cust.business_name||cust.customer_name||''):(inv.customer_name||inv.ten_tiem||''),
       customer_id:    inv.customer_id||null,
