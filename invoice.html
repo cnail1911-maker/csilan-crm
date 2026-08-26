@@ -1714,6 +1714,7 @@ function hideMobilePreview(){
 let editInvoiceId=null;
 let editInvoiceNo=null;
 let editInvoiceOriginalSaleName=null;
+let editInvoiceCreatedAt=null; // thời điểm invoice thực sự được tạo/duyệt trong DB — dùng làm căn cứ billing_month, KHÔNG dùng ngày Sale tự nhập (cột date)
 let _approvedEditProfiles=[]; // profiles load khi sửa đơn approved, dùng cho dropdown sale rep
 
 // Tải PDF invoice đã approved — dùng mã INVC chính thức
@@ -1744,6 +1745,7 @@ async function loadInvoiceForEdit(invoiceNo){
   if(error||!inv){showLoading(false);alert('Không tìm thấy đơn hàng: '+invoiceNo);return;}
   editInvoiceId=inv.id;
   editInvoiceNo=inv.invoice_no;
+  editInvoiceCreatedAt=inv.created_at||null;
 
   // Lưu lại tên người TẠO ban đầu (không phải người đang mở sửa) — dùng cho PDF/preview
   editInvoiceOriginalSaleName=null;
@@ -1785,7 +1787,7 @@ async function loadInvoiceForEdit(invoiceNo){
   if(inv.warranty_months&&document.getElementById('inv-warranty'))document.getElementById('inv-warranty').value=String(inv.warranty_months||12);
   if(inv.note)document.getElementById('inv-note').value=inv.note;
   if(inv.payment_method)document.getElementById('inv-payment-method').value=inv.payment_method;
-  if(inv.date){var _bm=inv.date.slice(0,7);var bmEl=document.getElementById('inv-billing-month');if(bmEl)bmEl.value=_bm;}
+  if(inv.date){var _bm=(editInvoiceCreatedAt?editInvoiceCreatedAt.slice(0,7):inv.date.slice(0,7));var bmEl=document.getElementById('inv-billing-month');if(bmEl)bmEl.value=_bm;}
   currentProofUrls=parseProofUrls(inv.payment_proof_url);
   updateZelleQrDisplay();
   refreshProofStatus();
@@ -1941,11 +1943,16 @@ async function saveApprovedInvoice(){
     var saleRepName=selectedProf?selectedProf.full_name:(editInvoiceOriginalSaleName||'');
     var custName=selectedCustomer?(selectedCustomer.business_name||selectedCustomer.customer_name||''):'';
     var invDate=document.getElementById('inv-date').value;
+    // invoice_date giữ nguyên = ngày Sale nhập (dùng cho order_date bên OPS).
+    // billing_month tính riêng theo created_at (thời điểm tạo/duyệt thật) —
+    // không dùng invDate — lấy từ input #inv-billing-month đã được pre-fill
+    // đúng từ editInvoiceCreatedAt lúc load (xem loadInvoiceForEdit()).
+    var billingMonthBasis=editInvoiceCreatedAt?editInvoiceCreatedAt.slice(0,7):invDate.slice(0,7);
 
     const syncPayload={
       invoice_no:invNo,
       invoice_date:invDate,
-      billing_month:(function(){var bm=document.getElementById('inv-billing-month');return bm&&bm.value?bm.value:invDate.slice(0,7);})()||invDate.slice(0,7),
+      billing_month:(function(){var bm=document.getElementById('inv-billing-month');return bm&&bm.value?bm.value:billingMonthBasis;})()||billingMonthBasis,
       customer_name:custName,
       sale_rep:saleRepName,
       total:total,
