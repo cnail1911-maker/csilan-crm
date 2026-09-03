@@ -3675,7 +3675,12 @@ async function saveInvEdit(id){
     balance_due:_balance,
     note:_note||null
   };
-  await sb.from('invoices').update(update).eq('id',parseInt(id)||id);
+  const {error:_updErr}=await sb.from('invoices').update(update).eq('id',parseInt(id)||id);
+  if(_updErr){
+    showLoading(false);
+    alert('Lỗi lưu invoice — dữ liệu CHƯA được ghi vào DB:\n'+_updErr.message);
+    return;
+  }
   const inv=INVOICES.find(function(i){return i.id===id;});
   if(inv)Object.assign(inv,update);
 
@@ -7374,8 +7379,25 @@ async function staffReactivate(id,name){
   }catch(e){showNotif('Lỗi: '+e.message,true);}
 }
 async function renderDetailModal(customerId,navCtx){
-  const c=CUSTOMERS.find(function(x){return x.id===customerId;});
-  if(!c)return;
+  let c=CUSTOMERS.find(function(x){return x.id===customerId;});
+  if(!c){
+    // Không có trong mảng local (VD: khách chỉ đang được NHỜ HỖ TRỢ, không assigned_to
+    // mình) — fetch trực tiếp theo id, dựa vào RLS customers_support_assignee cho phép.
+    try{
+      const fallbackRes=await sb.from('customers').select('*').eq('id',customerId).single();
+      if(fallbackRes.data){
+        c=fallbackRes.data;
+        CUSTOMERS.push(c);
+        window.CUSTOMERS=CUSTOMERS;
+      }
+    }catch(eFallback){
+      console.warn('[renderDetailModal] fallback fetch error:',eFallback);
+    }
+  }
+  if(!c){
+    alert('Không thể mở khách hàng này — có thể bạn chưa có quyền truy cập hoặc khách đã bị xoá.');
+    return;
+  }
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const existing=document.getElementById('detail-modal');
   if(existing)existing.remove();
