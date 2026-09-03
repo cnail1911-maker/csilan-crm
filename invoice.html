@@ -1715,6 +1715,7 @@ let editInvoiceId=null;
 let editInvoiceNo=null;
 let editInvoiceOriginalSaleName=null;
 let editInvoiceCreatedAt=null; // thời điểm invoice thực sự được tạo/duyệt trong DB — dùng làm căn cứ billing_month, KHÔNG dùng ngày Sale tự nhập (cột date)
+let editInvoiceOrderStatus=null; // order_status hiện tại trong DB (VD 'Cancelled') — invoice.html không có UI sửa field này, chỉ pass-through nguyên vẹn khi re-sync
 let _approvedEditProfiles=[]; // profiles load khi sửa đơn approved, dùng cho dropdown sale rep
 
 // Tải PDF invoice đã approved — dùng mã INVC chính thức
@@ -1746,6 +1747,7 @@ async function loadInvoiceForEdit(invoiceNo){
   editInvoiceId=inv.id;
   editInvoiceNo=inv.invoice_no;
   editInvoiceCreatedAt=inv.created_at||null;
+  editInvoiceOrderStatus=inv.order_status||null;
 
   // Lưu lại tên người TẠO ban đầu (không phải người đang mở sửa) — dùng cho PDF/preview
   editInvoiceOriginalSaleName=null;
@@ -1953,6 +1955,7 @@ async function saveApprovedInvoice(){
       invoice_no:invNo,
       invoice_date:invDate,
       billing_month:(function(){var bm=document.getElementById('inv-billing-month');return bm&&bm.value?bm.value:billingMonthBasis;})()||billingMonthBasis,
+      order_status:editInvoiceOrderStatus, // pass-through nguyên vẹn — trang này không có UI sửa field này
       customer_name:custName,
       sale_rep:saleRepName,
       total:total,
