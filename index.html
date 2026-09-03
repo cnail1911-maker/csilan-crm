@@ -2781,7 +2781,7 @@ function renderClosedeal(){
 
   let filterHtml='<input id="cd-search-inv" placeholder="Tìm mã đơn..." style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;color:var(--text);width:120px;outline:none" oninput="(function(v){clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){cdSearchInv=v;cdPage=1;render();var e=document.getElementById(\'cd-search-inv\');if(e){e.value=v;e.focus();}},150);})(this.value)" value="'+cdSearchInv+'">';
   filterHtml+='<select class="fsel" onchange="cdFilterPayment=this.value;cdPage=1;render()"><option value="all">Payment</option>'+['Paid in Full','Deposit Paid','Partially Paid','Cancelled'].map(function(s){return '<option value="'+s+'"'+(cdFilterPayment===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
-  filterHtml+='<select class="fsel" onchange="cdFilterOrder=this.value;cdPage=1;render()"><option value="all">Order Status</option>'+['Đang sản xuất','Đang giao','Đã nhận hàng'].map(function(s){return '<option value="'+s+'"'+(cdFilterOrder===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
+  filterHtml+='<select class="fsel" onchange="cdFilterOrder=this.value;cdPage=1;render()"><option value="all">Order Status</option>'+['Đang sản xuất','Đang giao','Đã nhận hàng','Cancelled'].map(function(s){return '<option value="'+s+'"'+(cdFilterOrder===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="cdFilterMonth=this.value;cdPage=1;render()"><option value="all">Tháng</option>'+['1','2','3','4','5','6','7','8','9','10','11','12'].map(function(m){return '<option value="'+m+'"'+(cdFilterMonth===m?' selected':'')+'>T'+m+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="cdFilterYear=this.value;cdPage=1;render()"><option value="all">Năm</option>'+years.map(function(y){return '<option value="'+y+'"'+(cdFilterYear===String(y)?' selected':'')+'>'+y+'</option>';}).join('')+'</select>';
   if(isManager)filterHtml+='<select class="fsel" onchange="fSale=this.value;cdPage=1;render()"><option value="all">Sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSale===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>';
@@ -2790,7 +2790,7 @@ function renderClosedeal(){
   pageData.forEach(function(inv){
     const invDate=new Date(inv.created_at);
     const payBadge={'Paid in Full':'b-won','Deposit Paid':'b-calling','Partially Paid':'b-followup','Cancelled':'b-lost'};
-    const ordBadge={'Đang sản xuất':'b-followup','Đang giao':'b-calling','Đã nhận hàng':'b-won'};
+    const ordBadge={'Đang sản xuất':'b-followup','Đang giao':'b-calling','Đã nhận hàng':'b-won','Cancelled':'b-lost'};
     rows+='<tr style="cursor:pointer" onclick="openInvEdit('+inv.id+')" onmouseover="this.style.background=\'rgba(108,92,231,0.06)\'" onmouseout="this.style.background=\'\'">'
       +'<td style="font-size:10px;font-family:monospace;color:var(--accent2);font-weight:600">'+(inv.invoice_no||'—')+'<\/td>'
       +'<td>'+(inv.business_name||'—')+'<\/td>'
@@ -3144,6 +3144,7 @@ async function approveInvoice(id,status){
         invoice_no:     inv.invoice_no,
         invoice_date:   inv.date, // ngày Sale nhập (cột `date`) — dùng cho order_date hiển thị bên OPS, KHÔNG dùng để tính billing_month
         billing_month:  inv.billing_month, // tháng DUYỆT thật (đã set = created_at.slice(0,7) khi approve) — dùng riêng để tính doanh số/bonus, độc lập với invoice_date
+        order_status:   inv.order_status||null,
         customer_name:  (function(){
           const cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;});
           return cust?(cust.business_name||cust.customer_name||''):(inv.customer_name||inv.ten_tiem||'');
@@ -3522,7 +3523,7 @@ async function openInvEdit(id){
     }).join('')+'</select>';
   const f2=document.createElement('div');f2.className='field';
   f2.innerHTML='<label>Order Status</label><select id="ie-ord"><option value="">-- Chọn --</option>'
-    +['Đang sản xuất','Đang giao','Đã nhận hàng'].map(function(s){
+    +['Đang sản xuất','Đang giao','Đã nhận hàng','Cancelled'].map(function(s){
       return '<option value="'+s+'"'+(inv.order_status===s?' selected':'')+'>'+s+'</option>';
     }).join('')+'</select>';
   row1.appendChild(f1);row1.appendChild(f2);
@@ -3615,6 +3616,7 @@ async function syncDepositToFinance(inv,newDeposit,newDeposit2){
       deposit:        newDeposit||0,
       deposit2:       newDeposit2||0,
       tax:            inv.tax||0,
+      order_status:   inv.order_status||null, // MỚI — để Finance/OPS/Vendor biết đơn đã Cancelled hay chưa
       items:          (items||[]).map(function(it){
         return{
           product_id:   it.product_id||null,
@@ -3677,20 +3679,25 @@ async function saveInvEdit(id){
   const inv=INVOICES.find(function(i){return i.id===id;});
   if(inv)Object.assign(inv,update);
 
-  // Nếu invoice đã approved (đã tồn tại bên Finance) và deposit/deposit2 vừa
-  // thay đổi → sync lại ngay để Finance cập nhật balance_due/is_settled/
-  // thang_tat_toan đúng thời điểm này (không chờ tới lần duyệt sau).
+  // Nếu invoice đã approved (đã tồn tại bên Finance) và deposit/deposit2/order_status
+  // vừa thay đổi → sync lại ngay để Finance cập nhật balance_due/is_settled/
+  // thang_tat_toan/order_status đúng thời điểm này (không chờ tới lần duyệt sau).
+  // QUAN TRỌNG: order_status phải nằm trong điều kiện trigger — nếu chỉ chuyển sang
+  // Cancelled mà không đổi deposit, vẫn PHẢI sync để Finance/OPS loại đơn khỏi doanh số.
   var depositChanged=(oldInv.deposit||0)!==_deposit||(oldInv.deposit2||0)!==_deposit2;
+  var orderStatusChanged=(oldOrderStatus||'')!==(update.order_status||'');
   console.log('[Sync Finance - deposit2] CHECK',{
     invoice_no: oldInv.invoice_no,
     approval_status: oldInv.approval_status,
     oldDeposit: oldInv.deposit, newDeposit: _deposit,
     oldDeposit2: oldInv.deposit2, newDeposit2: _deposit2,
-    depositChanged,
-    willSync: oldInv.approval_status==='approved'&&depositChanged
+    depositChanged, orderStatusChanged,
+    willSync: oldInv.approval_status==='approved'&&(depositChanged||orderStatusChanged)
   });
-  if(oldInv.approval_status==='approved'&&depositChanged){
-    syncDepositToFinance(oldInv,_deposit,_deposit2).catch(function(e){
+  if(oldInv.approval_status==='approved'&&(depositChanged||orderStatusChanged)){
+    // Dùng `inv` (đã Object.assign update mới ở trên), KHÔNG dùng oldInv — nếu không
+    // order_status gửi sang Finance sẽ là giá trị CŨ (trước khi đổi sang Cancelled).
+    syncDepositToFinance(inv||oldInv,_deposit,_deposit2).catch(function(e){
       console.warn('[Sync Finance - deposit2] error (non-blocking):',e.message);
     });
   }
