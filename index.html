@@ -2762,6 +2762,9 @@ function renderClosedeal(){
     if(inv.approval_status!=='approved')return false;
     // Sale chỉ thấy đơn của mình
     if(!isManager&&currentProfile&&inv.sale_id!==currentProfile.id)return false;
+    // Đơn Cancelled KHÔNG tính vào doanh thu/số đơn mặc định — vẫn xem được nếu chủ động
+    // lọc Order Status = Cancelled (để đối chiếu/tìm data resell), nhưng ẩn khỏi view "Tất cả"
+    if(inv.order_status==='Cancelled'&&cdFilterOrder!=='Cancelled')return false;
     if(cdFilterPayment!=='all'&&inv.payment_status!==cdFilterPayment)return false;
     if(cdFilterOrder!=='all'&&inv.order_status!==cdFilterOrder)return false;
     if(cdSearchInv){const q=cdSearchInv.toLowerCase();if(!((inv.invoice_no||'').toLowerCase().includes(q)||(inv.customer_name||'').toLowerCase().includes(q)||(inv.business_name||'').toLowerCase().includes(q)))return false;}
@@ -6537,7 +6540,7 @@ async function _kpiFetchInvoices(fromDate,toDate){
     var ef=extFrom.toISOString().slice(0,10);
     var et=extTo.toISOString().slice(0,10);
     var q=sb.from('invoices')
-      .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date,billing_month')
+      .select('id,invoice_no,customer_id,sale_id,total,approval_status,type,created_at,date,billing_month,order_status')
       .eq('type','invoice')
       .eq('approval_status','approved')
       .gte('date',ef)
@@ -6546,8 +6549,10 @@ async function _kpiFetchInvoices(fromDate,toDate){
     var r=await q.limit(5000);
     if(r.error)console.warn('[KPI fetch]',r.error.message);
     var all=r.data||[];
-    // Ưu tiên billing_month nếu có, fallback date
+    // Ưu tiên billing_month nếu có, fallback date. Loại trừ đơn Cancelled — không tính
+    // vào KPI/doanh số/số đơn (yêu cầu Calvin: đơn huỷ sau duyệt không tính target).
     result=all.filter(function(i){
+      if(i.order_status==='Cancelled')return false;
       var ym=i.billing_month?i.billing_month.slice(0,7):i.date?i.date.slice(0,7):null;
       return ym===kpiYM;
     });
