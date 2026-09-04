@@ -1910,10 +1910,10 @@ document.addEventListener('click',function(e){
     }catch(e){console.warn('[notif] realtime error',e);}
   }
 
-  window._notifPush=async function(userId,title,body,page,customerId){
+  window._notifPush=async function(userId,title,body,page,customerId,invoiceId,roomId){
     if(!userId){console.warn('[notif] push: userId null/undefined');return;}
     try{
-      var res=await sb.from('notifications').insert({user_id:userId,title:title,body:body,page:page||null,customer_id:customerId||null});
+      var res=await sb.from('notifications').insert({user_id:userId,title:title,body:body,page:page||null,customer_id:customerId||null,invoice_id:invoiceId||null,room_id:roomId||null});
       if(res.error){console.warn('[notif] push DB error',res.error);}
       else{console.log('[notif] push OK → user',userId,'title:',title);}
     }catch(e){console.warn('[notif] push error',e);}
@@ -1966,7 +1966,7 @@ document.addEventListener('click',function(e){
 
   window._notifAdd=function(title,body,action){
     if(!window.currentUser)return;
-    window._notifPush(window.currentUser.id,title,body,action&&action.page);
+    window._notifPush(window.currentUser.id,title,body,action&&action.page,action&&action.customerId,action&&action.invoiceId,action&&action.roomId);
   };
 
   window._getNotifs=function(){return _notifs;};
@@ -2345,7 +2345,7 @@ async function initApp(user){
         })();
         const invNo=payload.new.invoice_no||'';
         showCrmToast('📋 Invoice mới cần duyệt',senderName+' vừa tạo '+invNo,'pending');
-        window._notifAdd&&window._notifAdd('📋 Invoice mới cần duyệt',senderName+' vừa tạo '+invNo,{page:'pending'});
+        window._notifAdd&&window._notifAdd('📋 Invoice mới cần duyệt',senderName+' vừa tạo '+invNo,{page:'pending',invoiceId:payload.new.id});
       }
       // Invoice approved/rejected → notify sale
       if(!isM&&payload.eventType==='UPDATE'){
@@ -2353,10 +2353,10 @@ async function initApp(user){
           var _invNo=payload.new.invoice_no||'Invoice';
           var _amt=payload.new.total?'$'+Number(payload.new.total).toLocaleString('en-US'):'';
           showCrmToast('✅ Invoice được duyệt',_invNo+(_amt?' · '+_amt:''),'success');
-          window._notifAdd&&window._notifAdd('✅ Invoice được duyệt',_invNo+(_amt?' · '+_amt:''),{page:'closedeal'});
+          window._notifAdd&&window._notifAdd('✅ Invoice được duyệt',_invNo+(_amt?' · '+_amt:''),{page:'closedeal',invoiceId:payload.new.id});
         } else if(payload.new.approval_status==='rejected'){
           showCrmToast('❌ Invoice bị từ chối',payload.new.invoice_no||'','error');
-          window._notifAdd&&window._notifAdd('❌ Invoice bị từ chối',payload.new.invoice_no||'',{page:'pending'});
+          window._notifAdd&&window._notifAdd('❌ Invoice bị từ chối',payload.new.invoice_no||'',{page:'pending',invoiceId:payload.new.id});
         }
       }
       // Clear KPI cache khi INVOICES thay đổi để KPI luôn dùng data mới
@@ -3489,8 +3489,24 @@ window._sendInvoiceEmail=async function(invId){
 };
 
 async function openInvEdit(id){
-  const inv=INVOICES.find(function(i){return i.id===id;});
-  if(!inv)return;
+  let inv=INVOICES.find(function(i){return i.id===id;});
+  if(!inv){
+    // Không có trong mảng local (VD: mở từ thông báo, sale chưa load invoice này vào
+    // bộ nhớ) — fetch trực tiếp theo id.
+    try{
+      const fbRes=await sb.from('invoices').select('*').eq('id',id).single();
+      if(fbRes.data){
+        inv=fbRes.data;
+        INVOICES.push(inv);
+      }
+    }catch(eFb){
+      console.warn('[openInvEdit] fallback fetch error:',eFb);
+    }
+  }
+  if(!inv){
+    alert('Không thể mở đơn hàng này — có thể bạn không có quyền truy cập hoặc đơn đã bị xoá.');
+    return;
+  }
   const existing=document.getElementById('inv-edit-modal');
   if(existing)existing.remove();
 
@@ -3751,7 +3767,7 @@ async function saveInvEdit(id){
     var pushAll=[];
     recipients.forEach(function(uid){
       notifs.forEach(function(n){
-        pushAll.push(window._notifPush(uid,n.title,n.body,'order'));
+        pushAll.push(window._notifPush(uid,n.title,n.body,'order',null,oldInv.id));
       });
     });
     await Promise.all(pushAll);
@@ -8079,7 +8095,8 @@ window._sendSupportRequest=async function(customerId){
         assigneeId,
         '🆘 Yêu cầu hỗ trợ mới',
         (currentProfile.full_name||'')+' nhờ bạn hỗ trợ khách '+custName+(c.ma_kh?' ('+c.ma_kh+')':''),
-        'alert'
+        'alert',
+        customerId
       );
     }
 
@@ -8188,7 +8205,8 @@ window._updateSupportRequest=async function(reqId){
         req.requested_by,
         '📋 Yêu cầu hỗ trợ được cập nhật',
         (currentProfile.full_name||'')+' đã cập nhật yêu cầu hỗ trợ khách '+custName+' → '+statusText,
-        'alert'
+        'alert',
+        req.customer_id
       );
     }
 
@@ -9111,7 +9129,17 @@ window._notifPageClick=function(id){
   var n=list.find(function(x){return x.id===id;});
   if(!n)return;
   if(n.page&&n.page!=='notifications')setPage(n.page);
-  if(n.customer_id){
+  if(n.room_id){
+    // Thông báo tin nhắn — mở đúng phòng chat, không chỉ nhảy tab Chat chung chung
+    setTimeout(function(){
+      if(typeof selectRoom==='function')selectRoom(n.room_id);
+    },300);
+  }else if(n.invoice_id){
+    // Thông báo đơn hàng — mở đúng modal sửa invoice đó
+    setTimeout(function(){
+      if(typeof openInvEdit==='function')openInvEdit(n.invoice_id);
+    },300);
+  }else if(n.customer_id){
     var custId=typeof n.customer_id==='string'?parseInt(n.customer_id):n.customer_id;
     setTimeout(function(){
       var cust=CUSTOMERS.find(function(c){return c.id===custId;});
@@ -11421,7 +11449,10 @@ function handleNewMsg(m){
           p.id,
           '💬 '+(m.sender_name||'?')+' đã gửi tin nhắn trong '+roomLabel,
           shortMsg,
-          'chat'
+          'chat',
+          null,
+          null,
+          m.room_id
         );
       });
     }
