@@ -1254,12 +1254,23 @@ function calcTotals(){
 // GENERATE INVOICE NO
 async function generateInvoiceNo(){
   if(!currentProfile)return'INV000000-01';
-  // Use profile.code first (most reliable), fallback to email pattern
+  // Mã hoá invoice_no theo CHỦ khách hàng (customers.assigned_to), không phải người
+  // đang thao tác tạo invoice — tránh trường hợp người hỗ trợ tạo giúp làm invoice_no
+  // hiện sai mã NV trong khi sale_id đã đúng là chủ khách (gây hiểu nhầm khi đọc mã đơn).
+  let ownerProfile=currentProfile;
+  if(selectedCustomer&&selectedCustomer.assigned_to&&selectedCustomer.assigned_to!==currentUser.id){
+    try{
+      const {data:ownerProf}=await sb.from('profiles').select('code,full_name').eq('id',selectedCustomer.assigned_to).single();
+      if(ownerProf&&ownerProf.code)ownerProfile=ownerProf;
+    }catch(eOwner){
+      console.warn('[generateInvoiceNo] lookup chủ khách hàng lỗi, dùng mã người đang thao tác:',eOwner);
+    }
+  }
   const email=currentUser.email;
   let empCode='00';
-  // 1. Try profile.code field (e.g. "C02", "02")
-  if(currentProfile.code){
-    empCode=currentProfile.code.replace(/^C/i,'').padStart(2,'0');
+  // 1. Try profile.code field (e.g. "C02", "02") — ưu tiên ownerProfile
+  if(ownerProfile.code){
+    empCode=ownerProfile.code.replace(/^C/i,'').padStart(2,'0');
   } else {
     // 2. Fallback: email pattern matching
     const match=email.match(/salecnail0*(\d+)@/)||email.match(/C0*(\d+)@/)||null;
@@ -1541,7 +1552,11 @@ async function saveAndDownload(action){
     type:'invoice',
     company_id:selectedCompany?selectedCompany.id:null,
     customer_id:selectedCustomer.id,
-    sale_id:currentUser.id,
+    // sale_id = CHỦ khách hàng (customers.assigned_to), KHÔNG phải người đang thao tác
+    // tạo invoice (currentUser.id) — trường hợp người hỗ trợ (Nhờ hỗ trợ) tạo/chốt đơn
+    // giúp, doanh số/bonus vẫn phải tính cho đúng sale chủ. Fallback về currentUser.id
+    // nếu khách chưa có ai đứng tên (assigned_to null — VD KH tự tạo, chưa gán).
+    sale_id:selectedCustomer.assigned_to||currentUser.id,
     date:document.getElementById('inv-date').value,
     po_number:retryNo,
     location:document.getElementById('inv-location').value,
