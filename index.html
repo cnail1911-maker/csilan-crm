@@ -2780,7 +2780,6 @@ function renderClosedeal(){
     if(inv.order_status==='Cancelled'&&cdFilterOrder!=='Cancelled')return false;
     if(cdFilterPayment!=='all'&&inv.payment_status!==cdFilterPayment)return false;
     if(cdFilterOrder!=='all'&&inv.order_status!==cdFilterOrder)return false;
-    if(cdSearchInv){const q=cdSearchInv.toLowerCase();if(!((inv.invoice_no||'').toLowerCase().includes(q)||(inv.customer_name||'').toLowerCase().includes(q)||(inv.business_name||'').toLowerCase().includes(q)))return false;}
     if(cdFilterMonth!=='all'){const m=inv.billing_month?parseInt(inv.billing_month.split('-')[1]):(new Date(inv.created_at).getMonth()+1);if(m!==parseInt(cdFilterMonth))return false;}
     if(cdFilterYear!=='all'){const y=new Date(inv.created_at).getFullYear();if(y!==parseInt(cdFilterYear))return false;}
     return true;
@@ -2788,14 +2787,27 @@ function renderClosedeal(){
 
   const enrichedAll=data.map(function(inv){
     const cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;})||{};
-    return Object.assign({},inv,{business_name:cust.business_name,customer_name:cust.customer_name,state:cust.state,potential:cust.potential,brand:cust.brand,assigned_profile:cust.assigned_profile,assigned_to:cust.assigned_to});
+    return Object.assign({},inv,{business_name:cust.business_name,customer_name:cust.customer_name,cellphone:cust.cellphone,business_phone:cust.business_phone,state:cust.state,potential:cust.potential,brand:cust.brand,assigned_profile:cust.assigned_profile,assigned_to:cust.assigned_to});
   });
-  const enriched=enrichedAll.filter(function(inv){return fSale==='all'||inv.assigned_to===fSale;});
+  const enriched=enrichedAll.filter(function(inv){
+    if(fSale!=='all'&&inv.assigned_to!==fSale)return false;
+    // Search chạy SAU khi đã join với customers — mới có đủ tên KH/tên tiệm/SĐT để so khớp
+    if(cdSearchInv){
+      const q=cdSearchInv.toLowerCase();
+      const hit=(inv.invoice_no||'').toLowerCase().includes(q)
+        ||(inv.customer_name||'').toLowerCase().includes(q)
+        ||(inv.business_name||'').toLowerCase().includes(q)
+        ||(inv.cellphone||'').toLowerCase().includes(q)
+        ||(inv.business_phone||'').toLowerCase().includes(q);
+      if(!hit)return false;
+    }
+    return true;
+  });
   const pageData=enriched.slice((cdPage-1)*PAGE_SIZE,cdPage*PAGE_SIZE);
   const totalRevenue=enriched.reduce(function(s,inv){return s+(inv.total||0);},0);
   const years=[...new Set(INVOICES.map(function(inv){return new Date(inv.created_at).getFullYear();}))].sort(function(a,b){return b-a;});
 
-  let filterHtml='<input id="cd-search-inv" placeholder="Tìm mã đơn..." style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;color:var(--text);width:120px;outline:none" oninput="(function(v){clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){cdSearchInv=v;cdPage=1;render();var e=document.getElementById(\'cd-search-inv\');if(e){e.value=v;e.focus();e.setSelectionRange(v.length,v.length);}},150);})(this.value)" value="'+cdSearchInv+'">';
+  let filterHtml='<input id="cd-search-inv" placeholder="Tìm mã đơn, tên KH, SĐT..." style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;color:var(--text);width:160px;outline:none" oninput="(function(v){clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){cdSearchInv=v;cdPage=1;render();var e=document.getElementById(\'cd-search-inv\');if(e){e.value=v;e.focus();e.setSelectionRange(v.length,v.length);}},150);})(this.value)" value="'+cdSearchInv+'">';
   filterHtml+='<select class="fsel" onchange="cdFilterPayment=this.value;cdPage=1;render()"><option value="all">Payment</option>'+['Paid in Full','Deposit Paid','Partially Paid','Cancelled'].map(function(s){return '<option value="'+s+'"'+(cdFilterPayment===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="cdFilterOrder=this.value;cdPage=1;render()"><option value="all">Order Status</option>'+['Đang sản xuất','Đang giao','Đã nhận hàng','Cancelled'].map(function(s){return '<option value="'+s+'"'+(cdFilterOrder===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="cdFilterMonth=this.value;cdPage=1;render()"><option value="all">Tháng</option>'+['1','2','3','4','5','6','7','8','9','10','11','12'].map(function(m){return '<option value="'+m+'"'+(cdFilterMonth===m?' selected':'')+'>T'+m+'</option>';}).join('')+'</select>';
