@@ -1227,7 +1227,7 @@ body.ticker-on .app{margin-top:32px}
       <div class="nav-item" onclick="setPage('alert')" id="nav-alert"><i class="ti ti-bell"></i> Cảnh báo <span class="nav-badge" id="badge-alert" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('products')" id="nav-products" style="display:none"><i class="ti ti-package"></i> Sản phẩm</div>
       <div class="nav-item" onclick="setPage('daily')" id="nav-daily"><i class="ti ti-calendar-stats"></i> Daily</div>
-      <div class="nav-item" onclick="setPage('game')" id="nav-game"><i class="ti ti-dice"></i> Game</div>
+      <div class="nav-item" onclick="setPage('game')" id="nav-game"><i class="ti ti-dice"></i> Contest</div>
       <div class="nav-item" onclick="setPage('schedule')" id="nav-schedule"><i class="ti ti-calendar-event"></i> Lịch hẹn</div>
       <div class="nav-item" onclick="setPage('guide')" id="nav-guide"><i class="ti ti-book"></i> Hướng dẫn</div>
       <div class="nav-item" onclick="setPage('notifications')" id="nav-notif-tab"><i class="ti ti-bell"></i> Thông báo <span class="nav-badge" id="badge-notif" style="display:none">0</span></div>
@@ -1408,11 +1408,11 @@ function renderWheelSVG(entries){
     +'<svg id="game-wheel-svg" viewBox="0 0 300 300" style="width:100%;display:block;transition:transform 4s cubic-bezier(0.17,0.67,0.12,0.99);transform:rotate('+GAME_WHEEL_ROTATION+'deg);border-radius:50%;box-shadow:0 0 0 6px #2d2560,0 4px 20px rgba(0,0,0,.4)">'+slices+'<circle cx="150" cy="150" r="18" fill="#2d2560" stroke="#6c5ce7" stroke-width="3"/></svg>'
     +'</div>';
 }
-function renderRaceTrack(board,myUid){
+function renderRaceTrack(board,myUid,isRawValue){
   if(!board||board.length===0){
     return '<div class="muted" style="text-align:center;padding:20px;color:var(--text2)">Chưa có dữ liệu đội</div>';
   }
-  var maxPct=Math.max(100,Math.max.apply(null,board.map(function(b){return b.pct;})));
+  var maxPct=isRawValue?Math.max(1,Math.max.apply(null,board.map(function(b){return b.pct;}))):Math.max(100,Math.max.apply(null,board.map(function(b){return b.pct;})));
   var lanes=board.map(function(b,i){
     var isMe=b.user_id===myUid;
     var leftPct=Math.min(100,(b.pct/maxPct)*100);
@@ -1424,14 +1424,16 @@ function renderRaceTrack(board,myUid){
       +'<div style="position:absolute;left:0;right:0;top:20px;height:4px;background:var(--surface2);border-radius:2px"></div>'
       +'<div style="position:absolute;left:calc('+leftPct+'% - 17px);top:0;transition:left .6s ease;text-align:center;white-space:nowrap">'
       +avatar
-      +'<div style="font-size:9px;margin-top:2px;color:'+(isMe?'#00b894':'var(--text2)')+';font-weight:'+(isMe?'700':'400')+'">'+rankIcon+(b.full_name||'')+(isMe?' (bạn)':'')+'</div>'
+      +'<div style="font-size:9px;margin-top:2px;color:'+(isMe?'#00b894':'var(--text2)')+';font-weight:'+(isMe?'700':'400')+'">'+rankIcon+(b.full_name||'')+(isMe?' (bạn)':'')+' — '+(isRawValue?b.pct.toLocaleString():b.pct+'%')+'</div>'
       +'</div></div>';
   }).join('');
   var me=board.find(function(b){return b.user_id===myUid;});
-  return (me?('<div style="font-size:24px;font-weight:700;color:'+(me.pct>=100?'var(--accent2)':'var(--warn)')+'">'+me.pct+'%</div>'
+  return (me&&!isRawValue?('<div style="font-size:24px;font-weight:700;color:'+(me.pct>=100?'var(--accent2)':'var(--warn)')+'">'+me.pct+'%</div>'
     +'<div style="color:var(--text2);font-size:13px;margin-bottom:14px">Doanh số $'+me.revenue.toLocaleString()+' / Target $'+me.target.toLocaleString()+'</div>'):'')
+    +(me&&isRawValue?('<div style="font-size:24px;font-weight:700;color:var(--accent2)">'+me.pct.toLocaleString()+'</div>'
+    +'<div style="color:var(--text2);font-size:13px;margin-bottom:14px">Kết quả của bạn</div>'):'')
     +'<div style="border:1px dashed var(--border);border-radius:10px;padding:14px 14px 4px;background:rgba(0,0,0,.15)">'
-    +'<div style="font-size:10px;color:var(--text2);margin-bottom:10px">🏁 ĐÍCH — thứ hạng toàn đội tháng này</div>'
+    +'<div style="font-size:10px;color:var(--text2);margin-bottom:10px">🏁 ĐÍCH — thứ hạng hiện tại</div>'
     +lanes+'</div>';
 }
 const BOX_STYLES=[
@@ -1482,20 +1484,24 @@ async function renderGamePage(){
     // ── Các lệnh đọc độc lập — chạy SONG SONG thay vì tuần tự ────────
     const useCache=(Date.now()-GAME_COMPUTE_CACHE.ts)<GAME_CACHE_TTL;
     const results=await Promise.all([
-      useCache?Promise.resolve(GAME_COMPUTE_CACHE.raceBoard):gameAction('get_race_leaderboard',{period_key:thisMonth}),
+      gameFinRead('contests?status=eq.active&order=id.desc'),
       gameFinRead('wheel_sessions?is_sale_game=eq.true&is_active=eq.true&select=id,name&limit=1'),
       gameFinRead('game_box_config?is_active=eq.true&period_key=eq.'+thisMonth+'&select=id&limit=1'),
       gameFinRead('game_auction_items?period_key=eq.'+periodKey+'&status=eq.open&select=id,title,description,starting_points,image_url'),
       useCache?Promise.resolve(GAME_COMPUTE_CACHE.wheelCredit):gameAction('compute_wheel_credits',{}),
       useCache?Promise.resolve(GAME_COMPUTE_CACHE.pointsRes):gameAction('compute_points',{period_key:periodKey}),
     ]);
-    const raceBoardRes=results[0], wheelSessions=results[1], boxConfigs=results[2], auctionItems=results[3];
+    const activeContests=results[0]||[], wheelSessions=results[1], boxConfigs=results[2], auctionItems=results[3];
     const wheelCredit=results[4], pointsRes=results[5];
     // Lấy danh sách người đã đặt giá cho từng phiên (kèm avatar/tên qua PROFILES đã load sẵn trong CRM)
     const auctionBidsByItem=await Promise.all(auctionItems.map(function(it){
       return gameFinRead('game_auction_bids?item_id=eq.'+it.id+'&select=user_id,bid_points,bid_at&order=bid_points.desc');
     }));
-    const raceBoard=(raceBoardRes&&raceBoardRes.board)||[];
+    // Bảng xếp hạng cho từng contest đang chạy — gọi song song (bỏ qua cache, contest
+    // có thể đổi liên tục do admin gia hạn/đóng, hiển thị luôn giá trị mới nhất)
+    const contestLeaderboards=await Promise.all(activeContests.map(function(c){
+      return gameAction('get_contest_leaderboard',{contest_id:c.id});
+    }));
 
     const wheelSessionId=wheelSessions[0]?wheelSessions[0].id:null;
     // compute_box_credits cần config_id nên phải chờ kết quả boxConfigs trước — chạy song song với việc đọc wheel_entries
@@ -1506,12 +1512,19 @@ async function renderGamePage(){
     const boxCreditRows=boxConfigs[0]?await gameFinRead('game_box_draw_credits?user_id=eq.'+uid+'&config_id=eq.'+boxConfigs[0].id+'&select=credits_earned,credits_used'):[];
     const boxAvailable=boxCreditRows[0]?(boxCreditRows[0].credits_earned-boxCreditRows[0].credits_used):0;
 
-    if(!useCache) GAME_COMPUTE_CACHE={ts:Date.now(),wheelCredit:wheelCredit,boxCredit:boxCredit,pointsRes:pointsRes,raceBoard:raceBoardRes};
+    if(!useCache) GAME_COMPUTE_CACHE={ts:Date.now(),wheelCredit:wheelCredit,boxCredit:boxCredit,pointsRes:pointsRes};
 
     el.innerHTML=''
-      +'<div class="stat-card" style="margin-bottom:14px"><h3>🏎️ Đua xe doanh số — '+thisMonth+'</h3>'
-      +renderRaceTrack(raceBoard,uid)
-      +'</div>'
+      +(activeContests.length===0?'<div class="stat-card" style="margin-bottom:14px"><h3>🏆 Contest</h3><div class="muted" style="color:var(--text2)">Chưa có contest nào đang chạy</div></div>':
+        activeContests.map(function(c,idx){
+          var lbRes=contestLeaderboards[idx];
+          var board=(lbRes&&lbRes.board)||[];
+          var metricLabel=({order_count:'Số đơn hàng',revenue:'Doanh số',sku_qty:'Số lượng SP'})[c.metric_type]||c.metric_type;
+          return '<div class="stat-card" style="margin-bottom:14px"><h3>🏆 '+c.name+'</h3>'
+            +'<div class="muted" style="font-size:11px;color:var(--text2);margin-bottom:8px">'+metricLabel+' — đến hết '+c.end_date+'</div>'
+            +renderRaceTrack(board.map(function(b){return {user_id:b.user_id,full_name:b.full_name,avatar_url:b.avatar_url,pct:c.ranking_mode==='target_pct'?(b.pct||0):b.value,revenue:b.value,target:0};}),uid,c.metric_type!=='revenue'&&c.ranking_mode!=='target_pct')
+            +'</div>';
+        }).join(''))
       +(myGoldenCust.length>0?('<div class="stat-card" style="margin-bottom:14px;border:1px solid gold"><h3>🎫 Vé vàng — '+myGoldenCust.length+' khách đang chờ chốt</h3>'
         +myGoldenCust.map(function(c){return '<div style="padding:4px 0">'+(c.business_name||c.customer_name||'KH #'+c.id)+'</div>';}).join('')+'</div>'):'')
       +'<div class="stat-card" style="margin-bottom:14px"><h3>🎡 Vòng quay may mắn</h3>'
@@ -2782,7 +2795,7 @@ function renderClosedeal(){
   const totalRevenue=enriched.reduce(function(s,inv){return s+(inv.total||0);},0);
   const years=[...new Set(INVOICES.map(function(inv){return new Date(inv.created_at).getFullYear();}))].sort(function(a,b){return b-a;});
 
-  let filterHtml='<input id="cd-search-inv" placeholder="Tìm mã đơn..." style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;color:var(--text);width:120px;outline:none" oninput="(function(v){clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){cdSearchInv=v;cdPage=1;render();var e=document.getElementById(\'cd-search-inv\');if(e){e.value=v;e.focus();}},150);})(this.value)" value="'+cdSearchInv+'">';
+  let filterHtml='<input id="cd-search-inv" placeholder="Tìm mã đơn..." style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;color:var(--text);width:120px;outline:none" oninput="(function(v){clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){cdSearchInv=v;cdPage=1;render();var e=document.getElementById(\'cd-search-inv\');if(e){e.value=v;e.focus();e.setSelectionRange(v.length,v.length);}},150);})(this.value)" value="'+cdSearchInv+'">';
   filterHtml+='<select class="fsel" onchange="cdFilterPayment=this.value;cdPage=1;render()"><option value="all">Payment</option>'+['Paid in Full','Deposit Paid','Partially Paid','Cancelled'].map(function(s){return '<option value="'+s+'"'+(cdFilterPayment===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="cdFilterOrder=this.value;cdPage=1;render()"><option value="all">Order Status</option>'+['Đang sản xuất','Đang giao','Đã nhận hàng','Cancelled'].map(function(s){return '<option value="'+s+'"'+(cdFilterOrder===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
   filterHtml+='<select class="fsel" onchange="cdFilterMonth=this.value;cdPage=1;render()"><option value="all">Tháng</option>'+['1','2','3','4','5','6','7','8','9','10','11','12'].map(function(m){return '<option value="'+m+'"'+(cdFilterMonth===m?' selected':'')+'>T'+m+'</option>';}).join('')+'</select>';
@@ -9769,7 +9782,7 @@ function render(){
   else if(page==='guide')m.innerHTML=renderGuide();
   else if(page==='notifications'){m.innerHTML=renderNotifPage();}
   else if(page==='system'){m.innerHTML=renderSystem();setTimeout(renderSystemRefresh,100);}
-  else if(page==='game'){m.innerHTML='<div class="topbar"><div class="topbar-title">🎮 Game<\/div><\/div><div class="content" id="game-content">Đang tải...<\/div>';renderGamePage();}
+  else if(page==='game'){m.innerHTML='<div class="topbar"><div class="topbar-title">🏆 Contest<\/div><\/div><div class="content" id="game-content">Đang tải...<\/div>';renderGamePage();}
   else if(page==='daily'){
     // Render shell synchronously, load data async
     const isManagerD=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
