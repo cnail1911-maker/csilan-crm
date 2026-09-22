@@ -9391,24 +9391,48 @@ async function campAssignSelected(){
 }
 
 // ── FIX 3+4: DAILY TAB ──
+// Dữ liệu Daily (call_logs/invoices) lấy trực tiếp từ server, KHÔNG bị giới hạn theo
+// CUSTOMERS local (mảng này với sale chỉ chứa KH có Potential/tự tạo) — nên phải tự
+// fetch bổ sung KH nào bị thiếu, không được âm thầm .filter(Boolean) bỏ qua.
+async function _dailyResolveCustomers(ids){
+  var found=[],missing=[];
+  ids.forEach(function(id){
+    var c=CUSTOMERS.find(function(x){return x.id===id;});
+    if(c)found.push(c);else missing.push(id);
+  });
+  if(missing.length>0){
+    try{
+      var res=await sb.from('customers').select('*').in('id',missing);
+      if(res.data&&res.data.length){
+        res.data.forEach(function(c){CUSTOMERS.push(c);found.push(c);});
+      }
+    }catch(e){console.warn('[_dailyResolveCustomers] fetch lỗi:',e);}
+  }
+  // Giữ đúng thứ tự ids ban đầu
+  var byId={};found.forEach(function(c){byId[c.id]=c;});
+  return ids.map(function(id){return byId[id];}).filter(Boolean);
+}
 // ── Mở modal danh sách khách từ Daily Report (click vào Data/Potential/Quotation/Invoice) ──
-window._dailyOpenDay=function(key,type){
+window._dailyOpenDay=async function(key,type){
   // key = 'saleId__YYYY-MM-DD'
   var d=window._dailyClickData&&window._dailyClickData[key];
   if(!d)return;
   var parts=key.split('__');
   var sale=PROFILES.find(function(p){return p.id===parts[0];});
   var dt=parts[1]||'';
-  var label='',ids=[];
-  var customers=[];
-  if(type==='unique'){label='Data '+dt+' — '+(sale?sale.full_name:'');customers=d.ids.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);}
-  else if(type==='newpot'){label='Pot.New '+dt+' — '+(sale?sale.full_name:'');customers=d.newPotIds.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);}
-  else if(type==='follow'){label='Pot.Old '+dt+' — '+(sale?sale.full_name:'');customers=d.followIds.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);}
+  var label='',customers=[];
+  if(type==='unique'){label='Data '+dt+' — '+(sale?sale.full_name:'');customers=await _dailyResolveCustomers(d.ids);}
+  else if(type==='newpot'){label='Pot.New '+dt+' — '+(sale?sale.full_name:'');customers=await _dailyResolveCustomers(d.newPotIds);}
+  else if(type==='follow'){label='Pot.Old '+dt+' — '+(sale?sale.full_name:'');customers=await _dailyResolveCustomers(d.followIds);}
   else if(type==='allinv'||type==='invoice'){
     label=(type==='invoice'?'Invoice approved ':'Báo giá ')+dt+' — '+(sale?sale.full_name:'');
+    var relevantInvs=d.saleInvs.filter(function(inv){return type==='allinv'||inv.approval_status==='approved';});
+    var custIds=[...new Set(relevantInvs.map(function(inv){return inv.customer_id;}))];
+    var resolvedCusts=await _dailyResolveCustomers(custIds);
+    var custById={};resolvedCusts.forEach(function(c){custById[c.id]=c;});
     var seen2=new Set();
-    d.saleInvs.filter(function(inv){return type==='allinv'||inv.approval_status==='approved';}).forEach(function(inv){
-      var c=CUSTOMERS.find(function(x){return x.id===inv.customer_id;});
+    relevantInvs.forEach(function(inv){
+      var c=custById[inv.customer_id];
       if(c&&!seen2.has(c.id)){seen2.add(c.id);customers.push(Object.assign({},c,{_inv:inv}));}
     });
   }
@@ -9416,34 +9440,34 @@ window._dailyOpenDay=function(key,type){
   _kpiOpenListModal(label,customers,'unique',parts[0],1);
 };
 
-window._dailyOpenNewPot=function(saleId){
+window._dailyOpenNewPot=async function(saleId){
   var d=window._dailyClickData&&window._dailyClickData[saleId];
   if(!d)return;
   var sale=PROFILES.find(function(p){return p.id===saleId;});
-  var customers=d.newPotIds.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);
+  var customers=await _dailyResolveCustomers(d.newPotIds);
   if(!customers.length){alert('Không có dữ liệu.');return;}
   _kpiOpenListModal('Potential mới — '+(sale?sale.full_name:''),customers,'potential',saleId,1);
 };
 
-window._dailyOpenFollow=function(saleId){
+window._dailyOpenFollow=async function(saleId){
   var d=window._dailyClickData&&window._dailyClickData[saleId];
   if(!d)return;
   var sale=PROFILES.find(function(p){return p.id===saleId;});
-  var customers=d.followIds.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);
+  var customers=await _dailyResolveCustomers(d.followIds);
   if(!customers.length){alert('Không có dữ liệu.');return;}
   _kpiOpenListModal('Follow lại — '+(sale?sale.full_name:''),customers,'potential',saleId,1);
 };
 
-window._dailyOpenRemoved=function(saleId){
+window._dailyOpenRemoved=async function(saleId){
   var d=window._dailyClickData&&window._dailyClickData[saleId];
   if(!d)return;
   var sale=PROFILES.find(function(p){return p.id===saleId;});
-  var customers=d.removedPotIds.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);
+  var customers=await _dailyResolveCustomers(d.removedPotIds);
   if(!customers.length){alert('Không có dữ liệu.');return;}
   _kpiOpenListModal('Bỏ Potential — '+(sale?sale.full_name:''),customers,'unique',saleId,1);
 };
 
-window._dailyOpenCustList=function(saleId,type){
+window._dailyOpenCustList=async function(saleId,type){
   var d=window._dailyClickData&&window._dailyClickData[saleId];
   if(!d)return;
   var sale=PROFILES.find(function(p){return p.id===saleId;});
@@ -9451,24 +9475,25 @@ window._dailyOpenCustList=function(saleId,type){
 
   if(type==='unique'){
     label='Data thao tác — '+(sale?sale.full_name:'');
-    customers=d.allUniqueIds.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);
+    customers=await _dailyResolveCustomers(d.allUniqueIds);
   } else if(type==='potential'){
     label='Potential — '+(sale?sale.full_name:'');
-    customers=d.potKpiIds.map(function(id){return CUSTOMERS.find(function(c){return c.id===id;});}).filter(Boolean);
+    customers=await _dailyResolveCustomers(d.potKpiIds);
   } else if(type==='allinv'||type==='invoice'){
     label=(type==='invoice'?'Invoice approved':'Báo giá')+' — '+(sale?sale.full_name:'');
     var filtInvs=d.saleInvs.filter(function(inv){
       return type==='invoice'?inv.approval_status==='approved':true;
     });
+    var custIds=[...new Set(filtInvs.map(function(inv){return inv.customer_id;}))];
+    var resolvedCusts=await _dailyResolveCustomers(custIds);
+    var custById={};resolvedCusts.forEach(function(c){custById[c.id]=c;});
     // Map invoice → customer object (kèm _inv để modal hiện số tiền)
     var seen=new Set();
     filtInvs.forEach(function(inv){
-      var cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;});
+      var cust=custById[inv.customer_id];
       if(cust&&!seen.has(cust.id)){
         seen.add(cust.id);
         customers.push(Object.assign({},cust,{_inv:inv}));
-      } else if(!cust){
-        // Invoice không link được customer cụ thể (vd customer_id null) — fallback tạo dòng tạm dùng customer_name
       }
     });
   }
