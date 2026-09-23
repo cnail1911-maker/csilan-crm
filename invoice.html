@@ -1661,7 +1661,12 @@ async function saveAndDownload(action){
       chenh_lech:   chenhUnknown?null:chenhDon*(it.qty||1)
     };
   });
-  await sb.from('invoice_items').insert(invItems);
+  const {error:invItemsErr}=await sb.from('invoice_items').insert(invItems);
+  if(invItemsErr){
+    showLoading(false);
+    alert('❌ Lỗi lưu sản phẩm khi tạo invoice:\n'+invItemsErr.message+'\n\nInvoice đã tạo ('+retryNo+') nhưng CHƯA có sản phẩm — vào Chờ duyệt sửa lại hoặc báo Calvin.');
+    return;
+  }
 
   // Quotation: không update customer status
   // Invoice: update nhưng chờ admin duyệt mới Closedeal
@@ -1936,8 +1941,8 @@ async function saveApprovedInvoice(){
 
   if(invErr){showLoading(false);alert('Lỗi cập nhật invoice: '+invErr.message);return;}
 
-  // Xoá item cũ, insert lại theo thứ tự mới (giữ is_gift, is_shipping)
-  await sb.from('invoice_items').delete().eq('invoice_id',editInvoiceId);
+  // Insert item MỚI trước, chỉ xoá item CŨ sau khi insert thành công — tránh mất
+  // trắng dữ liệu nếu insert lỗi (giữ is_gift, is_shipping)
   const newItems=items.map(function(it){
     return {
       invoice_id:editInvoiceId,
@@ -1956,8 +1961,12 @@ async function saveApprovedInvoice(){
       is_gift:it.is_gift||false
     };
   });
-  const {error:itemErr}=await sb.from('invoice_items').insert(newItems);
-  if(itemErr){showLoading(false);alert('Lỗi cập nhật sản phẩm: '+itemErr.message);return;}
+  const {data:insertedItems2,error:itemErr}=await sb.from('invoice_items').insert(newItems).select('id');
+  if(itemErr){showLoading(false);alert('❌ Lỗi cập nhật sản phẩm — item CŨ vẫn còn nguyên, KHÔNG bị mất:\n'+itemErr.message);return;}
+  const newIds2=(insertedItems2||[]).map(function(r){return r.id;});
+  if(newIds2.length>0){
+    await sb.from('invoice_items').delete().eq('invoice_id',editInvoiceId).not('id','in','('+newIds2.join(',')+')');
+  }
 
   // Re-sync sang Finance (non-blocking, không block UI nếu fail)
   try{
@@ -2060,7 +2069,6 @@ async function updateInvoice(){
   if(invErr){showLoading(false);alert('Lỗi cập nhật: '+invErr.message);return;}
 
   // Delete old items and reinsert
-  await sb.from('invoice_items').delete().eq('invoice_id',editInvoiceId);
   const newItems=items.map(function(it){
     return {
       invoice_id:editInvoiceId,
@@ -2077,7 +2085,18 @@ async function updateInvoice(){
       is_shipping:it.is_shipping||false
     };
   });
-  await sb.from('invoice_items').insert(newItems);
+  const {data:insertedItems,error:itemInsErr}=await sb.from('invoice_items').insert(newItems).select('id');
+  if(itemInsErr){
+    showLoading(false);
+    alert('❌ LỖI lưu sản phẩm — item CŨ vẫn còn nguyên, KHÔNG bị mất:\n'+itemInsErr.message);
+    return;
+  }
+  // Chỉ xoá item cũ SAU KHI insert item mới thành công — tránh mất trắng nếu insert lỗi.
+  // Loại trừ đúng các ID vừa insert (không xoá nhầm item mới).
+  const newIds=(insertedItems||[]).map(function(r){return r.id;});
+  if(newIds.length>0){
+    await sb.from('invoice_items').delete().eq('invoice_id',editInvoiceId).not('id','in','('+newIds.join(',')+')');
+  }
 
   // Update customer
   if(selectedCustomer){
