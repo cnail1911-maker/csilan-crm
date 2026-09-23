@@ -1655,6 +1655,7 @@ async function saveAndDownload(action){
       discount:     it.discount,
       amount:       it.amount,
       vendor_cost:  it.vendor_cost||0,
+      crm_price:    it.crm_price||null,
       is_shipping:  it.is_shipping||false,
       vendor:       it.vendor||null,
       chenh_lech:   chenhUnknown?null:chenhDon*(it.qty||1)
@@ -1949,6 +1950,7 @@ async function saveApprovedInvoice(){
       amount:it.amount,
       vendor:it.vendor||null,
       vendor_cost:it.vendor_cost||0,
+      crm_price:it.crm_price||null,
       chenh_lech:it.chenh_lech||0,
       is_shipping:it.is_shipping||false,
       is_gift:it.is_gift||false
@@ -2068,7 +2070,11 @@ async function updateInvoice(){
       qty:it.qty,
       unit_price:it.unit_price,
       discount:it.discount,
-      amount:it.amount
+      amount:it.amount,
+      vendor:it.vendor||null,
+      vendor_cost:it.vendor_cost||0,
+      crm_price:it.crm_price||null,
+      is_shipping:it.is_shipping||false
     };
   });
   await sb.from('invoice_items').insert(newItems);
