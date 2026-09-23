@@ -1372,14 +1372,15 @@ function renderPreview(){
       } else if(isManager){
         if(it.vendor_cost!==null&&it.vendor_cost!==undefined)chenh=(it.amount/it.qty)-(it.vendor_cost||0);
       } else {
-        const base=(it.crm_price!==undefined&&it.crm_price!==null)?it.crm_price:it.unit_price;
-        chenh=it.unit_price-base;
+        // Thiếu crm_price (data cũ trước khi có field này) — KHÔNG fallback về
+        // unit_price (sẽ luôn ra chenh=0 giả, không đổi dù sửa giá). Để null, hiện "—".
+        chenh=(it.crm_price!==undefined&&it.crm_price!==null)?(it.unit_price-it.crm_price):null;
       }
       const chenhAmt=chenh!==null?chenh*it.qty:null;
       const chenhColor=chenh!==null&&chenh<0?'#e74c3c':'#27ae60';
       const chenhDesc=chenh!==null
         ?'<div class="no-print" style="color:'+chenhColor+';font-size:10px;font-weight:600;margin-top:2px">Chênh: '+fmt(chenh)+'/unit | Tổng: '+fmt(chenhAmt)+'</div>'
-        :'';
+        :(it.is_shipping?'':'<div class="no-print" style="color:#95a5a6;font-size:10px;font-style:italic;margin-top:2px">Chênh: — (thiếu giá gốc)</div>');
       // For PDF: skip individual shipping rows — will be grouped below
       if(it.is_shipping)return;
       prodRows+='<tr>'        +'<td>'+imgHtml+'</td>'        +'<td>'+it.name+chenhDesc+'</td>'        +'<td style="text-align:center">'+it.qty+'</td>'        +'<td style="text-align:right">'+fmt(it.unit_price)+'</td>'        +'<td style="text-align:right">'+fmt(it.discount)+'</td>'        +'<td>'+fmt(it.amount)+'</td>'        +'</tr>';
@@ -1409,12 +1410,11 @@ function renderPreview(){
       } else {
         // Sale: show each vendor row but only chenh vs CRM price
         shippingItems.forEach(function(it){
-          const base=it.crm_price!=null?it.crm_price:it.unit_price;
-          const chenhDon=it.unit_price-base;
-          const chColor=chenhDon<0?'#e74c3c':'#27ae60';
+          const chenhDon=(it.crm_price!=null)?(it.unit_price-it.crm_price):null;
+          const chColor=chenhDon!==null&&chenhDon<0?'#e74c3c':'#27ae60';
           prodRows+='<tr class="ship-detail-row" style="background:rgba(231,76,60,0.05)">'
             +'<td><div style="font-size:20px;text-align:center">🚚</div></td>'
-            +'<td>'+it.name+(chenhDon!==0?'<div class="no-print" style="font-size:10px;color:'+chColor+'">+$'+chenhDon.toFixed(2)+'/unit</div>':'')+'</td>'
+            +'<td>'+it.name+(chenhDon!==null&&chenhDon!==0?'<div class="no-print" style="font-size:10px;color:'+chColor+'">+$'+chenhDon.toFixed(2)+'/unit</div>':'')+'</td>'
             +'<td style="text-align:center">'+it.qty+'</td>'
             +'<td style="text-align:right">$'+it.unit_price.toFixed(2)+'</td>'
             +'<td style="text-align:right">$'+it.discount.toFixed(2)+'</td>'
@@ -1630,13 +1630,20 @@ async function saveAndDownload(action){
   const invItems=items.map(function(it){
     // chenh_lech = amount - (vendor_cost × qty) — correctly accounts for discount
     let chenhDon=0;
+    let chenhUnknown=false;
     if(it.is_shipping){
       chenhDon=(it.amount/it.qty)-(it.vendor_cost||0);
     } else if(isManagerRole){
       chenhDon=it.vendor_cost!=null?(it.amount/it.qty)-(it.vendor_cost||0):0;
     } else {
-      const base=(it.crm_price!=null)?it.crm_price:(it.amount/it.qty);
-      chenhDon=(it.amount/it.qty)-base;
+      // Thiếu crm_price (data cũ trước khi có field này) — KHÔNG fallback về
+      // amount/qty (sẽ tự triệt tiêu về 0 giả, ghi sai chenh_lech vào DB ảnh hưởng
+      // tính bonus chênh lệch giá sau này). Ghi null, không phải 0, để không tính nhầm.
+      if(it.crm_price!=null){
+        chenhDon=(it.amount/it.qty)-it.crm_price;
+      } else {
+        chenhUnknown=true;
+      }
     }
     return {
       invoice_id:   inv.id,
@@ -1650,7 +1657,7 @@ async function saveAndDownload(action){
       vendor_cost:  it.vendor_cost||0,
       is_shipping:  it.is_shipping||false,
       vendor:       it.vendor||null,
-      chenh_lech:   chenhDon*(it.qty||1)
+      chenh_lech:   chenhUnknown?null:chenhDon*(it.qty||1)
     };
   });
   await sb.from('invoice_items').insert(invItems);
