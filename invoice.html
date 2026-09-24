@@ -1656,6 +1656,7 @@ async function saveAndDownload(action){
       amount:       it.amount,
       vendor_cost:  it.vendor_cost||0,
       crm_price:    it.crm_price||null,
+      sku:          it.sku||null,
       is_shipping:  it.is_shipping||false,
       vendor:       it.vendor||null,
       chenh_lech:   chenhUnknown?null:chenhDon*(it.qty||1)
@@ -1956,6 +1957,7 @@ async function saveApprovedInvoice(){
       vendor:it.vendor||null,
       vendor_cost:it.vendor_cost||0,
       crm_price:it.crm_price||null,
+      sku:it.sku||null,
       chenh_lech:it.chenh_lech||0,
       is_shipping:it.is_shipping||false,
       is_gift:it.is_gift||false
@@ -2082,6 +2084,7 @@ async function updateInvoice(){
       vendor:it.vendor||null,
       vendor_cost:it.vendor_cost||0,
       crm_price:it.crm_price||null,
+      sku:it.sku||null,
       is_shipping:it.is_shipping||false
     };
   });
