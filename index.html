@@ -6963,9 +6963,9 @@ async function renderKPIAsync(){
     +'<div class="stats-row" style="grid-template-columns:repeat(5,1fr)">'+statCards.replace(/<div class="stats-row"[^>]*>/,'').replace('<\/div>','')+'<\/div>'
     +'<div class="content" id="kpi-content">'
     +chartsRow
-    +trendHtml
     +saleCards
     +detailTable
+    +trendHtml
     +'<\/div>';
 
   // Fix: reassemble correctly
@@ -6979,9 +6979,9 @@ async function renderKPIAsync(){
     +'<\/div>'
     +'<div class="content">'
     +chartsRow
-    +trendHtml
     +saleCards
     +detailTable
+    +trendHtml
     +'<\/div>';
   // Cache saleStats for funnel instant update
   window._kpiSaleStats=saleStats;
@@ -7273,8 +7273,9 @@ async function _renderStateReport(){
     +(_stReportPeriodType==='quarter'?('<select onchange="_stReportQuarter=parseInt(this.value);renderKPIAsync()" style="font-size:11px">'+[1,2,3,4].map(function(q){return '<option value="'+q+'"'+(q===_stReportQuarter?' selected':'')+'>Q'+q+'</option>';}).join('')+'</select>'):'')
     +'<select onchange="_stReportYear=parseInt(this.value);renderKPIAsync()" style="font-size:11px">'+yearOptions.map(function(y){return '<option value="'+y+'"'+(y===_stReportYear?' selected':'')+'>'+y+'</option>';}).join('')+'</select>'
     +'<select onchange="_stReportState=this.value;renderKPIAsync()" style="font-size:11px"><option value="all">Tất cả State</option>'+stateOptions.map(function(s){return '<option value="'+s+'"'+(s===_stReportState?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'
+    +'<button class="btn" style="padding:3px 10px;font-size:11px" onclick="this.closest(\'.panel\').querySelector(\'.st-report-body\').style.display=this.closest(\'.panel\').querySelector(\'.st-report-body\').style.display===\'none\'?\'block\':\'none\'">Ẩn/Hiện</button>'
     +'</div></div>'
-    +'<div style="overflow-x:auto"><table style="width:100%;min-width:480px;font-size:11px"><thead><tr style="color:var(--text2);text-align:left"><th>State</th><th>Doanh số</th><th>Số đơn</th><th>Ghế Pedicure</th><th>Giường gội đầu</th></tr></thead><tbody>'+tableRows+'</tbody></table></div>'
+    +'<div class="st-report-body"><div style="overflow-x:auto"><table style="width:100%;min-width:480px;font-size:11px"><thead><tr style="color:var(--text2);text-align:left"><th>State</th><th>Doanh số</th><th>Số đơn</th><th>Ghế Pedicure</th><th>Giường gội đầu</th></tr></thead><tbody>'+tableRows+'</tbody></table></div></div>'
     +'</div>';
 }
 
