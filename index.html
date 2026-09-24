@@ -6557,9 +6557,10 @@ async function toggleActive(id,val){
 // ── KPI State ──
 var _kpiMonth=new Date().getMonth()+1;
 var _kpiYear=new Date().getFullYear();
-var _kpiTrendN=3; // 3|6|9|12
 var _kpiInvCache={}; // key: "fromDate_toDate"
 var _kpiRenderVersion=0; // chống race condition khi nav nhanh
+// ── Báo cáo theo Tiểu bang (thay thế Trend chart cũ) ──
+var _stReportPeriodType='year',_stReportYear=new Date().getFullYear(),_stReportMonth=new Date().getMonth()+1,_stReportQuarter=Math.ceil((new Date().getMonth()+1)/3),_stReportState='all';
 var _kpiFunnelSale='team'; // 'team' | sale.id
 
 // ── Fetch invoices cho KPI — luôn query DB trực tiếp theo date range ──
@@ -6820,8 +6821,8 @@ async function renderKPIAsync(){
     +'<\/div>'
     +'<\/div>';
 
-  // ── TREND CHART ──
-  var trendHtml=await _kpiTrendChart(trendInvs,salesToShow,saleStats,trendMonths,month,year,isM);
+  // ── BÁO CÁO THEO TIỂU BANG (thay Trend chart cũ) ──
+  var trendHtml=isM?await _renderStateReport():'';
 
   // ── PER-SALE CARDS ──
   var saleCards='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px">'
@@ -7175,6 +7176,126 @@ window._kpiFunnelTab=function(id){_kpiFunnelSale=id;if(window.page==='kpi')rende
 window._kpiTrend=function(n){_kpiTrendN=n;_kpiInvCache={};if(window.page==='kpi')renderKPIAsync();};
 
 // ── KPI List Modal ──
+async function _renderStateReport(){
+  var periodLabel='';
+  var monthsInPeriod=[];
+  if(_stReportPeriodType==='year'){
+    for(var m=1;m<=12;m++)monthsInPeriod.push(_stReportYear+'-'+String(m).padStart(2,'0'));
+    periodLabel='Năm '+_stReportYear;
+  } else if(_stReportPeriodType==='quarter'){
+    var qStart=(_stReportQuarter-1)*3+1;
+    for(var m=qStart;m<qStart+3;m++)monthsInPeriod.push(_stReportYear+'-'+String(m).padStart(2,'0'));
+    periodLabel='Q'+_stReportQuarter+'/'+_stReportYear;
+  } else {
+    monthsInPeriod.push(_stReportYear+'-'+String(_stReportMonth).padStart(2,'0'));
+    periodLabel='Tháng '+_stReportMonth+'/'+_stReportYear;
+  }
+
+  // Đơn hợp lệ trong kỳ — full lịch sử, INVOICES đã load đủ toàn công ty cho manager
+  var matchInvs=INVOICES.filter(function(inv){
+    if(inv.type!=='invoice'||inv.approval_status!=='approved')return false;
+    if(inv.order_status==='Cancelled')return false;
+    if(!inv.billing_month||monthsInPeriod.indexOf(inv.billing_month)===-1)return false;
+    return true;
+  });
+
+  var byState={};
+  matchInvs.forEach(function(inv){
+    var cust=CUSTOMERS.find(function(c){return c.id===inv.customer_id;});
+    var st=(cust&&cust.state)||'(Không rõ)';
+    if(_stReportState!=='all'&&st!==_stReportState)return;
+    if(!byState[st])byState[st]={state:st,revenue:0,orders:0,invIds:[]};
+    byState[st].revenue+=parseFloat(inv.total)||0;
+    byState[st].orders+=1;
+    byState[st].invIds.push(inv.id);
+  });
+
+  // Qty ghế Pedicure (SKU PDC/PAC) và giường gội đầu (SKU HEA) — query invoice_items theo batch
+  var allInvIds=[];
+  Object.values(byState).forEach(function(s){allInvIds=allInvIds.concat(s.invIds);});
+  var itemsBySkuInv={};
+  if(allInvIds.length>0){
+    var chunks=[];
+    for(var i=0;i<allInvIds.length;i+=400)chunks.push(allInvIds.slice(i,i+400));
+    for(var ci=0;ci<chunks.length;ci++){
+      var res=await sb.from('invoice_items').select('invoice_id,sku,qty').in('invoice_id',chunks[ci]);
+      (res.data||[]).forEach(function(it){
+        if(!it.sku)return;
+        var up=it.sku.toUpperCase();
+        var cat=null;
+        if(up.indexOf('PDC')===0||up.indexOf('PAC')===0)cat='pdc';
+        else if(up.indexOf('HEA')===0)cat='hea';
+        if(!cat)return;
+        if(!itemsBySkuInv[it.invoice_id])itemsBySkuInv[it.invoice_id]={pdc:0,hea:0};
+        itemsBySkuInv[it.invoice_id][cat]+=it.qty||0;
+      });
+    }
+  }
+  Object.values(byState).forEach(function(s){
+    s.pdcQty=0;s.heaQty=0;
+    s.invIds.forEach(function(id){
+      var it=itemsBySkuInv[id];
+      if(it){s.pdcQty+=it.pdc;s.heaQty+=it.hea;}
+    });
+  });
+
+  var stateList=Object.values(byState).sort(function(a,b){return b.revenue-a.revenue;});
+  var maxRev=Math.max.apply(null,[1].concat(stateList.map(function(s){return s.revenue;})));
+
+  var chartHtml=stateList.length===0?'<div class="muted" style="padding:20px;text-align:center;color:var(--text2)">Không có dữ liệu trong kỳ này</div>':
+    stateList.map(function(s){
+      var w=Math.round(s.revenue/maxRev*100);
+      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer" onclick="window._stReportDrill(&quot;'+s.state.replace(/"/g,'&quot;')+'&quot;)">'
+        +'<div style="width:70px;flex-shrink:0;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+s.state+'</div>'
+        +'<div style="flex:1;min-width:0"><div style="height:18px;border-radius:4px;background:rgba(255,255,255,0.05);overflow:hidden"><div style="width:'+w+'%;height:100%;background:var(--accent2);transition:width .4s"></div></div></div>'
+        +'<div style="width:95px;flex-shrink:0;font-size:11px;text-align:right;color:var(--text)">$'+s.revenue.toLocaleString('en-US')+'</div>'
+        +'</div>';
+    }).join('');
+
+  var tableRows=stateList.map(function(s){
+    return '<tr style="cursor:pointer" onclick="window._stReportDrill(&quot;'+s.state.replace(/"/g,'&quot;')+'&quot;)">'
+      +'<td>'+s.state+'</td>'
+      +'<td style="color:var(--accent2)">$'+s.revenue.toLocaleString('en-US')+'</td>'
+      +'<td>'+s.orders+'</td>'
+      +'<td>'+s.pdcQty+'</td>'
+      +'<td>'+s.heaQty+'</td>'
+      +'</tr>';
+  }).join('');
+
+  window._stReportData=byState;
+
+  var stateOptions=Array.from(new Set(CUSTOMERS.map(function(c){return c.state;}).filter(Boolean))).sort();
+  var yearOptions=[0,1,2,3].map(function(d){return new Date().getFullYear()-d;});
+
+  return '<div class="panel" style="padding:14px;margin-bottom:14px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">'
+    +'<div style="font-size:13px;font-weight:700">🗺️ Báo cáo theo Tiểu bang — '+periodLabel+'</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+    +'<select onchange="_stReportPeriodType=this.value;renderKPIAsync()" style="font-size:11px">'
+    +['year','quarter','month'].map(function(t){var lbl={year:'Năm',quarter:'Quý',month:'Tháng'}[t];return '<option value="'+t+'"'+(t===_stReportPeriodType?' selected':'')+'>'+lbl+'</option>';}).join('')
+    +'</select>'
+    +(_stReportPeriodType==='month'?('<select onchange="_stReportMonth=parseInt(this.value);renderKPIAsync()" style="font-size:11px">'+[1,2,3,4,5,6,7,8,9,10,11,12].map(function(mo){return '<option value="'+mo+'"'+(mo===_stReportMonth?' selected':'')+'>Tháng '+mo+'</option>';}).join('')+'</select>'):'')
+    +(_stReportPeriodType==='quarter'?('<select onchange="_stReportQuarter=parseInt(this.value);renderKPIAsync()" style="font-size:11px">'+[1,2,3,4].map(function(q){return '<option value="'+q+'"'+(q===_stReportQuarter?' selected':'')+'>Q'+q+'</option>';}).join('')+'</select>'):'')
+    +'<select onchange="_stReportYear=parseInt(this.value);renderKPIAsync()" style="font-size:11px">'+yearOptions.map(function(y){return '<option value="'+y+'"'+(y===_stReportYear?' selected':'')+'>'+y+'</option>';}).join('')+'</select>'
+    +'<select onchange="_stReportState=this.value;renderKPIAsync()" style="font-size:11px"><option value="all">Tất cả State</option>'+stateOptions.map(function(s){return '<option value="'+s+'"'+(s===_stReportState?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'
+    +'</div></div>'
+    +chartHtml
+    +'<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;min-width:480px;font-size:11px"><thead><tr style="color:var(--text2);text-align:left"><th>State</th><th>Doanh số</th><th>Số đơn</th><th>Ghế Pedicure</th><th>Giường gội đầu</th></tr></thead><tbody>'+tableRows+'</tbody></table></div>'
+    +'</div>';
+}
+
+window._stReportDrill=function(state){
+  var s=window._stReportData&&window._stReportData[state];
+  if(!s)return;
+  var customers=s.invIds.map(function(id){
+    var inv=INVOICES.find(function(i){return i.id===id;});
+    var cust=CUSTOMERS.find(function(c){return c.id===(inv&&inv.customer_id);});
+    if(cust&&inv)return Object.assign({},cust,{_inv:inv});
+    return null;
+  }).filter(Boolean);
+  _kpiOpenListModal('Doanh số '+state,customers,'rev',null);
+};
+
 window._kpiShowList=async function(type,saleId){
   var isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   var month=_kpiMonth,year=_kpiYear;
