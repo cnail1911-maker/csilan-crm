@@ -7242,25 +7242,20 @@ async function _renderStateReport(){
   var stateList=Object.values(byState).sort(function(a,b){return b.revenue-a.revenue;});
   var maxRev=Math.max.apply(null,[1].concat(stateList.map(function(s){return s.revenue;})));
 
-  var chartHtml=stateList.length===0?'<div class="muted" style="padding:20px;text-align:center;color:var(--text2)">Không có dữ liệu trong kỳ này</div>':
+  var tableRows=stateList.length===0?'<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:20px">Không có dữ liệu trong kỳ này</td></tr>':
     stateList.map(function(s){
       var w=Math.round(s.revenue/maxRev*100);
-      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer" onclick="window._stReportDrill(&quot;'+s.state.replace(/"/g,'&quot;')+'&quot;)">'
-        +'<div style="width:70px;flex-shrink:0;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+s.state+'</div>'
-        +'<div style="flex:1;min-width:0"><div style="height:18px;border-radius:4px;background:rgba(255,255,255,0.05);overflow:hidden"><div style="width:'+w+'%;height:100%;background:var(--accent2);transition:width .4s"></div></div></div>'
-        +'<div style="width:95px;flex-shrink:0;font-size:11px;text-align:right;color:var(--text)">$'+s.revenue.toLocaleString('en-US')+'</div>'
-        +'</div>';
+      return '<tr style="cursor:pointer" onclick="window._stReportDrill(&quot;'+s.state.replace(/"/g,'&quot;')+'&quot;)">'
+        +'<td style="white-space:nowrap">'+s.state+'</td>'
+        +'<td style="min-width:180px"><div style="position:relative;height:20px;border-radius:4px;background:rgba(255,255,255,0.05);overflow:hidden">'
+          +'<div style="position:absolute;inset:0;width:'+w+'%;background:rgba(0,206,201,0.25)"></div>'
+          +'<div style="position:relative;height:100%;display:flex;align-items:center;padding:0 8px;font-size:11px;color:var(--accent2);font-weight:600">$'+s.revenue.toLocaleString('en-US')+'</div>'
+        +'</div></td>'
+        +'<td>'+s.orders+'</td>'
+        +'<td>'+s.pdcQty+'</td>'
+        +'<td>'+s.heaQty+'</td>'
+        +'</tr>';
     }).join('');
-
-  var tableRows=stateList.map(function(s){
-    return '<tr style="cursor:pointer" onclick="window._stReportDrill(&quot;'+s.state.replace(/"/g,'&quot;')+'&quot;)">'
-      +'<td>'+s.state+'</td>'
-      +'<td style="color:var(--accent2)">$'+s.revenue.toLocaleString('en-US')+'</td>'
-      +'<td>'+s.orders+'</td>'
-      +'<td>'+s.pdcQty+'</td>'
-      +'<td>'+s.heaQty+'</td>'
-      +'</tr>';
-  }).join('');
 
   window._stReportData=byState;
 
@@ -7279,8 +7274,7 @@ async function _renderStateReport(){
     +'<select onchange="_stReportYear=parseInt(this.value);renderKPIAsync()" style="font-size:11px">'+yearOptions.map(function(y){return '<option value="'+y+'"'+(y===_stReportYear?' selected':'')+'>'+y+'</option>';}).join('')+'</select>'
     +'<select onchange="_stReportState=this.value;renderKPIAsync()" style="font-size:11px"><option value="all">Tất cả State</option>'+stateOptions.map(function(s){return '<option value="'+s+'"'+(s===_stReportState?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'
     +'</div></div>'
-    +chartHtml
-    +'<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;min-width:480px;font-size:11px"><thead><tr style="color:var(--text2);text-align:left"><th>State</th><th>Doanh số</th><th>Số đơn</th><th>Ghế Pedicure</th><th>Giường gội đầu</th></tr></thead><tbody>'+tableRows+'</tbody></table></div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;min-width:480px;font-size:11px"><thead><tr style="color:var(--text2);text-align:left"><th>State</th><th>Doanh số</th><th>Số đơn</th><th>Ghế Pedicure</th><th>Giường gội đầu</th></tr></thead><tbody>'+tableRows+'</tbody></table></div>'
     +'</div>';
 }
 
