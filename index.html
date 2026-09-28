@@ -6822,7 +6822,7 @@ async function renderKPIAsync(){
     +'<\/div>';
 
   // ── BÁO CÁO THEO TIỂU BANG (thay Trend chart cũ) ──
-  var trendHtml=isM?await _renderStateReport():'';
+  var trendHtml=await _renderStateReport();
 
   // ── PER-SALE CARDS ──
   var saleCards='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px">'
@@ -7192,11 +7192,23 @@ async function _renderStateReport(){
   }
 
   // Đơn hợp lệ trong kỳ — full lịch sử, INVOICES đã load đủ toàn công ty cho manager
+  var _stIsM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   var matchInvs=INVOICES.filter(function(inv){
     if(inv.type!=='invoice'||inv.approval_status!=='approved')return false;
     if(inv.order_status==='Cancelled')return false;
     if(!inv.billing_month||monthsInPeriod.indexOf(inv.billing_month)===-1)return false;
+    // Sale chỉ thấy kết quả của chính mình; Manager/Leader/Admin thấy toàn công ty
+    if(!_stIsM&&(!currentProfile||inv.sale_id!==currentProfile.id))return false;
     return true;
+  });
+
+  // Sale không có đủ KH trong CUSTOMERS local (chỉ chứa KH có Potential/tự tạo) → fetch bổ sung KH còn thiếu để lấy đúng state
+  var _stCustIds=Array.from(new Set(matchInvs.map(function(i){return i.customer_id;}).filter(Boolean)));
+  await _dailyResolveCustomers(_stCustIds);
+  var _stStateSet={};
+  matchInvs.forEach(function(inv){
+    var c0=CUSTOMERS.find(function(c){return c.id===inv.customer_id;});
+    _stStateSet[(c0&&c0.state)||'(Không rõ)']=1;
   });
 
   var byState={};
@@ -7232,10 +7244,14 @@ async function _renderStateReport(){
     }
   }
   Object.values(byState).forEach(function(s){
-    s.pdcQty=0;s.heaQty=0;
+    s.pdcQty=0;s.heaQty=0;s.pdcByInv={};s.heaByInv={};
     s.invIds.forEach(function(id){
       var it=itemsBySkuInv[id];
-      if(it){s.pdcQty+=it.pdc;s.heaQty+=it.hea;}
+      if(it){
+        s.pdcQty+=it.pdc;s.heaQty+=it.hea;
+        if(it.pdc>0)s.pdcByInv[id]=it.pdc;
+        if(it.hea>0)s.heaByInv[id]=it.hea;
+      }
     });
   });
 
@@ -7252,19 +7268,20 @@ async function _renderStateReport(){
           +'<div style="position:relative;height:100%;display:flex;align-items:center;padding:0 8px;font-size:11px;color:var(--accent2);font-weight:600">$'+s.revenue.toLocaleString('en-US')+'</div>'
         +'</div></td>'
         +'<td>'+s.orders+'</td>'
-        +'<td>'+s.pdcQty+'</td>'
-        +'<td>'+s.heaQty+'</td>'
+        +'<td'+(s.pdcQty>0?' style="color:var(--brand2);font-weight:700;text-decoration:underline" onclick="event.stopPropagation();window._stReportDrill(&quot;'+s.state.replace(/"/g,'&quot;')+'&quot;,&quot;pdc&quot;)"':'')+'>'+s.pdcQty+'</td>'
+        +'<td'+(s.heaQty>0?' style="color:var(--brand2);font-weight:700;text-decoration:underline" onclick="event.stopPropagation();window._stReportDrill(&quot;'+s.state.replace(/"/g,'&quot;')+'&quot;,&quot;hea&quot;)"':'')+'>'+s.heaQty+'</td>'
         +'</tr>';
     }).join('');
 
   window._stReportData=byState;
 
-  var stateOptions=Array.from(new Set(CUSTOMERS.map(function(c){return c.state;}).filter(Boolean))).sort();
+  var stateOptions=Object.keys(_stStateSet).sort();
+  window._stReportPeriodLabel=periodLabel;
   var yearOptions=[0,1,2,3].map(function(d){return new Date().getFullYear()-d;});
 
   return '<div class="panel" style="padding:14px;margin-bottom:14px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">'
-    +'<div style="font-size:13px;font-weight:700">🗺️ Báo cáo theo Tiểu bang — '+periodLabel+'</div>'
+    +'<div style="font-size:13px;font-weight:700">🗺️ Báo cáo theo Tiểu bang — '+periodLabel+(_stIsM?'':' <span style="font-size:11px;font-weight:400;color:var(--text2)">(đơn của bạn)</span>')+'</div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
     +'<select onchange="_stReportPeriodType=this.value;renderKPIAsync()" style="font-size:11px">'
     +['year','quarter','month'].map(function(t){var lbl={year:'Năm',quarter:'Quý',month:'Tháng'}[t];return '<option value="'+t+'"'+(t===_stReportPeriodType?' selected':'')+'>'+lbl+'</option>';}).join('')
@@ -7279,16 +7296,23 @@ async function _renderStateReport(){
     +'</div>';
 }
 
-window._stReportDrill=function(state){
+window._stReportDrill=function(state,cat){
   var s=window._stReportData&&window._stReportData[state];
   if(!s)return;
-  var customers=s.invIds.map(function(id){
+  var ids=s.invIds, byInv=null, label='Doanh số '+state, unit='';
+  if(cat==='pdc'){byInv=s.pdcByInv;ids=s.invIds.filter(function(id){return byInv[id];});label='Ghế Pedicure — '+state;unit='Ghế';}
+  else if(cat==='hea'){byInv=s.heaByInv;ids=s.invIds.filter(function(id){return byInv[id];});label='Giường gội đầu — '+state;unit='Giường';}
+  var customers=ids.map(function(id){
     var inv=INVOICES.find(function(i){return i.id===id;});
     var cust=CUSTOMERS.find(function(c){return c.id===(inv&&inv.customer_id);});
-    if(cust&&inv)return Object.assign({},cust,{_inv:inv});
+    if(cust&&inv){
+      var o=Object.assign({},cust,{_inv:inv});
+      if(byInv)o._extra=unit+': '+byInv[id];
+      return o;
+    }
     return null;
   }).filter(Boolean);
-  _kpiOpenListModal('Doanh số '+state,customers,'rev',null);
+  _kpiOpenListModal(label,customers,'rev',null,1,window._stReportPeriodLabel);
 };
 
 window._kpiShowList=async function(type,saleId){
@@ -7339,12 +7363,13 @@ window._kpiShowList=async function(type,saleId){
   _kpiOpenListModal(label,customers,type,saleId);
 };
 
-function _kpiOpenListModal(label,customers,type,saleId,page){
+function _kpiOpenListModal(label,customers,type,saleId,page,subtitle){
   page=page||1;
   var PAGE_SZ=10;
   var ex=document.getElementById('kpi-list-modal');if(ex)ex.remove();
   var m=document.createElement('div');
   m.className='modal-overlay';m.id='kpi-list-modal';
+  m.style.zIndex='10015'; // thấp hơn detail-modal (10020) để bấm "Mở KH" hiện chi tiết KH phía trên, không bị che
   m.onclick=function(e){if(e.target===m)m.remove();};
   function e(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
@@ -7379,6 +7404,7 @@ function _kpiOpenListModal(label,customers,type,saleId,page){
       +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;font-size:11px">'
       +'<span>📞 '+e(c.cellphone||c.business_phone||'—')+'<\/span>'
       +(c.potential?'<span style="background:rgba(108,92,231,0.12);color:var(--brand2);padding:1px 6px;border-radius:4px">'+e(c.potential)+'<\/span>':'')
+      +(c._extra?'<span style="background:rgba(0,206,201,0.15);color:var(--accent2);padding:1px 6px;border-radius:4px;font-weight:700">'+e(c._extra)+'<\/span>':'')
       +(c.sub_status?'<span style="background:rgba(255,255,255,0.06);color:var(--text2);padding:1px 6px;border-radius:4px">'+e(c.sub_status)+'<\/span>':'')
       +'<span style="color:var(--text3)">📅 '+lastContact+'<\/span>'
       +(dlDays!==null?'<span style="color:'+dlColor+'">⏰ '+(dlDays<=0?'Hết hạn':dlDays+'n còn')+'<\/span>':'')
@@ -7406,7 +7432,7 @@ function _kpiOpenListModal(label,customers,type,saleId,page){
   m.innerHTML='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:16px;width:94vw;max-width:620px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.6);border:1px solid var(--border)">'
     +'<div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0">'
     +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+e(label)+'<\/div>'
-    +'<div style="font-size:11px;color:var(--text3)">'+monthNames[_kpiMonth-1]+' '+_kpiYear+' · '+sorted.length+' khách<\/div><\/div>'
+    +'<div style="font-size:11px;color:var(--text3)">'+(subtitle?e(subtitle):(monthNames[_kpiMonth-1]+' '+_kpiYear))+' · '+sorted.length+' khách<\/div><\/div>'
     +'<button type="button" style="background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text2);cursor:pointer;padding:4px 10px;font-size:14px" onclick="document.getElementById(\'kpi-list-modal\').remove()"><i class="ti ti-x"></i><\/button>'
     +'<\/div>'
     +(sorted.length===0?'<div style="padding:40px;text-align:center;color:var(--text3)">Không có dữ liệu<\/div>'
@@ -7417,13 +7443,13 @@ function _kpiOpenListModal(label,customers,type,saleId,page){
   document.body.appendChild(m);
 
   // Store data for pagination
-  window._kpiListData={type,saleId,customers,label};
+  window._kpiListData={type,saleId,customers,label,subtitle};
 }
 
 // Pagination handler
 window._kpiListPage=async function(type,saleId,page){
   var d=window._kpiListData;
-  if(d)_kpiOpenListModal(d.label,d.customers,d.type,d.saleId,page);
+  if(d)_kpiOpenListModal(d.label,d.customers,d.type,d.saleId,page,d.subtitle);
 };
 
 // ── Open customer from KPI modal — opens detail modal alongside ──
