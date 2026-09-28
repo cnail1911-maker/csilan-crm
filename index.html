@@ -7218,13 +7218,13 @@ async function _renderStateReport(){
     var chunks=[];
     for(var i=0;i<allInvIds.length;i+=400)chunks.push(allInvIds.slice(i,i+400));
     for(var ci=0;ci<chunks.length;ci++){
-      var res=await sb.from('invoice_items').select('invoice_id,sku,qty').in('invoice_id',chunks[ci]);
+      var res=await sb.from('invoice_items').select('invoice_id,sku,qty,product_name').in('invoice_id',chunks[ci]);
       (res.data||[]).forEach(function(it){
         if(!it.sku)return;
         var up=it.sku.toUpperCase();
         var cat=null;
         if(up.indexOf('PDC')===0||up.indexOf('PAC')===0)cat='pdc';
-        else if(up.indexOf('HEA')===0)cat='hea';
+        else if(up.indexOf('HEA')===0&&(it.product_name||'').toLowerCase().indexOf('headspa')!==-1)cat='hea'; // giường: SKU HEA + tên có "headspa" (không phân biệt hoa/thường)
         if(!cat)return;
         if(!itemsBySkuInv[it.invoice_id])itemsBySkuInv[it.invoice_id]={pdc:0,hea:0};
         itemsBySkuInv[it.invoice_id][cat]+=it.qty||0;
