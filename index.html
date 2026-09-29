@@ -4368,7 +4368,7 @@ function renderCampaign(){
     // Slide panel for create
     // Slide panel for create
     +'<div id="camp-slide-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:999;align-items:center;justify-content:center;backdrop-filter:blur(3px)" onclick="if(event.target===this)window._campCloseCreate()">'
-    +'<div id="camp-slide-panel" style="display:none;position:relative;width:min(1040px,94vw);height:min(720px,90vh);background:var(--bg2,#1a1240);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.55);flex-direction:column">'
+    +'<div id="camp-slide-panel" style="display:none;position:relative;width:min(1760px,97vw);height:min(960px,94vh);background:var(--bg2,#1a1240);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.55);flex-direction:column">'
     +'<div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;height:52px;box-sizing:border-box">'
     +'<div class="camp-slide-title" style="font-size:15px;font-weight:700">Tạo Campaign mới<\/div>'
     +'<button onclick="window._campCloseCreate()" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:4px 10px;font-size:14px">×<\/button>'
@@ -5392,7 +5392,13 @@ window._campOpenCreate=function(prefillName){
     +'<div style="display:flex;gap:6px;margin-top:8px;align-items:center">'
     +'<button class="btn" onclick="campResetFilters();_campRefreshList()" style="font-size:11px"><i class="ti ti-refresh"></i> Reset<\/button>'
     +'<div id="camp-preview-count" style="font-size:12px;color:var(--accent2);font-weight:700"><\/div>'
-    +'<\/div><\/div>'
+    +'<\/div>'
+    +'<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">'
+    +'<label style="font-size:10px;color:gold;text-transform:uppercase;display:block;margin-bottom:3px">🎫 Vé vàng cho đợt này<\/label>'
+    +'<input id="camp-golden-count" type="number" min="0" value="0" placeholder="Số lượng" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">'
+    +'<div style="font-size:10px;color:var(--text3);margin-top:3px">Random gắn cờ đúng số này trong danh sách vừa thêm — sale chốt trúng sẽ được thưởng ở tab Game.<\/div>'
+    +'<\/div>'
+    +'<\/div>'
     +'<\/div>'
     // RIGHT: Customer list - takes remaining space
     +'<div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">'
@@ -5428,6 +5434,7 @@ window._campOpenCreate=function(prefillName){
   window._campCreateSelected=new Set();
   window._campSelectedSales=new Set();
   window._campAddedCount=0; // tổng KH đã thêm trong phiên modal này (cùng 1 đợt campaign)
+  window._campGoldenTotal=0; // tổng vé vàng đã gắn trong phiên modal này
   _campRefreshList();
 
   // Close dropdown on outside click
@@ -6113,13 +6120,31 @@ async function createCampaign(){
       });
     }
   }
+  // Vé vàng — random gắn cờ N khách TRONG ĐÚNG đợt vừa thêm (không đụng khách
+  // của đợt trước/campaign khác), N tự nhập ở ô "Vé vàng cho đợt này"
+  var goldenN=parseInt(document.getElementById('camp-golden-count')&&document.getElementById('camp-golden-count').value)||0;
+  var goldenAssignedCount=0;
+  if(goldenN>0){
+    var shuffled=dataPool.slice().sort(function(){return Math.random()-0.5;});
+    var goldenIds=shuffled.slice(0,Math.min(goldenN,shuffled.length)).map(function(c){return c.id;});
+    for(var g=0;g<goldenIds.length;g+=500){
+      var gChunk=goldenIds.slice(g,g+500);
+      await sb.from('customers').update({is_golden_ticket:true}).in('id',gChunk);
+      gChunk.forEach(function(cid){
+        var gi=CUSTOMERS.findIndex(function(x){return x.id===cid;});
+        if(gi>=0)CUSTOMERS[gi].is_golden_ticket=true;
+      });
+    }
+    goldenAssignedCount=goldenIds.length;
+  }
   showLoading(false);
   // Giữ modal MỞ — không đóng, để tạo tiếp nhiều lần cho CÙNG 1 đợt campaign này
   // (chia nhiều lần lọc data khác nhau để add dần). Chỉ reset phần chọn KH, giữ
   // nguyên Tên Campaign/Deadline/Sale tham gia đã nhập.
   window._campCreateSelected=new Set();
   window._campAddedCount=(window._campAddedCount||0)+dataPool.length;
-  showCrmToast('✅ Đã thêm '+dataPool.length+' khách','Campaign "'+name+'" · tổng đã thêm: '+window._campAddedCount,'success');
+  window._campGoldenTotal=(window._campGoldenTotal||0)+goldenAssignedCount;
+  showCrmToast('✅ Đã thêm '+dataPool.length+' khách'+(goldenAssignedCount>0?' · 🎫 '+goldenAssignedCount+' vé vàng':''),'Campaign "'+name+'" · tổng đã thêm: '+window._campAddedCount,'success');
   // Notify each sale in campaign via DB
   Object.values(saleGroups).forEach(function(grp){
     if(!grp.sale||!grp.sale.id)return;
@@ -6132,7 +6157,7 @@ async function createCampaign(){
   var titleEl=document.querySelector('.camp-slide-title');
   if(titleEl)titleEl.textContent='Campaign "'+name+'" — đã thêm '+window._campAddedCount+' khách (tiếp tục lọc & thêm)';
   var addedEl=document.getElementById('camp-added-total');
-  if(addedEl)addedEl.innerHTML='<i class="ti ti-circle-check"></i> Đã thêm '+window._campAddedCount+' khách cho đợt này — lọc tiếp để thêm KH khác';
+  if(addedEl)addedEl.innerHTML='<i class="ti ti-circle-check"></i> Đã thêm '+window._campAddedCount+' khách'+(window._campGoldenTotal>0?' · 🎫 '+window._campGoldenTotal+' vé vàng':'')+' — lọc tiếp để thêm KH khác';
   var btnEl=document.getElementById('camp-create-btn');
   if(btnEl)btnEl.innerHTML='<i class="ti ti-folder-plus"></i> Thêm tiếp vào Campaign này';
   _campRefreshList();
