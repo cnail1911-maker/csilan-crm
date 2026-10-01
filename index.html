@@ -4320,6 +4320,7 @@ function renderCampaign(){
       +'<div style="font-size:10px;color:var(--text3);text-align:right;margin-top:3px">'+convPct+'% conversion<\/div>'
       +'<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);display:flex;justify-content:flex-end;gap:6px">'
       +'<button class="btn" style="font-size:11px;padding:3px 10px;border-color:rgba(0,206,201,0.4);color:var(--accent)" onclick="event.stopPropagation();window._campShowReport(&quot;'+encodeURIComponent(s.name)+'&quot;)" title="Báo cáo"><i class="ti ti-chart-bar"></i> Báo cáo<\/button>'
+        +(isManager?'<button class="btn" style="font-size:11px;padding:3px 10px;border-color:gold;color:gold" onclick="event.stopPropagation();window._campAssignGolden(&quot;'+encodeURIComponent(s.name)+'&quot;)" title="Gắn vé vàng ngẫu nhiên"><i class="ti ti-ticket"></i> Vé vàng<\/button>':'')
         +(isManager?'<button class="btn" style="font-size:11px;padding:3px 10px" onclick="event.stopPropagation();window._campExportExcel(&quot;'+encodeURIComponent(s.name)+'&quot;)" title="Xuất Excel"><i class="ti ti-table-export"></i> Excel<\/button>':'')
         +'<\/div>'
       +'<\/div>';
@@ -4387,6 +4388,39 @@ function renderCampaign(){
 // ══════════════════════════════════════════════════════════════
 // CAMPAIGN REPORT MODAL v2 — Charts + Click-to-list
 // ══════════════════════════════════════════════════════════════
+// Gắn vé vàng ngẫu nhiên cho 1 campaign ĐÃ TẠO — chỉ Manager/Admin. Chỉ chọn
+// trong KH của campaign CHƯA gắn cờ & CHƯA Closedeal (tránh gắn trùng/gắn cho
+// đơn đã chốt xong không còn ý nghĩa thưởng).
+window._campAssignGolden=async function(encodedName){
+  var isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin');
+  if(!isM)return;
+  var name=decodeURIComponent(encodedName);
+  showLoading(true);
+  var res=await sb.from('customers').select('id').eq('campaign_name',name).eq('is_golden_ticket',false).neq('lead_status','Closedeal');
+  showLoading(false);
+  var pool=res.data||[];
+  if(pool.length===0){alert('Campaign "'+name+'" không còn khách nào để gắn cờ (đã gắn hết hoặc đã Closedeal hết).');return;}
+  var input=prompt('Campaign "'+name+'" — còn '+pool.length+' khách chưa gắn cờ & chưa chốt.\nNhập số lượng vé vàng muốn gắn ngẫu nhiên:','');
+  if(input===null)return;
+  var n=parseInt(input);
+  if(!n||n<=0){alert('Số lượng không hợp lệ.');return;}
+  if(n>pool.length){n=pool.length;}
+  var shuffled=pool.slice().sort(function(){return Math.random()-0.5;});
+  var ids=shuffled.slice(0,n).map(function(c){return c.id;});
+  showLoading(true);
+  for(var i=0;i<ids.length;i+=500){
+    var chunk=ids.slice(i,i+500);
+    await sb.from('customers').update({is_golden_ticket:true}).in('id',chunk);
+    chunk.forEach(function(cid){
+      var idx=CUSTOMERS.findIndex(function(x){return x.id===cid;});
+      if(idx>=0)CUSTOMERS[idx].is_golden_ticket=true;
+    });
+  }
+  showLoading(false);
+  showCrmToast('✅ Đã gắn 🎫 vé vàng','Campaign "'+name+'" · '+ids.length+' khách','success');
+  render();
+};
+
 window._campShowReport=async function(encodedName){
   var campName=decodeURIComponent(encodedName);
   var isManager=!!(currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader'));
@@ -4973,6 +5007,7 @@ function renderCampaignSale(uid,profId,isLeader){
       +(daysLeft!==null?'<span style="margin-left:8px;color:'+dlColor+'">'+(daysLeft<0?'Hết hạn '+Math.abs(daysLeft)+'d':daysLeft===0?'Hôm nay':daysLeft+'d còn')+'<\/span>':'')+'<\/div><\/div>'
       +'<div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">'
       +'<button class="btn" style="font-size:11px;padding:3px 10px;border-color:rgba(0,206,201,0.4);color:var(--accent)" onclick="event.stopPropagation();window._campShowReport(&quot;'+encodeURIComponent(camp.name)+'&quot;)" title="Báo cáo"><i class="ti ti-chart-bar"></i> Báo cáo<\/button>'
+      +((currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'))?('<button class="btn" style="font-size:11px;padding:3px 10px;border-color:gold;color:gold" onclick="event.stopPropagation();window._campAssignGolden(&quot;'+encodeURIComponent(camp.name)+'&quot;)" title="Gắn vé vàng ngẫu nhiên"><i class="ti ti-ticket"></i> Vé vàng<\/button>'):'')
       +'<i class="ti ti-chevron-down" id="'+id+'-chevron"></i>'
       +'<\/div><\/div>'
       +'<div id="'+id+'-list" style="display:none">'+_campSaleTable(camp.custs,true,camp.name.replace(/[^a-z0-9]/gi,'_'))+'<\/div><\/div>';
@@ -5262,7 +5297,7 @@ function _campSaleRows(custs,showDeadline,campKey,offset){
     var clickFn=key?'window._campDetailNav('+c.id+',\''+key+'\','+absoluteIdx+')':'renderDetailModal('+c.id+')';
     return '<tr onclick="'+clickFn+'" style="cursor:pointer">'
       +'<td style="font-size:10px;color:var(--text3)">'+(c.ma_kh||'—')+'<\/td>'
-      +'<td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.business_name||'—')+'<\/td>'
+      +'<td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.is_golden_ticket?'<span title="Vé vàng — chốt đơn này sẽ được thưởng" style="margin-right:3px">🎫<\/span>':'')+(c.business_name||'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--text2)">'+(c.customer_name||'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.business_phone?String(c.business_phone):'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone?String(c.cellphone):'—')+'<\/td>'
