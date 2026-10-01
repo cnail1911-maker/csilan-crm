@@ -4396,9 +4396,17 @@ window._campAssignGolden=async function(encodedName){
   if(!isM)return;
   var name=decodeURIComponent(encodedName);
   showLoading(true);
-  var res=await sb.from('customers').select('id').eq('campaign_name',name).eq('is_golden_ticket',false).neq('lead_status','Closedeal');
+  // Lấy theo batch range() — tránh bị cắt bởi Max Rows mặc định của Supabase khi
+  // campaign nhiều data (random phải đại diện đúng cho CẢ campaign, không chỉ batch đầu)
+  var pool=[],_goldenFrom=0,_goldenPageSize=1000;
+  while(true){
+    var res=await sb.from('customers').select('id').eq('campaign_name',name).not('is_golden_ticket','is',true).neq('lead_status','Closedeal').range(_goldenFrom,_goldenFrom+_goldenPageSize-1);
+    var batch=res.data||[];
+    pool=pool.concat(batch);
+    if(batch.length<_goldenPageSize)break;
+    _goldenFrom+=_goldenPageSize;
+  }
   showLoading(false);
-  var pool=res.data||[];
   if(pool.length===0){alert('Campaign "'+name+'" không còn khách nào để gắn cờ (đã gắn hết hoặc đã Closedeal hết).');return;}
   var input=prompt('Campaign "'+name+'" — còn '+pool.length+' khách chưa gắn cờ & chưa chốt.\nNhập số lượng vé vàng muốn gắn ngẫu nhiên:','');
   if(input===null)return;
@@ -5054,6 +5062,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
       +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-pot" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
       +'<option value="">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'" style="background:#1e1550">'+p+'</option>';}).join('')+'</select>'
       +(function(){var stOpts=[...new Set((window._campSaleCusts&&window._campSaleCusts[key]||[]).map(function(c){return c.state;}).filter(Boolean))].sort();return '<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-state" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả State<\/option>'+stOpts.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'<\/option>';}).join('')+'<\/select>';})()
+      +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-golden" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả<\/option><option value="1" style="background:#1e1550">🎫 Chỉ vé vàng<\/option><\/select>'
       +'<span class="csf-count" style="font-size:11px;color:var(--text3)">0 KH<\/span>'
       +'<\/div>'
       +'<div style="padding:30px;text-align:center;color:var(--text3)"><i class="ti ti-users" style="font-size:24px;display:block;margin-bottom:8px;opacity:0.3"></i>Không có kết quả<\/div>'
@@ -5079,6 +5088,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
     +POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'" style="background:#1e1550">'+p+'</option>';}).join('')
     +'</select>'
     +(function(){var stOpts=[...new Set((window._campSaleCusts&&window._campSaleCusts[key]||[]).map(function(c){return c.state;}).filter(Boolean))].sort();return '<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-state" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả State<\/option>'+stOpts.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'<\/option>';}).join('')+'<\/select>';})()
+      +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-golden" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả<\/option><option value="1" style="background:#1e1550">🎫 Chỉ vé vàng<\/option><\/select>'
     +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-last" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
     +'<option value="">Last Contact</option>'
     +'<option value="3-7" style="background:#1e1550">3-7 ngày</option>'
@@ -5140,6 +5150,7 @@ window._campSalePgGo=function(btn){
   var savedLead=(wrap.querySelector('.csf-lead')||{}).value||'';
   var savedPot=(wrap.querySelector('.csf-pot')||{}).value||'';
   var savedState=(wrap.querySelector('.csf-state')||{}).value||'';
+  var savedGolden=(wrap.querySelector('.csf-golden')||{}).value||'';
   var savedLastCF=(wrap.querySelector('.csf-last')||{}).value||'';
   var tmp=document.createElement('div');
   tmp.innerHTML=_campSaleTable(custs,sd==='1',key,true);
@@ -5152,6 +5163,7 @@ window._campSalePgGo=function(btn){
     var nl=newWrap.querySelector('.csf-lead');if(nl&&savedLead)nl.value=savedLead;
     var np=newWrap.querySelector('.csf-pot');if(np&&savedPot)np.value=savedPot;
     var nst=newWrap.querySelector('.csf-state');if(nst&&savedState)nst.value=savedState;
+    var ngd=newWrap.querySelector('.csf-golden');if(ngd&&savedGolden)ngd.value=savedGolden;
     var nlc=newWrap.querySelector('.csf-last');if(nlc&&savedLastCF)nlc.value=savedLastCF;
     var cnt=newWrap.querySelector('.csf-count');if(cnt)cnt.textContent=custs.length+' KH';
   }
@@ -5167,6 +5179,7 @@ window._campSaleFilter=function(key,wrap,sd){
   var lead=(wrap.querySelector('.csf-lead')||{}).value||'';
   var pot=(wrap.querySelector('.csf-pot')||{}).value||'';
   var state=(wrap.querySelector('.csf-state')||{}).value||'';
+  var golden=(wrap.querySelector('.csf-golden')||{}).value||'';
   var lastCF=(wrap.querySelector('.csf-last')||{}).value||'';
   var _today=new Date();_today.setHours(0,0,0,0);
   var filtered=allCusts.filter(function(c){
@@ -5183,6 +5196,7 @@ window._campSaleFilter=function(key,wrap,sd){
     if(lead&&c.lead_status!==lead)return false;
     if(pot&&c.potential!==pot)return false;
     if(state&&(c.state||'')!==state)return false;
+    if(golden==='1'&&!c.is_golden_ticket)return false;
     if(lastCF){
       if(!c.last_contacted)return false;
       var _lc=new Date(c.last_contacted);_lc.setHours(0,0,0,0);
@@ -5215,6 +5229,8 @@ window._campSaleFilter=function(key,wrap,sd){
     if(newPot&&pot)newPot.value=pot;
     var newSt=newWrap.querySelector('.csf-state');
     if(newSt&&state)newSt.value=state;
+    var newGd=newWrap.querySelector('.csf-golden');
+    if(newGd&&golden)newGd.value=golden;
     var nlc=newWrap.querySelector('.csf-last');
     if(nlc&&lastCF)nlc.value=lastCF;
     var cnt=newWrap.querySelector('.csf-count');
