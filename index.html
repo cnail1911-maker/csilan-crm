@@ -4400,7 +4400,7 @@ window._campAssignGolden=async function(encodedName){
   // campaign nhiều data (random phải đại diện đúng cho CẢ campaign, không chỉ batch đầu)
   var pool=[],_goldenFrom=0,_goldenPageSize=1000;
   while(true){
-    var res=await sb.from('customers').select('id').eq('campaign_name',name).not('is_golden_ticket','is',true).neq('lead_status','Closedeal').range(_goldenFrom,_goldenFrom+_goldenPageSize-1);
+    var res=await sb.from('customers').select('id').eq('campaign_name',name).not('is_golden_ticket','is',true).or('lead_status.neq.Closedeal,lead_status.is.null').range(_goldenFrom,_goldenFrom+_goldenPageSize-1);
     var batch=res.data||[];
     pool=pool.concat(batch);
     if(batch.length<_goldenPageSize)break;
