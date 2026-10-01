@@ -4439,7 +4439,7 @@ window._campShowReport=async function(encodedName){
   var allCusts=[]; var bFrom=0; var bSize=1000;
   while(true){
     var bq=sb.from('customers')
-      .select('id,ma_kh,business_name,customer_name,cellphone,business_phone,state,status,sub_status,lead_status,reason,potential,assigned_to,description,assigned_profile:profiles!assigned_to(full_name)')
+      .select('id,ma_kh,business_name,customer_name,cellphone,business_phone,state,status,sub_status,lead_status,reason,potential,assigned_to,description,is_golden_ticket,assigned_profile:profiles!assigned_to(full_name)')
       .eq('campaign_name',campName).range(bFrom,bFrom+bSize-1);
     if(!isManager&&currentUser)bq=bq.eq('assigned_to',currentUser.id);
     var {data:bd}=await bq;
@@ -5622,7 +5622,7 @@ window._campShowDetail=function(campName){
     var sale=c.assigned_profile?c.assigned_profile.full_name.split(' ').pop():'—';
     return '<tr onclick="renderDetailModal('+c.id+')" style="cursor:pointer">'
       +'<td style="font-size:10px;color:var(--text3)">'+(c.ma_kh||'—')+'<\/td>'
-      +'<td>'+(c.business_name||c.customer_name||'—')+'<\/td>'
+      +'<td>'+(c.is_golden_ticket?'<span title="Vé vàng">🎫<\/span> ':'')+(c.business_name||c.customer_name||'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.business_phone?String(c.business_phone):'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone?String(c.cellphone):'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--accent)">'+(c.potential||'—')+'<\/td>'
@@ -5679,6 +5679,7 @@ window._campShowDetail=function(campName){
       var sOpts=[...new Set(custs.map(function(c){return c.assigned_profile?c.assigned_profile.full_name:null;}).filter(Boolean))].sort();
       return '<select id="cd-f-sale" onchange="window._campDetailApplyFilters()" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:3px 7px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả Sale<\/option>'+sOpts.map(function(s){return '<option value="'+s+'">'+s.split(' ').pop()+'<\/option>';}).join('')+'<\/select>';
     })()
+    +'<select id="cd-f-golden" onchange="window._campDetailApplyFilters()" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:3px 7px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả<\/option><option value="1">🎫 Chỉ vé vàng<\/option><\/select>'
     +'<span id="camp-detail-filter-label" style="font-size:10px;color:var(--text3)"><\/span>'
     +'<button id="camp-detail-clear-filter" onclick="window._campDetailClearFilters()" style="display:none;font-size:10px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--text3);cursor:pointer;padding:1px 6px">× Xóa lọc<\/button>'
     +'<\/div><\/div>'
@@ -5712,14 +5713,16 @@ window._campDetailApplyFilters=function(){
   var fPot=(document.getElementById('cd-f-pot')||{}).value||'';
   var fSS=(document.getElementById('cd-f-ss')||{}).value||'';
   var fSale=(document.getElementById('cd-f-sale')||{}).value||'';
+  var fGolden=(document.getElementById('cd-f-golden')||{}).value||'';
   var filtered=allCusts.filter(function(c){
     if(fStatus&&c.status!==fStatus)return false;
     if(fPot&&(c.potential||'')!==fPot)return false;
     if(fSS&&(c.sub_status||'')!==fSS)return false;
     if(fSale&&(!c.assigned_profile||c.assigned_profile.full_name!==fSale))return false;
+    if(fGolden==='1'&&!c.is_golden_ticket)return false;
     return true;
   });
-  var anyFilter=fStatus||fPot||fSS||fSale;
+  var anyFilter=fStatus||fPot||fSS||fSale||fGolden;
   var lbl=document.getElementById('camp-detail-filter-label');
   var clearBtn=document.getElementById('camp-detail-clear-filter');
   if(lbl)lbl.textContent=anyFilter?'('+filtered.length+' KH)':'';
@@ -5732,7 +5735,7 @@ window._campDetailApplyFilters=function(){
 };
 
 window._campDetailClearFilters=function(){
-  ['cd-f-status','cd-f-pot','cd-f-ss','cd-f-sale'].forEach(function(id){
+  ['cd-f-status','cd-f-pot','cd-f-ss','cd-f-sale','cd-f-golden'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.value='';
   });
   window._campDetailApplyFilters();
@@ -5797,7 +5800,7 @@ window._campDetailRenderPage=function(pg){
     var _absIdx=filtered.indexOf(c);
     return '<tr onclick="window._campDetailNavCtx={source:\'camp-detail\',idx:'+_absIdx+',list:window._campDetailFiltered};renderDetailModal('+c.id+',{source:\'camp-detail\',idx:'+_absIdx+'})" style="cursor:pointer">'
       +'<td style="font-size:10px;color:var(--text3)">'+(c.ma_kh||'—')+'<\/td>'
-      +'<td>'+(c.business_name||c.customer_name||'—')+'<\/td>'
+      +'<td>'+(c.is_golden_ticket?'<span title="Vé vàng">🎫<\/span> ':'')+(c.business_name||c.customer_name||'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.business_phone?String(c.business_phone):'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone?String(c.cellphone):'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--accent)">'+(c.potential||'—')+'<\/td>'
