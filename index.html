@@ -9754,6 +9754,8 @@ async function renderDailyData(){
   const fTo=window._dailyTo||today.toISOString().slice(0,10);
   const fSaleDaily=window._dailySale||'all';
   const US_OFFSET_MS=7*60*60*1000;
+  const fTimeFrom=window._dailyTimeFrom||'';
+  const fTimeTo=window._dailyTimeTo||'';
 
   var _fromD=new Date(fFrom+'T00:00:00Z');_fromD.setUTCDate(_fromD.getUTCDate()-1);
   var _toD=new Date(fTo+'T23:59:59Z');_toD.setUTCDate(_toD.getUTCDate()+1);
@@ -9813,8 +9815,16 @@ async function renderDailyData(){
     var raw=(logResults[idx]&&logResults[idx].data)||[];
     saleLogsMap[sale.id]=raw.filter(function(l){
       if(!l.called_at)return false;
-      var localDate=new Date(new Date(l.called_at).getTime()-US_OFFSET_MS).toISOString().slice(0,10);
-      return localDate>=fFrom&&localDate<=fTo;
+      var lt=new Date(new Date(l.called_at).getTime()-US_OFFSET_MS).toISOString();
+      var localDate=lt.slice(0,10);
+      if(localDate<fFrom||localDate>fTo)return false;
+      if(fTimeFrom||fTimeTo){
+        var hm=lt.slice(11,16);
+        var a=fTimeFrom||'00:00',b=fTimeTo||'23:59';
+        if(a<=b){if(hm<a||hm>b)return false;}
+        else{if(hm<a&&hm>b)return false;}
+      }
+      return true;
     });
   });
 
@@ -10078,8 +10088,13 @@ function render(){
       +'<input type="date" id="daily-from" value="'+fFromD+'" onchange="window._dailyFrom=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">'
       +'<div style="font-size:11px;color:var(--text3)">đến<\/div>'
       +'<input type="date" id="daily-to" value="'+fToD+'" onchange="window._dailyTo=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">'
+      +'<span style="font-size:12px;color:var(--text3)">Giờ Mỹ<\/span>'
+      +'<input type="time" id="daily-tfrom" value="'+(window._dailyTimeFrom||'')+'" onchange="window._dailyTimeFrom=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">'
+      +'<span style="font-size:12px;color:var(--text3)">→<\/span>'
+      +'<input type="time" id="daily-tto" value="'+(window._dailyTimeTo||'')+'" onchange="window._dailyTimeTo=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">'
+      +'<button class="btn" style="font-size:11px;padding:6px 10px" onclick="window._dailyTimeFrom=\'\';window._dailyTimeTo=\'\';document.getElementById(\'daily-tfrom\').value=\'\';document.getElementById(\'daily-tto\').value=\'\';renderDailyData()">Cả ngày<\/button>'
       +(isManagerD?'<select id="daily-sale" onchange="window._dailySale=this.value" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none" class="fsel"><option value="all">Tất cả sale</option>'+PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return '<option value="'+p.id+'"'+(fSaleD===p.id?' selected':'')+'>'+p.full_name+'</option>';}).join('')+'</select>':'')
-      +'<button class="btn btn-primary" style="font-size:12px;padding:6px 14px" onclick="window._dailyFrom=document.getElementById(&quot;daily-from&quot;).value;window._dailyTo=document.getElementById(&quot;daily-to&quot;).value;var ds=document.getElementById(&quot;daily-sale&quot;);window._dailySale=ds?ds.value:&quot;all&quot;;renderDailyData()"><i class="ti ti-search"></i> Lọc<\/button>'
+      +'<button class="btn btn-primary" style="font-size:12px;padding:6px 14px" onclick="window._dailyFrom=document.getElementById(&quot;daily-from&quot;).value;window._dailyTo=document.getElementById(&quot;daily-to&quot;).value;window._dailyTimeFrom=document.getElementById(&quot;daily-tfrom&quot;).value;window._dailyTimeTo=document.getElementById(&quot;daily-tto&quot;).value;var ds=document.getElementById(&quot;daily-sale&quot;);window._dailySale=ds?ds.value:&quot;all&quot;;renderDailyData()"><i class="ti ti-search"></i> Lọc<\/button>'
       +'<\/div><div id="daily-content" style="color:var(--text2);font-size:13px;padding:20px 0"><div style="display:flex;align-items:center;gap:10px"><div style="width:20px;height:20px;border:2px solid var(--brand2);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"><\/div> Đang tải dữ liệu...<\/div><\/div><\/div>';
     renderDailyData();
   }
