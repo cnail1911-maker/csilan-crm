@@ -4262,10 +4262,8 @@ function renderCampaign(){
   if(window._campTab===undefined){window._campTab='active';window._campView='card';window._campQ='';window._campYear='all';window._campSale='all';window._campSort=null;}
 
   // Active Pool stats
-  const activePool=CUSTOMERS.filter(function(c){
-    return c.campaign_name==='__active_pool__'||(!c.campaign_name&&c.potential&&c.potential.trim());
-  });
-  var invalidCustomers=CUSTOMERS.filter(function(c){return c.lead_status==='Invalid Lead';});
+  const activePool=CUSTOMERS.filter(_isPoolCust);
+  var invalidCustomers=CUSTOMERS.filter(_isInvalidCust);
   var invalidCount=invalidCustomers.length;
   var recentInvalid=invalidCustomers.slice().sort(function(a,b){return (b.updated_at||b.created_at||'').localeCompare(a.updated_at||a.created_at||'');}).slice(0,5);
 
@@ -4303,6 +4301,8 @@ function renderCampaign(){
 // ══════════════════════════════════════════════════════════════
 // CAMPAIGN LIST (manager): tab trạng thái · tìm/lọc/sắp xếp · Thẻ ↔ Bảng · dải tổng quan
 // ══════════════════════════════════════════════════════════════
+function _isInvalidCust(c){return c.campaign_name==='Invalid'||c.lead_status==='Invalid Lead';}
+function _isPoolCust(c){return c.campaign_name==='__active_pool__'||(!c.campaign_name&&c.potential&&String(c.potential).trim());}
 function _campEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 var _CAMP_STATES=[['active','Đang chạy','var(--accent2)'],['potential','Chỉ còn Potential','var(--warn)'],['done','Đã xong','var(--text3)']];
 function _campVisible(){
@@ -4358,8 +4358,8 @@ function _campSorted(list){
   });
 }
 function _campStateBadge(s){
-  if(s.state==='active')return '<span style="background:rgba(0,184,148,0.15);color:var(--accent2);font-size:10px;padding:2px 7px;border-radius:20px;white-space:nowrap">'+(s.daysLeft===0?'hết hạn hôm nay':'còn '+s.daysLeft+'d')+'<\/span>';
-  if(s.state==='potential')return '<span style="background:rgba(253,203,110,0.15);color:var(--warn);font-size:10px;padding:2px 7px;border-radius:20px;white-space:nowrap">chỉ còn Potential'+(s.daysLeft!=null?' · hết hạn '+(-s.daysLeft)+'d':'')+'<\/span>';
+  if(s.state==='active')return '<span style="background:rgba(0,184,148,0.15);color:var(--accent2);font-size:10px;padding:2px 7px;border-radius:20px;">'+(s.daysLeft===0?'hết hạn hôm nay':'còn '+s.daysLeft+'d')+'<\/span>';
+  if(s.state==='potential')return '<span style="background:rgba(253,203,110,0.15);color:var(--warn);font-size:10px;padding:2px 7px;border-radius:20px;display:inline-block">chỉ còn Potential'+(s.daysLeft!=null?' · quá hạn '+(-s.daysLeft)+'d':'')+'<\/span>';
   return '<span style="background:rgba(255,255,255,0.08);color:var(--text3);font-size:10px;padding:2px 7px;border-radius:20px">đã xong<\/span>';
 }
 function _campCardHtml(s,isManager){
@@ -4369,8 +4369,9 @@ function _campCardHtml(s,isManager){
   const saleCount=s.saleSet.size;
   var en=encodeURIComponent(s.name);
   return '<div class="camp-card" onclick="window._campShowDetail(\''+en+'\')">'
-    +'<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:6px">'
-    +'<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3">'+_campEsc(s.name)+'<\/div>'+_campStateBadge(s)
+    +'<div style="margin-bottom:10px">'
+    +'<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3;word-break:break-word">'+_campEsc(s.name)+'<\/div>'
+    +'<div style="margin-top:5px">'+_campStateBadge(s)+'<\/div>'
     +'<\/div>'
     +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">'
     +'<div style="text-align:center"><div style="font-size:18px;font-weight:700;color:var(--brand2)">'+s.total+'<\/div><div style="font-size:9px;color:var(--text3)">Data<\/div><\/div>'
@@ -4899,12 +4900,13 @@ window._campExportExcel=async function(encodedName){
   try{
     // Lấy danh sách khách
     var custs=CUSTOMERS.filter(function(c){
-      if(campName==='Invalid')return c.lead_status==='Invalid Lead';
+      if(campName==='Invalid')return _isInvalidCust(c);
+      if(campName==='__active_pool__')return _isPoolCust(c);
       return c.campaign_name===campName;
     });
     if(!custs.length){
       var qResult=campName==='Invalid'
-        ?await sb.from('customers').select('*,assigned_profile:profiles!assigned_to(full_name)').eq('lead_status','Invalid Lead').limit(5000)
+        ?await sb.from('customers').select('*,assigned_profile:profiles!assigned_to(full_name)').or('campaign_name.eq.Invalid,lead_status.eq.Invalid Lead').limit(5000)
         :await sb.from('customers').select('*,assigned_profile:profiles!assigned_to(full_name)').eq('campaign_name',campName).limit(5000);
       custs=qResult.data||[];
     }
@@ -5632,8 +5634,8 @@ window._campShowDetail=function(campName){
   var isPool=campName==='__active_pool__';
   var decoded=decodeURIComponent(campName);
   var custs=isPool
-    ?CUSTOMERS.filter(function(c){return !c.campaign_name&&c.potential&&c.potential.trim();})
-    :CUSTOMERS.filter(function(c){return c.campaign_name===decoded;});
+    ?CUSTOMERS.filter(_isPoolCust)
+    :(decoded==='Invalid'?CUSTOMERS.filter(_isInvalidCust):CUSTOMERS.filter(function(c){return c.campaign_name===decoded;}));
   var custIds=new Set(custs.map(function(c){return c.id;}));
   var myInvs=INVOICES.filter(function(i){return custIds.has(i.customer_id);});
   var invMap={};myInvs.forEach(function(i){
