@@ -2483,7 +2483,7 @@ async function loadCustomers(){
       }
       console.log('[CRM] Total customers loaded:',CUSTOMERS.length);
       updateBadges();
-      if(window.page==='customers'||window.page==='pending')render();
+      if(window.page==='customers'||window.page==='pending'||window.page==='campaign')render();
     },100);
   }
 
