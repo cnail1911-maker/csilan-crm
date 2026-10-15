@@ -8211,6 +8211,13 @@ async function saveDetail(customerId){
       // Cập nhật local cache luôn
       var _iidx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
       if(_iidx>=0)Object.assign(CUSTOMERS[_iidx],invUpdate);
+    }    else if(update.lead_status!==undefined&&update.lead_status!=='Invalid Lead'){
+      // Đổi Lead Status khỏi Invalid Lead → gỡ khỏi campaign "Invalid" (tránh khách bị kẹt lại)
+      var _jidx=CUSTOMERS.findIndex(function(c){return c.id===customerId;});
+      if(_jidx>=0&&CUSTOMERS[_jidx].campaign_name==='Invalid'){
+        sb.from('customers').update({campaign_name:null}).eq('id',customerId).then(function(){});
+        CUSTOMERS[_jidx].campaign_name=null;
+      }
     }
     // Log activity background — không chặn UI
     // Sanitize call_result: bỏ giá trị mặc định dropdown
