@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#1a1240">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="logo-192.svg">
-<title>C-Silan CRM</title>
+<title>Maison De KCT CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
@@ -1363,6 +1363,92 @@ mark.chat-hl{background:rgba(253,203,110,0.35);color:inherit;border-radius:2px;}
 }
 
 
+
+/* ── Skyon: Chat ── */
+[data-skin='skyon']{--chat-bg:var(--main);--chat-surface:var(--surface);--chat-border:var(--border);--chat-hover:var(--surface2)}
+[data-skin='skyon'] .chat-wrap{background:var(--main);padding:0 0 0 0;gap:0}
+[data-skin='skyon'] .chat-sb{background:var(--surface) !important;border-right:1px solid var(--border);border-radius:0}
+[data-skin='skyon'] .chat-sb-top{border-bottom:1px solid var(--border)}
+[data-skin='skyon'] .chat-sb-btn:hover,[data-skin='skyon'] .chat-icon-btn:hover,[data-skin='skyon'] .chat-act-btn:hover{background:var(--surface2) !important;color:var(--text) !important}
+[data-skin='skyon'] .chat-room-row{border-radius:12px;border:0}
+[data-skin='skyon'] .chat-room-row:hover{background:var(--surface2)}
+[data-skin='skyon'] .chat-room-row.active{background:var(--sk-soft) !important;border:0 !important}
+[data-skin='skyon'] .chat-room-icon,[data-skin='skyon'] .chat-head-icon,[data-skin='skyon'] .chat-avatar,[data-skin='skyon'] .chat-member-av{background:var(--sk-soft) !important;color:var(--brand) !important}
+[data-skin='skyon'] .chat-room-icon.dm{background:var(--surface2) !important;color:var(--text2) !important}
+[data-skin='skyon'] .chat-unread{background:#ff7a45}
+[data-skin='skyon'] .chat-main{background:var(--main)}
+[data-skin='skyon'] .chat-head{background:var(--surface) !important;border-bottom:1px solid var(--border)}
+[data-skin='skyon'] .chat-pin-banner{background:var(--sk-warn-bg) !important;border-bottom:0}
+[data-skin='skyon'] .chat-pin-icon{color:var(--warn)}
+[data-skin='skyon'] .chat-day-label{background:var(--main) !important}
+[data-skin='skyon'] .chat-sender{color:var(--text3)}
+[data-skin='skyon'] .chat-bubble.theirs{background:var(--surface) !important;border:0 !important;color:var(--text) !important;border-radius:16px;border-bottom-left-radius:5px}
+[data-skin='skyon'] .chat-bubble.mine{background:var(--brand) !important;color:#fff !important;border-radius:16px;border-bottom-right-radius:5px}
+[data-skin='skyon'] .chat-bubble.recalled{background:transparent !important;border:1px dashed var(--border) !important;color:var(--text3) !important}
+[data-skin='skyon'] .chat-reply-block{background:var(--surface2) !important;border-left-color:var(--brand) !important}
+[data-skin='skyon'] .chat-reply-block *{color:inherit}
+[data-skin='skyon'] .chat-bubble.mine .chat-reply-block{background:rgba(255,255,255,.18) !important;border-left-color:#fff !important}
+[data-skin='skyon'] .chat-mention{color:var(--brand)}
+[data-skin='skyon'] .chat-bubble.mine .chat-mention{color:#fff}
+[data-skin='skyon'] .chat-actions,[data-skin='skyon'] .chat-toast,[data-skin='skyon'] .chat-emoji-picker{background:var(--surface) !important;border:1px solid var(--border) !important;box-shadow:0 8px 24px rgba(12,26,46,.18)}
+[data-skin='skyon'] .chat-reaction{background:var(--surface) !important;border:1px solid var(--border) !important;color:var(--text)}
+[data-skin='skyon'] .chat-search-bar{background:var(--surface) !important}
+[data-skin='skyon'] .chat-input-wrap{background:var(--main);border-top:1px solid var(--border)}
+[data-skin='skyon'] .chat-reply-bar{background:var(--sk-soft) !important;border:0 !important}
+[data-skin='skyon'] .chat-inp,[data-skin='skyon'] .chat-search-inp,[data-skin='skyon'] .chat-field input,[data-skin='skyon'] .chat-field textarea{background:var(--surface) !important;border:1px solid var(--border) !important;color:var(--text) !important;border-radius:999px}
+[data-skin='skyon'] .chat-field textarea{border-radius:12px}
+[data-skin='skyon'] .chat-send{background:var(--brand) !important;border-radius:50%}
+[data-skin='skyon'] .chat-modal{background:rgba(12,26,46,.55)}
+[data-skin='skyon'] .chat-modal-box{background:var(--surface) !important;border:0 !important;border-radius:22px;box-shadow:0 24px 60px rgba(12,26,46,.28)}
+[data-skin='skyon'] .chat-modal-head,[data-skin='skyon'] .chat-modal-foot{border-color:var(--border) !important}
+[data-skin='skyon'] .chat-member-row:hover{background:var(--surface2)}
+[data-skin='skyon'] .chat-member-row.selected{background:var(--sk-soft) !important;border:0 !important}
+[data-skin='skyon'] .chat-msg-group.search-focus .chat-bubble{background:var(--sk-warn-bg) !important}
+
+
+/* ── Trang Gọi điện ── */
+.tele-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:6px 0 12px}
+.tele-kpi{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px}
+.tele-kpi small{display:block;color:var(--text3);font-weight:600;font-size:12px}
+.tele-kpi b{display:block;font-size:26px;font-weight:700;margin-top:4px;color:var(--text);font-variant-numeric:tabular-nums}
+.tele-kpi span{font-size:11.5px;color:var(--text3)}
+.tele-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tele-pill{padding:7px 14px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12.5px;font-weight:600;cursor:pointer}
+.tele-pill.on{background:var(--sk-pill-on,#0c1a2e);color:var(--sk-pill-on-fg,#fff);border-color:transparent}
+.tele-pill em{font-style:normal;opacity:.6;margin-left:5px}
+.tele-split{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px;align-items:start}
+.tele-list{margin-bottom:0}
+.tele-row{display:grid;grid-template-columns:34px minmax(0,1fr) auto 84px;gap:12px;align-items:center;width:100%;padding:10px 14px;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);text-align:left;cursor:pointer}
+.tele-row:hover{background:var(--surface2)}
+.tele-row.on{background:var(--surface2);box-shadow:inset 3px 0 0 var(--brand)}
+.tele-av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;background:rgba(108,92,231,.2);color:var(--brand2)}
+.tele-main b{display:block;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tele-main small{display:block;color:var(--text3);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tele-meta{display:flex;gap:4px;align-items:center}
+.tele-when{font-size:11.5px;color:var(--text3);text-align:right;white-space:nowrap}
+.tele-detail{position:sticky;top:8px}
+.tele-card{background:#0c1a2e;color:#fff;border-radius:18px;padding:18px}
+.tele-card h3{margin:12px 0 2px;font-size:19px;font-weight:800;letter-spacing:-.01em;color:#fff}
+.tele-sub{font-size:12px;color:#9db0cc}
+.tele-chip{background:#223a63;color:#cfe0ff;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:700}
+.tele-phone{display:flex;justify-content:space-between;align-items:center;margin:6px 0 10px}
+.tele-phone b{font-size:24px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:#fff}
+.tele-call{width:46px;height:46px;border-radius:50%;background:#fff;color:#0c1a2e !important;display:grid;place-items:center;font-size:20px;text-decoration:none}
+.tele-facts{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:14px 0}
+.tele-facts>div>span:first-child{display:block;font-size:11px;color:#9db0cc;margin-bottom:2px}
+.tele-facts .badge{display:inline-flex}
+.tele-facts b{font-size:12.5px;font-weight:600;color:#fff}
+.tele-open{width:100%;justify-content:center}
+.tele-note{padding:9px 0;border-top:1px solid var(--border);font-size:12.5px;color:var(--text)}
+.tele-note:first-child{border-top:0}
+.tele-note small{display:block;color:var(--text3);margin-top:2px;font-size:11px}
+.tele-card .badge{border:0}
+[data-skin='skyon'] .tele-kpi,[data-skin='skyon'] .tele-pill:not(.on){border:0}
+[data-skin='skyon'] .tele-av{background:var(--sk-soft);color:var(--brand)}
+[data-skin='skyon'][data-mode='dark'] .tele-card{background:#070e1a}
+@media(max-width:1000px){.tele-split{grid-template-columns:1fr}.tele-detail{position:static}.tele-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.tele-row{grid-template-columns:34px minmax(0,1fr) auto}.tele-when{display:none}}
+
 /* Skyon: ưu tiên cao hơn luật sáng suy ra từ bản cũ */
 [data-skin='skyon'][data-mode] .panel-header{background:var(--surface) !important}
 html[data-skin='skyon'][data-mode] .search-wrap input:not([type=x]):not([type=y]):not([type=z]),html[data-skin='skyon'][data-mode] .search-wrap input:not([type=x]):not([type=y]):not([type=z]):focus{background:transparent !important;border:0 !important;box-shadow:none !important;color:var(--text) !important}
@@ -1424,7 +1510,7 @@ html[data-skin='skyon'][data-mode] .search-wrap input:not([type=x]):not([type=y]
 <body>
 <div id="auth-screen">
   <div class="auth-card">
-    <div class="auth-logo">C-Silan CRM</div>
+    <div class="auth-logo">Maison De KCT</div>
     <div class="auth-sub">Đăng nhập để vào hệ thống</div>
     <div class="auth-field"><label>Email</label><input type="email" id="login-email" placeholder="sale@csilan.com"></div>
     <div class="auth-field"><label>Mật khẩu</label><input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -1468,11 +1554,12 @@ body.ticker-on .app{margin-top:32px}
   <div class="app">
     <div class="sidebar">
       <div class="logo-wrap">
-        <div class="logo-name">C-Silan CRM</div>
+        <div class="logo-name">Maison De KCT</div>
         <div class="logo-tag">Sales Team · v5.0</div>
       </div>
       <div class="nav-sec">Workspace</div>
       <div class="nav-tabs">
+      <div class="nav-item" onclick="setPage('tele')" id="nav-tele"><i class="ti ti-phone-call"></i> Gọi điện</div>
       <div class="nav-item active" onclick="setPage('customers')" id="nav-customers"><i class="ti ti-users"></i> Khách hàng</div>
       <div class="nav-item" onclick="setPage('potential')" id="nav-potential"><i class="ti ti-star"></i> Tiềm năng</div>
       <div class="nav-item" onclick="setPage('closedeal')" id="nav-closedeal"><i class="ti ti-trophy"></i> Order <span class="nav-badge" id="badge-cd" style="display:none">0</span></div>
@@ -1529,6 +1616,7 @@ const PAGE_SIZE=50;
 let currentUser=null,currentProfile=null,CUSTOMERS=[],PROFILES=[],PRODUCTS_ALL=[],INVOICES=[];
 window.currentUser=null;window.currentProfile=null;window.CUSTOMERS=CUSTOMERS;window.PROFILES=PROFILES;
 let page='customers',fStatus='all',fSale='all',fLead='all',fPotential='all',fBrand='all',fCampaign='all',fReason='all',fOverdue='all',fPotMonth='all',search='',selId=null,addOpen=false;
+try{Object.defineProperty(window,'page',{get:function(){return page;},configurable:true});}catch(e){}
 if(!window._custSelected)window._custSelected=new Set();
 let cdSearchInv='';
 let _searchTimer=null;
@@ -2740,7 +2828,7 @@ async function loadCustomers(){
       }
       console.log('[CRM] Total customers loaded:',CUSTOMERS.length);
       updateBadges();
-      if(window.page==='customers'||window.page==='pending'||window.page==='campaign')render();
+      if(window.page==='customers'||window.page==='pending'||window.page==='campaign'||window.page==='tele')render();
     },100);
   }
 
@@ -9077,7 +9165,7 @@ function _renderThemePanelBody(){
   return '<div style="padding:16px 20px">'
     +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Kiểu giao diện<\/div>'
     +'<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:18px">'
-    +card('skyon','Skyon (mới)','Sidebar navy, card bo góc, tab dạng pill')
+    +card('skyon','Maison De KCT (mới)','Sidebar navy, card bo góc, tab dạng pill')
     +card('classic','Cổ điển','Giao diện tím hiện tại')
     +'<\/div>'
     +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Chế độ<\/div>'
@@ -10611,10 +10699,134 @@ function updateBadges(){
   var ab=document.getElementById('badge-alert');
   if(ab){ab.textContent=alertCnt;ab.style.display=alertCnt>0?'inline':'none';}
 }
+// ═══════════ TRANG "GỌI ĐIỆN" (hàng đợi + chi tiết khách) ═══════════
+window._teleTab=window._teleTab||'all';window._teleQ=window._teleQ||'';window._telePg=1;window._teleSel=window._teleSel||null;
+function _teleEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function _teleScopeId(){
+  var role=currentProfile&&currentProfile.role;
+  if(role==='manager'||role==='admin'||role==='leader'){return window._teleSale||(currentUser&&currentUser.id);}
+  return currentUser&&currentUser.id;
+}
+function _teleToday(){var d=new Date();d.setHours(0,0,0,0);return d;}
+function _teleOpenList(){
+  var uid=_teleScopeId();
+  return CUSTOMERS.filter(function(c){
+    if(uid&&c.assigned_to!==uid)return false;
+    if(c.lead_status==='Closedeal'||c.lead_status==='Invalid Lead'||c.lead_status==='Lost')return false;
+    if(c.campaign_name==='Invalid'||c.campaign_name==='__active_pool__')return false;
+    return true;
+  });
+}
+function _teleDue(c){return !!(c.timeline_follow&&new Date(c.timeline_follow)<=new Date(_teleToday().getTime()+86399000));}
+function _teleSorted(list){
+  return list.slice().sort(function(a,b){
+    var da=_teleDue(a)?0:1,db=_teleDue(b)?0:1;if(da!==db)return da-db;
+    var pa=a.potential?0:1,pb=b.potential?0:1;if(pa!==pb)return pa-pb;
+    var la=a.last_contacted?new Date(a.last_contacted).getTime():0,lb=b.last_contacted?new Date(b.last_contacted).getTime():0;
+    return la-lb;
+  });
+}
+function _teleFiltered(){
+  var all=_teleOpenList(),t=window._teleTab,q=(window._teleQ||'').toLowerCase().trim();
+  var list=all.filter(function(c){
+    if(t==='pot'&&!c.potential)return false;
+    if(t==='due'&&!_teleDue(c))return false;
+    if(t==='new'&&c.status!=='New')return false;
+    if(t==='nocall'&&c.last_contacted)return false;
+    if(q){var h=((c.business_name||'')+' '+(c.customer_name||'')+' '+(c.cellphone||'')+' '+(c.cellphone_2||'')+' '+(c.business_phone||'')+' '+(c.city||'')+' '+(c.state||'')+' '+(c.ma_kh||'')).toLowerCase();if(h.indexOf(q)<0)return false;}
+    return true;
+  });
+  return _teleSorted(list);
+}
+function _teleInit(c){var n=(c.business_name||c.customer_name||'?').replace(/[^A-Za-zÀ-ỹ0-9 ]/g,'').trim().split(/\s+/);return ((n[0]||'?')[0]+((n[1]||'')[0]||'')).toUpperCase();}
+function _teleFmtDate(v){if(!v)return '—';var d=new Date(v);if(isNaN(d))return '—';return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}
+function _teleAgo(v){if(!v)return 'Chưa gọi';var d=Math.floor((Date.now()-new Date(v).getTime())/86400000);return d<=0?'Hôm nay':d===1?'Hôm qua':d+' ngày trước';}
+function _telePhone(c){return c.cellphone||c.cellphone_2||c.business_phone||'';}
+
+function renderTele(){
+  var role=currentProfile&&currentProfile.role,isMg=(role==='manager'||role==='admin'||role==='leader');
+  var saleSel='';
+  if(isMg){
+    var cur=_teleScopeId();
+    saleSel='<select class="fsel" onchange="window._teleSale=this.value;window._telePg=1;window._teleSel=null;_teleDraw();_teleKpi()">'
+      +PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.id===(currentUser&&currentUser.id);}).map(function(p){return '<option value="'+p.id+'"'+(p.id===cur?' selected':'')+'>'+_teleEsc(p.full_name)+'<\/option>';}).join('')+'<\/select>';
+  }
+  return '<div class="topbar"><div class="topbar-title">Gọi điện<\/div>'+saleSel
+    +'<div class="search-wrap"><i class="ti ti-search" style="color:var(--text3)"><\/i><input id="tele-q" placeholder="Tìm tiệm, tên chủ, số điện thoại" value="'+_teleEsc(window._teleQ)+'" oninput="window._teleQ=this.value;window._telePg=1;_teleDraw()"><\/div><\/div>'
+    +'<div class="content"><div class="tele-kpis" id="tele-kpis"><\/div>'
+    +'<div class="tele-pills" id="tele-pills"><\/div>'
+    +'<div class="tele-split"><div class="panel tele-list"><div class="panel-header"><h2 id="tele-count">Hàng đợi gọi<\/h2><span style="font-size:11px;color:var(--text3)">Ưu tiên: hẹn gọi lại, Potential, lâu chưa gọi<\/span><\/div><div id="tele-queue"><\/div><\/div>'
+    +'<div id="tele-detail" class="tele-detail"><\/div><\/div><\/div>';
+}
+function _teleDraw(){
+  var q=document.getElementById('tele-queue');if(!q)return;
+  var all=_teleOpenList();
+  var counts={all:all.length,pot:all.filter(function(c){return c.potential;}).length,due:all.filter(_teleDue).length,'new':all.filter(function(c){return c.status==='New';}).length,nocall:all.filter(function(c){return !c.last_contacted;}).length};
+  var tabs=[['all','Tất cả'],['pot','Potential'],['due','Hẹn gọi lại'],['new','Mới'],['nocall','Chưa gọi']];
+  document.getElementById('tele-pills').innerHTML=tabs.map(function(t){return '<button class="tele-pill'+(window._teleTab===t[0]?' on':'')+'" onclick="window._teleTab=\''+t[0]+'\';window._telePg=1;_teleDraw()">'+t[1]+'<em>'+counts[t[0]]+'<\/em><\/button>';}).join('');
+  var list=_teleFiltered(),PER=60,pg=window._telePg||1,shown=list.slice(0,PER*pg);
+  document.getElementById('tele-count').textContent='Hàng đợi gọi · '+list.length+' khách';
+  if(!list.some(function(c){return c.id===window._teleSel;}))window._teleSel=list.length?list[0].id:null;
+  q.innerHTML=shown.length?shown.map(function(c){
+    var due=_teleDue(c);
+    return '<button type="button" class="tele-row'+(c.id===window._teleSel?' on':'')+'" onclick="_teleSelect('+c.id+')">'
+      +'<span class="tele-av">'+_teleEsc(_teleInit(c))+'<\/span>'
+      +'<span class="tele-main"><b>'+_teleEsc(c.business_name||c.customer_name||'(chưa có tên)')+'<\/b><small>'+_teleEsc([c.customer_name,[c.city,c.state].filter(Boolean).join(', ')].filter(Boolean).join(' · '))+'<\/small><\/span>'
+      +'<span class="tele-meta">'+(due?'<span class="badge b-followup">Hẹn '+_teleFmtDate(c.timeline_follow).slice(0,5)+'<\/span>':'')+(c.potential?'<span class="badge b-new">Potential<\/span>':sBadge(c.status))+'<\/span>'
+      +'<span class="tele-when">'+_teleAgo(c.last_contacted)+'<\/span>'
+      +'<\/button>';
+  }).join('')+(list.length>shown.length?'<div style="padding:10px;text-align:center"><button class="btn" onclick="window._telePg=(window._telePg||1)+1;_teleDraw()">Xem thêm '+(list.length-shown.length)+' khách<\/button><\/div>':'')
+  :'<div class="empty-state"><i class="ti ti-phone-off"><\/i>Không có khách trong hàng đợi này<\/div>';
+  _teleDetail();
+}
+function _teleSelect(id){window._teleSel=id;_teleDraw();}
+function _teleDetail(){
+  var el=document.getElementById('tele-detail');if(!el)return;
+  var c=CUSTOMERS.find(function(x){return x.id===window._teleSel;});
+  if(!c){el.innerHTML='<div class="panel" style="padding:20px"><div class="empty-state" style="padding:20px">Chọn một khách trong hàng đợi<\/div><\/div>';return;}
+  var ph=_telePhone(c),tel=ph.replace(/[^\d+]/g,'');
+  el.innerHTML='<div class="tele-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="tele-chip">'+_teleEsc(c.potential||c.status||'—')+'<\/span><span style="font-size:11px;opacity:.7">'+_teleEsc(c.ma_kh||'')+'<\/span><\/div>'
+    +'<h3>'+_teleEsc(c.business_name||c.customer_name||'(chưa có tên)')+'<\/h3>'
+    +'<div class="tele-sub">'+_teleEsc([c.customer_name,[c.city,c.state].filter(Boolean).join(', ')].filter(Boolean).join(' · '))+'<\/div>'
+    +'<div class="tele-sub" style="margin-top:14px">Số điện thoại<\/div>'
+    +'<div class="tele-phone"><b>'+_teleEsc(ph||'Chưa có số')+'<\/b>'+(tel?'<a class="tele-call" href="tel:'+_teleEsc(tel)+'" title="Gọi"><i class="ti ti-phone"><\/i><\/a>':'')+'<\/div>'
+    +(c.cellphone_2&&c.cellphone_2!==ph?'<div class="tele-sub">Số 2: '+_teleEsc(c.cellphone_2)+'<\/div>':'')
+    +'<div class="tele-facts"><div><span>Status<\/span>'+sBadge(c.status)+'<\/div><div><span>Lead<\/span>'+(c.lead_status?lBadge(c.lead_status):'—')+'<\/div>'
+    +'<div><span>Hẹn gọi lại<\/span><b>'+_teleFmtDate(c.timeline_follow)+'<\/b><\/div><div><span>Hết hạn<\/span><b>'+_teleFmtDate(c.assigned_deadline)+'<\/b><\/div><div><span>Liên hệ gần nhất<\/span><b>'+_teleAgo(c.last_contacted)+'<\/b><\/div><div><span>Lần dùng<\/span><b>'+_teleEsc(c.times_of_use||'—')+'<\/b><\/div><\/div>'
+    +'<button class="btn btn-primary tele-open" onclick="selId='+c.id+';window._custNavIdx=undefined;render()"><i class="ti ti-edit"><\/i> Ghi chú &amp; cập nhật kết quả<\/button><\/div>'
+    +'<div class="panel" style="margin-top:12px"><div class="panel-header"><h2>Ghi chú gần đây<\/h2><\/div><div id="tele-notes" style="padding:6px 16px 12px"><div style="color:var(--text3);padding:8px 0">Đang tải…<\/div><\/div><\/div>';
+  var want=c.id;
+  sb.from('call_logs').select('note,call_result,called_at,sale:profiles!sale_id(full_name)').eq('customer_id',want).order('called_at',{ascending:false}).limit(5).then(function(r){
+    var n=document.getElementById('tele-notes');if(!n||window._teleSel!==want)return;
+    var logs=(r&&r.data||[]).filter(function(l){return (l.note&&l.note!=='null'&&l.note.trim())||(l.call_result&&l.call_result!=='null');});
+    n.innerHTML=logs.length?logs.map(function(l){
+      var d=new Date(l.called_at),t=('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+      return '<div class="tele-note">'+(l.call_result&&l.call_result!=='null'?'<span class="badge b-new" style="margin-right:6px">'+_teleEsc(l.call_result)+'<\/span>':'')+_teleEsc((l.note&&l.note!=='null'?l.note:'').trim())+'<small>'+t+(l.sale&&l.sale.full_name?' · '+_teleEsc(l.sale.full_name):'')+'<\/small><\/div>';
+    }).join(''):'<div style="color:var(--text3);padding:8px 0">Chưa có ghi chú.<\/div>';
+  },function(){});
+}
+async function _teleKpi(){
+  var el=document.getElementById('tele-kpis');if(!el)return;
+  var all=_teleOpenList(),due=all.filter(_teleDue).length,pot=all.filter(function(c){return c.potential;}).length;
+  function draw(calls){
+    el.innerHTML='<div class="tele-kpi"><small>Cuộc gọi ca này<\/small><b>'+(calls==null?'…':calls)+'<\/b><\/div>'
+      +'<div class="tele-kpi"><small>Khách đang làm<\/small><b>'+all.length+'<\/b><\/div>'
+      +'<div class="tele-kpi"><small>Hẹn gọi lại<\/small><b>'+due+'<\/b><span>đến hạn hôm nay<\/span><\/div>'
+      +'<div class="tele-kpi"><small>Potential đang giữ<\/small><b>'+pot+'<\/b><\/div>';
+  }
+  draw(null);
+  try{
+    var now=new Date(),st=new Date(now);st.setHours(21,0,0,0);if(now.getHours()<21)st.setDate(st.getDate()-1);
+    var r=await sb.from('call_logs').select('id',{count:'exact',head:true}).eq('sale_id',_teleScopeId()).gte('called_at',st.toISOString());
+    if(document.getElementById('tele-kpis'))draw(r&&r.count!=null?r.count:0);
+  }catch(e){}
+}
+
 function render(){
   const m=document.getElementById('main-area');
   if(!m)return;
   if(page==='customers')m.innerHTML=renderCustomers();
+  else if(page==='tele'){m.innerHTML=renderTele();_teleDraw();_teleKpi();}
   else if(page==='potential')m.innerHTML=renderPotential();
   else if(page==='closedeal')m.innerHTML=renderClosedeal();
   else if(page==='pipeline')m.innerHTML=renderPipeline();
@@ -10767,7 +10979,7 @@ window.addEventListener('resize',function(){
 
 <!-- HEADER -->
 <div style="background:linear-gradient(135deg,#1a1240 0%,#2d1b69 60%,#0f2a4a 100%);border-radius:14px;padding:22px 24px;margin-bottom:16px;border:1px solid rgba(162,155,254,0.2)">
-  <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:4px;font-family:'Syne',sans-serif">C-Silan CRM</div>
+  <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:4px;font-family:'Syne',sans-serif">Maison De KCT</div>
   <div style="font-size:12px;color:rgba(255,255,255,0.55)">Tài liệu hướng dẫn & quy định sử dụng · v6.0 · 2026</div>
   <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
     <span style="background:rgba(162,155,254,0.15);border:1px solid rgba(162,155,254,0.3);border-radius:20px;padding:3px 10px;font-size:11px;color:rgba(240,238,255,0.8)">📋 Nhân viên sales</span>
