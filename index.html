@@ -1454,6 +1454,48 @@ mark.chat-hl{background:rgba(253,203,110,0.35);color:inherit;border-radius:2px;}
 .sfc{cursor:pointer;transition:box-shadow .12s,transform .12s}
 .sfc:hover{transform:translateY(-1px)}
 .sfc.on{box-shadow:inset 0 0 0 2px var(--brand) !important}
+.sfc.tone{position:relative;overflow:hidden;background-image:linear-gradient(135deg,color-mix(in srgb,var(--tone) 16%,transparent),transparent 72%) !important}
+.sfc.tone::before{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:var(--tone)}
+.sfc.tone .stat-val{color:var(--tone) !important}
+.sfc.tone .stat-label i{color:var(--tone)}
+.sfc.tone.on{box-shadow:inset 0 0 0 2px var(--tone) !important}
+.tele-phone2{margin:4px 0 6px}.tele-phone2 b{font-size:17px;font-weight:500;color:#cfe0f5}
+.tele-call.sm{width:34px;height:34px;font-size:16px;background:rgba(255,255,255,.14);color:#fff !important}
+/* Dashboard / Daily của manager */
+.kd-grid3{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.kd-grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:14px;margin:6px 0 14px}
+@media(max-width:1200px){.kd-grid3{grid-template-columns:1fr 1fr}.kd-grid3>:first-child{grid-column:1/-1}}
+@media(max-width:800px){.kd-grid3,.kd-grid2{grid-template-columns:1fr}}
+.dd-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:10px}
+@media(max-width:1000px){.dd-stats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.dd-stats{grid-template-columns:repeat(2,1fr)}}
+.kd-title{font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.kd-title span{font-size:10.5px;font-weight:500;color:var(--text3)}
+.kd-area{position:relative;margin-top:16px;border-bottom:1px solid var(--border)}
+.kd-cols{display:flex;align-items:flex-end;height:100%;gap:10px;position:relative;z-index:1}
+.kd-col{flex:1;height:100%;display:flex;align-items:flex-end;justify-content:center;min-width:0}
+.kd-bar{position:relative;width:62%;max-width:44px;border-radius:6px 6px 0 0;transition:height .4s;display:flex;flex-direction:column;justify-content:flex-start}
+.kd-est{width:100%;background:repeating-linear-gradient(45deg,#f59e0b,#f59e0b 4px,#fbbf24 4px,#fbbf24 8px);opacity:.75;border-radius:6px 6px 0 0}
+.kd-val{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-size:10px;font-weight:600;color:var(--text2);margin-bottom:2px;white-space:nowrap}
+.kd-target{position:absolute;left:0;right:0;border-top:1.5px dashed #f43f5e;z-index:0}
+.kd-target span{position:absolute;right:0;top:-15px;font-size:9.5px;color:#f43f5e}
+.kd-names{display:flex;gap:10px;margin-top:5px}
+.kd-names span{flex:1;text-align:center;font-size:10.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.kd-legend{display:flex;gap:14px;margin-top:10px;font-size:10.5px;color:var(--text3)}
+.kd-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.kd-legend i.dash{background:none;border-top:2px dashed #f43f5e;height:0;width:14px;border-radius:0}
+.kd-rank{display:flex;flex-direction:column;gap:10px}
+.kd-rank-row{display:grid;grid-template-columns:24px minmax(0,120px) 1fr auto;align-items:center;gap:8px;font-size:12px}
+.kd-rn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.kd-rank-row b{font-size:11.5px;color:var(--text)}
+.kd-rbar{height:6px;border-radius:3px;background:rgba(127,127,127,.18);overflow:hidden}
+.kd-rbar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,#6366f1,#3b82f6)}
+.kd-medal{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:10.5px;font-weight:700;background:rgba(127,127,127,.2);color:var(--text2)}
+.kd-medal.m1{background:#f5c542;color:#5a4300}.kd-medal.m2{background:#c9d1dc;color:#3a4250}.kd-medal.m3{background:#e0a26b;color:#4d2d0c}
+.cw-steps{display:flex;gap:6px;margin:2px 0 6px}
+.cw-steps i{flex:1;height:5px;border-radius:3px;background:#4a5a78}
+.cw-steps i.done{background:#34d399}.cw-steps i.cur{background:#fff}
+.cw-steps-lbl{font-size:11px;color:#9db0cc;min-height:14px}
 .stat-card[style*="cursor:pointer"]:hover{transform:translateY(-1px)}
 [data-skin='skyon'] .stat-card[style*="border:2px"]{box-shadow:inset 0 0 0 2px var(--brand) !important}
 [data-skin='skyon'] .sfc.on{border-color:transparent !important}
@@ -4694,7 +4736,7 @@ function renderCampaign(){
 function _isInvalidCust(c){return c.campaign_name==='Invalid'||c.lead_status==='Invalid Lead';}
 function _isPoolCust(c){return c.campaign_name==='__active_pool__'||(!c.campaign_name&&c.potential&&String(c.potential).trim());}
 function _campEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-var _CAMP_STATES=[['active','Đang chạy','var(--accent2)'],['potential','Chỉ còn Potential','var(--warn)'],['done','Đã xong','var(--text3)']];
+var _CAMP_STATES=[['active','Running','var(--accent2)'],['potential','Nurturing','var(--warn)'],['done','Completed','var(--text3)']];
 function _campVisible(){
   var d=window._campData;if(!d)return [];
   var q=(window._campQ||'').toLowerCase().trim();
@@ -7371,15 +7413,27 @@ async function renderKPIAsync(){
     +'<span><span style="display:inline-block;width:10px;height:10px;background:rgba(253,203,110,0.5);border-radius:2px;margin-right:3px"><\/span>Est Revenue<\/span>'
     +'<\/div><\/div>';
 
-  var chartsRow='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px" class="kpi-charts-row">'
-    +'<div class="panel" style="padding:14px">'
-    +'<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Pipeline Funnel<\/div>'
+  function kMoney(v){v=v||0;return v>=1000?'$'+(v/1000).toFixed(v>=10000?0:1)+'k':'$'+v;}
+  var colMax=Math.max.apply(null,[TARGET_REV].concat(salesToShow.map(function(x){return (saleStats[x.id].cur.rev||0)+(saleStats[x.id].cur.estRev||0);})).concat([1]));
+  var colChart='<div class="kd-area" style="height:210px"><div class="kd-target" style="bottom:'+Math.round(TARGET_REV/colMax*100)+'%"><span>Target '+kMoney(TARGET_REV)+'<\/span><\/div><div class="kd-cols">'
+    +salesToShow.map(function(s){
+      var c=saleStats[s.id].cur,tot=(c.rev||0)+(c.estRev||0),h=Math.round(tot/colMax*100);
+      var eh=tot?Math.round((c.estRev||0)/tot*100):0;
+      return '<div class="kd-col" style="cursor:pointer" onclick="window._kpiShowSaleDetail(\''+s.id+'\')" title="'+_cwEsc(s.full_name)+' — Rev $'+(c.rev||0).toLocaleString('en-US')+' · Est $'+(c.estRev||0).toLocaleString('en-US')+'">'
+        +'<div class="kd-bar" style="height:'+(tot?Math.max(3,h):0)+'%;background:#3b82f6"><div class="kd-est" style="height:'+eh+'%"><\/div><span class="kd-val">'+kMoney(c.rev)+'<\/span><\/div><\/div>';
+    }).join('')+'<\/div><\/div>'
+    +'<div class="kd-names">'+salesToShow.map(function(s){return '<span>'+_cwEsc(s.full_name.split(' ').pop())+'<\/span>';}).join('')+'<\/div>'
+    +'<div class="kd-legend"><span><i style="background:#3b82f6"><\/i>Revenue<\/span><span><i style="background:#f59e0b;opacity:.7"><\/i>Est Revenue<\/span><span><i class="dash"><\/i>Target<\/span><\/div>';
+  var rankHtml='<div class="kd-rank">'+salesToShow.map(function(s,i){
+      var c=saleStats[s.id].cur,p=Math.min(100,pct(c.rev,TARGET_REV));
+      return '<div class="kd-rank-row" style="cursor:pointer" onclick="window._kpiShowSaleDetail(\''+s.id+'\')"><span class="kd-medal m'+(i<3?i+1:0)+'">'+(i+1)+'<\/span><span class="kd-rn">'+_cwEsc(shortName(s.full_name))+'<\/span><div class="kd-rbar"><i style="width:'+p+'%"><\/i><\/div><b>$'+(c.rev||0).toLocaleString('en-US')+'<\/b><\/div>';
+    }).join('')+'<\/div>';
+  var chartsRow='<div class="kd-grid3 kpi-charts-row">'
+    +'<div class="panel" style="padding:14px"><div class="kd-title">Revenue by Sale<\/div>'+colChart+'<\/div>'
+    +'<div class="panel" style="padding:14px"><div class="kd-title">Pipeline Funnel<\/div>'
     +funnelTabs+'<div id="kpi-funnel-content">'+funnelHtml+'<\/div>'
     +'<\/div>'
-    +'<div class="panel" style="padding:14px">'
-    +'<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Revenue per Sale<\/div>'
-    +revBar
-    +'<\/div>'
+    +'<div class="panel" style="padding:14px"><div class="kd-title">Top Sales <span>% of target<\/span><\/div>'+rankHtml+'<\/div>'
     +'<\/div>';
 
   // ── BÁO CÁO THEO TIỂU BANG (thay Trend chart cũ) ──
@@ -7531,7 +7585,7 @@ async function renderKPIAsync(){
 
   // Fix: reassemble correctly
   m.innerHTML=topbar
-    +'<div id="kpi-statrow" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:8px 20px 0;background:var(--main);flex-shrink:0">'
+    +'<div id="kpi-statrow" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:8px 20px 14px;background:var(--main);flex-shrink:0">'
     +_kpiStatCard('Orders',teamCur.orders,arrow(teamCur.orders,teamPrev.orders),'var(--accent2)',pct(teamCur.orders,teamTargetOrd)+'% target','window._kpiShowList(\'orders\',null)')
     +_kpiStatCard('Revenue','$'+teamCur.rev.toLocaleString('en-US'),arrowRev(teamCur.rev,teamPrev.rev),'var(--accent2)',pct(teamCur.rev,teamTargetRev)+'% target','window._kpiShowList(\'rev\',null)')
     +_kpiStatCard('AOV','$'+teamAOV.toLocaleString('en-US'),'','var(--brand2)','','')
@@ -7587,9 +7641,10 @@ async function renderKPIAsync(){
 }
 
 function _kpiStatCard(label,val,arrow,color,sub,onclick){
-  return '<div class="stat-card"'+(onclick?' style="cursor:pointer" onclick="'+onclick+'"':'')+'>'
-    +'<div class="stat-label">'+label+'<\/div>'
-    +'<div class="stat-val" style="color:'+color+';font-size:20px">'+val+'<\/div>'
+  var tm={'Orders':['#10b981','shopping-cart'],'Revenue':['#3b82f6','currency-dollar'],'AOV':['#8b5cf6','receipt'],'Est.Ord':['#f59e0b','hourglass'],'Est.Rev':['#f97316','coin']}[label]||[color,'chart-bar'];
+  return '<div class="stat-card sfc tone" style="--tone:'+tm[0]+(onclick?';cursor:pointer':'')+'"'+(onclick?' onclick="'+onclick+'"':'')+'>'
+    +'<div class="stat-label"><i class="ti ti-'+tm[1]+'" style="margin-right:5px"><\/i>'+label+'<\/div>'
+    +'<div class="stat-val" style="font-size:20px">'+val+'<\/div>'
     +(arrow?'<div>'+arrow+'<\/div>':'')
     +(sub?'<div style="font-size:10px;color:var(--text3)">'+sub+'<\/div>':'')
     +'<\/div>';
@@ -10532,6 +10587,8 @@ async function renderDailyData(){
 
   var tableRows='';
   window._dailyClickData=window._dailyClickData||{};
+  var _dT={u:0,np:0,fo:0,q:0,iv:0},_dPerDay={},_dBySale=[];
+  window._sf.daily=null;
 
   salesToShow.forEach(function(sale){
     var saleLogs=saleLogsMap[sale.id]||[];
@@ -10587,7 +10644,9 @@ async function renderDailyData(){
     var _sid="'"+sale.id+"'";
 
     // Summary row (6 cols)
-    tableRows+='<tr style="background:var(--surface)">'
+    _dT.u+=allUnique.size;_dT.np+=newPotIds.size;_dT.fo+=followIds.size;_dT.q+=allInvCount;_dT.iv+=approvedInvCount;
+    _dBySale.push({id:sale.id,name:sale.full_name||sale.nickname||'',u:allUnique.size});
+    tableRows+='<tr class="dsum" id="dsum-'+sale.id+'" data-sid="'+sale.id+'" data-u="'+allUnique.size+'" data-np="'+newPotIds.size+'" data-fo="'+followIds.size+'" data-q="'+allInvCount+'" data-iv="'+approvedInvCount+'" style="background:var(--surface)">'
       +'<td style="font-weight:600;color:var(--text);cursor:pointer" onclick="document.querySelectorAll(&quot;.ddr-'+sale.id+'&quot;).forEach(function(r){r.style.display=r.style.display===&quot;none&quot;?&quot;&quot;:&quot;none&quot;})">'+(sale.full_name||sale.nickname||'')+'</td>'
       +'<td style="font-weight:600;color:var(--accent2);cursor:pointer" onclick="window._dailyOpenCustList('+_sid+',&quot;unique&quot;)">'+allUnique.size+'</td>'
       +'<td style="cursor:pointer;overflow:hidden" onclick="window._dailyOpenNewPot('+_sid+')">'
@@ -10617,6 +10676,7 @@ async function renderDailyData(){
 
     dates.forEach(function(dt){
       var cnt=(byDate[dt]&&byDate[dt].size)||0;
+      _dPerDay[dt]=(_dPerDay[dt]||0)+cnt;
       var nPot=newPotByDate[dt]?newPotByDate[dt].size:0;
       var fPot=followByDate[dt]?followByDate[dt].size:0;
       var dtAllInv=saleInvs.filter(function(inv){var d=inv.created_at?inv.created_at.slice(0,10):(inv.date||'');return d===dt;}).length;
@@ -10655,7 +10715,39 @@ async function renderDailyData(){
 
   const dc=document.getElementById('daily-content');
   if(!dc)return;
-  dc.innerHTML='<div class="table-scroll-always" style="margin-top:4px"><table style="table-layout:fixed;width:100%;min-width:660px"><colgroup>'
+  window._dailyStats=_dT;
+  window._sfRefresh=window._sfRefresh||{};
+  window._sfRefresh.daily=function(){
+    var el=document.getElementById('dd-stats');if(el)el.innerHTML=_dailyStatCards();
+    var k=window._sf.daily,map={data:'u',newpot:'np',follow:'fo',quote:'q',inv:'iv'};
+    document.querySelectorAll('tr.dsum').forEach(function(r){
+      var show=!k||(parseInt(r.getAttribute('data-'+map[k]),10)||0)>0;
+      r.style.display=show?'':'none';
+      document.querySelectorAll('.ddr-'+r.getAttribute('data-sid')).forEach(function(x){if(!show)x.style.display='none';});
+    });
+  };
+  function _dailyStatCards(){
+    var t=window._dailyStats;
+    return sfCard('daily','data','Data',t.u,{tone:'#3b82f6',icon:'phone-call',sub:'unique customers'})
+      +sfCard('daily','newpot','Pot.New',t.np,{tone:'#10b981',icon:'flame',sub:'new in period'})
+      +sfCard('daily','follow','Pot.Old',t.fo,{tone:'#f59e0b',icon:'refresh',sub:'worked in period'})
+      +sfCard('daily','quote','Quotes',t.q,{tone:'#8b5cf6',icon:'file-invoice',sub:'orders created'})
+      +sfCard('daily','inv','Invoices',t.iv,{tone:'#f43f5e',icon:'circle-check',sub:'approved'});
+  }
+  var _dMaxDay=Math.max.apply(null,dates.map(function(d){return _dPerDay[d]||0;}).concat([1]));
+  var _dChart='<div class="kd-area" style="height:150px"><div class="kd-cols">'+dates.map(function(d){
+      var v=_dPerDay[d]||0;
+      return '<div class="kd-col"><div class="kd-bar" style="height:'+Math.max(v?4:0,Math.round(v/_dMaxDay*100))+'%;background:#3b82f6"><span class="kd-val">'+v+'<\/span><\/div><\/div>';
+    }).join('')+'<\/div><\/div><div class="kd-names">'+dates.map(function(d){return '<span>'+d.slice(8)+'/'+d.slice(5,7)+'<\/span>';}).join('')+'<\/div>';
+  var _dRank=_dBySale.slice().sort(function(a,b){return b.u-a.u;});
+  var _dRankMax=Math.max(1,_dRank.length?_dRank[0].u:1);
+  var _dLead='<div class="kd-rank">'+_dRank.map(function(s,i){
+      return '<div class="kd-rank-row"><span class="kd-medal m'+(i<3?i+1:0)+'">'+(i+1)+'<\/span><span class="kd-rn">'+s.name+'<\/span><div class="kd-rbar"><i style="width:'+Math.round(s.u/_dRankMax*100)+'%"><\/i><\/div><b>'+s.u+'<\/b><\/div>';
+    }).join('')+'<\/div>';
+  dc.innerHTML='<div id="dd-stats" class="dd-stats">'+_dailyStatCards()+'<\/div>'
+    +'<div class="kd-grid2"><div class="panel" style="padding:14px"><div class="kd-title">Data thao tác theo ngày<\/div>'+_dChart+'<\/div>'
+    +'<div class="panel" style="padding:14px"><div class="kd-title">Top sale theo data<\/div>'+_dLead+'<\/div><\/div>'
+    +'<div class="table-scroll-always" style="margin-top:4px"><table style="table-layout:fixed;width:100%;min-width:660px"><colgroup>'
     +'<col width="160"><col width="100"><col width="160"><col width="90"><col width="80"><col width="80">'
     +'</colgroup><thead><tr>'
     +'<th>Sale</th><th>Data thao tác</th>'
@@ -10763,8 +10855,8 @@ window._sf=window._sf||{};window._sfRefresh=window._sfRefresh||{};
 function sfCard(scope,key,label,value,o){
   o=o||{};
   var cur=window._sf[scope],on=(cur===key)||(key==='all'&&!cur);
-  return '<div class="stat-card sfc'+(on?' on':'')+'" role="button" tabindex="0" onclick="_sfToggle(\''+scope+'\',\''+key+'\')" onkeydown="if(event.key===\'Enter\')_sfToggle(\''+scope+'\',\''+key+'\')">'
-    +'<div class="stat-label">'+label+'</div><div class="stat-val" style="'+(o.color?'color:'+o.color+';':'')+'">'+value+'</div>'+(o.sub?'<div class="stat-sub">'+o.sub+'</div>':'')+'</div>';
+  return '<div class="stat-card sfc'+(on?' on':'')+(o.tone?' tone':'')+'"'+(o.tone?' style="--tone:'+o.tone+'"':'')+' role="button" tabindex="0" onclick="_sfToggle(\''+scope+'\',\''+key+'\')" onkeydown="if(event.key===\'Enter\')_sfToggle(\''+scope+'\',\''+key+'\')">'
+    +'<div class="stat-label">'+(o.icon?'<i class="ti ti-'+o.icon+'" style="margin-right:5px"><\/i>':'')+label+'</div><div class="stat-val" style="'+(o.color?'color:'+o.color+';':'')+'">'+value+'</div>'+(o.sub?'<div class="stat-sub">'+o.sub+'</div>':'')+'</div>';
 }
 function _sfToggle(scope,key){
   window._sf[scope]=(window._sf[scope]===key||key==='all')?null:key;
@@ -10801,6 +10893,7 @@ function _cwDaysLeft(dl){if(!dl)return null;var d=new Date(dl);d.setHours(0,0,0,
 function _cwFmt(v){if(!v)return '—';var d=new Date(v);if(isNaN(d))return '—';return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}
 function _cwAgo(v){if(!v)return 'Chưa gọi';var d=Math.floor((Date.now()-new Date(v).getTime())/86400000);return d<=0?'Hôm nay':d===1?'Hôm qua':d+' ngày trước';}
 function _cwInit(c){var n=(c.business_name||c.customer_name||'?').replace(/[^A-Za-zÀ-ỹ0-9 ]/g,'').trim().split(/\s+/);return ((n[0]||'?')[0]+((n[1]||'')[0]||'')).toUpperCase();}
+function _cwTel(p){return String(p==null?'':p).replace(/[^\d+]/g,'');}
 function _cwPhone(c){return c.cellphone||c.cellphone_2||c.business_phone||'';}
 
 // ── Gom campaign của người đang xem ──
@@ -10953,7 +11046,7 @@ function _cwDrawRailList(){
     var open=!collapsible||_cw.doneOpen||q;
     return '<div class="cw-grp"'+(collapsible?' onclick="_cw.doneOpen=!_cw.doneOpen;_cwDrawRailList()" style="cursor:pointer"':'')+'>'+title+' · '+arr.length+(collapsible?(open?' ▾':' ▸'):'')+'<\/div>'+(open?arr.map(item).join(''):'');
   }
-  el.innerHTML=grp('Đang chạy',by.active)+grp('Chỉ còn Potential',by.potential)+grp('Đã kết thúc',by.done,true)
+  el.innerHTML=grp('Running',by.active)+grp('Nurturing',by.potential)+grp('Completed',by.done,true)
     +((!by.active.length&&!by.potential.length&&!by.done.length)?'<div class="cw-empty">Không có campaign phù hợp<\/div>':'');
 }
 function _cwPick(id){
@@ -10992,11 +11085,11 @@ function _cwDrawStats(){
   var pot=all.filter(function(c){return c.potential&&String(c.potential).trim();}).length;
   var nocall=open.filter(function(c){return !c.last_contacted;}).length;
   var sh=window._cwShift,calls=sh&&sh.calls!=null?sh.calls:'…',people=sh&&sh.ids?sh.ids.size:null;
-  el.innerHTML=sfCard('cw','shift','Cuộc gọi ca này',calls,{sub:people!=null?people+' khách đã gọi':''})
-    +sfCard('cw','all','Khách đang làm',open.length,{sub:'Closedeal / Lost / Invalid không tính'})
-    +sfCard('cw','appt','Hẹn gọi lại',due,{sub:(appt.length-due)+' sắp tới'})
-    +sfCard('cw','pot','Potential đang giữ',pot)
-    +sfCard('cw','nocall','Chưa gọi',nocall);
+  el.innerHTML=sfCard('cw','shift','Calls',calls,{tone:'#3b82f6',icon:'phone-call',sub:people!=null?people+(people===1?' customer':' customers')+' · this shift':'this shift'})
+    +sfCard('cw','all','Active',open.length,{tone:'#10b981',icon:'users',sub:'excl. closed / lost / invalid'})
+    +sfCard('cw','appt','Callbacks',due,{tone:'#f59e0b',icon:'calendar-event',sub:(appt.length-due)+' upcoming'})
+    +sfCard('cw','pot','Potential',pot,{tone:'#8b5cf6',icon:'flame',sub:'on hand'})
+    +sfCard('cw','nocall','Uncalled',nocall,{tone:'#f43f5e',icon:'phone-off',sub:'never contacted'});
 }
 function _cwDrawBody(){
   var el=document.getElementById('cw-body');if(!el)return;
@@ -11042,15 +11135,26 @@ function _cwDetail(){
   el.innerHTML='<div class="tele-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="tele-chip">'+_cwEsc(c.potential||c.status||'—')+'<\/span><span style="font-size:11px;opacity:.7">'+_cwEsc(c.ma_kh||'')+'<\/span><\/div>'
     +'<h3>'+_cwEsc(c.business_name||c.customer_name||'(chưa có tên)')+'<\/h3>'
     +'<div class="tele-sub">'+_cwEsc([c.customer_name,[c.city,c.state].filter(Boolean).join(', ')].filter(Boolean).join(' · '))+'<\/div>'
-    +'<div class="tele-sub" style="margin-top:14px">Số điện thoại<\/div>'
-    +'<div class="tele-phone"><b>'+_cwEsc(ph||'Chưa có số')+'<\/b>'+(tel?'<a class="tele-call" href="tel:'+_cwEsc(tel)+'" title="Gọi"><i class="ti ti-phone"><\/i><\/a>':'')+'<\/div>'
-    +(c.cellphone_2&&c.cellphone_2!==ph?'<div class="tele-sub">Số 2: '+_cwEsc(c.cellphone_2)+'<\/div>':'')
-    +'<div class="tele-facts"><div><span>Status<\/span>'+sBadge(c.status)+'<\/div><div><span>Lead<\/span>'+(c.lead_status?lBadge(c.lead_status):'—')+'<\/div>'
-    +'<div><span>Sub status<\/span><b>'+_cwEsc(c.sub_status||'—')+'<\/b><\/div><div><span>Ngày hẹn<\/span><b>'+_cwFmt(c.timeline_follow)+'<\/b><\/div>'
-    +'<div><span>Hết hạn<\/span><b>'+_cwFmt(c.assigned_deadline)+'<\/b><\/div><div><span>Liên hệ gần nhất<\/span><b>'+_cwAgo(c.last_contacted)+'<\/b><\/div><\/div>'
+    +'<div class="tele-sub" style="margin-top:14px">Cellphone<\/div>'
+    +'<div class="tele-phone"><b>'+_cwEsc(c.cellphone||c.cellphone_2||'Chưa có số')+'<\/b>'+(_cwTel(c.cellphone||c.cellphone_2)?'<a class="tele-call" href="tel:'+_cwEsc(_cwTel(c.cellphone||c.cellphone_2))+'" title="Gọi Cellphone"><i class="ti ti-phone"><\/i><\/a>':'')+'<\/div>'
+    +'<div class="cw-steps" id="cw-steps" title="Số lần đã gọi"><i><\/i><i><\/i><i><\/i><i><\/i><i><\/i><i><\/i><\/div><div class="cw-steps-lbl" id="cw-steps-lbl">Đang tải…<\/div>'
+    +(c.cellphone&&c.cellphone_2&&c.cellphone_2!==c.cellphone?'<div class="tele-sub" style="margin-top:8px">Cellphone 2: <b style="color:#fff">'+_cwEsc(c.cellphone_2)+'<\/b><\/div>':'')
+    +'<div class="tele-sub" style="margin-top:14px">Business phone<\/div>'
+    +'<div class="tele-phone tele-phone2"><b>'+_cwEsc(c.business_phone||'—')+'<\/b>'+(_cwTel(c.business_phone)?'<a class="tele-call sm" href="tel:'+_cwEsc(_cwTel(c.business_phone))+'" title="Gọi Business phone"><i class="ti ti-phone"><\/i><\/a>':'')+'<\/div>'
+    +'<div class="tele-facts"><div><span>Status<\/span>'+sBadge(c.status)+'<\/div><div><span>Potential<\/span>'+(c.potential&&String(c.potential).trim()?'<span class="badge b-new">'+_cwEsc(c.potential)+'<\/span>':'—')+'<\/div>'
+    +'<div><span>Lead<\/span>'+(c.lead_status?lBadge(c.lead_status):'—')+'<\/div><div><span>Sub status<\/span><b>'+_cwEsc(c.sub_status||'—')+'<\/b><\/div>'
+    +'<div><span>Ngày hẹn<\/span><b>'+_cwFmt(c.timeline_follow)+'<\/b><\/div><div><span>Hết hạn<\/span><b>'+_cwFmt(c.assigned_deadline)+'<\/b><\/div>'
+    +'<div style="grid-column:1/-1"><span>Liên hệ gần nhất<\/span><b>'+_cwAgo(c.last_contacted)+'<\/b><\/div><\/div>'
     +'<button class="btn btn-primary tele-open" onclick="selId='+c.id+';window._custNavIdx=undefined;render()"><i class="ti ti-edit"><\/i> Ghi chú &amp; cập nhật kết quả<\/button><\/div>'
     +'<div class="panel" style="margin-top:12px"><div class="panel-header"><h2>Ghi chú gần đây<\/h2><\/div><div id="cw-notes" style="padding:6px 16px 12px"><div style="color:var(--text3);padding:8px 0">Đang tải…<\/div><\/div><\/div>';
   var want=c.id;
+  // Thanh tiến độ: số lần đã gọi (có kết quả) trên 6 lần; xanh = đã gọi, trắng = lần kế tiếp
+  sb.from('call_logs').select('id',{count:'exact',head:true}).eq('customer_id',want).not('call_result','is',null).then(function(r){
+    var s=document.getElementById('cw-steps'),l=document.getElementById('cw-steps-lbl');if(!s||_cw.cust!==want)return;
+    var n=Math.max(0,parseInt(r&&r.count,10)||0),bars=s.children;
+    for(var i=0;i<bars.length;i++)bars[i].className=i<n?'done':(i===n?'cur':'');
+    l.textContent=n?('Đã gọi '+n+' lần'+(n>=6?' · hết chuỗi 6 lần':' · kế tiếp: lần '+(n+1))):'Chưa gọi lần nào · kế tiếp: lần 1';
+  },function(){var l=document.getElementById('cw-steps-lbl');if(l)l.textContent='';});
   sb.from('call_logs').select('note,call_result,called_at,sale:profiles!sale_id(full_name)').eq('customer_id',want).order('called_at',{ascending:false}).limit(5).then(function(r){
     var n=document.getElementById('cw-notes');if(!n||_cw.cust!==want)return;
     var logs=(r&&r.data||[]).filter(function(l){return (l.note&&l.note!=='null'&&l.note.trim())||(l.call_result&&l.call_result!=='null');});
