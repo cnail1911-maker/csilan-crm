@@ -172,7 +172,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--main);color:var(--
 .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(108,92,231,0.4)}
 .btn-danger{border-color:rgba(255,118,117,0.4);color:var(--danger)}
 .content{flex:1;overflow:auto;padding:0 20px 16px}
-.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;padding:10px 20px;background:#0f0c24;flex-shrink:0;position:sticky;top:0;z-index:25;}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;padding:10px 20px;background:var(--main,#0f0c24);flex-shrink:0;position:sticky;top:0;z-index:25;}
 .stat-card{border-radius:14px;padding:14px 16px;position:relative;overflow:hidden;border:1px solid var(--border)}
 .stats-row-compact{gap:7px}
 .stats-row-compact .stat-card{padding:10px 12px;border-radius:10px}
@@ -1645,12 +1645,12 @@ body.ticker-on .app{margin-top:32px}
       <div class="nav-sec">Workspace</div>
       <div class="nav-tabs">
       <div class="nav-item active" onclick="setPage('customers')" id="nav-customers"><i class="ti ti-users"></i> Khách hàng</div>
+      <div class="nav-item" onclick="setPage('campaign')" id="nav-campaign"><i class="ti ti-speakerphone"></i> Campaign</div>
       <div class="nav-item" onclick="setPage('potential')" id="nav-potential"><i class="ti ti-star"></i> Tiềm năng</div>
       <div class="nav-item" onclick="setPage('closedeal')" id="nav-closedeal"><i class="ti ti-trophy"></i> Order <span class="nav-badge" id="badge-cd" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('pipeline')" id="nav-pipeline"><i class="ti ti-layout-kanban"></i> Pipeline</div>
       <div class="nav-item" onclick="setPage('pending')" id="nav-pending"><i class="ti ti-clock"></i> Chờ duyệt <span class="nav-badge" id="badge-pending" style="display:none">0</span></div>
-      <div class="nav-item" onclick="setPage('kpi')" id="nav-kpi"><i class="ti ti-chart-bar"></i> Báo cáo KPI</div>
-      <div class="nav-item" onclick="setPage('campaign')" id="nav-campaign"><i class="ti ti-speakerphone"></i> Campaign</div>
+      <div class="nav-item" onclick="setPage('kpi')" id="nav-kpi"><i class="ti ti-chart-bar"></i> Dashboard</div>
       <div class="nav-item" onclick="setPage('alert')" id="nav-alert"><i class="ti ti-bell"></i> Cảnh báo <span class="nav-badge" id="badge-alert" style="display:none">0</span></div>
       <div class="nav-item" onclick="setPage('products')" id="nav-products" style="display:none"><i class="ti ti-package"></i> Sản phẩm</div>
       <div class="nav-item" onclick="setPage('daily')" id="nav-daily"><i class="ti ti-calendar-stats"></i> Daily</div>
@@ -7160,6 +7160,22 @@ async function toggleActive(id,val){
 // ── KPI State ──
 var _kpiMonth=new Date().getMonth()+1;
 var _kpiYear=new Date().getFullYear();
+var _kpiFromM=_kpiMonth,_kpiFromY=_kpiYear,_kpiPresetV='m0'; // khoảng tháng: từ (_kpiFromY/_kpiFromM) đến (_kpiYear/_kpiMonth)
+function _kpiAddM(y,m,d){var t=y*12+(m-1)+d;return {y:Math.floor(t/12),m:t%12+1};}
+function _kpiMonthList(){var out=[],a=_kpiFromY*12+_kpiFromM-1,b=_kpiYear*12+_kpiMonth-1;if(a>b){var x=a;a=b;b=x;}for(var t=a;t<=b&&out.length<24;t++)out.push({y:Math.floor(t/12),m:t%12+1});return out;}
+function _kpiRangeLabel(){var L=_kpiMonthList();if(L.length===1)return 'Tháng '+L[0].m+' '+L[0].y;var f=L[0],t=L[L.length-1];return 'T'+f.m+'/'+f.y+' → T'+t.m+'/'+t.y+' ('+L.length+' tháng)';}
+function _kpiFetchMonths(list){
+  return Promise.all(list.map(function(x){
+    var last=new Date(x.y,x.m,0).getDate(),mm=String(x.m).padStart(2,'0');
+    return _kpiFetchInvoices(x.y+'-'+mm+'-01T00:00:00.000Z',x.y+'-'+mm+'-'+String(last).padStart(2,'0')+'T23:59:59.999Z');
+  }));
+}
+// Gộp KPI nhiều tháng: mỗi tháng tính riêng (mỗi KH lấy đơn mới nhất của tháng đó) rồi cộng lại
+function _kpiComputeMulti(arrs,saleId){
+  var a={orders:0,rev:0,estOrders:0,estRev:0,approvedInvs:[],pendingInvs:[],allInvs:[]};
+  arrs.forEach(function(inv){var c=_kpiCompute(inv,saleId);a.orders+=c.orders;a.rev+=c.rev;a.estOrders+=c.estOrders;a.estRev+=c.estRev;a.approvedInvs=a.approvedInvs.concat(c.approvedInvs);a.pendingInvs=a.pendingInvs.concat(c.pendingInvs);a.allInvs=a.allInvs.concat(c.allInvs);});
+  a.aov=a.orders?Math.round(a.rev/a.orders):0;return a;
+}
 var _kpiInvCache={}; // key: "fromDate_toDate"
 var _kpiRenderVersion=0; // chống race condition khi nav nhanh
 // ── Báo cáo theo Tiểu bang (thay thế Trend chart cũ) ──
@@ -7178,7 +7194,7 @@ async function _kpiFetchInvoices(fromDate,toDate){
   var uid=currentUser&&currentUser.id;
   var fromD=fromDate.slice(0,10);
   var toD=toDate.slice(0,10);
-  var kpiYM=fromD.slice(0,7); // "YYYY-MM" — tháng cần lọc
+  var kpiYM=fromD.slice(0,7),kpiYMto=toD.slice(0,7); // "YYYY-MM" — khoảng tháng cần lọc
   var result=[];
   try{
     // Fetch rộng ±1 tháng theo date, rồi filter chính xác theo billing_month (nếu có) hoặc date
@@ -7201,7 +7217,7 @@ async function _kpiFetchInvoices(fromDate,toDate){
     result=all.filter(function(i){
       if(i.order_status==='Cancelled')return false;
       var ym=i.billing_month?i.billing_month.slice(0,7):i.date?i.date.slice(0,7):null;
-      return ym===kpiYM;
+      return ym&&ym>=kpiYM&&ym<=kpiYMto;
     });
     console.log('[KPI fetch] '+kpiYM+': '+result.length+'/'+all.length+' invoices');
   }catch(err){
@@ -7259,16 +7275,10 @@ async function renderKPIAsync(){
   var prevFrom=prevYear+'-'+String(prevMonth).padStart(2,'0')+'-01T00:00:00.000Z';
   var prevTo=prevYear+'-'+String(prevMonth).padStart(2,'0')+'-'+String(prevLastDay).padStart(2,'0')+'T23:59:59.999Z';
 
-  // Fetch current + prev month + trend in parallel
-  var trendMonths=3; // cố định — chart Trend cũ đã bỏ, giữ nguyên fetch trendInvs (dùng nội bộ, không hiện ra UI) để không phải sửa lại khối Promise.all bên dưới
-  var trendFromDate=new Date(year,month-1-trendMonths+1,1);
-  var trendFrom=trendFromDate.getFullYear()+'-'+String(trendFromDate.getMonth()+1).padStart(2,'0')+'-01T00:00:00.000Z';
-
-  var [curInvs,prevInvs,trendInvs]=await Promise.all([
-    _kpiFetchInvoices(fromDate,toDate),
-    _kpiFetchInvoices(prevFrom,prevTo),
-    _kpiFetchInvoices(trendFrom,toDate)
-  ]);
+  // Fetch từng tháng trong kỳ + kỳ liền trước (cùng độ dài)
+  var ML=_kpiMonthList(),nM=ML.length;
+  var PL=ML.map(function(x){return _kpiAddM(x.y,x.m,-nM);});
+  var [curArr,prevArr]=await Promise.all([_kpiFetchMonths(ML),_kpiFetchMonths(PL)]);
 
   // Nếu có request mới hơn đang chạy, bỏ qua render này
   if(myVersion!==_kpiRenderVersion)return;
@@ -7292,7 +7302,7 @@ async function renderKPIAsync(){
   // Compute per-sale stats
   var saleStats={};
   salesToShow.forEach(function(s){
-    saleStats[s.id]={cur:_kpiCompute(curInvs,s.id),prev:_kpiCompute(prevInvs,s.id)};
+    saleStats[s.id]={cur:_kpiComputeMulti(curArr,s.id),prev:_kpiComputeMulti(prevArr,s.id)};
   });
 
   // Sort by Rev desc
@@ -7315,7 +7325,7 @@ async function renderKPIAsync(){
   var teamAOV=teamCur.orders?Math.round(teamCur.rev/teamCur.orders):0;
 
   // Target
-  var TARGET_ORD=5,TARGET_REV=23500;
+  var TARGET_ORD=5*nM,TARGET_REV=23500*nM;
   var teamTargetOrd=TARGET_ORD*salesToShow.length;
   var teamTargetRev=TARGET_REV*salesToShow.length;
 
@@ -7339,15 +7349,17 @@ async function renderKPIAsync(){
 
   // ── TOPBAR ──
   var monthNames=['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
-  var prevM2=month===1?12:month-1,prevY2=month===1?year-1:year;
-  var nextM=month===12?1:month+1,nextY=month===12?year+1:year;
-
+  var presetOpts=[['m0','Tháng này'],['m1','Tháng trước'],['q0','Quý này'],['l3','3 tháng gần nhất'],['l6','6 tháng gần nhất'],['ytd','Từ đầu năm'],['custom','Tùy chọn…']];
+  var _ym=function(y,m){return y+'-'+String(m).padStart(2,'0');};
+  var _selSt='background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:12px;color:var(--text);outline:none';
   var topbar='<div class="topbar" style="flex-wrap:wrap;gap:8px">'
-    +'<div class="topbar-title">Báo cáo KPI<\/div>'
-    +'<div style="display:flex;align-items:center;gap:6px">'
-    +'<button class="btn" style="padding:4px 10px;font-size:12px" onclick="_kpiNav('+prevM2+','+prevY2+')"><i class="ti ti-chevron-left"></i><\/button>'
-    +'<span style="font-size:13px;font-weight:600;color:var(--text);min-width:100px;text-align:center">'+monthNames[month-1]+' '+year+'<\/span>'
-    +'<button class="btn" style="padding:4px 10px;font-size:12px" onclick="_kpiNav('+nextM+','+nextY+')"><i class="ti ti-chevron-right"></i><\/button>'
+    +'<div class="topbar-title">Dashboard<\/div>'
+    +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+    +'<button class="btn" style="padding:4px 10px;font-size:12px" onclick="_kpiShift(-1)" title="Kỳ trước"><i class="ti ti-chevron-left"></i><\/button>'
+    +'<span style="font-size:13px;font-weight:600;color:var(--text);min-width:100px;text-align:center">'+_kpiRangeLabel()+'<\/span>'
+    +'<button class="btn" style="padding:4px 10px;font-size:12px" onclick="_kpiShift(1)" title="Kỳ sau"><i class="ti ti-chevron-right"></i><\/button>'
+    +'<select class="fsel" style="'+_selSt+'" onchange="_kpiSetPreset(this.value)">'+presetOpts.map(function(o){return '<option value="'+o[0]+'"'+(_kpiPresetV===o[0]?' selected':'')+'>'+o[1]+'<\/option>';}).join('')+'<\/select>'
+    +(_kpiPresetV==='custom'?'<input type="month" id="kpi-m-from" value="'+_ym(ML[0].y,ML[0].m)+'" onchange="_kpiCustom()" style="'+_selSt+'"><span style="color:var(--text3)">→<\/span><input type="month" id="kpi-m-to" value="'+_ym(ML[nM-1].y,ML[nM-1].m)+'" onchange="_kpiCustom()" style="'+_selSt+'">':'')
     +'<\/div>'
     +(isM?'<div style="display:flex;gap:6px">'
       +'<button class="btn" onclick="openStaffModal()" style="border-color:rgba(108,92,231,0.4);color:var(--brand2);font-size:12px"><i class="ti ti-users"></i> Nhân viên<\/button>'
@@ -7428,7 +7440,16 @@ async function renderKPIAsync(){
       var c=saleStats[s.id].cur,p=Math.min(100,pct(c.rev,TARGET_REV));
       return '<div class="kd-rank-row" style="cursor:pointer" onclick="window._kpiShowSaleDetail(\''+s.id+'\')"><span class="kd-medal m'+(i<3?i+1:0)+'">'+(i+1)+'<\/span><span class="kd-rn">'+_cwEsc(shortName(s.full_name))+'<\/span><div class="kd-rbar"><i style="width:'+p+'%"><\/i><\/div><b>$'+(c.rev||0).toLocaleString('en-US')+'<\/b><\/div>';
     }).join('')+'<\/div>';
-  var chartsRow='<div class="kd-grid3 kpi-charts-row">'
+  var monthPanel='';
+  if(nM>=2){
+    var mData=ML.map(function(x,i){var r=0,e2=0,o=0;salesToShow.forEach(function(s){var c=_kpiCompute(curArr[i],s.id);r+=c.rev;e2+=c.estRev;o+=c.orders;});return {x:x,r:r,e:e2,o:o};});
+    var mMax=Math.max.apply(null,mData.map(function(d){return d.r+d.e;}).concat([1]));
+    monthPanel='<div class="panel" style="padding:14px;margin-bottom:14px"><div class="kd-title">Revenue by Month <span>'+_kpiRangeLabel()+'<\/span><\/div>'
+      +'<div class="kd-area" style="height:170px"><div class="kd-cols">'+mData.map(function(d){var tot=d.r+d.e,hh=Math.round(tot/mMax*100),eh=tot?Math.round(d.e/tot*100):0;
+        return '<div class="kd-col" title="T'+d.x.m+'/'+d.x.y+' — Rev $'+d.r.toLocaleString('en-US')+' · Est $'+d.e.toLocaleString('en-US')+' · '+d.o+' orders"><div class="kd-bar" style="height:'+(tot?Math.max(3,hh):0)+'%;background:#3b82f6"><div class="kd-est" style="height:'+eh+'%"><\/div><span class="kd-val">'+kMoney(d.r)+'<\/span><\/div><\/div>';}).join('')+'<\/div><\/div>'
+      +'<div class="kd-names">'+mData.map(function(d){return '<span>T'+d.x.m+'/'+String(d.x.y).slice(2)+'<\/span>';}).join('')+'<\/div><\/div>';
+  }
+  var chartsRow=monthPanel+'<div class="kd-grid3 kpi-charts-row">'
     +'<div class="panel" style="padding:14px"><div class="kd-title">Revenue by Sale<\/div>'+colChart+'<\/div>'
     +'<div class="panel" style="padding:14px"><div class="kd-title">Pipeline Funnel<\/div>'
     +funnelTabs+'<div id="kpi-funnel-content">'+funnelHtml+'<\/div>'
@@ -7764,8 +7785,30 @@ window._kpiDebug=async function(){
   console.log('=== KPI DEBUG END ===');
 };
 
-window._kpiNav=function(m,y){
-  _kpiMonth=m;_kpiYear=y;
+window._kpiSetPreset=function(v){
+  _kpiPresetV=v;var n=new Date(),Y=n.getFullYear(),M=n.getMonth()+1,f,t;
+  if(v==='m0'){f=t={y:Y,m:M};}
+  else if(v==='m1'){f=t=_kpiAddM(Y,M,-1);}
+  else if(v==='q0'){var qs=Math.floor((M-1)/3)*3+1;f={y:Y,m:qs};t={y:Y,m:qs+2};}
+  else if(v==='l3'){f=_kpiAddM(Y,M,-2);t={y:Y,m:M};}
+  else if(v==='l6'){f=_kpiAddM(Y,M,-5);t={y:Y,m:M};}
+  else if(v==='ytd'){f={y:Y,m:1};t={y:Y,m:M};}
+  else{f={y:_kpiFromY,m:_kpiFromM};t={y:_kpiYear,m:_kpiMonth};}
+  _kpiNav(t.m,t.y,f.m,f.y);
+};
+window._kpiCustom=function(){
+  var a=(document.getElementById('kpi-m-from')||{}).value,b=(document.getElementById('kpi-m-to')||{}).value;
+  if(!a||!b)return;
+  var fa=a.split('-').map(Number),fb=b.split('-').map(Number);
+  if(fa[0]*12+fa[1]>fb[0]*12+fb[1]){var x=fa;fa=fb;fb=x;}
+  _kpiPresetV='custom';_kpiNav(fb[1],fb[0],fa[1],fa[0]);
+};
+window._kpiShift=function(dir){
+  var L=_kpiMonthList(),n=L.length,f=_kpiAddM(L[0].y,L[0].m,dir*n),t=_kpiAddM(L[n-1].y,L[n-1].m,dir*n);
+  _kpiPresetV='custom';_kpiNav(t.m,t.y,f.m,f.y);
+};
+window._kpiNav=function(m,y,fm,fy){
+  _kpiMonth=m;_kpiYear=y;_kpiFromM=fm||m;_kpiFromY=fy||y;
   _kpiInvCache={};
   if(page==='kpi'){
     // Dùng overlay loading thay vì replace innerHTML — tránh mất DOM reference
@@ -7954,25 +7997,23 @@ window._kpiShowList=async function(type,saleId){
     });
   } else {
     // Invoice-based: dùng _kpiFetchInvoices (filter từ INVOICES local)
-    var invs=await _kpiFetchInvoices(fromDate,toDate);
+    var arrsL=await _kpiFetchMonths(_kpiMonthList());
     var targetSales=saleId?[saleId]:PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader'||p.role==='manager';}).map(function(p){return p.id;});
     if(!isM&&!saleId)targetSales=[currentUser&&currentUser.id];
-    var mine=invs.filter(function(i){return targetSales.includes(i.sale_id);});
-    // Group by customer → latest approved/pending
+    // Group theo (tháng, khách) → đơn mới nhất approved/pending — khớp cách tính của card
     var byC={};
-    mine.forEach(function(i){if(!byC[i.customer_id])byC[i.customer_id]=[];byC[i.customer_id].push(i);});
+    arrsL.forEach(function(arr,mi){arr.forEach(function(i){if(!targetSales.includes(i.sale_id))return;var k=mi+'_'+i.customer_id;if(!byC[k])byC[k]=[];byC[k].push(i);});});
     var custIds=[];
     Object.entries(byC).forEach(function(e){
       var arr=e[1];
       arr.sort(function(a,b){return new Date(b.created_at||'2000')-new Date(a.created_at||'2000');});
-      if(type==='orders'||type==='rev'){var ap=arr.filter(function(i){return i.approval_status==='approved';});if(ap.length)custIds.push({cid:parseInt(e[0]),inv:ap[0]});}
-      else{var pe=arr.filter(function(i){return i.approval_status==='pending';});if(pe.length)custIds.push({cid:parseInt(e[0]),inv:pe[0]});}
+      if(type==='orders'||type==='rev'){var ap=arr.filter(function(i){return i.approval_status==='approved';});if(ap.length)custIds.push({cid:parseInt(e[0].split('_')[1]),inv:ap[0]});}
+      else{var pe=arr.filter(function(i){return i.approval_status==='pending';});if(pe.length)custIds.push({cid:parseInt(e[0].split('_')[1]),inv:pe[0]});}
     });
     // Map to CUSTOMERS
     customers=custIds.map(function(x){
       var c=CUSTOMERS.find(function(c){return c.id===x.cid;});
-      if(c)c._inv=x.inv;
-      return c;
+      return c?Object.assign({},c,{_inv:x.inv}):c;
     }).filter(Boolean);
   }
 
@@ -8048,7 +8089,7 @@ function _kpiOpenListModal(label,customers,type,saleId,page,subtitle){
   m.innerHTML='<div onclick="event.stopPropagation()" style="background:var(--bg2);border-radius:16px;width:94vw;max-width:620px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.6);border:1px solid var(--border)">'
     +'<div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0">'
     +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+e(label)+'<\/div>'
-    +'<div style="font-size:11px;color:var(--text3)">'+(subtitle?e(subtitle):(monthNames[_kpiMonth-1]+' '+_kpiYear))+' · '+sorted.length+' khách<\/div><\/div>'
+    +'<div style="font-size:11px;color:var(--text3)">'+(subtitle?e(subtitle):_kpiRangeLabel())+' · '+sorted.length+' khách<\/div><\/div>'
     +'<button type="button" style="background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text2);cursor:pointer;padding:4px 10px;font-size:14px" onclick="document.getElementById(\'kpi-list-modal\').remove()"><i class="ti ti-x"></i><\/button>'
     +'<\/div>'
     +(sorted.length===0?'<div style="padding:40px;text-align:center;color:var(--text3)">Không có dữ liệu<\/div>'
@@ -11188,7 +11229,7 @@ function render(){
   else if(page==='pipeline')m.innerHTML=renderPipeline();
   else if(page==='pending')m.innerHTML=renderPending();
   else if(page==='kpi'){
-    m.innerHTML='<div class="topbar"><div class="topbar-title">Báo cáo KPI<\/div><\/div><div class="content"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--text3)"><i class="ti ti-loader" style="animation:spin 1s linear infinite;font-size:24px"></i><\/div><\/div>';
+    m.innerHTML='<div class="topbar"><div class="topbar-title">Dashboard<\/div><\/div><div class="content"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--text3)"><i class="ti ti-loader" style="animation:spin 1s linear infinite;font-size:24px"></i><\/div><\/div>';
     renderKPIAsync();
   }
   else if(page==='campaign')m.innerHTML=renderCampaign();
