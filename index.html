@@ -13,6 +13,7 @@
 <link rel="apple-touch-icon" href="logo-192.svg">
 <title>C-Silan CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1123,34 +1124,289 @@ mark.chat-hl{background:rgba(253,203,110,0.35);color:inherit;border-radius:2px;}
   .chat-sidebar{display:none;}
   .chat-sidebar.mobile-open{display:flex;position:fixed;left:0;top:52px;bottom:0;width:220px;z-index:100;}
 }
+
+/* ═══ Skyon sáng: luật nền sáng (suy ra từ luật light cũ, đổi bảng màu) ═══ */
+[data-skin='skyon'][data-mode='light']{color-scheme:light}
+[data-skin='skyon'][data-mode='light'] body{background:var(--main,#e9edf3);color:var(--text,#0f1b2d)}
+
+/* ── Layout ── */
+[data-skin='skyon'][data-mode='light'] .content{background:var(--main,#e9edf3)}
+[data-skin='skyon'][data-mode='light'] .main{background:var(--main,#e9edf3)}
+[data-skin='skyon'][data-mode='light'] .topbar{background:#FFFFFF;border-bottom:1px solid var(--border,#e3e8ef)}
+[data-skin='skyon'][data-mode='light'] .topbar-title{color:var(--text,#0f1b2d) !important}
+
+/* ── Cards ── */
+[data-skin='skyon'][data-mode='light'] .stat-card{background:#FFFFFF !important;border:1px solid var(--border,#e3e8ef) !important;box-shadow:0 1px 4px rgba(15,27,45,0.06)}
+[data-skin='skyon'][data-mode='light'] .stat-label{color:var(--text3,#6b7789) !important;font-weight:500}
+[data-skin='skyon'][data-mode='light'] .stat-val{color:var(--text,#0f1b2d) !important}
+[data-skin='skyon'][data-mode='light'] .stat-sub{color:var(--text3,#6b7789) !important}
+
+/* ── Panel ── */
+[data-skin='skyon'][data-mode='light'] .panel{background:#FFFFFF !important;border:1px solid var(--border,#e3e8ef) !important;box-shadow:0 1px 4px rgba(15,27,45,0.05)}
+[data-skin='skyon'][data-mode='light'] .panel-header{background:#f1f4f9 !important;border-bottom:1px solid var(--border,#e3e8ef) !important}
+[data-skin='skyon'][data-mode='light'] .panel-header h2{color:var(--text,#0f1b2d) !important;font-weight:600}
+[data-skin='skyon'][data-mode='light'] .panel-header *{color:var(--text2,#44546a) !important}
+[data-skin='skyon'][data-mode='light'] .panel-header h2{color:var(--text,#0f1b2d) !important}
+
+/* ── Table ── */
+[data-skin='skyon'][data-mode='light'] table{color:var(--text,#0f1b2d)}
+[data-skin='skyon'][data-mode='light'] thead tr{background:#f1f4f9 !important}
+[data-skin='skyon'][data-mode='light'] thead th{color:var(--text3,#6b7789) !important;font-size:10px;font-weight:700;letter-spacing:0.5px;border-bottom:2px solid var(--border,#e3e8ef) !important}
+[data-skin='skyon'][data-mode='light'] tbody tr{background:#FFFFFF;border-bottom:1px solid #eef1f6}
+[data-skin='skyon'][data-mode='light'] tbody tr:hover{background:#f1f4f9 !important}
+[data-skin='skyon'][data-mode='light'] td{color:var(--text,#0f1b2d) !important;border-color:#eef1f6 !important}
+
+/* ── Forms ── */
+[data-skin='skyon'][data-mode='light'] input:not([type=color]):not([type=checkbox]):not([type=radio]),
+[data-skin='skyon'][data-mode='light'] select,
+[data-skin='skyon'][data-mode='light'] textarea{
+  background:#FFFFFF !important;
+  border:1px solid var(--border,#e3e8ef) !important;
+  color:var(--text,#0f1b2d) !important;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,0.04)
+}
+[data-skin='skyon'][data-mode='light'] input:not([type=color]):not([type=checkbox]):focus,
+[data-skin='skyon'][data-mode='light'] select:focus,
+[data-skin='skyon'][data-mode='light'] textarea:focus{
+  border-color:var(--brand,#2158e8) !important;
+  box-shadow:0 0 0 2px rgba(192,57,43,0.12) !important
+}
+[data-skin='skyon'][data-mode='light'] .fsel{background:#FFFFFF !important;border:1px solid var(--border,#e3e8ef) !important;color:var(--text,#0f1b2d) !important}
+[data-skin='skyon'][data-mode='light'] .search-wrap{background:#FFFFFF !important;border:1px solid var(--border,#e3e8ef) !important}
+[data-skin='skyon'][data-mode='light'] .search-wrap input{background:transparent !important;color:var(--text,#0f1b2d) !important}
+[data-skin='skyon'][data-mode='light'] .search-wrap i{color:var(--text3,#6b7789) !important}
+
+/* ── Buttons ── */
+[data-skin='skyon'][data-mode='light'] .btn.__x{background:#FFFFFF;border:1px solid var(--border,#e3e8ef);color:var(--text2,#44546a);font-weight:500}
+[data-skin='skyon'][data-mode='light'] .btn:hover{background:#f1f4f9;border-color:var(--brand,#2158e8)}
+[data-skin='skyon'][data-mode='light'] .btn-primary{background:var(--brand,#2158e8) !important;color:#fff !important;border-color:var(--brand,#2158e8) !important}
+[data-skin='skyon'][data-mode='light'] .btn-primary:hover{background:var(--brand-dark,#1744bd) !important}
+
+/* ── Modal ── */
+[data-skin='skyon'][data-mode='light'] .modal-overlay{background:rgba(12,26,46,0.55)}
+[data-skin='skyon'][data-mode='light'] .modal{background:#FFFFFF !important;border:1px solid var(--border,#e3e8ef) !important;box-shadow:0 8px 32px rgba(15,27,45,0.18) !important}
+[data-skin='skyon'][data-mode='light'] .modal-header{border-bottom:1px solid var(--border,#e3e8ef) !important;background:#f1f4f9 !important}
+[data-skin='skyon'][data-mode='light'] .modal-header *{color:var(--text,#0f1b2d) !important}
+[data-skin='skyon'][data-mode='light'] .modal-body{color:var(--text,#0f1b2d) !important}
+[data-skin='skyon'][data-mode='light'] .modal *:not(.badge):not([class*="b-"]):not(.btn-primary):not(.btn-primary *){color:var(--text,#0f1b2d)}
+[data-skin='skyon'][data-mode='light'] #camp-detail-box{background:#FFFFFF !important;border-color:var(--border,#e3e8ef) !important}
+[data-skin='skyon'][data-mode='light'] #prod-zoom-modal .modal{background:#FFFFFF !important}
+
+/* ── Text labels (field labels) ── */
+[data-skin='skyon'][data-mode='light'] label,
+[data-skin='skyon'][data-mode='light'] [style*="text-transform:uppercase"],
+[data-skin='skyon'][data-mode='light'] [style*="font-size:10px"]{color:var(--text3,#6b7789) !important}
+[data-skin='skyon'][data-mode='light'] [style*="font-weight:600"],[data-skin='skyon'][data-mode='light'] [style*="font-weight:700"]{color:var(--text,#0f1b2d) !important}
+
+/* ── Sidebar: giữ đỏ đậm ── */
+
+/* ── Camp section ── */
+[data-skin='skyon'][data-mode='light'] .camp-section-wrap{background:#FFFFFF !important;border:1px solid var(--border,#e3e8ef) !important}
+[data-skin='skyon'][data-mode='light'] .csf-filterbar{background:#f1f4f9 !important;border-bottom:1px solid var(--border,#e3e8ef) !important}
+[data-skin='skyon'][data-mode='light'] .csf-filterbar select{background:#FFFFFF !important;color:var(--text,#0f1b2d) !important;border-color:var(--border,#e3e8ef) !important}
+
+/* ── Chat ── */
+[data-skin='skyon'][data-mode='light'] .chat-sidebar{background:#f1f4f9}
+[data-skin='skyon'][data-mode='light'] .chat-room-item{color:var(--text,#0f1b2d)}
+[data-skin='skyon'][data-mode='light'] .chat-room-item:hover,[data-skin='skyon'][data-mode='light'] .chat-room-item.active{background:#e8edf5}
+
+/* ═══════════ SKIN "SKYON" ═══════════ (bật bằng [data-skin='skyon'] trên <html>; System → Giao diện) */
+[data-skin='skyon']{
+  --font:'Plus Jakarta Sans','Be Vietnam Pro',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --brand:#2158e8;--brand2:#6f93f5;--brand-dark:#1744bd;--accent:#2158e8;--accent2:#6f93f5;
+  --sk-navy:#0c1a2e;--sk-navy2:#16263d;--sk-navy-fg:#c9d3e2;
+  --sidebar-from:#0c1a2e;--sidebar-mid:#0c1a2e;--sidebar-to:#0c1a2e;
+  --nav-active-bg:#ffffff;--nav-active-bar:transparent;
+  --sk-r:18px;
+}
+[data-skin='skyon'][data-mode='light']{
+  color-scheme:light;
+  --main:#e9edf3;--bg2:#ffffff;--surface:#ffffff;--surface2:#f1f4f9;
+  --text:#0f1b2d;--text2:#44546a;--text3:#6b7789;--border:#e3e8ef;
+  --warn:#b36a00;--danger:#c23a3a;--success:#0f8a5f;
+  --sk-ok-bg:#dcf4ea;--sk-warn-bg:#fdf0d6;--sk-bad-bg:#fbe3e3;--sk-soft:#dfe8fd;--sk-vio:#5b4bd1;--sk-vio-bg:#e8e5fb;
+  --sk-pill-on:#0c1a2e;--sk-pill-on-fg:#ffffff;
+}
+[data-skin='skyon'][data-mode='dark']{
+  color-scheme:dark;
+  --brand:#4f7dff;--accent:#4f7dff;--brand2:#8fb0ff;
+  --main:#0a121f;--bg2:#121d2f;--surface:#121d2f;--surface2:#182640;
+  --text:#e8eef8;--text2:#a9b6ca;--text3:#7384a0;--border:#223250;
+  --warn:#f0b34a;--danger:#ff8080;--success:#3fcf9b;
+  --sk-ok-bg:#123a2d;--sk-warn-bg:#3a2d12;--sk-bad-bg:#3d1a1a;--sk-soft:#1b2f5e;--sk-vio:#a79bff;--sk-vio-bg:#2a2556;
+  --sk-pill-on:#e8eef8;--sk-pill-on-fg:#0c1a2e;
+  --sidebar-from:#070e1a;--sidebar-mid:#070e1a;--sidebar-to:#070e1a;--sk-navy:#070e1a;
+}
+/* font (không đụng icon Tabler) */
+[data-skin='skyon'] body,[data-skin='skyon'] *:not(.ti):not([class^="ti-"]):not([class*=" ti-"]){font-family:var(--font) !important}
+[data-skin='skyon'] body{background:var(--main);color:var(--text);font-size:13.5px}
+[data-skin='skyon'] .topbar-title,[data-skin='skyon'] .stat-val,[data-skin='skyon'] .logo-name,[data-skin='skyon'] .auth-logo{font-family:var(--font) !important;letter-spacing:-.02em}
+[data-skin='skyon'] select{color-scheme:inherit}
+[data-skin='skyon'] select option,[data-skin='skyon'] .field select option,[data-skin='skyon'] .fsel option,[data-skin='skyon'] #detail-modal select option{background:var(--surface) !important;color:var(--text) !important}
+
+/* sidebar */
+[data-skin='skyon'] .sidebar{background:var(--sk-navy) !important;width:224px;min-width:224px;padding:6px 10px 0;border-right:0}
+[data-skin='skyon'] .logo-wrap{border-bottom:0;padding:16px 10px 10px}
+[data-skin='skyon'] .logo-name{background:none !important;-webkit-text-fill-color:#fff !important;color:#fff !important;font-weight:800;font-size:16px}
+[data-skin='skyon'] .logo-tag{color:#8393ab !important}
+[data-skin='skyon'] .nav-sec{color:#8393ab !important;font-size:10px;letter-spacing:.12em;font-weight:700;padding:14px 12px 4px}
+[data-skin='skyon'] .nav-item{color:var(--sk-navy-fg) !important;border-radius:999px;padding:9px 14px;margin:1px 0;font-weight:600;gap:10px}
+[data-skin='skyon'] .nav-item:hover{background:var(--sk-navy2) !important;color:#fff !important}
+[data-skin='skyon'] .nav-item.active{background:#fff !important;color:#0c1a2e !important}
+[data-skin='skyon'][data-mode='dark'] .nav-item.active{background:#e8eef8 !important}
+[data-skin='skyon'] .nav-item.active::before{display:none}
+[data-skin='skyon'] .nav-item i{font-size:16px}
+[data-skin='skyon'] .nav-badge{background:#ff7a45;color:#fff}
+[data-skin='skyon'] .user-area{border-top:1px solid var(--sk-navy2);padding:12px 8px}
+[data-skin='skyon'] .user-name{color:#fff}
+[data-skin='skyon'] .user-role{color:#8393ab}
+[data-skin='skyon'] .logout-btn{color:#8393ab}
+[data-skin='skyon'] #ticker-bar{background:var(--sk-navy) !important;border-bottom:0;box-shadow:none}
+[data-skin='skyon'] #ticker-icon{background:var(--sk-navy2);border-right:0}
+
+/* topbar / tìm kiếm */
+[data-skin='skyon'] .main{background:var(--main)}
+[data-skin='skyon'] .content{background:var(--main);padding:0 22px 20px}
+[data-skin='skyon'] .topbar{background:transparent !important;border-bottom:0 !important;padding:18px 22px 12px}
+[data-skin='skyon'] .topbar-title{font-size:24px;font-weight:800;color:var(--text) !important}
+[data-skin='skyon'] .search-wrap{background:var(--surface) !important;border:0 !important;border-radius:999px;padding:9px 16px;width:260px}
+[data-skin='skyon'] .search-wrap:focus-within{box-shadow:0 0 0 2px var(--brand)}
+[data-skin='skyon'] .search-wrap input{color:var(--text) !important}
+
+/* nút */
+[data-skin='skyon'] .btn{background:var(--surface) !important;border:1px solid var(--border) !important;color:var(--text) !important;border-radius:999px;padding:8px 14px;font-weight:600}
+[data-skin='skyon'] .btn:hover{background:var(--surface2) !important;border-color:var(--border) !important}
+[data-skin='skyon'] .btn-primary,[data-skin='skyon'] .auth-btn{background:var(--brand) !important;border-color:var(--brand) !important;color:#fff !important}
+[data-skin='skyon'] .btn-primary:hover{background:var(--brand-dark) !important;transform:none;box-shadow:none}
+[data-skin='skyon'] .btn-danger{color:var(--danger) !important}
+
+/* KPI / stat */
+[data-skin='skyon'] .stats-row{background:var(--main) !important;padding:6px 22px 12px;gap:12px}
+[data-skin='skyon'] .stat-card,[data-skin='skyon'] .stats-row-compact .stat-card{background:var(--surface) !important;border:0 !important;border-radius:var(--sk-r);padding:16px}
+[data-skin='skyon'] .stats-row-compact .stat-card{padding:12px 14px;border-radius:14px}
+[data-skin='skyon'] .stat-label{color:var(--text3) !important;text-transform:none;letter-spacing:0;font-size:12px;font-weight:600}
+[data-skin='skyon'] .stat-val{color:var(--text) !important;font-weight:700;font-size:28px}
+[data-skin='skyon'] .stats-row-compact .stat-val{font-size:20px}
+[data-skin='skyon'] .stat-sub{color:var(--text3) !important}
+
+/* panel / bảng */
+[data-skin='skyon'] .panel,[data-skin='skyon'] .kpi-card,[data-skin='skyon'] .camp-card,[data-skin='skyon'] .camp-section-wrap{background:var(--surface) !important;border:0 !important;border-radius:var(--sk-r);box-shadow:none !important}
+[data-skin='skyon'] .panel-header{background:var(--surface) !important;border-bottom:1px solid var(--border) !important;border-radius:var(--sk-r) var(--sk-r) 0 0;padding:14px 16px;box-shadow:none}
+[data-skin='skyon'] .panel-header h2{color:var(--text) !important;font-size:15px;font-weight:700}
+[data-skin='skyon'] .panel-header *{color:inherit}
+[data-skin='skyon'] thead tr{background:var(--surface) !important;box-shadow:0 1px 0 var(--border)}
+[data-skin='skyon'] th{background:var(--surface) !important;color:var(--text3) !important;border-bottom:1px solid var(--border) !important;font-size:10.5px}
+[data-skin='skyon'] td{color:var(--text2) !important;border-bottom:1px solid var(--border) !important}
+[data-skin='skyon'] tbody tr{background:transparent !important}
+[data-skin='skyon'] tr:hover td{background:var(--surface2) !important}
+[data-skin='skyon'] .pgbar{border-top:1px solid var(--border)}
+[data-skin='skyon'] .csf-filterbar{background:var(--surface) !important;border-bottom:1px solid var(--border) !important}
+[data-skin='skyon'] .pipe-col{background:var(--surface2);border:0;border-radius:var(--sk-r)}
+[data-skin='skyon'] .pipe-card{background:var(--surface);border:0;border-radius:14px}
+[data-skin='skyon'] .pipe-cnt{background:var(--surface)}
+[data-skin='skyon'] .kpi-bar-bg{background:var(--border)}
+[data-skin='skyon'] .kpi-bar-fill{background:var(--brand)}
+[data-skin='skyon'] .camp-card:hover,[data-skin='skyon'] .pipe-card:hover{transform:none;box-shadow:0 0 0 2px var(--brand) inset}
+
+/* ô nhập, filter */
+[data-skin='skyon'] input:not([type=color]):not([type=checkbox]):not([type=radio]),[data-skin='skyon'] select,[data-skin='skyon'] textarea,
+[data-skin='skyon'] .fsel,[data-skin='skyon'] .field input,[data-skin='skyon'] .field select,[data-skin='skyon'] .field textarea,
+[data-skin='skyon'] #detail-modal input,[data-skin='skyon'] #detail-modal select,[data-skin='skyon'] #detail-modal textarea{
+  background:var(--surface2) !important;border:1px solid var(--border) !important;color:var(--text) !important;border-radius:10px}
+[data-skin='skyon'] .search-wrap input{background:transparent !important;border:0 !important}
+[data-skin='skyon'] input:focus,[data-skin='skyon'] select:focus,[data-skin='skyon'] textarea:focus{border-color:var(--brand) !important;box-shadow:0 0 0 3px rgba(33,88,232,.16) !important}
+[data-skin='skyon'] .fsel{border-radius:999px;padding:6px 12px}
+[data-skin='skyon'] input::placeholder,[data-skin='skyon'] textarea::placeholder{color:var(--text3) !important}
+[data-skin='skyon'] .field label,[data-skin='skyon'] #detail-modal label,[data-skin='skyon'] label{color:var(--text3) !important}
+[data-skin='skyon'] #detail-modal input[type=date]{color-scheme:inherit}
+
+/* modal */
+[data-skin='skyon'] .modal-overlay{background:rgba(12,26,46,.55);backdrop-filter:blur(3px)}
+[data-skin='skyon'] .modal{background:var(--surface) !important;border:0 !important;border-radius:22px;box-shadow:0 24px 60px rgba(12,26,46,.28) !important}
+[data-skin='skyon'] .modal-header{background:transparent !important;border-bottom:1px solid var(--border) !important}
+[data-skin='skyon'] .modal-header *,[data-skin='skyon'] .modal-body{color:var(--text)}
+[data-skin='skyon'] .modal-footer{border-top:1px solid var(--border)}
+[data-skin='skyon'] .loading-overlay{background:rgba(233,237,243,.85)}
+[data-skin='skyon'][data-mode='dark'] .loading-overlay{background:rgba(10,18,31,.85)}
+[data-skin='skyon'] .spinner{border-color:var(--border);border-top-color:var(--brand)}
+
+/* badge → tag pastel */
+[data-skin='skyon'] .badge{border:0 !important;padding:3px 10px;font-size:11px;font-weight:700}
+[data-skin='skyon'] .b-new{background:var(--sk-soft) !important;color:var(--brand) !important}
+[data-skin='skyon'] .b-followup,[data-skin='skyon'] .b-busy{background:var(--sk-warn-bg) !important;color:var(--warn) !important}
+[data-skin='skyon'] .b-completed,[data-skin='skyon'] .b-closedeal,[data-skin='skyon'] .b-won{background:var(--sk-ok-bg) !important;color:var(--success) !important}
+[data-skin='skyon'] .b-lost,[data-skin='skyon'] .b-invalid{background:var(--sk-bad-bg) !important;color:var(--danger) !important}
+[data-skin='skyon'] .b-calling,[data-skin='skyon'] .b-noresponse{background:var(--sk-vio-bg) !important;color:var(--sk-vio) !important}
+[data-skin='skyon'] .avatar{border:0;color:#fff !important}
+
+/* màn đăng nhập */
+[data-skin='skyon'] #auth-screen{background:var(--main)}
+[data-skin='skyon'] #auth-screen::before{display:none}
+[data-skin='skyon'] .auth-card{background:var(--surface);border:0;border-radius:24px;box-shadow:0 20px 50px rgba(12,26,46,.15)}
+[data-skin='skyon'] .auth-logo{background:none !important;-webkit-text-fill-color:var(--text) !important;color:var(--text)}
+[data-skin='skyon'] .auth-field input{background:var(--surface2) !important;border-radius:10px;color:var(--text) !important}
+
+/* nền cứng của màu cũ nằm trong style inline */
+[data-skin='skyon'] [style*="background:#1a1240"],[data-skin='skyon'] [style*="background:#0f0c24"],[data-skin='skyon'] [style*="background: #1a1240"],[data-skin='skyon'] [style*="background:var(--bg2)"]{background:var(--surface) !important}
+[data-skin='skyon'] [style*="color:#fff"]:not(.btn-primary):not(.nav-badge):not(.sidebar *):not(.sidebar):not([class*="badge"]):not(.call-btn){color:var(--text)}
+[data-skin='skyon'] .sidebar [style*="color:#fff"]{color:#fff}
+[data-skin='skyon'] .btn-primary [style*="color:#fff"]{color:#fff}
+
+/* mobile */
+@media(max-width:768px){
+  [data-skin='skyon'] .sidebar{width:auto;min-width:0}
+  [data-skin='skyon'] .topbar{padding:12px 14px 8px}
+  [data-skin='skyon'] .topbar-title{font-size:19px}
+  [data-skin='skyon'] .content{padding:0 12px 16px}
+  [data-skin='skyon'] .stats-row{padding:6px 12px 10px}
+  [data-skin='skyon'] .search-wrap{width:100%}
+}
+
+
+/* Skyon: ưu tiên cao hơn luật sáng suy ra từ bản cũ */
+[data-skin='skyon'][data-mode] .panel-header{background:var(--surface) !important}
+html[data-skin='skyon'][data-mode] .search-wrap input:not([type=x]):not([type=y]):not([type=z]),html[data-skin='skyon'][data-mode] .search-wrap input:not([type=x]):not([type=y]):not([type=z]):focus{background:transparent !important;border:0 !important;box-shadow:none !important;color:var(--text) !important}
+[data-skin='skyon'][data-mode] thead tr,[data-skin='skyon'][data-mode] thead th{background:var(--surface) !important}
+[data-skin='skyon'][data-mode] .modal-header{background:transparent !important}
+[data-skin='skyon'][data-mode] .csf-filterbar{background:var(--surface) !important}
+[data-skin='skyon'][data-mode] .btn{background:var(--surface) !important;border:1px solid var(--border) !important;color:var(--text) !important}
+[data-skin='skyon'][data-mode] .btn-primary{background:var(--brand) !important;border-color:var(--brand) !important;color:#fff !important}
+[data-skin='skyon'][data-mode] .btn-primary:hover{background:var(--brand-dark) !important}
+[data-skin='skyon'] #ai-fab,[data-skin='skyon'] #chat-fab,[data-skin='skyon'] .chat-fab,[data-skin='skyon'] .ai-fab{background:var(--brand) !important;box-shadow:0 8px 22px rgba(33,88,232,.35) !important}
 </style>
 <script>
+// Giao diện: kiểu (classic | skyon) + chế độ (light | dark), lưu theo từng tài khoản. Gọi sớm để không nháy màu.
 (function(){
-  try{
-    var t=JSON.parse(localStorage.getItem('csilan_theme')||'{}');
+  var VARS=['--brand','--brand2','--brand-dark','--accent','--accent2','--main','--bg2','--warn','--danger','--success','--sidebar-from','--sidebar-mid','--sidebar-to','--nav-active-bg','--nav-active-bar','--text','--text2','--text3','--border','--surface','--surface2'];
+  var CLASSIC_LIGHT={'--brand':'#6C5CE7','--brand-dark':'#4834d4','--brand2':'#4834d4','--accent':'#00CEC9','--accent2':'#00B894','--warn':'#F59E0B','--danger':'#EF4444','--success':'#10B981','--main':'#f1f5f9','--bg2':'#ffffff','--sidebar-from':'#1a1240','--sidebar-mid':'#2d1b69','--sidebar-to':'#1a2a4a','--nav-active-bg':'rgba(108,92,231,0.3)','--nav-active-bar':'linear-gradient(180deg,#6C5CE7,#00CEC9)','--text':'#1e293b','--text2':'rgba(30,41,59,0.65)','--text3':'rgba(30,41,59,0.4)','--border':'rgba(0,0,0,0.1)','--surface':'rgba(0,0,0,0.04)','--surface2':'rgba(0,0,0,0.07)'};
+  function norm(s){
+    if(!s||typeof s!=='object')return null;
+    return {skin:s.skin==='skyon'?'skyon':'classic',mode:s.mode==='dark'?'dark':'light'};
+  }
+  window._skinApply=function(s){
+    s=norm(s)||{skin:'classic',mode:'dark'};
     var r=document.documentElement;
-    if(t.brand){r.style.setProperty('--brand',t.brand);r.style.setProperty('--brand-dark',t.brandDark||t.brand);}
-    if(t.brand2)r.style.setProperty('--brand2',t.brand2);
-    if(t.accent)r.style.setProperty('--accent',t.accent);
-    if(t.accent2)r.style.setProperty('--accent2',t.accent2);
-    if(t.main)r.style.setProperty('--main',t.main);
-    if(t.bg2)r.style.setProperty('--bg2',t.bg2);
-    if(t.warn)r.style.setProperty('--warn',t.warn);
-    if(t.danger)r.style.setProperty('--danger',t.danger);
-    if(t.success)r.style.setProperty('--success',t.success);
-    if(t.sidebarFrom)r.style.setProperty('--sidebar-from',t.sidebarFrom);
-    if(t.sidebarMid)r.style.setProperty('--sidebar-mid',t.sidebarMid);
-    if(t.sidebarTo)r.style.setProperty('--sidebar-to',t.sidebarTo);
-    if(t.navActiveBg)r.style.setProperty('--nav-active-bg',t.navActiveBg);
-    if(t.navActiveBar)r.style.setProperty('--nav-active-bar',t.navActiveBar);
-    if(t.text)r.style.setProperty('--text',t.text);
-    if(t.text2)r.style.setProperty('--text2',t.text2);
-    if(t.text3)r.style.setProperty('--text3',t.text3);
-    if(t.border)r.style.setProperty('--border',t.border);
-    if(t.surface)r.style.setProperty('--surface',t.surface);
-    if(t.surface2)r.style.setProperty('--surface2',t.surface2);
-    if(t.isLight){document.documentElement.setAttribute('data-theme','light');}
-    else{document.documentElement.removeAttribute('data-theme');}
+    VARS.forEach(function(k){r.style.removeProperty(k);});
+    if(s.skin==='skyon'){
+      r.setAttribute('data-skin','skyon');r.setAttribute('data-mode',s.mode);r.removeAttribute('data-theme');
+    }else{
+      r.removeAttribute('data-skin');r.removeAttribute('data-mode');
+      if(s.mode==='light'){Object.keys(CLASSIC_LIGHT).forEach(function(k){r.style.setProperty(k,CLASSIC_LIGHT[k]);});r.setAttribute('data-theme','light');}
+      else r.removeAttribute('data-theme');
+    }
+    window._skinCur=s;
+    return s;
+  };
+  window._skinNorm=norm;
+  try{
+    var s=norm(JSON.parse(localStorage.getItem('csilan_skin')||'null'));
+    if(!s){
+      // người dùng cũ: chỉ giữ lại lựa chọn sáng/tối, bỏ bộ màu tuỳ chỉnh
+      var old=JSON.parse(localStorage.getItem('csilan_theme')||'{}');
+      s={skin:'classic',mode:old&&old.isLight?'light':'dark'};
+      localStorage.removeItem('csilan_theme');
+    }
+    window._skinApply(s);
   }catch(e){}
 })();
 </script>
@@ -2023,6 +2279,7 @@ async function initApp(user){
     });
   }catch(e2){}
   currentProfile=profile;window.currentProfile=profile;
+  try{window._skinLoadForUser&&window._skinLoadForUser(user);}catch(e){}
 
   // ── AFFILIATE: redirect thẳng sang invoice.html, không load CRM data nặng ──
   if(profile&&profile.role==='affiliate'){
@@ -8781,7 +9038,7 @@ function renderSystem(){
     // ── 2. Giao diện (collapsible, mặc định ẩn) ──
     +'<div class="panel" style="margin-bottom:14px">'
     +'<div class="panel-header" style="cursor:pointer" onclick="_sysToggleSection(\'sys-theme-body\',\'sys-theme-ic\')">'
-    +'<h2><i class="ti ti-palette" style="margin-right:6px"></i>Giao diện & Màu sắc<\/h2>'
+    +'<h2><i class="ti ti-palette" style="margin-right:6px"></i>Giao diện<\/h2>'
     +'<i class="ti ti-chevron-down" id="sys-theme-ic" style="color:var(--text3)"><\/i>'
     +'<\/div>'
     +'<div id="sys-theme-body" style="display:none">'+_renderThemePanelBody()+'<\/div>'
@@ -8799,123 +9056,66 @@ function renderSystem(){
 }
 
 function _renderThemePanelBody(){
-  var t={};try{t=JSON.parse(localStorage.getItem('csilan_theme')||'{}');}catch(e){}
-  function cur(k,d){return t[k]||d;}
-  var presets=[
-    {name:'Mặc định',brand:'#6C5CE7',brand2:'#A29BFE',brandDark:'#4834d4',accent:'#00CEC9',accent2:'#55EFC4',main:'#0f0c24',bg2:'#1a1240',sidebarFrom:'#1a1240',sidebarMid:'#2d1b69',sidebarTo:'#1a2a4a',navActiveBg:'rgba(108,92,231,0.25)',navActiveBar:'linear-gradient(180deg,#6C5CE7,#00CEC9)'},
-    {name:'Xanh Sage',brand:'#5D7B6F',brand2:'#A4C3A2',brandDark:'#3d5a50',accent:'#B0D4B8',accent2:'#D7F9FA',main:'#0d1a16',bg2:'#152420',sidebarFrom:'#0d1a16',sidebarMid:'#1a3028',sidebarTo:'#0d2220',navActiveBg:'rgba(93,123,111,0.3)',navActiveBar:'linear-gradient(180deg,#5D7B6F,#B0D4B8)'},
-    {name:'Pastel',brand:'#6C7EE1',brand2:'#92B9E3',brandDark:'#4a5cc7',accent:'#FBA2D0',accent2:'#C688EB',main:'#0e0e1e',bg2:'#181828',sidebarFrom:'#0e0e1e',sidebarMid:'#1e1638',sidebarTo:'#0e1228',navActiveBg:'rgba(108,126,225,0.25)',navActiveBar:'linear-gradient(180deg,#6C7EE1,#FBA2D0)'},
-    {name:'Hoàng Hôn',brand:'#593E67',brand2:'#B85B56',brandDark:'#3d2848',accent:'#DE741C',accent2:'#FEA837',main:'#12080e',bg2:'#1e0e18',sidebarFrom:'#12080e',sidebarMid:'#2a1020',sidebarTo:'#1a0c10',navActiveBg:'rgba(89,62,103,0.35)',navActiveBar:'linear-gradient(180deg,#593E67,#DE741C)'},
-    {name:'Coral',brand:'#F28076',brand2:'#FFB6AF',brandDark:'#d4604e',accent:'#4EB09B',accent2:'#FBC193',main:'#14080a',bg2:'#221010',sidebarFrom:'#14080a',sidebarMid:'#2a1414',sidebarTo:'#1a1010',navActiveBg:'rgba(242,128,118,0.25)',navActiveBar:'linear-gradient(180deg,#F28076,#4EB09B)'},
-    {name:'Galaxy',brand:'#4A26AB',brand2:'#9543A7',brandDark:'#21244D',accent:'#E350A8',accent2:'#B8E7EA',main:'#0a0812',bg2:'#12091e',sidebarFrom:'#0a0812',sidebarMid:'#1e0d38',sidebarTo:'#21244D',navActiveBg:'rgba(74,38,171,0.3)',navActiveBar:'linear-gradient(180deg,#4A26AB,#E350A8)'},
-    {name:'☀️ Sáng Tím',isLight:true,brand:'#6C5CE7',brand2:'#4834d4',brandDark:'#4834d4',accent:'#00CEC9',accent2:'#00B894',warn:'#F59E0B',danger:'#EF4444',success:'#10B981',main:'#f1f5f9',bg2:'#ffffff',sidebarFrom:'#1a1240',sidebarMid:'#2d1b69',sidebarTo:'#1a2a4a',navActiveBg:'rgba(108,92,231,0.3)',navActiveBar:'linear-gradient(180deg,#6C5CE7,#00CEC9)',text:'#1e293b',text2:'rgba(30,41,59,0.65)',text3:'rgba(30,41,59,0.4)',border:'rgba(0,0,0,0.1)',surface:'rgba(0,0,0,0.04)',surface2:'rgba(0,0,0,0.07)'},
-    {name:'☀️ Sáng Đỏ',isLight:true,brand:'#C0392B',brand2:'#E74C3C',brandDark:'#922B21',accent:'#27AE8F',accent2:'#1ABC9C',warn:'#E67E22',danger:'#C0392B',success:'#27AE60',main:'#FFF8F8',bg2:'#FFFFFF',sidebarFrom:'#7B1818',sidebarMid:'#9B2020',sidebarTo:'#5C1010',navActiveBg:'rgba(255,255,255,0.18)',navActiveBar:'linear-gradient(180deg,#FFFFFF,rgba(255,255,255,0.5))',text:'#1A0A0A',text2:'#5C3A3A',text3:'#9B7B7B',border:'#E8D5D5',surface:'#FFFFFF',surface2:'#FDF0F0'},
-  ];
-  var presetHtml=presets.map(function(p){
-    var js=JSON.stringify(p).replace(/'/g,"\\'").replace(/"/g,'&quot;');
-    return '<button onclick="window._applyThemePreset(this.dataset.p)" data-p="'+js+'"'
-      +' style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;cursor:pointer;color:var(--text2);font-size:12px">'
-      +'<span style="display:inline-flex;gap:3px">'
-      +'<span style="width:12px;height:12px;border-radius:50%;background:'+p.brand+'"></span>'
-      +'<span style="width:12px;height:12px;border-radius:50%;background:'+p.accent+'"></span>'
-      +'<span style="width:12px;height:12px;border-radius:50%;background:'+p.main+';border:1px solid rgba(255,255,255,0.2)"></span>'
-      +'</span>'+p.name+'<\/button>';
-  }).join('');
-  function cp(label,key,val){
-    return '<div style="display:flex;flex-direction:column;gap:6px">'
-      +'<div style="font-size:11px;color:var(--text3)">'+label+'<\/div>'
-      +'<div style="display:flex;align-items:center;gap:8px">'
-      +'<input type="color" id="theme-'+key+'" value="'+val+'"'
-      +' style="width:36px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;padding:2px"'
-      +' oninput="document.getElementById(\'theme-'+key+'-hex\').value=this.value">'
-      +'<input type="text" id="theme-'+key+'-hex" value="'+val+'" maxlength="7"'
-      +' style="width:80px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);font-family:monospace;outline:none"'
-      +' oninput="if(this.value.match(/^#[0-9a-fA-F]{6}$/))document.getElementById(\'theme-'+key+'\').value=this.value">'
-      +'<\/div><\/div>';
+  var s=window._skinCur||{skin:'classic',mode:'dark'};
+  function card(id,name,desc,light){
+    var on=s.skin===id;
+    var pv=id==='skyon'
+      ?'<div style="display:flex;height:64px;border-radius:10px;overflow:hidden;background:'+(s.mode==='dark'?'#0a121f':'#e9edf3')+'">'
+        +'<div style="width:30%;background:#0c1a2e;padding:7px 6px"><div style="height:7px;border-radius:9px;background:#fff;margin-bottom:5px"></div><div style="height:6px;border-radius:9px;background:#27374f;margin-bottom:4px"></div><div style="height:6px;border-radius:9px;background:#27374f"></div></div>'
+        +'<div style="flex:1;padding:7px;display:grid;grid-template-columns:1fr 1fr;gap:5px"><div style="border-radius:7px;background:'+(s.mode==='dark'?'#121d2f':'#fff')+'"></div><div style="border-radius:7px;background:'+(s.mode==='dark'?'#121d2f':'#fff')+'"></div><div style="grid-column:1/3;border-radius:7px;background:'+(s.mode==='dark'?'#121d2f':'#fff')+'"></div></div></div>'
+      :'<div style="display:flex;height:64px;border-radius:10px;overflow:hidden;background:'+(s.mode==='light'?'#f1f5f9':'#0f0c24')+'">'
+        +'<div style="width:30%;background:linear-gradient(160deg,#1a1240,#2d1b69);padding:7px 6px"><div style="height:7px;border-radius:3px;background:rgba(108,92,231,.7);margin-bottom:5px"></div><div style="height:6px;border-radius:3px;background:rgba(255,255,255,.12);margin-bottom:4px"></div><div style="height:6px;border-radius:3px;background:rgba(255,255,255,.12)"></div></div>'
+        +'<div style="flex:1;padding:7px;display:grid;grid-template-columns:1fr 1fr;gap:5px"><div style="border-radius:5px;background:'+(s.mode==='light'?'#fff':'rgba(255,255,255,.07)')+'"></div><div style="border-radius:5px;background:'+(s.mode==='light'?'#fff':'rgba(255,255,255,.07)')+'"></div><div style="grid-column:1/3;border-radius:5px;background:'+(s.mode==='light'?'#fff':'rgba(255,255,255,.07)')+'"></div></div></div>';
+    return '<button type="button" onclick="window._skinPick(\''+id+'\')" style="text-align:left;cursor:pointer;width:230px;max-width:100%;padding:10px;border-radius:14px;background:var(--surface2);border:2px solid '+(on?'var(--brand)':'var(--border)')+';color:var(--text)">'
+      +pv+'<div style="font-size:13px;font-weight:700;margin-top:8px;display:flex;justify-content:space-between;align-items:center">'+name+(on?'<span style="font-size:11px;color:var(--brand)">Đang dùng</span>':'')+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+desc+'</div></button>';
+  }
+  function seg(m,label){
+    var on=s.mode===m;
+    return '<button type="button" onclick="window._skinMode(\''+m+'\')" style="padding:7px 18px;border-radius:999px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;background:'+(on?'var(--brand)':'var(--surface2)')+';color:'+(on?'#fff':'var(--text2)')+'">'+label+'<\/button>';
   }
   return '<div style="padding:16px 20px">'
-    +'<div style="margin-bottom:18px">'
-    +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Bộ màu nhanh<\/div>'
-    +'<div style="display:flex;flex-wrap:wrap;gap:8px">'+presetHtml+'<\/div>'
+    +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Kiểu giao diện<\/div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:18px">'
+    +card('skyon','Skyon (mới)','Sidebar navy, card bo góc, tab dạng pill')
+    +card('classic','Cổ điển','Giao diện tím hiện tại')
     +'<\/div>'
-    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:20px">'
-    +cp('Brand chủ đạo','brand',cur('brand','#6C5CE7'))
-    +cp('Brand nhạt','brand2',cur('brand2','#A29BFE'))
-    +cp('Accent','accent',cur('accent','#00CEC9'))
-    +cp('Accent nhạt','accent2',cur('accent2','#55EFC4'))
-    +cp('Nền chính','main',cur('main','#0f0c24'))
-    +cp('Nền phụ','bg2',cur('bg2','#1a1240'))
-    +cp('Cảnh báo','warn',cur('warn','#FDCB6E'))
-    +cp('Nguy hiểm','danger',cur('danger','#FF7675'))
-    +cp('Thành công','success',cur('success','#00B894'))
-    +cp('Sidebar trên','sidebarFrom',cur('sidebarFrom','#1a1240'))
-    +cp('Sidebar giữa','sidebarMid',cur('sidebarMid','#2d1b69'))
-    +cp('Sidebar dưới','sidebarTo',cur('sidebarTo','#1a2a4a'))
-    +'<\/div>'
-    +'<div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">'
-    +'<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2)">'
-    +'<input type="checkbox" id="theme-isLight"'+(t.isLight?' checked':'')+' onchange="window._saveTheme()" style="width:16px;height:16px;cursor:pointer">'
-    +'☀️ Giao diện sáng (Light Mode)<\/label>'
-    +'<\/div>'
-    +'<div style="display:flex;gap:10px">'
-    +'<button class="btn" style="border-color:rgba(0,184,148,0.4);color:var(--success)" onclick="window._saveTheme()"><i class="ti ti-check"><\/i> Lưu & Áp dụng<\/button>'
-    +'<button class="btn" style="border-color:rgba(255,118,117,0.3);color:var(--danger)" onclick="window._resetTheme()"><i class="ti ti-refresh"><\/i> Khôi phục mặc định<\/button>'
-    +'<\/div>'
+    +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Chế độ<\/div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:16px">'+seg('light','☀️ Sáng')+seg('dark','🌙 Tối')+'<\/div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:14px">Lựa chọn áp dụng cho riêng tài khoản của bạn và đi theo bạn khi đăng nhập trên máy khác.<\/div>'
+    +'<button class="btn" onclick="window._resetTheme()"><i class="ti ti-refresh"><\/i> Khôi phục mặc định<\/button>'
     +'<\/div>';
 }
 
 function _renderThemePanel(){
   return '<div class="panel" style="margin-bottom:14px">'
-    +'<div class="panel-header"><h2><i class="ti ti-palette" style="margin-right:6px"></i>Giao diện & Màu sắc<\/h2><\/div>'
+    +'<div class="panel-header"><h2><i class="ti ti-palette" style="margin-right:6px"></i>Giao diện<\/h2><\/div>'
     +_renderThemePanelBody()
     +'<\/div>';
 }
 
-window._applyThemePreset=function(jsonStr){
-  try{var p=JSON.parse(jsonStr.replace(/&quot;/g,'"'));}catch(e){return;}
-  var keys=['brand','brand2','brandDark','accent','accent2','main','bg2','warn','danger','success','sidebarFrom','sidebarMid','sidebarTo','navActiveBg','navActiveBar','text','text2','text3','border','surface','surface2'];
-  keys.forEach(function(k){
-    var el=document.getElementById('theme-'+k);
-    var hex=document.getElementById('theme-'+k+'-hex');
-    if(p[k]&&el){el.value=p[k];if(hex)hex.value=p[k];}
-  });
-  // isLight: checkbox hoặc từ preset
-  var ilEl=document.getElementById('theme-isLight');
-  if(ilEl)ilEl.checked=!!p.isLight;
-  window._saveTheme();
+window._skinSave=function(s){
+  s=window._skinApply(s);
+  var uid=window.currentUser&&window.currentUser.id;
+  try{
+    localStorage.setItem('csilan_skin',JSON.stringify(s));
+    if(uid)localStorage.setItem('csilan_skin_'+uid,JSON.stringify(s));
+  }catch(e){}
+  try{if(window.sb&&uid)window.sb.auth.updateUser({data:{ui_skin:s}}).then(function(){},function(){});}catch(e){}
+  var b=document.getElementById('sys-theme-body');if(b)b.innerHTML=_renderThemePanelBody();
 };
-
-window._saveTheme=function(){
-  var keys=['brand','brand2','brandDark','accent','accent2','main','bg2','warn','danger','success','sidebarFrom','sidebarMid','sidebarTo','navActiveBg','navActiveBar','text','text2','text3','border','surface','surface2'];
-  var t={};
-  keys.forEach(function(k){var el=document.getElementById('theme-'+k);if(el)t[k]=el.value;});
-  var ilEl=document.getElementById('theme-isLight');
-  if(ilEl)t.isLight=ilEl.checked;
-  localStorage.setItem('csilan_theme',JSON.stringify(t));
-  var r=document.documentElement;
-  if(t.brand){r.style.setProperty('--brand',t.brand);r.style.setProperty('--brand-dark',t.brandDark||t.brand);}
-  if(t.brand2)r.style.setProperty('--brand2',t.brand2);
-  if(t.accent)r.style.setProperty('--accent',t.accent);
-  if(t.accent2)r.style.setProperty('--accent2',t.accent2);
-  if(t.main)r.style.setProperty('--main',t.main);
-  if(t.bg2)r.style.setProperty('--bg2',t.bg2);
-  if(t.warn)r.style.setProperty('--warn',t.warn);
-  if(t.danger)r.style.setProperty('--danger',t.danger);
-  if(t.success)r.style.setProperty('--success',t.success);
-  if(t.sidebarFrom)r.style.setProperty('--sidebar-from',t.sidebarFrom);
-  if(t.sidebarMid)r.style.setProperty('--sidebar-mid',t.sidebarMid);
-  if(t.sidebarTo)r.style.setProperty('--sidebar-to',t.sidebarTo);
-  if(t.navActiveBg)r.style.setProperty('--nav-active-bg',t.navActiveBg);
-  if(t.navActiveBar)r.style.setProperty('--nav-active-bar',t.navActiveBar);
-  if(t.text)r.style.setProperty('--text',t.text);
-  if(t.text2)r.style.setProperty('--text2',t.text2);
-  if(t.text3)r.style.setProperty('--text3',t.text3);
-  if(t.border)r.style.setProperty('--border',t.border);
-  if(t.surface)r.style.setProperty('--surface',t.surface);
-  if(t.surface2)r.style.setProperty('--surface2',t.surface2);
-  if(t.isLight){document.documentElement.setAttribute('data-theme','light');}
-  else{document.documentElement.removeAttribute('data-theme');}
-  showNotif('Đã áp dụng giao diện mới');
+window._skinPick=function(skin){var c=window._skinCur||{mode:'dark'};window._skinSave({skin:skin,mode:c.mode});showNotif('Đã đổi giao diện');};
+window._skinMode=function(mode){var c=window._skinCur||{skin:'classic'};window._skinSave({skin:c.skin,mode:mode});};
+window._resetTheme=function(){window._skinSave({skin:'classic',mode:'dark'});showNotif('Đã khôi phục giao diện mặc định');};
+// gọi sau khi đăng nhập: lấy lựa chọn của chính tài khoản này
+window._skinLoadForUser=function(user){
+  if(!user)return;
+  var s=null;
+  try{s=window._skinNorm(user.user_metadata&&user.user_metadata.ui_skin);}catch(e){}
+  if(!s){try{s=window._skinNorm(JSON.parse(localStorage.getItem('csilan_skin_'+user.id)||'null'));}catch(e){}}
+  if(!s)s={skin:'classic',mode:'dark'};
+  window._skinApply(s);
+  try{localStorage.setItem('csilan_skin',JSON.stringify(s));localStorage.setItem('csilan_skin_'+user.id,JSON.stringify(s));}catch(e){}
 };
 
 window._sysChangeName=function(userId,currentName){
@@ -9594,15 +9794,6 @@ async function exportProducts(){
     await exportToExcel('Sản phẩm',cols,rows,'CRM_SanPham');
   }catch(e){showLoading(false);alert('Lỗi: '+e.message);}
 }
-
-window._resetTheme=function(){
-  localStorage.removeItem('csilan_theme');
-  var r=document.documentElement;
-  ['--brand','--brand2','--brand-dark','--accent','--accent2','--main','--bg2','--warn','--danger','--success','--sidebar-from','--sidebar-mid','--sidebar-to','--nav-active-bg','--nav-active-bar','--text','--text2','--text3','--border','--surface','--surface2'].forEach(function(k){r.style.removeProperty(k);});
-  document.documentElement.removeAttribute('data-theme');
-  showNotif('Đã khôi phục màu mặc định');
-  render();
-};
 
 async function renderSystemRefresh(){
   // ── Panel Tài khoản (profiles + đổi mật khẩu) ──
