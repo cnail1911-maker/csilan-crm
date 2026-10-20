@@ -1489,6 +1489,26 @@ mark.chat-hl{background:rgba(253,203,110,0.35);color:inherit;border-radius:2px;}
 [data-skin='skyon'][data-mode='light'] :is(.modal-overlay,#detail-modal) [style*="border-bottom:1px solid"],[data-skin='skyon'][data-mode='light'] :is(.modal-overlay,#detail-modal) [style*="border-top:1px solid"]{border-color:#dbe2ec !important}
 [data-skin='skyon'][data-mode='light'] .stat-card[data-tone] .stat-label{font-size:12.5px !important}
 [data-mode='light'] [style*="rgba(162,155,254"][style*="color:rgba(240,238,255"],[data-theme='light'] [style*="rgba(162,155,254"][style*="color:rgba(240,238,255"]{color:rgba(240,238,255,.9) !important}
+/* Thanh bên tự ẩn: chỉ còn dải icon, rê chuột vào thì mở rộng (đè lên nội dung, không đẩy layout) */
+@media (hover:hover) and (min-width:769px){
+  .app.sb-auto{padding-left:64px;box-sizing:border-box}
+  .app.sb-auto .sidebar{position:fixed !important;left:0;top:0;bottom:0;height:100vh;z-index:300;width:64px !important;min-width:64px !important;transition:width .18s ease,box-shadow .18s ease;overflow:hidden}
+  .app.sb-auto .sidebar:hover{width:224px !important;min-width:224px !important;box-shadow:12px 0 40px rgba(0,0,0,.35)}
+  .app.sb-auto .sidebar:not(:hover){padding-left:8px !important;padding-right:8px !important}
+  .app.sb-auto .sidebar:not(:hover) .nav-item{font-size:0 !important;justify-content:center;gap:0 !important;padding:11px 0 !important}
+  .app.sb-auto .sidebar:not(:hover) .nav-item i{font-size:19px !important;width:auto !important}
+  .app.sb-auto .sidebar:not(:hover) .nav-badge{position:absolute;top:1px;right:4px;font-size:9px !important;padding:0 4px;min-width:14px;line-height:15px;text-align:center}
+  .app.sb-auto .sidebar:not(:hover) .nav-sec,.app.sb-auto .sidebar:not(:hover) .logo-tag,.app.sb-auto .sidebar:not(:hover) .sb-pin,.app.sb-auto .sidebar:not(:hover) .user-area>:not(.avatar){display:none !important}
+  .app.sb-auto .sidebar:not(:hover) .logo-wrap{padding-left:0;padding-right:0;text-align:center}
+  .app.sb-auto .sidebar:not(:hover) .logo-name{font-size:0 !important}
+  .app.sb-auto .sidebar:not(:hover) .logo-name::before{content:'M';font-size:22px;font-weight:800}
+  .app.sb-auto .sidebar:not(:hover) .user-area{justify-content:center;padding-left:0;padding-right:0}
+}
+.logo-wrap{position:relative}
+.sb-pin{position:absolute;top:10px;right:6px;background:none;border:0;color:rgba(255,255,255,.55);cursor:pointer;font-size:16px;padding:4px;border-radius:6px}
+.sb-pin:hover{color:#fff;background:rgba(255,255,255,.12)}
+.app:not(.sb-auto) .sb-pin{color:#fff;background:rgba(255,255,255,.16)}
+@media(max-width:768px),(hover:none){.sb-pin{display:none}}
 /* Dashboard / Daily của manager */
 .kd-grid3{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:14px;margin-bottom:14px}
 .kd-grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:14px;margin:6px 0 14px}
@@ -1667,6 +1687,7 @@ body.ticker-on .app{margin-top:32px}
   <div class="app">
     <div class="sidebar">
       <div class="logo-wrap">
+        <button class="sb-pin" id="sb-pin" onclick="_sbToggle()" title="Ghim thanh bên (tắt tự ẩn)"><i class="ti ti-pin"></i></button>
         <div class="logo-name">Maison De KCT</div>
         <div class="logo-tag">Sales Team · v5.0</div>
       </div>
@@ -11271,6 +11292,14 @@ window._campOpenOrders=function(kind){
   function sched(){if(busy)return;busy=true;(window.requestAnimationFrame||setTimeout)(run);}
   function start(){try{new MutationObserver(sched).observe(document.body,{childList:true,subtree:true});sched();}catch(e){}}
   if(document.body)start();else document.addEventListener('DOMContentLoaded',start);
+})();
+
+// Thanh bên tự ẩn / ghim — nhớ lựa chọn trên trình duyệt (mặc định: tự ẩn)
+(function(){
+  function get(){try{return localStorage.getItem('csilan_sb_auto')!=='0';}catch(e){return true;}}
+  function apply(){var a=document.querySelector('.app');if(a)a.classList.toggle('sb-auto',get());var b=document.getElementById('sb-pin');if(b)b.title=get()?'Ghim thanh bên (tắt tự ẩn)':'Bỏ ghim (tự ẩn khi không rê chuột)';}
+  window._sbToggle=function(){try{localStorage.setItem('csilan_sb_auto',get()?'0':'1');}catch(e){}apply();};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
 })();
 
 function render(){
