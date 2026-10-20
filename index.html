@@ -1509,6 +1509,16 @@ mark.chat-hl{background:rgba(253,203,110,0.35);color:inherit;border-radius:2px;}
 .sb-pin:hover{color:#fff;background:rgba(255,255,255,.12)}
 .app:not(.sb-auto) .sb-pin{color:#fff;background:rgba(255,255,255,.16)}
 @media(max-width:768px),(hover:none){.sb-pin{display:none}}
+/* Mobile: System 1 cột, hàng tài khoản cho phép xuống dòng nút; bảng Sản phẩm cuộn ngang, cột tên đủ rộng */
+@media(max-width:768px){
+  .sys-grid2{grid-template-columns:1fr !important}
+  #sys-accounts>div{flex-wrap:wrap}
+  #sys-accounts>div>div{min-width:110px}
+  .prod-scroll{overflow-x:auto !important;-webkit-overflow-scrolling:touch}
+  .prod-tbl td:nth-child(2),.prod-tbl th:nth-child(2){min-width:230px}
+  .prod-tbl td,.prod-tbl th{white-space:nowrap}
+  .prod-tbl td:nth-child(2){white-space:normal}
+}
 /* Dashboard / Daily của manager */
 .kd-grid3{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:14px;margin-bottom:14px}
 .kd-grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:14px;margin:6px 0 14px}
@@ -4411,7 +4421,7 @@ function renderPending(){
     +'<div style="font-size:12px;color:var(--warn)">'+totalLabel+'<\/div>'+saleFilter+'<\/div>'
     +'<div class="content">'
     +(pendingInvoices.length>0
-      ?'<div class="panel" style="margin-bottom:14px;border-color:rgba(253,203,110,0.3)"><div class="panel-header" style="background:rgba(253,203,110,0.08)"><h2><i class="ti ti-file-invoice" style="color:var(--warn)"></i> Invoice chờ duyệt <span style="color:var(--warn)">'+pendingInvoices.length+'<\/span><\/h2>'+(isManager?'<span style="font-size:11px;color:var(--text3)">Duyệt để chuyển khách sang tab Order<\/span>':'')+'<\/div>'
+      ?'<div class="panel" style="margin-bottom:14px;border-color:rgba(253,203,110,0.3)"><div class="panel-header" style="background-image:linear-gradient(rgba(253,203,110,0.1),rgba(253,203,110,0.1))"><h2><i class="ti ti-file-invoice" style="color:var(--warn)"></i> Invoice chờ duyệt <span style="color:var(--warn)">'+pendingInvoices.length+'<\/span><\/h2>'+(isManager?'<span style="font-size:11px;color:var(--text3)">Duyệt để chuyển khách sang tab Order<\/span>':'')+'<\/div>'
       +'<div class="table-scroll-always"><table><thead><tr><th>Mã đơn<\/th><th>Business Name<\/th><th>Customer<\/th><th>Total<\/th><th>Sale<\/th><th>Ngày tạo<\/th><th>Thao tác<\/th><\/tr></thead>'
       +'<tbody>'+invPendingRows+'</tbody><\/table><\/div><\/div>'
       :'')
@@ -5621,7 +5631,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
       +'<\/div>';
   }
 
-  var filterBar='<div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;position:sticky;top:46px;z-index:18;background:#0f0c24" class="csf-filterbar;box-shadow:0 2px 0 var(--surface)">'
+  var filterBar='<div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;position:sticky;top:46px;z-index:18;background:var(--bg2,#0f0c24);box-shadow:0 2px 0 var(--surface)" class="csf-filterbar">'
     +'<input placeholder="🔍 Tìm tên, mã KH..." oninput="window._campSaleFilterDebounced(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text);outline:none">'
     +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-status" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
     +'<option value="">Tất cả Status</option>'
@@ -6914,7 +6924,7 @@ function renderProducts(){
     +(fVendor!=='all'?' <span style="font-size:11px;color:var(--text3)">· '+fVendor+'<\/span>':'')
     +'<\/h2><\/div>'
     +(filtered.length===0?'<div class="empty-state"><i class="ti ti-package"></i>Không tìm thấy sản phẩm<\/div>'
-      :'<div style="overflow-x:clip"><table style="min-width:'+(isManagerProd?'1060px':'960px')+';width:100%"><colgroup>'
+      :'<div class="prod-scroll" style="overflow-x:clip"><table class="prod-tbl" style="min-width:'+(isManagerProd?'1060px':'960px')+';width:100%"><colgroup>'
       +(isManagerProd
         ?'<col width="80"><col width="200"><col width="80"><col width="80"><col width="100"><col width="80"><col width="130"><col width="130"><col width="180">'
         :'<col width="80"><col width="200"><col width="80"><col width="80"><col width="110"><col width="80"><col width="130"><col width="130"><col width="80">')
@@ -9310,7 +9320,7 @@ function renderSystem(){
     +'<\/div>'
     +'<div class="content">'
     // ── 1. Tài khoản + Lịch sử (đầu trang, luôn mở) ──
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
+    +'<div class="sys-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
     +'<div class="panel">'
     +'<div class="panel-header" style="cursor:pointer" onclick="_sysToggleSection(\'sys-accounts\',\'sys-acc-ic\')">'
     +'<h2><i class="ti ti-users" style="margin-right:6px"></i>Tài khoản<\/h2>'
@@ -11377,9 +11387,10 @@ window._fixStickyThead=function(){
     var fb=panel.querySelector('.csf-filterbar');
     var phH=ph?ph.offsetHeight:0;
     // Nếu panel đang ẩn (accordion closed) thì thead chưa visible, bỏ qua
-    if(phH===0&&!ph)return;
+    if(phH===0&&!ph&&!fb)return;
     var fbH=fb&&fb.offsetHeight>0?fb.offsetHeight:0;
     var topVal=phH+fbH;
+    if(fb&&fbH>0)fb.style.top=phH+'px';
     panel.querySelectorAll('thead tr').forEach(function(tr){
       // Bảng dùng table-scroll-always (Order, Pending...) — bỏ sticky thead, chỉ giữ panel-header sticky
       // Lý do: bảng này nhiều cột, đo height runtime dễ sai gây khoảng trống ảo
@@ -12566,6 +12577,12 @@ window.addEventListener('resize',function(){
     scrollAI();
   }
 
+  // Lỗi hết credit của nhà cung cấp AI (OpenRouter 402) → thông báo gọn, dễ hiểu
+  function aiFix(t){
+    t=String(t==null?'':t);
+    if(/402/.test(t)&&/credit|openrouter/i.test(t))return 'Trợ lý AI tạm ngưng: tài khoản OpenRouter đã hết credit. Manager vui lòng nạp thêm tại openrouter.ai/settings/credits (hoặc đổi API key trong Edge Function crm-ai-assistant), sau đó thử lại.';
+    return t;
+  }
   function appendBubble(role, text, animate){
     const msgs=el('ai-messages');
     if(!msgs)return null;
@@ -12807,21 +12824,21 @@ window.addEventListener('resize',function(){
               try{
                 var chunk=JSON.parse(line.slice(6));
                 var delta=chunk.choices&&chunk.choices[0]&&chunk.choices[0].delta&&chunk.choices[0].delta.content;
-                if(delta){aiText+=delta;bubble.textContent=aiText;scrollAI();}
+                if(delta){aiText+=delta;bubble.textContent=aiFix(aiText);scrollAI();}
               }catch(pe){
                 // Plain text chunk
                 var plain=line.slice(6);
-                if(plain){aiText+=plain;bubble.textContent=aiText;scrollAI();}
+                if(plain){aiText+=plain;bubble.textContent=aiFix(aiText);scrollAI();}
               }
             }
           }
         }
         // Flush buffer còn lại
         if(buffer&&buffer.startsWith('data: ')&&buffer!=='data: [DONE]'){
-          try{var last=JSON.parse(buffer.slice(6));var d=last.choices&&last.choices[0]&&last.choices[0].delta&&last.choices[0].delta.content;if(d){aiText+=d;bubble.textContent=aiText;}}catch(e){void e;}
+          try{var last=JSON.parse(buffer.slice(6));var d=last.choices&&last.choices[0]&&last.choices[0].delta&&last.choices[0].delta.content;if(d){aiText+=d;bubble.textContent=aiFix(aiText);}}catch(e){void e;}
         }
         if(!aiText)aiText='Xin lỗi, tôi chưa thể trả lời lúc này.';
-        bubble.textContent=aiText;
+        bubble.textContent=aiFix(aiText);
         scrollAI();
       } else {
         // ── Fallback JSON mode (Edge Function chưa support stream) ──
