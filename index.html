@@ -1785,6 +1785,7 @@ body.ticker-on .app{margin-top:32px}
       </div>
       <div class="nav-sec">Workspace</div>
       <div class="nav-tabs">
+      <div class="nav-item" onclick="window._rmOpen&&window._rmOpen()" id="nav-apps-mobile" style="display:none"><i class="ti ti-layout-grid"></i> Apps</div>
       <div class="nav-item active" onclick="setPage('customers')" id="nav-customers"><i class="ti ti-users"></i> Khách hàng</div>
       <div class="nav-item" onclick="setPage('campaign')" id="nav-campaign"><i class="ti ti-speakerphone"></i> Campaign</div>
       <div class="nav-item" onclick="setPage('potential')" id="nav-potential"><i class="ti ti-star"></i> Tiềm năng</div>
@@ -14596,6 +14597,7 @@ html[data-mode='dark'] #rm-overlay,html[data-theme='dark'] #rm-overlay{--rm-base
 html[data-mode='dark'] .rm-lbl,html[data-mode='dark'] .rm-hub b{color:#e8ecf8}
 html[data-mode='dark'] .rm-hub span{color:#9aa6c4}
 html:not([data-mode]) .rm-lbl{color:#e8ecf8}html:not([data-mode]) #rm-overlay{--rm-base:#2a2260;--rm-hub:#1a1240}html:not([data-mode]) .rm-hub b{color:#fff}
+@media(max-width:768px){#nav-apps-mobile{display:flex !important}}
 .logo-wrap.rm-on .logo-name{cursor:pointer}
 .logo-wrap.rm-on .logo-name::after{content:'\25BE';margin-left:5px;font-size:10px;opacity:.6}
 
