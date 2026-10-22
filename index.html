@@ -5992,6 +5992,7 @@ window._campCloseCreate=function(){
   if(so)so.style.display='none';
   window._campCreateSelected=new Set();
   window._campAddedCount=0;
+  Object.keys(window._campFilters||{}).forEach(function(k){window._campFilters[k]='all';});
 };
 
 window._campOpenCreate=function(prefillName){
@@ -6199,14 +6200,31 @@ window._campSelectAllList=function(checked){
   _campRefreshList();
 };
 
-window._campRecallFiltered=async function(name){
-  var box=document.getElementById('camp-detail-box');
-  var list=((window._campDetailPg&&window._campDetailPg.filtered)||(box&&box._custs)||[]).filter(function(c){return c.campaign_name===name;});
-  if(!list.length){alert('No customers to recall.');return;}
+window._campRecallOpen=function(name){
+  var m=document.getElementById('camp-detail-modal');if(m)m.style.display='none';
+  Object.keys(window._campFilters||{}).forEach(function(k){window._campFilters[k]='all';});
+  window._campOpenCreate(name);
+  var panel=document.getElementById('camp-slide-panel');if(!panel)return;
+  panel.querySelector('.camp-slide-title').textContent='Recall from: '+name;
+  ['camp-name','camp-deadline'].forEach(function(id){var e=document.getElementById(id);if(e&&e.parentNode)e.parentNode.style.display='none';});
+  var sc=document.getElementById('camp-sale-chips');if(sc&&sc.parentNode)sc.parentNode.style.display='none';
+  var g=document.getElementById('camp-golden-count');if(g&&g.parentNode)g.parentNode.style.display='none';
+  var cf=document.getElementById('cf-campaign');if(cf){cf.value=name;cf.disabled=true;}
+  var bar=document.getElementById('camp-action-bar');
+  if(bar){
+    Array.prototype.slice.call(bar.querySelectorAll('div[style*="position:relative"]')).forEach(function(x){x.remove();});
+    var b=document.getElementById('camp-create-btn');
+    if(b){b.className='btn';b.style.cssText='font-size:12px;border-color:rgba(255,118,117,0.6);color:var(--danger)';b.innerHTML='<i class="ti ti-arrow-back-up"></i> Recall selected';b.onclick=function(){window._campRecallRun(name);};}
+  }
+  window._campRefreshList();
+};
+window._campRecallRun=async function(name){
+  var sel=window._campCreateSelected;
+  var list=CUSTOMERS.filter(function(c){return sel&&sel.has(c.id)&&c.campaign_name===name;});
+  if(!list.length){alert('Select at least one customer to recall (use the filters, then "Select all").');return;}
   var withPot=list.filter(function(c){return c.potential&&String(c.potential).trim();}).length;
   var won=list.filter(function(c){return c.lead_status==='Closedeal';}).length;
-  var msg='Recall '+list.length+' customer(s) from "'+name+'"?\n\n- Removed from campaign and from their sale\n- Returned to the pool (no campaign)'+(withPot?'\n- '+withPot+' with Potential go to Active Pool':'')+(won?'\n- WARNING: '+won+' are Closedeal':'')+'\n\nThe current filter in the list decides who is recalled.';
-  if(!confirm(msg))return;
+  if(!confirm('Recall '+list.length+' customer(s) from "'+name+'"?\n\n- Removed from the campaign and from their sale\n- Returned to the pool (no campaign)'+(withPot?'\n- '+withPot+' with Potential go to Active Pool':'')+(won?'\n- WARNING: '+won+' are Closedeal':'')))return;
   showLoading(true);
   var ids=list.map(function(c){return c.id;});
   try{
@@ -6218,7 +6236,7 @@ window._campRecallFiltered=async function(name){
   var set=new Set(ids);
   CUSTOMERS.forEach(function(c){if(set.has(c.id))Object.assign(c,{assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,assigned_profile:null});});
   showLoading(false);
-  var m=document.getElementById('camp-detail-modal');if(m)m.style.display='none';
+  window._campCloseCreate();
   alert('Recalled '+ids.length+' customer(s) to the pool.');
   render();
 };
@@ -6226,7 +6244,7 @@ window._campAddData=function(name){
   var m=document.getElementById('camp-detail-modal');if(m)m.style.display='none';
   window._campOpenCreate(name);
   var panel=document.getElementById('camp-slide-panel');if(!panel)return;
-  panel.querySelector('.camp-slide-title').textContent='Thêm data vào: '+name;
+  panel.querySelector('.camp-slide-title').textContent='Add data to: '+name;
   var ni=document.getElementById('camp-name');if(ni){ni.value=name;ni.readOnly=true;ni.style.opacity='.7';}
   // deadline mặc định = deadline lớn nhất hiện có của campaign
   var dl='';CUSTOMERS.forEach(function(c){if(c.campaign_name===name&&c.assigned_deadline&&c.assigned_deadline>dl)dl=c.assigned_deadline;});
@@ -6236,7 +6254,7 @@ window._campAddData=function(name){
   if(bar){
     Array.prototype.slice.call(bar.querySelectorAll('div[style*="position:relative"]')).forEach(function(x){x.remove();});
     var b=document.getElementById('camp-create-btn');
-    if(b){b.innerHTML='<i class="ti ti-database-plus"></i> Thêm vào campaign này';b.onclick=function(){addToCampaign(name);};}
+    if(b){b.innerHTML='<i class="ti ti-database-plus"></i> Add to this campaign';b.onclick=function(){addToCampaign(name);};}
   }
   // mặc định lọc KH chưa thuộc chiến dịch nào
   var cf=document.getElementById('cf-campaign');if(cf){cf.value='none';window._campRefreshList();}
@@ -6308,7 +6326,7 @@ window._campShowDetail=function(campName){
   box.innerHTML='<div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0">'
     +'<div><div style="font-size:15px;font-weight:700">'+(isPool?'🌱 Active Pool':decoded)+'<\/div>'
     +'<div style="font-size:11px;color:var(--text3)">'+total+' khách<\/div><\/div>'
-    +'<div style="display:flex;gap:8px">'+((isPool||decoded==='Invalid')?'':'<button class="btn" onclick="window._campRecallFiltered(decodeURIComponent(\''+encodeURIComponent(decoded)+'\'))" style="font-size:11px;border-color:rgba(255,118,117,0.5);color:var(--danger)"><i class="ti ti-arrow-back-up"><\/i> Recall<\/button><button class="btn btn-primary" onclick="window._campAddData(decodeURIComponent(\''+encodeURIComponent(decoded)+'\'))" style="font-size:11px"><i class="ti ti-database-plus"><\/i> Thêm data<\/button>')+'<button class="btn" onclick="window._campExportExcel(encodeURIComponent(\''+campName+'\'))" style="font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"></i> Xuất Excel<\/button>'
+    +'<div style="display:flex;gap:8px">'+((isPool||decoded==='Invalid')?'':'<button class="btn" onclick="window._campRecallOpen(decodeURIComponent(\''+encodeURIComponent(decoded)+'\'))" style="font-size:11px;border-color:rgba(255,118,117,0.5);color:var(--danger)"><i class="ti ti-arrow-back-up"><\/i> Recall<\/button><button class="btn btn-primary" onclick="window._campAddData(decodeURIComponent(\''+encodeURIComponent(decoded)+'\'))" style="font-size:11px"><i class="ti ti-database-plus"><\/i> Add data<\/button>')+'<button class="btn" onclick="window._campExportExcel(encodeURIComponent(\''+campName+'\'))" style="font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"></i> Export Excel<\/button>'
     +'<button onclick="document.getElementById(\'camp-detail-modal\').style.display=\'none\'" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px">×<\/button><\/div><\/div>'
     // Stat cards — clickable as filters
     +'<div id="camp-stat-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;padding:12px;flex-shrink:0">'
