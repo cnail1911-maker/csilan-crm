@@ -1667,7 +1667,7 @@ html[data-skin='skyon'][data-mode] .search-wrap input:not([type=x]):not([type=y]
 [data-skin='skyon'][data-mode] thead tr,[data-skin='skyon'][data-mode] thead th{background:var(--surface) !important}
 /* ===== Table header nổi bật (mọi tab, mọi skin) ===== */
 html:root table thead tr,html:root table thead th{
-  background:color-mix(in srgb,var(--brand,#6c5ce7) 15%,var(--surface,#fff)) !important;
+  background:color-mix(in srgb,var(--brand,#6c5ce7) 15%,var(--bg2,#fff)) !important;
   color:var(--text,#222) !important;font-size:10.5px !important;font-weight:800 !important;
   text-transform:uppercase;letter-spacing:.7px;border-bottom:2px solid var(--brand,#6c5ce7) !important;white-space:nowrap}
 html:root[data-mode='light'] table thead th,html:root[data-theme='light'] table thead th{
@@ -1675,7 +1675,7 @@ html:root[data-mode='light'] table thead th,html:root[data-theme='light'] table 
   background:color-mix(in srgb,var(--brand,#6c5ce7) 9%,#fff) !important}
 html:root table thead th:first-child{border-top-left-radius:8px}
 html:root table thead th:last-child{border-top-right-radius:8px}
-html:root table thead th[onclick]:hover{background:color-mix(in srgb,var(--brand,#6c5ce7) 26%,var(--surface,#fff)) !important}
+html:root table thead th[onclick]:hover{background:color-mix(in srgb,var(--brand,#6c5ce7) 26%,var(--bg2,#fff)) !important}
 html:root table thead th [class*="b-"],html:root table thead th span{text-transform:none}
 
 [data-skin='skyon'][data-mode] .modal-header{background:transparent !important}
@@ -3431,7 +3431,7 @@ function renderClosedeal(){
   // Main table
   html+='<div class="content"><div class="panel"><div class="panel-header"><h2>Đơn hàng đã duyệt <span style="color:var(--accent2)">'+enriched.length+'<\/span><\/h2><\/div>'
     +(enriched.length===0?'<div class="empty-state"><i class="ti ti-trophy"></i>Chưa có đơn hàng nào được duyệt<\/div>'
-      :'<div class="table-scroll-always"><table style="min-width:max-content"><colgroup><col width="95"><col width="110"><col width="95"><col width="50"><col width="55"><col width="75"><col width="65"><col width="60"><col width="80"><col width="90"><col width="85"><col width="65"><col width="65"><col width="60">'+(isManager?'<col width="115">':'')+'</colgroup>'
+      :'<div class="table-scroll-always"><table style="width:100%;min-width:max-content"><colgroup><col width="95"><col width="110"><col width="95"><col width="50"><col width="55"><col width="75"><col width="65"><col width="60"><col width="80"><col width="90"><col width="85"><col width="65"><col width="65"><col width="60">'+(isManager?'<col width="115">':'')+'</colgroup>'
       +'<thead><tr style="white-space:nowrap"><th>Mã đơn<\/th><th>Business Name<\/th><th>Customer<\/th><th>Month<\/th><th>Year<\/th><th>Revenue<\/th><th>Deposit<\/th><th>Deposit 2<\/th><th>Balance Due<\/th><th>Payment<\/th><th>Order<\/th><th>Tracking<\/th><th>Sale<\/th><th>Ghi chú<\/th>'+(isManager?'<th><\/th>':'')+'<\/tr></thead>'
       +'<tbody>'+rows+'</tbody><\/table><\/div>'
       +pgBar(enriched.length,cdPage,PAGE_SIZE,'setCdPage'))
@@ -4435,7 +4435,6 @@ function renderPending(){
       +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(c.ma_kh||'—')+'<\/td>'
       +'<td>'+(c.business_name||'—')+'<\/td>'
       +'<td style="color:var(--text)">'+(c.customer_name||'')+'<\/td>'
-      +'<td style="font-family:monospace;font-size:10px">'+(c.business_phone?String(c.business_phone):'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone?String(c.cellphone):'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.business_phone||'—')+'<\/td>'
       +'<td>'+(c.is_duplicate?'<span class="badge b-lost">Trùng SĐT<\/span>':'<span class="badge b-new">Mới<\/span>')+'<\/td>'
@@ -4451,7 +4450,6 @@ function renderPending(){
       +'<td style="font-size:10px;color:var(--text3);font-family:monospace">'+(c.ma_kh||'—')+'<\/td>'
       +'<td>'+(c.business_name||'—')+'<\/td>'
       +'<td style="color:var(--danger)">'+(c.customer_name||'')+'<\/td>'
-      +'<td style="font-family:monospace;font-size:10px">'+(c.business_phone?String(c.business_phone):'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone?String(c.cellphone):'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.business_phone||'—')+'<\/td>'
       +'<td><span class="badge b-lost">Từ chối<\/span><\/td>'
@@ -4472,7 +4470,10 @@ function renderPending(){
   let invPendingRows='';
   // Fix: tìm customer trong toàn bộ CUSTOMERS (kể cả pending/rejected) để hiện đúng tên
   const _allCusts=window.CUSTOMERS||CUSTOMERS;
-  pendingInvoices.forEach(function(inv){
+  const _isStaleQ=function(inv){var cu=_allCusts.find(function(c){return c.id===inv.customer_id;});return !!(cu&&cu.status==='Completed');};
+  const liveInvoices=pendingInvoices.filter(function(i){return !_isStaleQ(i);});
+  const staleInvoices=pendingInvoices.filter(_isStaleQ);
+  liveInvoices.forEach(function(inv){
     const cust=_allCusts.find(function(c){return c.id===inv.customer_id;})||{};
     const isMine=currentUser&&(inv.sale_id===currentUser.id||inv.created_by===currentUser.id);
     const saleId=inv.sale_id||inv.created_by;
@@ -4498,22 +4499,67 @@ function renderPending(){
       +'<\/tr>';
   });
 
-  const totalLabel=pending.length+' KH · '+pendingInvoices.length+' Invoice chờ duyệt';
+  // Stale quotes: báo giá còn pending nhưng khách đã Completed
+  const _today0=new Date();_today0.setHours(0,0,0,0);
+  let staleRows='';let staleTotal=0;
+  staleInvoices.slice().sort(function(x,y){return new Date(x.created_at||0)-new Date(y.created_at||0);}).forEach(function(inv){
+    const cust=_allCusts.find(function(c){return c.id===inv.customer_id;})||{};
+    const isMine=currentUser&&(inv.sale_id===currentUser.id||inv.created_by===currentUser.id);
+    const prof=PROFILES.find(function(p){return p.id===(inv.sale_id||inv.created_by);});
+    const age=inv.created_at?Math.floor((_today0-new Date(inv.created_at))/86400000):null;
+    staleTotal+=parseFloat(inv.total)||0;
+    staleRows+='<tr>'
+      +'<td style="font-size:10px;font-family:monospace;color:var(--warn)">'+(inv.invoice_no||'—')+'<\/td>'
+      +'<td>'+(cust.business_name||inv.business_name||'—')+'<\/td>'
+      +'<td style="color:var(--text)">'+(cust.customer_name||inv.customer_name||'—')+'<\/td>'
+      +'<td style="color:var(--accent2);font-weight:700">$'+(inv.total||0).toLocaleString('en-US')+'<\/td>'
+      +'<td>'+(cust.lead_status?lBadge(cust.lead_status):'—')+'<\/td>'
+      +'<td style="font-size:11px;color:var(--text2)">'+(cust.reason||'—')+'<\/td>'
+      +'<td style="font-size:11px;color:var(--text2)">'+(prof?prof.full_name:'—')+'<\/td>'
+      +'<td style="font-size:10px;color:var(--text3)">'+fmtDate(inv.created_at)+'<\/td>'
+      +'<td>'+(age!==null?'<span class="badge '+(age>30?'b-lost':age>14?'b-followup':'b-new')+'">'+age+'d<\/span>':'—')+'<\/td>'
+      +'<td><div style="display:flex;gap:4px">'
+      +'<button class="btn" style="padding:3px 8px;font-size:11px" onclick="renderDetailModal('+(cust.id||inv.customer_id)+')"><i class="ti ti-external-link"></i> Open<\/button>'
+      +(isManager||isMine?'<button class="btn" style="padding:3px 8px;font-size:11px;border-color:rgba(162,155,254,0.4);color:var(--brand2)" onclick="editInvoicePage(\''+inv.invoice_no+'\')"><i class="ti ti-edit"></i> Edit<\/button>':'')
+      +(isManager?'<button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="approveInvoice('+inv.id+',\'rejected\')">✗ Close<\/button>':'')
+      +'<\/div><\/td><\/tr>';
+  });
+
+  const totalLabel=pending.length+' customers · '+liveInvoices.length+' pending invoices · '+staleInvoices.length+' stale quotes';
+  const tabs=[
+    ['inv','Pending Invoices',liveInvoices.length,'var(--warn)'],
+    ['stale','Stale Quotes',staleInvoices.length,'var(--brand2)'],
+    ['cust','Pending Customers',pending.length,'var(--accent)'],
+    ['rej','Rejected',rejected.length,'var(--danger)']
+  ];
+  if(!window._pdTab)window._pdTab='inv';
+  const tabBtns='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">'+tabs.map(function(t){
+    const on=window._pdTab===t[0];
+    return '<button class="btn" onclick="window._pdTab=\''+t[0]+'\';render()" style="border:'+(on?'2px solid '+t[3]:'1px solid var(--border)')+';color:'+(on?t[3]:'var(--text2)')+'">'+t[1]+' · <b>'+t[2]+'<\/b><\/button>';
+  }).join('')+'<\/div>';
+  let body='';
+  if(window._pdTab==='inv'){
+    body=liveInvoices.length>0
+      ?'<div class="panel" style="border-color:rgba(253,203,110,0.3)"><div class="panel-header"><h2><i class="ti ti-file-invoice" style="color:var(--warn)"></i> Pending Invoices <span style="color:var(--warn)">'+liveInvoices.length+'<\/span><\/h2>'+(isManager?'<span style="font-size:11px;color:var(--text3)">Approve to move the customer to the Order tab<\/span>':'')+'<\/div>'
+        +'<div class="table-scroll-always"><table><thead><tr><th>Mã đơn<\/th><th>Business Name<\/th><th>Customer<\/th><th>Total<\/th><th>Sale<\/th><th>Ngày tạo<\/th><th>Thao tác<\/th><\/tr></thead><tbody>'+invPendingRows+'</tbody><\/table><\/div><\/div>'
+      :'<div class="panel"><div class="empty-state"><i class="ti ti-file-invoice"></i>No pending invoices<\/div><\/div>';
+  } else if(window._pdTab==='stale'){
+    body=staleInvoices.length>0
+      ?'<div class="panel"><div class="panel-header"><h2><i class="ti ti-archive" style="color:var(--brand2)"></i> Stale Quotes <span style="color:var(--brand2)">'+staleInvoices.length+'<\/span> <span style="font-size:11px;font-weight:500;color:var(--text3)">· $'+Math.round(staleTotal).toLocaleString('en-US')+' total<\/span><\/h2><span style="font-size:11px;color:var(--text3)">Quotes still pending although the customer is Completed — review and close them<\/span><\/div>'
+        +'<div class="table-scroll-always"><table><thead><tr><th>Quote No<\/th><th>Business Name<\/th><th>Customer<\/th><th>Total<\/th><th>Lead Status<\/th><th>Reason<\/th><th>Sale<\/th><th>Created<\/th><th>Age<\/th><th>Actions<\/th><\/tr></thead><tbody>'+staleRows+'</tbody><\/table><\/div><\/div>'
+      :'<div class="panel"><div class="empty-state"><i class="ti ti-archive"></i>No stale quotes<\/div><\/div>';
+  } else if(window._pdTab==='cust'){
+    body='<div class="panel"><div class="panel-header"><h2>Pending Customers <span style="color:var(--warn)">'+pending.length+'<\/span><\/h2>'+(isManager?'<span style="font-size:11px;color:var(--text3)">Sales cannot see these customers until approved<\/span>':'')+'<\/div>'
+      +(pending.length===0?'<div class="empty-state"><i class="ti ti-clock"></i>No pending customers<\/div>'
+        :'<div class="table-scroll-always"><table>'+tableHead+'<tbody>'+pendingRows+'</tbody><\/table><\/div>'+pgBar(pending.length,pdPage,PAGE_SIZE,'setPdPage'))
+      +'<\/div>';
+  } else {
+    body='<div class="panel"><div class="panel-header"><h2>Rejected <span style="color:var(--danger)">'+rejected.length+'<\/span><\/h2><span style="font-size:11px;color:var(--text3)">Rejected customers stay in the system<\/span><\/div>'
+      +(rejected.length?'<div class="table-scroll-always"><table>'+tableHead+'<tbody>'+rejectedRows+'</tbody><\/table><\/div>':'<div class="empty-state"><i class="ti ti-circle-check"></i>Nothing rejected<\/div>')+'<\/div>';
+  }
   return '<div class="topbar"><div class="topbar-title">Chờ duyệt<\/div>'
     +'<div style="font-size:12px;color:var(--warn)">'+totalLabel+'<\/div>'+saleFilter+'<\/div>'
-    +'<div class="content">'
-    +(pendingInvoices.length>0
-      ?'<div class="panel" style="margin-bottom:14px;border-color:rgba(253,203,110,0.3)"><div class="panel-header" style="background-image:linear-gradient(rgba(253,203,110,0.1),rgba(253,203,110,0.1))"><h2><i class="ti ti-file-invoice" style="color:var(--warn)"></i> Invoice chờ duyệt <span style="color:var(--warn)">'+pendingInvoices.length+'<\/span><\/h2>'+(isManager?'<span style="font-size:11px;color:var(--text3)">Duyệt để chuyển khách sang tab Order<\/span>':'')+'<\/div>'
-      +'<div class="table-scroll-always"><table><thead><tr><th>Mã đơn<\/th><th>Business Name<\/th><th>Customer<\/th><th>Total<\/th><th>Sale<\/th><th>Ngày tạo<\/th><th>Thao tác<\/th><\/tr></thead>'
-      +'<tbody>'+invPendingRows+'</tbody><\/table><\/div><\/div>'
-      :'')
-    +'<div class="panel"><div class="panel-header"><h2>Khách hàng chờ duyệt <span style="color:var(--warn)">'+pending.length+'<\/span><\/h2>'+(isManager?'<span style="font-size:11px;color:var(--text3)">Sale không thấy khách cho đến khi được duyệt<\/span>':'')+'<\/div>'
-    +(pending.length===0?'<div class="empty-state"><i class="ti ti-clock"></i>Không có khách chờ duyệt<\/div>'
-      :'<div class="table-scroll-always"><table>'+tableHead+'<tbody>'+pendingRows+'</tbody><\/table><\/div>'+pgBar(pending.length,pdPage,PAGE_SIZE,'setPdPage'))
-    +'<\/div>'
-    +(rejected.length>0?'<div class="panel"><div class="panel-header"><h2>Đã từ chối <span style="color:var(--danger)">'+rejected.length+'<\/span><\/h2><span style="font-size:11px;color:var(--text3)">Khách bị từ chối vẫn lưu trong hệ thống<\/span><\/div>'
-      +'<table>'+tableHead+'<tbody>'+rejectedRows+'</tbody><\/table><\/div>':'')
-    +'<\/div>';
+    +'<div class="content">'+tabBtns+body+'<\/div>';
 }
 
 // ============================================================
@@ -5847,6 +5893,7 @@ window._campSalePgGo=function(btn){
     var cnt=newWrap.querySelector('.csf-count');if(cnt)cnt.textContent=custs.length+' KH';
   }
   wrap.parentNode.replaceChild(tmp.firstChild||newWrap,wrap);
+  requestAnimationFrame(function(){if(window._fixStickyThead)window._fixStickyThead();});
 };
 
 window._campSaleFilter=function(key,wrap,sd){
@@ -5916,6 +5963,7 @@ window._campSaleFilter=function(key,wrap,sd){
     if(cnt)cnt.textContent=filtered.length+' KH';
   }
   wrap.parentNode.replaceChild(tmp.firstChild,wrap);
+  requestAnimationFrame(function(){if(window._fixStickyThead)window._fixStickyThead();});
 };
 
 // Campaign detail navigation (Sale view)
@@ -5959,6 +6007,8 @@ window._detailNavTo=function(dir){
     list=window._potNavList;
   } else if(src==='alert'){
     list=window._alertNavList;
+  } else if(src==='cw'){
+    list=window._cwNavList;
   }
   if(!list||!list.length)return;
   var newIdx=(typeof idx==='number'?idx:0)+dir;
@@ -5969,7 +6019,8 @@ window._detailNavTo=function(dir){
   // Sync campaign compat
   if(src==='campaign'){window._campNavIdx=newIdx;}
   // Sync selId cho customers tab
-  if(src==='customers'){selId=newCust.id;}
+  if(src==='customers'||src==='cw'){selId=newCust.id;}
+  if(src==='cw'){_cw.cust=newCust.id;try{_cwDrawQueue();}catch(e){}}
   // Nếu đang nav từ camp-detail, đảm bảo camp-detail-modal vẫn hiển thị
   if(src==='camp-detail'){
     var _cdm=document.getElementById('camp-detail-modal');
@@ -8803,6 +8854,8 @@ function _renderDetailShell(modal,c,isManager,logs){
       list=window._potNavList;
     } else if(src==='alert'){
       list=window._alertNavList;
+    } else if(src==='cw'){
+      list=window._cwNavList;
     }
     if(!list||!list.length){navWrap.style.display='none';return;}
     navWrap.style.display='flex';
@@ -11511,6 +11564,12 @@ function _cwDrawQueue(){
   _cwDetail();
 }
 function _cwSelect(id){_cw.cust=id;_cwDrawQueue();}
+function _cwOpenDetail(id){
+  var list=_cwFiltered();window._cwNavList=list;
+  var idx=list.findIndex(function(c){return c.id===id;});
+  selId=id;
+  renderDetailModal(id,{source:'cw',idx:idx<0?0:idx});
+}
 function _cwDetail(){
   var el=document.getElementById('cw-detail');if(!el)return;
   var c=CUSTOMERS.find(function(x){return x.id===_cw.cust;});
@@ -11529,7 +11588,7 @@ function _cwDetail(){
     +'<div><span>Lead<\/span>'+(c.lead_status?lBadge(c.lead_status):'—')+'<\/div><div><span>Sub status<\/span><b>'+_cwEsc(c.sub_status||'—')+'<\/b><\/div>'
     +'<div><span>Ngày hẹn<\/span><b>'+_cwFmt(c.timeline_follow)+'<\/b><\/div><div><span>Hết hạn<\/span><b>'+_cwFmt(c.assigned_deadline)+'<\/b><\/div>'
     +'<div style="grid-column:1/-1"><span>Liên hệ gần nhất<\/span><b>'+_cwAgo(c.last_contacted)+'<\/b><\/div><\/div>'
-    +'<button class="btn btn-primary tele-open" onclick="selId='+c.id+';window._custNavIdx=undefined;render()"><i class="ti ti-edit"><\/i> Ghi chú &amp; cập nhật kết quả<\/button><\/div>'
+    +'<button class="btn btn-primary tele-open" onclick="_cwOpenDetail('+c.id+')"><i class="ti ti-edit"><\/i> Ghi chú &amp; cập nhật kết quả<\/button><\/div>'
     +'<div class="panel" style="margin-top:12px"><div class="panel-header"><h2>Ghi chú gần đây<\/h2><\/div><div id="cw-notes" style="padding:6px 16px 12px"><div style="color:var(--text3);padding:8px 0">Đang tải…<\/div><\/div><\/div>';
   var want=c.id;
   // Thanh tiến độ: số lần đã gọi (có kết quả) trên 6 lần; xanh = đã gọi, trắng = lần kế tiếp
