@@ -14629,6 +14629,11 @@ html[data-mode='light'] .ai-ctx-pill,html[data-theme='light'] .ai-ctx-pill{backg
 html[data-mode='light'] .ai-footer,html[data-theme='light'] .ai-footer{border-top-color:rgba(15,23,42,.08) !important;background:#fff}
 html[data-mode='light'] #ai-input,html[data-theme='light'] #ai-input{background:#f6f7fc !important;border-color:rgba(15,23,42,.15) !important;color:#1a2238 !important}
 html[data-mode='light'] #ai-input::placeholder,html[data-theme='light'] #ai-input::placeholder{color:#8a94a8 !important}
+
+.rm-me{display:flex;flex-direction:column;align-items:center;margin-bottom:4px}
+.rm-me img,.rm-av{width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid #6c5ce7;display:flex;align-items:center;justify-content:center;background:#6c5ce7;color:#fff;font-weight:800;font-size:18px}
+.rm-nick{font-size:12px;font-weight:800;color:#6c5ce7;margin-top:3px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rm-me+b{font-size:11px}
 </style>
 <script>
 (function(){
@@ -14660,6 +14665,15 @@ html[data-mode='light'] #ai-input::placeholder,html[data-theme='light'] #ai-inpu
   function isMgr(){var p=(typeof currentProfile!=='undefined'?currentProfile:null);return !!(p&&(p.role==='manager'||p.role==='admin'));}
   function canUse(){return !!(typeof currentProfile!=='undefined'&&currentProfile);}
   function urlOf(a){return lsGet('csilan_rm_'+a.k)||a.url||'';}
+  function esc(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function meHtml(){
+    if(isMgr())return '';
+    var p=(typeof currentProfile!=='undefined'?currentProfile:null);if(!p)return '';
+    var nm=p.nickname||(p.full_name||'').split(' ').pop()||'';
+    var ini=esc((nm||'?').charAt(0).toUpperCase());
+    var av=p.avatar_url?'<img src="'+esc(p.avatar_url)+'" onerror="this.outerHTML=\'<div class=rm-av>'+ini+'</div>\'">':'<div class="rm-av">'+ini+'</div>';
+    return '<div class="rm-me">'+av+'<div class="rm-nick">'+esc(nm)+'</div></div>';
+  }
   function wedge(i,n){
     var cx=220,cy=220,R=190,r=100,gap=7,pad=6;
     var a0=(-90+i*360/n)*Math.PI/180,a1=(-90+(i+1)*360/n)*Math.PI/180;
@@ -14684,7 +14698,7 @@ html[data-mode='light'] #ai-input::placeholder,html[data-theme='light'] #ai-inpu
       lbl+='<div class="rm-lbl" id="rm-l'+i+'" style="left:'+x+'%;top:'+y+'%"><i class="ti '+a.i+'"></i>'+a.t+(a.page&&window.page===a.page?'<small>you are here</small>':'')+'</div>';
     });
     ov.innerHTML='<div class="rm-wrap"><svg viewBox="0 0 440 440">'+svg+'</svg>'+lbl
-      +'<div class="rm-hub"><b id="rm-hub-t">Maison De KCT</b><span id="rm-hub-s">Choose a system</span></div></div>';
+      +'<div class="rm-hub">'+meHtml()+'<b id="rm-hub-t">Maison De KCT</b><span id="rm-hub-s">Choose a system</span></div></div>';
     ov.querySelectorAll('.rm-seg').forEach(function(p){
       var i=+p.getAttribute('data-i');
       p.addEventListener('mouseenter',function(){hot(i,true);});
