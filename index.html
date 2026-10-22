@@ -1572,6 +1572,21 @@ mark.chat-hl{background:rgba(253,203,110,0.35);color:inherit;border-radius:2px;}
 .kl-chip{border:1px solid var(--border);background:var(--surface);color:var(--text2);border-radius:20px;padding:3px 10px;font-size:11px;cursor:pointer}.kl-chip b{margin-left:3px;color:var(--text)}
 .kl-chip.on{background:var(--brand);border-color:var(--brand);color:#fff}.kl-chip.on b{color:#fff}
 .kl-sel{font-size:11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);padding:3px 8px}
+
+.st-sec{margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.st-sec-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}.st-sec-h span{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--text2)}.st-sec-h em{font-style:normal;font-size:11px;color:var(--text3)}
+.st-tiles{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);gap:8px}
+.st-tile{background:color-mix(in srgb,var(--kc) 9%,var(--surface));border:1px solid color-mix(in srgb,var(--kc) 22%,var(--border));border-left:3px solid var(--kc);border-radius:10px;padding:8px 10px;cursor:pointer;display:flex;flex-direction:column;gap:2px;min-width:0;transition:transform .12s}
+.st-tile:hover{transform:translateY(-1px)}
+.st-tile small{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}.st-tile b{font-size:16px;color:var(--text);white-space:nowrap}
+.st-rings{gap:4px}
+.st-cols{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;align-items:end}
+.st-col{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;min-width:0}
+.st-col b{font-size:12px;color:var(--text)}
+.st-col-t{width:100%;max-width:34px;height:110px;display:flex;align-items:flex-end;background:color-mix(in srgb,var(--border) 55%,transparent);border-radius:8px;overflow:hidden}
+.st-col-t u{display:block;width:100%;border-radius:8px 8px 0 0;transition:height .3s}
+.st-col span{font-size:10px;color:var(--text3);white-space:nowrap}
+.st-col:hover .st-col-t{outline:2px solid var(--brand2)}.st-col.z{cursor:default;opacity:.55}.st-col.z:hover .st-col-t{outline:none}
 /* Table headers: nổi bật hơn */
 /* Dashboard / Daily của manager */
 .kd-grid3{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:14px;margin-bottom:14px}
@@ -8201,31 +8216,33 @@ function _stMapHtml(S,list,T){
   var rk=sel?rank.indexOf(S[code])+1:0;
   var sub=sel?('#'+rk+' of '+rank.length+' states · '+_stPct(cv,total)+'% of total'):(rank.length+' states with data');
   var ring=function(label,cat,n,color){return '<div class="st-ringw" onclick="_stDrill(\''+code+'\',\''+cat+'\')" title="Open list">'+_campRing(_stPct(n,cur.contacted),color,label,n.toLocaleString()+' / '+cur.contacted.toLocaleString())+'</div>';};
-  var tile=function(label,val,cat,color){return '<div class="kh-k st-tile" style="--kc:'+color+'" onclick="_stDrill(\''+code+'\',\''+cat+'\')"><small>'+label+'</small><b>'+val+'</b></div>';};
-  var topList=sel?'':('<div class="st-top"><div class="st-sub">Top 5 by '+mname+'</div>'+rank.slice(0,5).map(function(s){
+  var tile=function(label,val,cat,color){return '<div class="st-tile" style="--kc:'+color+'" onclick="_stDrill(\''+code+'\',\''+cat+'\')"><small>'+label+'</small><b>'+val+'</b></div>';};
+  var topList=sel?'':('<div class="st-sec"><div class="st-sec-h"><span>Top 5 by '+mname+'</span></div>'+rank.slice(0,5).map(function(s){
     var v=_stVal(s,M.metric),w=max?Math.round(v/max*100):0;
     return '<div class="st-toprow" onclick="_stSelect(\''+s.code+'\')"><span>'+s.code+'</span><i><u style="width:'+w+'%"></u></i><b>'+_stFmt(v,M.metric)+'</b></div>';}).join('')+'</div>');
   return '<div class="st-grid"><div class="st-card st-map"><svg viewBox="0 0 975 610" role="img" aria-label="US map">'+paths+labels+'</svg>'
     +'<div class="st-legend"><span>0</span><i></i><span>'+_stFmt(max,M.metric)+'</span><em>'+mname+' by state · click a state</em></div></div>'
     +'<div class="st-card st-detail"><div class="st-dh"><div><div class="st-dt">'+title+'</div><div class="st-ds">'+R_label()+'</div></div>'+(sel?'<button type="button" class="btn" onclick="_stSelect(null)">Clear</button>':'')+'</div>'
     +'<div class="kh-big"><b>'+_stFmt(cv,M.metric)+'</b><span>'+mname.toLowerCase()+'</span></div><div class="kh-sub">'+sub+'</div>'
-    +'<div class="st-sub">Connection rate <em>of '+cur.contacted.toLocaleString()+' contacted</em></div>'
-    +'<div class="st-rings">'+ring('Connected','conn',cur.conn,'var(--accent2)')+ring('Not connected','nc',cur.nc,'var(--danger)')+ring('Busy','busy',cur.busy,'var(--warn)')+'</div>'
+    +'<div class="st-sec"><div class="st-sec-h"><span>Connection rate</span><em>of '+cur.contacted.toLocaleString()+' contacted</em></div>'
+    +'<div class="st-rings">'+ring('Connected','conn',cur.conn,'var(--accent2)')+ring('Not connected','nc',cur.nc,'var(--danger)')+ring('Busy','busy',cur.busy,'var(--warn)')+'</div></div>'
     +(R.isM&&R.serverTotal&&R.loaded<R.serverTotal?'<div class="st-warn"><i class="ti ti-alert-triangle"></i> Loaded '+R.loaded.toLocaleString()+' of '+R.serverTotal.toLocaleString()+' customers — still loading in background or limited by the server. Reload the page for full numbers.</div>':'')
     +'<div class="st-tiles">'+tile('Data',cur.data.toLocaleString(),'data','var(--brand2)')+tile('Potential',cur.pot.toLocaleString(),'pot','var(--accent)')+tile('Orders',cur.orders.toLocaleString(),'orders','var(--accent2)')
     +tile('Revenue',_stMoney(cur.rev),'rev','var(--brand2)')+tile('Pedicure Qty',cur.pdc.toLocaleString(),'pdc','var(--warn)')+tile('Headspa Qty',cur.hea.toLocaleString(),'hea','var(--danger)')+'</div>'
     +_stPotBreak(cur,code)+topList+'</div></div>';
 }
 var _ST_POT_COL={'Pedicure Spa & Package':'var(--warn)','Massage Chair':'var(--brand2)','Furniture':'var(--accent2)','Padset':'var(--accent)','HeadSpa Bed':'var(--danger)','Part & Accessories':'var(--text3)'};
+var _ST_POT_SHORT={'Pedicure Spa & Package':'Pedicure','Massage Chair':'Massage','Furniture':'Furniture','Padset':'Padset','HeadSpa Bed':'HeadSpa','Part & Accessories':'Parts'};
 function _stPotBreak(cur,code){
   var by={};cur.L.pot.forEach(function(c){var k=String(c.potential).trim();by[k]=(by[k]||0)+1;});
-  var keys=Object.keys(by).sort(function(a,b){return by[b]-by[a];});
-  if(!keys.length)return '';
-  var mx=by[keys[0]];
-  return '<div class="st-sub">Potential by type <em>'+cur.pot.toLocaleString()+' total</em></div>'+keys.map(function(k){
-    var col=_ST_POT_COL[k]||'var(--text3)';
-    return '<div class="st-toprow" onclick="_stDrill(\''+code+'\',\'pot\',decodeURIComponent(\''+encodeURIComponent(k)+'\'))"><span style="width:128px;font-weight:600;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+k+'">'+k+'</span><i><u style="width:'+Math.round(by[k]/mx*100)+'%;background:'+col+'"></u></i><b>'+by[k].toLocaleString()+' <small style="color:var(--text3)">'+_stPct(by[k],cur.pot)+'%</small></b></div>';
+  var keys=Object.keys(_ST_POT_SHORT).concat(Object.keys(by).filter(function(k){return !_ST_POT_SHORT[k];}));
+  var mx=Math.max.apply(null,[1].concat(keys.map(function(k){return by[k]||0;})));
+  var cols=keys.map(function(k){
+    var n=by[k]||0,h=n?Math.max(6,Math.round(n/mx*100)):0,col=_ST_POT_COL[k]||'var(--text3)';
+    return '<div class="st-col'+(n?'':' z')+'"'+(n?' onclick="_stDrill(\''+code+'\',\'pot\',decodeURIComponent(\''+encodeURIComponent(k)+'\'))"':'')+' title="'+k+': '+n+' ('+_stPct(n,cur.pot)+'%)">'
+      +'<b>'+n.toLocaleString()+'</b><div class="st-col-t"><u style="height:'+h+'%;background:'+col+'"></u></div><span>'+(_ST_POT_SHORT[k]||k)+'</span></div>';
   }).join('');
+  return '<div class="st-sec"><div class="st-sec-h"><span>Potential</span><em>'+cur.pot.toLocaleString()+' total</em></div><div class="st-cols">'+cols+'</div></div>';
 }
 function R_label(){return window._stReport.label;}
 var _ST_COLS=[['name','State','l'],['data','Data'],['pot','Potential'],['potp','Pot %'],['orders','Orders'],['rev','Revenue'],['pdc','Pedicure Qty'],['hea','Headspa Qty'],['connp','Connected %'],['ncp','Not Connected %'],['busyp','Busy %']];
