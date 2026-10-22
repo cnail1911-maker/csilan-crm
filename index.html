@@ -1535,6 +1535,11 @@ mark.chat-hl{background:rgba(253,203,110,0.35);color:inherit;border-radius:2px;}
 .kh-rings{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 8px}
 .kh-ring{display:flex;flex-direction:column;align-items:center;text-align:center}.kh-ring-l{font-size:12px;font-weight:600;margin-top:4px}.kh-ring-s{font-size:10px;color:var(--text3)}
 @media(max-width:820px){.kh-hero{grid-template-columns:1fr}}
+
+.kh-strip{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.kh-k{background:color-mix(in srgb,var(--kc) 10%,var(--surface)) !important;border:1px solid color-mix(in srgb,var(--kc) 28%,var(--border)) !important;border-top:3px solid var(--kc) !important}
+.kh-k.on{box-shadow:0 0 0 2px var(--kc)}
+.kh-hero{margin-bottom:12px}
 /* Table headers: nổi bật hơn */
 /* Dashboard / Daily của manager */
 .kd-grid3{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:14px;margin-bottom:14px}
@@ -2043,7 +2048,7 @@ async function renderGamePage(){
             +renderRaceTrack(board.map(function(b){return {user_id:b.user_id,full_name:b.full_name,avatar_url:b.avatar_url,pct:c.ranking_mode==='target_pct'?(b.pct||0):b.value,revenue:b.value,target:0};}),uid,c.metric_type!=='revenue'&&c.ranking_mode!=='target_pct')
             +'</div>';
         }).join(''))
-      +(myGoldenCust.length>0?('<div class="stat-card" style="margin-bottom:14px;border:1px solid gold"><h3>🎫 Vé vàng — '+myGoldenCust.length+' khách đang chờ chốt</h3>'
+      +(myGoldenCust.length>0?('<div class="stat-card" style="margin-bottom:14px;border:1px solid gold"><h3>🎫 Lucky Ticket — '+myGoldenCust.length+' khách đang chờ chốt</h3>'
         +myGoldenCust.map(function(c){return '<div style="padding:4px 0">'+(c.business_name||c.customer_name||'KH #'+c.id)+'</div>';}).join('')+'</div>'):'')
       +'<div class="stat-card" style="margin-bottom:14px"><h3>🎡 Vòng quay may mắn</h3>'
       +'<div>Lượt quay hôm nay: <b>'+((wheelCredit&&wheelCredit.available)||0)+'</b></div>'
@@ -4912,7 +4917,7 @@ function _campCardHtml(s,isManager){
 }
 function _campActionsHtml(en,isManager){
   return (isManager?'<button class="btn" style="font-size:11px;padding:3px 10px;border-color:rgba(33,88,232,0.4);color:var(--brand2)" onclick="event.stopPropagation();window._cwOpenAs(&quot;'+en+'&quot;)" title="Mở giao diện làm việc của sale cho campaign này"><i class="ti ti-phone-call"><\/i> Detail<\/button>':'')+'<button class="btn" style="font-size:11px;padding:3px 10px;border-color:rgba(0,206,201,0.4);color:var(--accent)" onclick="event.stopPropagation();window._campShowReport(&quot;'+en+'&quot;)" title="Báo cáo"><i class="ti ti-chart-bar"><\/i> Báo cáo<\/button>'
-    +(isManager?'<button class="btn" style="font-size:11px;padding:3px 10px;border-color:gold;color:gold" onclick="event.stopPropagation();window._campAssignGolden(&quot;'+en+'&quot;)" title="Gắn vé vàng ngẫu nhiên"><i class="ti ti-ticket"><\/i> Vé vàng<\/button>':'')
+    +(isManager?'<button class="btn" style="font-size:11px;padding:3px 10px;border-color:gold;color:gold" onclick="event.stopPropagation();window._campAssignGolden(&quot;'+en+'&quot;)" title="Gắn Lucky Ticket ngẫu nhiên"><i class="ti ti-ticket"><\/i> Lucky Ticket<\/button>':'')
     +(isManager?'<button class="btn" style="font-size:11px;padding:3px 10px" onclick="event.stopPropagation();window._campExportExcel(&quot;'+en+'&quot;)" title="Xuất Excel"><i class="ti ti-table-export"><\/i> Excel<\/button>':'');
 }
 function _campListVisibleNames(){return window._campShownNames||[];}
@@ -4935,12 +4940,13 @@ function _campListHtml(){
   var kpi=function(l,v,c,key,act){
     var on=(key&&window._sf.camp===key)||(key==='all'&&!window._sf.camp);
     var oc=act?act:(key?"_sfToggle('camp','"+key+"')":'');
-    return '<div class="sfc'+(on?' on':'')+'" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 14px;min-width:110px;'+(oc?'cursor:pointer':'')+'"'+(oc?' role="button" tabindex="0" onclick="'+oc+'"':'')+'><div style="font-size:10px;color:var(--text3)">'+l+'<\/div><div style="font-size:17px;font-weight:700;color:'+c+'">'+v+'<\/div><\/div>';};
-  var strip='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
-    +kpi('Campaign',listAll.length,'var(--text)','all')+kpi('Data',T.total.toLocaleString(),'var(--brand2)')+kpi('Chưa gọi',(T.total-T.called).toLocaleString(),'var(--danger)','nocall')
+    return '<div class="sfc kh-k'+(on?' on':'')+'" style="--kc:'+c+';border-radius:10px;padding:8px 14px;min-width:110px;'+(oc?'cursor:pointer':'')+'"'+(oc?' role="button" tabindex="0" onclick="'+oc+'"':'')+'><div style="font-size:10px;color:var(--text3)">'+l+'<\/div><div style="font-size:17px;font-weight:700;color:'+c+'">'+v+'<\/div><\/div>';};
+  var strip='<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +kpi('Campaign',listAll.length,'var(--text)','all')+kpi('Chưa gọi',(T.total-T.called).toLocaleString(),'var(--danger)','nocall')
     +kpi('Potential',T.potential.toLocaleString(),'var(--accent)','pot')+kpi('Orders',T.orders.toLocaleString(),'var(--accent2)','orders')
     +kpi('Rev','$'+T.rev.toLocaleString('en-US'),'var(--accent2)','', "_campOpenOrders('approved')")+kpi('Est','$'+T.est.toLocaleString('en-US'),'var(--warn)','', "_campOpenOrders('pending')")+'<\/div>';
-  strip=_campHeroHtml(listAll,T)+strip;
+  strip=_campHeroHtml(listAll,T,strip);
+  if(!list.length)return strip+'<div class="empty-state"><i class="ti ti-speakerphone"><\/i>Không có campaign nào trong nhóm này<\/div>';
   if(!list.length)return strip+'<div class="empty-state"><i class="ti ti-speakerphone"><\/i>Không có campaign nào trong nhóm này<\/div>';
   if(window._campView==='table'){
     var so=window._campSort,ck=so?so.key:'deadline',cd=so?so.dir:(window._campTab==='active'?1:-1);
@@ -4967,8 +4973,8 @@ function _campRing(pct,color,label,sub){
     +'<text x="36" y="40" text-anchor="middle" font-size="14" font-weight="700" fill="var(--text)">'+Math.round(pct)+'%</text></svg>'
     +'<div class="kh-ring-l">'+label+'</div><div class="kh-ring-s">'+sub+'</div></div>';
 }
-function _campHeroHtml(listAll,T){
-  if(!listAll.length)return '';
+function _campHeroHtml(listAll,T,strip){
+  if(!listAll.length)return strip;
   var top=listAll.slice().sort(function(a,b){return b.called-a.called;}).slice(0,14);
   var mx=Math.max.apply(null,top.map(function(s){return s.total;}).concat([1]));
   var bars=top.map(function(s){
@@ -4984,7 +4990,7 @@ function _campHeroHtml(listAll,T){
   return '<div class="kh-hero">'
     +'<div class="kh-card"><div class="kh-big"><b>'+T.called.toLocaleString()+'</b><span>contacted</span></div>'
     +'<div class="kh-sub">of '+T.total.toLocaleString()+' data · '+listAll.length+' campaign</div>'
-    +'<div class="kh-bars">'+bars+'</div><div class="kh-leg"><i></i>Contacted <i class="g"></i>Total data</div></div>'
+    +'<div class="kh-bars">'+bars+'</div><div class="kh-leg"><i></i>Contacted <i class="g"></i>Total data</div>'+'<div class="kh-strip">'+strip+'</div></div>'
     +'<div class="kh-card"><div class="kh-title">Campaign progress</div><div class="kh-rings">'
     +_campRing(cp,'var(--accent)','Contact',T.called.toLocaleString()+' / '+T.total.toLocaleString())
     +_campRing(pp,'var(--warn)','Potential',T.potential.toLocaleString())
@@ -5013,7 +5019,7 @@ window._campSetSort=function(k,fromHeader){
 // ══════════════════════════════════════════════════════════════
 // CAMPAIGN REPORT MODAL v2 — Charts + Click-to-list
 // ══════════════════════════════════════════════════════════════
-// Gắn vé vàng ngẫu nhiên cho 1 campaign ĐÃ TẠO — chỉ Manager/Admin. Chỉ chọn
+// Gắn Lucky Ticket ngẫu nhiên cho 1 campaign ĐÃ TẠO — chỉ Manager/Admin. Chỉ chọn
 // trong KH của campaign CHƯA gắn cờ & CHƯA Closedeal (tránh gắn trùng/gắn cho
 // đơn đã chốt xong không còn ý nghĩa thưởng).
 window._campAssignGolden=async function(encodedName){
@@ -5033,7 +5039,7 @@ window._campAssignGolden=async function(encodedName){
   }
   showLoading(false);
   if(pool.length===0){alert('Campaign "'+name+'" không còn khách nào để gắn cờ (đã gắn hết hoặc đã Closedeal hết).');return;}
-  var input=prompt('Campaign "'+name+'" — còn '+pool.length+' khách chưa gắn cờ & chưa chốt.\nNhập số lượng vé vàng muốn gắn ngẫu nhiên:','');
+  var input=prompt('Campaign "'+name+'" — còn '+pool.length+' khách chưa gắn cờ & chưa chốt.\nNhập số lượng Lucky Ticket muốn gắn ngẫu nhiên:','');
   if(input===null)return;
   var n=parseInt(input);
   if(!n||n<=0){alert('Số lượng không hợp lệ.');return;}
@@ -5050,7 +5056,7 @@ window._campAssignGolden=async function(encodedName){
     });
   }
   showLoading(false);
-  showCrmToast('✅ Đã gắn 🎫 vé vàng','Campaign "'+name+'" · '+ids.length+' khách','success');
+  showCrmToast('✅ Đã gắn 🎫 Lucky Ticket','Campaign "'+name+'" · '+ids.length+' khách','success');
   render();
 };
 
@@ -5641,7 +5647,7 @@ function renderCampaignSale(uid,profId,isLeader){
       +(daysLeft!==null?'<span style="margin-left:8px;color:'+dlColor+'">'+(daysLeft<0?'Hết hạn '+Math.abs(daysLeft)+'d':daysLeft===0?'Hôm nay':daysLeft+'d còn')+'<\/span>':'')+'<\/div><\/div>'
       +'<div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">'
       +'<button class="btn" style="font-size:11px;padding:3px 10px;border-color:rgba(0,206,201,0.4);color:var(--accent)" onclick="event.stopPropagation();window._campShowReport(&quot;'+encodeURIComponent(camp.name)+'&quot;)" title="Báo cáo"><i class="ti ti-chart-bar"></i> Báo cáo<\/button>'
-      +((currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'))?('<button class="btn" style="font-size:11px;padding:3px 10px;border-color:gold;color:gold" onclick="event.stopPropagation();window._campAssignGolden(&quot;'+encodeURIComponent(camp.name)+'&quot;)" title="Gắn vé vàng ngẫu nhiên"><i class="ti ti-ticket"></i> Vé vàng<\/button>'):'')
+      +((currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'))?('<button class="btn" style="font-size:11px;padding:3px 10px;border-color:gold;color:gold" onclick="event.stopPropagation();window._campAssignGolden(&quot;'+encodeURIComponent(camp.name)+'&quot;)" title="Gắn Lucky Ticket ngẫu nhiên"><i class="ti ti-ticket"></i> Lucky Ticket<\/button>'):'')
       +'<i class="ti ti-chevron-down" id="'+id+'-chevron"></i>'
       +'<\/div><\/div>'
       +'<div id="'+id+'-list" style="display:none">'+_campSaleTable(camp.custs,true,camp.name.replace(/[^a-z0-9]/gi,'_'))+'<\/div><\/div>';
@@ -5688,7 +5694,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
       +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-pot" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
       +'<option value="">Tất cả Potential</option>'+POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'" style="background:#1e1550">'+p+'</option>';}).join('')+'</select>'
       +(function(){var stOpts=[...new Set((window._campSaleCusts&&window._campSaleCusts[key]||[]).map(function(c){return c.state;}).filter(Boolean))].sort();return '<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-state" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả State<\/option>'+stOpts.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'<\/option>';}).join('')+'<\/select>';})()
-      +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-golden" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả<\/option><option value="1" style="background:#1e1550">🎫 Chỉ vé vàng<\/option><\/select>'
+      +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-golden" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả<\/option><option value="1" style="background:#1e1550">🎫 Chỉ Lucky Ticket<\/option><\/select>'
       +'<span class="csf-count" style="font-size:11px;color:var(--text3)">0 KH<\/span>'
       +'<\/div>'
       +'<div style="padding:30px;text-align:center;color:var(--text3)"><i class="ti ti-users" style="font-size:24px;display:block;margin-bottom:8px;opacity:0.3"></i>Không có kết quả<\/div>'
@@ -5714,7 +5720,7 @@ function _campSaleTable(custs,showDeadline,campKey,_isFilterRender){
     +POTENTIAL_OPTS.map(function(p){return '<option value="'+p+'" style="background:#1e1550">'+p+'</option>';}).join('')
     +'</select>'
     +(function(){var stOpts=[...new Set((window._campSaleCusts&&window._campSaleCusts[key]||[]).map(function(c){return c.state;}).filter(Boolean))].sort();return '<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-state" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả State<\/option>'+stOpts.map(function(s){return '<option value="'+s+'" style="background:#1e1550">'+s+'<\/option>';}).join('')+'<\/select>';})()
-      +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-golden" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả<\/option><option value="1" style="background:#1e1550">🎫 Chỉ vé vàng<\/option><\/select>'
+      +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-golden" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả<\/option><option value="1" style="background:#1e1550">🎫 Chỉ Lucky Ticket<\/option><\/select>'
     +'<select onchange="window._campSaleFilter(\''+key+'\',this.closest(\'.camp-section-wrap\'),\''+sd+'\')" class="csf-last" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;outline:none">'
     +'<option value="">Last Contact</option>'
     +'<option value="3-7" style="background:#1e1550">3-7 ngày</option>'
@@ -5939,7 +5945,7 @@ function _campSaleRows(custs,showDeadline,campKey,offset){
     var clickFn=key?'window._campDetailNav('+c.id+',\''+key+'\','+absoluteIdx+')':'renderDetailModal('+c.id+')';
     return '<tr onclick="'+clickFn+'" style="cursor:pointer">'
       +'<td style="font-size:10px;color:var(--text3)">'+(c.ma_kh||'—')+'<\/td>'
-      +'<td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.is_golden_ticket?'<span title="Vé vàng — chốt đơn này sẽ được thưởng" style="margin-right:3px">🎫<\/span>':'')+(c.business_name||'—')+'<\/td>'
+      +'<td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.is_golden_ticket?'<span title="Lucky Ticket — chốt đơn này sẽ được thưởng" style="margin-right:3px">🎫<\/span>':'')+(c.business_name||'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--text2)">'+(c.customer_name||'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.business_phone?String(c.business_phone):'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone?String(c.cellphone):'—')+'<\/td>'
@@ -6071,7 +6077,7 @@ window._campOpenCreate=function(prefillName){
     +'<div id="camp-preview-count" style="font-size:12px;color:var(--accent2);font-weight:700"><\/div>'
     +'<\/div>'
     +'<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">'
-    +'<label style="font-size:10px;color:gold;text-transform:uppercase;display:block;margin-bottom:3px">🎫 Vé vàng cho đợt này<\/label>'
+    +'<label style="font-size:10px;color:gold;text-transform:uppercase;display:block;margin-bottom:3px">🎫 Lucky Ticket cho đợt này<\/label>'
     +'<input id="camp-golden-count" type="number" min="0" value="0" placeholder="Số lượng" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">'
     +'<div style="font-size:10px;color:var(--text3);margin-top:3px">Random gắn cờ đúng số này trong danh sách vừa thêm — sale chốt trúng sẽ được thưởng ở tab Game.<\/div>'
     +'<\/div>'
@@ -6111,7 +6117,7 @@ window._campOpenCreate=function(prefillName){
   window._campCreateSelected=new Set();
   window._campSelectedSales=new Set();
   window._campAddedCount=0; // tổng KH đã thêm trong phiên modal này (cùng 1 đợt campaign)
-  window._campGoldenTotal=0; // tổng vé vàng đã gắn trong phiên modal này
+  window._campGoldenTotal=0; // tổng Lucky Ticket đã gắn trong phiên modal này
   _campRefreshList();
 
   // Close dropdown on outside click
@@ -6193,6 +6199,29 @@ window._campSelectAllList=function(checked){
   _campRefreshList();
 };
 
+window._campRecallFiltered=async function(name){
+  var box=document.getElementById('camp-detail-box');
+  var list=((window._campDetailPg&&window._campDetailPg.filtered)||(box&&box._custs)||[]).filter(function(c){return c.campaign_name===name;});
+  if(!list.length){alert('No customers to recall.');return;}
+  var withPot=list.filter(function(c){return c.potential&&String(c.potential).trim();}).length;
+  var won=list.filter(function(c){return c.lead_status==='Closedeal';}).length;
+  var msg='Recall '+list.length+' customer(s) from "'+name+'"?\n\n- Removed from campaign and from their sale\n- Returned to the pool (no campaign)'+(withPot?'\n- '+withPot+' with Potential go to Active Pool':'')+(won?'\n- WARNING: '+won+' are Closedeal':'')+'\n\nThe current filter in the list decides who is recalled.';
+  if(!confirm(msg))return;
+  showLoading(true);
+  var ids=list.map(function(c){return c.id;});
+  try{
+    for(var i=0;i<ids.length;i+=500){
+      var r=await sb.from('customers').update({assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true}).in('id',ids.slice(i,i+500));
+      if(r.error)throw r.error;
+    }
+  }catch(e){showLoading(false);alert('Recall error: '+(e.message||e));return;}
+  var set=new Set(ids);
+  CUSTOMERS.forEach(function(c){if(set.has(c.id))Object.assign(c,{assigned_to:null,campaign_name:null,assigned_deadline:null,is_recalled:true,assigned_profile:null});});
+  showLoading(false);
+  var m=document.getElementById('camp-detail-modal');if(m)m.style.display='none';
+  alert('Recalled '+ids.length+' customer(s) to the pool.');
+  render();
+};
 window._campAddData=function(name){
   var m=document.getElementById('camp-detail-modal');if(m)m.style.display='none';
   window._campOpenCreate(name);
@@ -6267,7 +6296,7 @@ window._campShowDetail=function(campName){
     var sale=c.assigned_profile?c.assigned_profile.full_name.split(' ').pop():'—';
     return '<tr onclick="renderDetailModal('+c.id+')" style="cursor:pointer">'
       +'<td style="font-size:10px;color:var(--text3)">'+(c.ma_kh||'—')+'<\/td>'
-      +'<td>'+(c.is_golden_ticket?'<span title="Vé vàng">🎫<\/span> ':'')+(c.business_name||c.customer_name||'—')+'<\/td>'
+      +'<td>'+(c.is_golden_ticket?'<span title="Lucky Ticket">🎫<\/span> ':'')+(c.business_name||c.customer_name||'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.business_phone?String(c.business_phone):'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone?String(c.cellphone):'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--accent)">'+(c.potential||'—')+'<\/td>'
@@ -6279,7 +6308,7 @@ window._campShowDetail=function(campName){
   box.innerHTML='<div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0">'
     +'<div><div style="font-size:15px;font-weight:700">'+(isPool?'🌱 Active Pool':decoded)+'<\/div>'
     +'<div style="font-size:11px;color:var(--text3)">'+total+' khách<\/div><\/div>'
-    +'<div style="display:flex;gap:8px">'+((isPool||decoded==='Invalid')?'':'<button class="btn btn-primary" onclick="window._campAddData(decodeURIComponent(\''+encodeURIComponent(decoded)+'\'))" style="font-size:11px"><i class="ti ti-database-plus"><\/i> Thêm data<\/button>')+'<button class="btn" onclick="window._campExportExcel(encodeURIComponent(\''+campName+'\'))" style="font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"></i> Xuất Excel<\/button>'
+    +'<div style="display:flex;gap:8px">'+((isPool||decoded==='Invalid')?'':'<button class="btn" onclick="window._campRecallFiltered(decodeURIComponent(\''+encodeURIComponent(decoded)+'\'))" style="font-size:11px;border-color:rgba(255,118,117,0.5);color:var(--danger)"><i class="ti ti-arrow-back-up"><\/i> Recall<\/button><button class="btn btn-primary" onclick="window._campAddData(decodeURIComponent(\''+encodeURIComponent(decoded)+'\'))" style="font-size:11px"><i class="ti ti-database-plus"><\/i> Thêm data<\/button>')+'<button class="btn" onclick="window._campExportExcel(encodeURIComponent(\''+campName+'\'))" style="font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"></i> Xuất Excel<\/button>'
     +'<button onclick="document.getElementById(\'camp-detail-modal\').style.display=\'none\'" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px">×<\/button><\/div><\/div>'
     // Stat cards — clickable as filters
     +'<div id="camp-stat-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;padding:12px;flex-shrink:0">'
@@ -6324,7 +6353,7 @@ window._campShowDetail=function(campName){
       var sOpts=[...new Set(custs.map(function(c){return c.assigned_profile?c.assigned_profile.full_name:null;}).filter(Boolean))].sort();
       return '<select id="cd-f-sale" onchange="window._campDetailApplyFilters()" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:3px 7px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả Sale<\/option>'+sOpts.map(function(s){return '<option value="'+s+'">'+s.split(' ').pop()+'<\/option>';}).join('')+'<\/select>';
     })()
-    +'<select id="cd-f-golden" onchange="window._campDetailApplyFilters()" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:3px 7px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả<\/option><option value="1">🎫 Chỉ vé vàng<\/option><\/select>'
+    +'<select id="cd-f-golden" onchange="window._campDetailApplyFilters()" style="background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:3px 7px;font-size:11px;color:#e0deff;outline:none"><option value="">Tất cả<\/option><option value="1">🎫 Chỉ Lucky Ticket<\/option><\/select>'
     +'<span id="camp-detail-filter-label" style="font-size:10px;color:var(--text3)"><\/span>'
     +'<button id="camp-detail-clear-filter" onclick="window._campDetailClearFilters()" style="display:none;font-size:10px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--text3);cursor:pointer;padding:1px 6px">× Xóa lọc<\/button>'
     +'<\/div><\/div>'
@@ -6445,7 +6474,7 @@ window._campDetailRenderPage=function(pg){
     var _absIdx=filtered.indexOf(c);
     return '<tr onclick="window._campDetailNavCtx={source:\'camp-detail\',idx:'+_absIdx+',list:window._campDetailFiltered};renderDetailModal('+c.id+',{source:\'camp-detail\',idx:'+_absIdx+'})" style="cursor:pointer">'
       +'<td style="font-size:10px;color:var(--text3)">'+(c.ma_kh||'—')+'<\/td>'
-      +'<td>'+(c.is_golden_ticket?'<span title="Vé vàng">🎫<\/span> ':'')+(c.business_name||c.customer_name||'—')+'<\/td>'
+      +'<td>'+(c.is_golden_ticket?'<span title="Lucky Ticket">🎫<\/span> ':'')+(c.business_name||c.customer_name||'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.business_phone?String(c.business_phone):'—')+'<\/td>'
       +'<td style="font-family:monospace;font-size:10px">'+(c.cellphone?String(c.cellphone):'—')+'<\/td>'
       +'<td style="font-size:11px;color:var(--accent)">'+(c.potential||'—')+'<\/td>'
@@ -6819,8 +6848,8 @@ async function createCampaign(){
       });
     }
   }
-  // Vé vàng — random gắn cờ N khách TRONG ĐÚNG đợt vừa thêm (không đụng khách
-  // của đợt trước/campaign khác), N tự nhập ở ô "Vé vàng cho đợt này"
+  // Lucky Ticket — random gắn cờ N khách TRONG ĐÚNG đợt vừa thêm (không đụng khách
+  // của đợt trước/campaign khác), N tự nhập ở ô "Lucky Ticket cho đợt này"
   var goldenN=parseInt(document.getElementById('camp-golden-count')&&document.getElementById('camp-golden-count').value)||0;
   var goldenAssignedCount=0;
   if(goldenN>0){
@@ -6843,7 +6872,7 @@ async function createCampaign(){
   window._campCreateSelected=new Set();
   window._campAddedCount=(window._campAddedCount||0)+dataPool.length;
   window._campGoldenTotal=(window._campGoldenTotal||0)+goldenAssignedCount;
-  showCrmToast('✅ Đã thêm '+dataPool.length+' khách'+(goldenAssignedCount>0?' · 🎫 '+goldenAssignedCount+' vé vàng':''),'Campaign "'+name+'" · tổng đã thêm: '+window._campAddedCount,'success');
+  showCrmToast('✅ Đã thêm '+dataPool.length+' khách'+(goldenAssignedCount>0?' · 🎫 '+goldenAssignedCount+' Lucky Ticket':''),'Campaign "'+name+'" · tổng đã thêm: '+window._campAddedCount,'success');
   // Notify each sale in campaign via DB
   Object.values(saleGroups).forEach(function(grp){
     if(!grp.sale||!grp.sale.id)return;
@@ -6856,7 +6885,7 @@ async function createCampaign(){
   var titleEl=document.querySelector('.camp-slide-title');
   if(titleEl)titleEl.textContent='Campaign "'+name+'" — đã thêm '+window._campAddedCount+' khách (tiếp tục lọc & thêm)';
   var addedEl=document.getElementById('camp-added-total');
-  if(addedEl)addedEl.innerHTML='<i class="ti ti-circle-check"></i> Đã thêm '+window._campAddedCount+' khách'+(window._campGoldenTotal>0?' · 🎫 '+window._campGoldenTotal+' vé vàng':'')+' — lọc tiếp để thêm KH khác';
+  if(addedEl)addedEl.innerHTML='<i class="ti ti-circle-check"></i> Đã thêm '+window._campAddedCount+' khách'+(window._campGoldenTotal>0?' · 🎫 '+window._campGoldenTotal+' Lucky Ticket':'')+' — lọc tiếp để thêm KH khác';
   var btnEl=document.getElementById('camp-create-btn');
   if(btnEl)btnEl.innerHTML='<i class="ti ti-folder-plus"></i> Thêm tiếp vào Campaign này';
   _campRefreshList();
