@@ -6668,7 +6668,7 @@ function campGetFiltered(){
     if(f.brand&&f.brand!=='all'&&c.brand!==f.brand)return false;
     if(f.potential&&f.potential==='__none__'){if(c.potential&&c.potential.trim())return false;}
     else if(f.potential&&f.potential!=='all'&&c.potential!==f.potential)return false;
-    if(f.timeuse&&f.timeuse!=='all'&&c.time_of_use!==f.timeuse)return false;
+    if(f.timeuse&&f.timeuse!=='all'&&c.times_of_use!==f.timeuse)return false;
     if(f.reason&&f.reason!=='all'&&c.reason!==f.reason)return false;
     if(f.sale&&f.sale==='__none__'){if(c.assigned_to)return false;}
     else if(f.sale&&f.sale!=='all'&&c.assigned_to!==f.sale)return false;
@@ -8360,12 +8360,12 @@ function _stInsights(cur,code){
   var bt=B.list.slice(0,8),br=B.list.slice(8),brN=br.reduce(function(a,r){return a+r.n;},0);
   var bH=B.filled?_stHBars(code,'brand',bt,B.filled,'var(--brand2)')+(brN?'<div class="st-more">+ '+br.length+' other brands · '+brN.toLocaleString()+'</div>':''):'<div class="st-empty">No data</div>';
   // Time of use
-  var T1=_stCountBy(arr,'time_of_use');
+  var T1=_stCountBy(arr,'times_of_use');
   var order=(typeof TIMES_OPTS!=='undefined'?TIMES_OPTS.slice():[]).concat(Object.keys(T1.by).filter(function(k){return (typeof TIMES_OPTS==='undefined'||TIMES_OPTS.indexOf(k)<0);}));
   var mx=Math.max.apply(null,[1].concat(order.map(function(k){return T1.by[k]?T1.by[k].n:0;})));
   var tH=T1.filled?'<div class="st-cols st-tcols" style="grid-template-columns:repeat('+order.length+',1fr)">'+order.map(function(k){
     var o=T1.by[k]||{n:0,pot:0},h=o.n?Math.max(6,Math.round(o.n/mx*100)):0,ph=o.n?Math.round(o.pot/mx*100):0;
-    return '<div class="st-col'+(o.n?'':' z')+'"'+(o.n?' onclick="_stDrillF(\''+code+'\',\'time_of_use\',decodeURIComponent(\''+encodeURIComponent(k)+'\'))"':'')+' title="'+_stEsc(k)+': '+o.n+' · Potential '+o.pot+'">'
+    return '<div class="st-col'+(o.n?'':' z')+'"'+(o.n?' onclick="_stDrillF(\''+code+'\',\'times_of_use\',decodeURIComponent(\''+encodeURIComponent(k)+'\'))"':'')+' title="'+_stEsc(k)+': '+o.n+' · Potential '+o.pot+'">'
       +'<b>'+o.n.toLocaleString()+'</b><div class="st-col-t"><u style="height:'+h+'%;background:var(--accent2)"></u><s style="height:'+ph+'%"></s></div><span>'+_stEsc(k.replace(' year','y').replace('more than ','>'))+'</span></div>';
   }).join('')+'</div>':'<div class="st-empty">No data</div>';
   var card=function(icon,title,sub,body,note){return '<div class="st-card st-ins-c"><div class="st-sec-h" style="margin-top:0"><span><i class="ti '+icon+'"></i> '+title+'</span></div><div class="st-ins-sub">'+sub+'</div>'+body+'<div class="st-ins-note">'+note+'</div></div>';};
@@ -8379,7 +8379,7 @@ window._stDrillF=function(code,field,val){
   var R=window._stReport;if(!R)return;
   var s=code==='ALL'?_stAgg(Object.values(R.S)):R.S[code];if(!s)return;
   var nm=code==='ALL'?'All states':(window._US_MAP&&window._US_MAP[code]?window._US_MAP[code].n:code);
-  var lab={reason:'Reason',brand:'Brand',time_of_use:'Time of Use'}[field]||field;
+  var lab={reason:'Reason',brand:'Brand',times_of_use:'Time of Use'}[field]||field;
   var customers=s.L.data.filter(function(c){return String(c[field]==null?'':c[field]).trim()===val;});
   _kpiOpenListModal(lab+': '+val+' — '+nm,customers,'data',null,1,R.label);
 };
