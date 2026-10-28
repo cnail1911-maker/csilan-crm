@@ -8218,7 +8218,7 @@ async function _renderStateReport(){
   var serverTotal=null;
   try{var cr=await sb.from('customers').select('id',{count:'exact',head:true});if(!cr.error&&cr.count!=null)serverTotal=cr.count;}catch(e){}
   window._stReport={S:S,label:periodLabel,isM:_stIsM,invById:invById,custById:custById,loaded:CUSTOMERS.length,serverTotal:serverTotal};
-  return '<div class="panel st-panel" id="st-report" style="padding:14px;margin-bottom:14px">'+_stBuildHtml()+'</div>';
+  return '<div class="panel st-panel'+(_stM.full?' st-full':'')+'" id="st-report" style="padding:14px;margin-bottom:14px">'+_stBuildHtml()+'</div>';
 }
 function _stMoney(n){return '$'+Math.round(n).toLocaleString('en-US');}
 function _stShort(n){return n>=1e6?'$'+(n/1e6).toFixed(1)+'M':n>=1e3?'$'+(n/1e3).toFixed(n>=1e4?0:1)+'k':'$'+Math.round(n);}
@@ -8240,10 +8240,11 @@ function _stBuildHtml(){
     +(_stReportPeriodType==='month'?'<select onchange="_stReportMonth=parseInt(this.value);renderKPIAsync()">'+[1,2,3,4,5,6,7,8,9,10,11,12].map(function(mo){return '<option value="'+mo+'"'+(mo===_stReportMonth?' selected':'')+'>Month '+mo+'</option>';}).join('')+'</select>':'')
     +(_stReportPeriodType==='quarter'?'<select onchange="_stReportQuarter=parseInt(this.value);renderKPIAsync()">'+[1,2,3,4].map(function(q){return '<option value="'+q+'"'+(q===_stReportQuarter?' selected':'')+'>Q'+q+'</option>';}).join('')+'</select>':'')
     +'<select onchange="_stReportYear=parseInt(this.value);renderKPIAsync()">'+yearOptions.map(function(y){return '<option value="'+y+'"'+(y===_stReportYear?' selected':'')+'>'+y+'</option>';}).join('')+'</select>'
-    +'<button type="button" class="btn" onclick="_stM.hide=!_stM.hide;_stDraw()">'+(M.hide?'Show':'Hide')+'</button>'
+    +'<button type="button" class="btn" onclick="_stM.hide=!_stM.hide;_stDraw()">'+(M.hide?'Show':'Hide')+'</button>'+'<button type="button" class="btn" onclick="_stFull()" title="Meeting mode"><i class="ti ti-'+(M.full?'arrows-minimize':'arrows-maximize')+'"></i> '+(M.full?'Exit full screen':'Full screen')+'</button>'
     +'</div></div>';
   if(M.hide)return head;
-  return head+(M.view==='table'?_stTableHtml(list,T):_stMapHtml(S,list,T));
+  var _selS=M.sel&&S[M.sel]?S[M.sel]:null;
+  return head+(M.view==='table'?_stTableHtml(list,T):_stMapHtml(S,list,T))+_stInsights(_selS||T,_selS?_selS.code:'ALL');
 }
 function _stMapHtml(S,list,T){
   var M=_stM,US=window._US_MAP||{},R=window._stReport;
@@ -8326,6 +8327,79 @@ function _stTableHtml(list,T){
   return '<div class="st-card" style="padding:0;overflow:auto"><table class="st-table"><thead><tr>'+th+'</tr></thead><tbody>'+rows.map(function(s){return rowFn(s,false);}).join('')+'</tbody><tfoot>'+rowFn(T,true)+'</tfoot></table></div>'
     +'<div class="st-note">Connected = contacted, not Busy / No Response / No Answer · Not connected = No Response or No Answer · Busy = lead status Busy. Click a row or a number to open the customer list.</div>';
 }
+
+function _stEsc(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function _stCountBy(arr,field){
+  var by={},filled=0;
+  arr.forEach(function(c){
+    var v=String(c[field]==null?'':c[field]).trim();if(!v)return;
+    filled++;var o=by[v]||(by[v]={k:v,n:0,pot:0});o.n++;
+    if(c.potential&&String(c.potential).trim())o.pot++;
+  });
+  return {by:by,filled:filled,list:Object.keys(by).map(function(k){return by[k];})};
+}
+function _stHBars(code,field,rows,total,color,labelFn,max){
+  var mx=Math.max.apply(null,[1].concat(rows.map(function(r){return r.n;})));
+  return rows.map(function(r){
+    var w=Math.round(r.n/mx*100),pw=r.n?Math.round(r.pot/mx*100):0;
+    var lab=labelFn?labelFn(r.k):_stEsc(r.k);
+    return '<div class="st-hb" onclick="_stDrillF(\''+code+'\',\''+field+'\',decodeURIComponent(\''+encodeURIComponent(r.k)+'\'))" title="'+_stEsc(r.k)+': '+r.n+' ('+_stPct(r.n,total)+'%) · Potential '+r.pot+'">'
+      +'<span class="n">'+lab+'</span><i><u style="width:'+w+'%;background:'+color+'"></u>'+(field==='reason'?'':'<s style="width:'+pw+'%"></s>')+'</i><b>'+r.n.toLocaleString()+'<em>'+_stPct(r.n,total)+'%</em></b></div>';
+  }).join('');
+}
+function _stInsights(cur,code){
+  var arr=cur.L.data,n=arr.length;
+  var cov=function(f){return '<em>'+f.toLocaleString()+' of '+n.toLocaleString()+' customers have this filled ('+_stPct(f,n)+'%)</em>';};
+  // Reason
+  var R1=_stCountBy(arr,'reason');R1.list.sort(function(a,b){return b.n-a.n;});
+  var top=R1.list.slice(0,8),rest=R1.list.slice(8),restN=rest.reduce(function(a,r){return a+r.n;},0);
+  var reasonLab=function(k){var m=k.match(/^(R\d+)\s*-\s*(.*)$/);return m?'<strong>'+m[1]+'</strong> '+_stEsc(m[2]):_stEsc(k);};
+  var rH=R1.filled?_stHBars(code,'reason',top,R1.filled,'var(--warn)',reasonLab)+(restN?'<div class="st-more">+ '+rest.length+' other reasons · '+restN.toLocaleString()+'</div>':''):'<div class="st-empty">No data</div>';
+  // Brand
+  var B=_stCountBy(arr,'brand');B.list.sort(function(a,b){return b.n-a.n;});
+  var bt=B.list.slice(0,8),br=B.list.slice(8),brN=br.reduce(function(a,r){return a+r.n;},0);
+  var bH=B.filled?_stHBars(code,'brand',bt,B.filled,'var(--brand2)')+(brN?'<div class="st-more">+ '+br.length+' other brands · '+brN.toLocaleString()+'</div>':''):'<div class="st-empty">No data</div>';
+  // Time of use
+  var T1=_stCountBy(arr,'time_of_use');
+  var order=(typeof TIMES_OPTS!=='undefined'?TIMES_OPTS.slice():[]).concat(Object.keys(T1.by).filter(function(k){return (typeof TIMES_OPTS==='undefined'||TIMES_OPTS.indexOf(k)<0);}));
+  var mx=Math.max.apply(null,[1].concat(order.map(function(k){return T1.by[k]?T1.by[k].n:0;})));
+  var tH=T1.filled?'<div class="st-cols st-tcols" style="grid-template-columns:repeat('+order.length+',1fr)">'+order.map(function(k){
+    var o=T1.by[k]||{n:0,pot:0},h=o.n?Math.max(6,Math.round(o.n/mx*100)):0,ph=o.n?Math.round(o.pot/mx*100):0;
+    return '<div class="st-col'+(o.n?'':' z')+'"'+(o.n?' onclick="_stDrillF(\''+code+'\',\'time_of_use\',decodeURIComponent(\''+encodeURIComponent(k)+'\'))"':'')+' title="'+_stEsc(k)+': '+o.n+' · Potential '+o.pot+'">'
+      +'<b>'+o.n.toLocaleString()+'</b><div class="st-col-t"><u style="height:'+h+'%;background:var(--accent2)"></u><s style="height:'+ph+'%"></s></div><span>'+_stEsc(k.replace(' year','y').replace('more than ','>'))+'</span></div>';
+  }).join('')+'</div>':'<div class="st-empty">No data</div>';
+  var card=function(icon,title,sub,body,note){return '<div class="st-card st-ins-c"><div class="st-sec-h" style="margin-top:0"><span><i class="ti '+icon+'"></i> '+title+'</span></div><div class="st-ins-sub">'+sub+'</div>'+body+'<div class="st-ins-note">'+note+'</div></div>';};
+  return '<div class="st-ins">'
+    +card('ti-help-circle','Reason','Why customers did not buy',rH,cov(R1.filled))
+    +card('ti-building-store','Brand','Equipment they use now · <i class="st-lg"></i> Potential',bH,cov(B.filled))
+    +card('ti-clock-hour-4','Time of Use','Age of current equipment · <i class="st-lg"></i> Potential',tH,cov(T1.filled))
+    +'</div>';
+}
+window._stDrillF=function(code,field,val){
+  var R=window._stReport;if(!R)return;
+  var s=code==='ALL'?_stAgg(Object.values(R.S)):R.S[code];if(!s)return;
+  var nm=code==='ALL'?'All states':(window._US_MAP&&window._US_MAP[code]?window._US_MAP[code].n:code);
+  var lab={reason:'Reason',brand:'Brand',time_of_use:'Time of Use'}[field]||field;
+  var customers=s.L.data.filter(function(c){return String(c[field]==null?'':c[field]).trim()===val;});
+  _kpiOpenListModal(lab+': '+val+' — '+nm,customers,'data',null,1,R.label);
+};
+window._stFull=function(on){
+  _stM.full=(on===undefined)?!_stM.full:!!on;
+  var el=document.getElementById('st-report');
+  if(el){
+    el.classList.toggle('st-full',!!_stM.full);
+    if(_stM.full&&!window._stPH){window._stPH=document.createComment('st-ph');el.parentNode.insertBefore(window._stPH,el);document.body.appendChild(el);}
+    else if(!_stM.full&&window._stPH){if(window._stPH.parentNode)window._stPH.parentNode.insertBefore(el,window._stPH);window._stPH.remove();window._stPH=null;}
+  }
+  document.body.classList.toggle('st-full-on',!!_stM.full);
+  try{
+    if(_stM.full&&!document.fullscreenElement&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(function(){});
+    if(!_stM.full&&document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(function(){});
+  }catch(e){}
+  _stDraw();
+};
+document.addEventListener('fullscreenchange',function(){if(!document.fullscreenElement&&_stM.full)window._stFull(false);});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&_stM.full&&!document.querySelector('.modal-overlay.open,#kpi-list-modal')){window._stFull(false);}});
 function _stDraw(){var el=document.getElementById('st-report');if(el&&window._stReport)el.innerHTML=_stBuildHtml();}
 window._stSetMetric=function(k){_stM.metric=k;_stDraw();};
 window._stSetView=function(k){_stM.view=k;_stDraw();};
@@ -12432,7 +12506,7 @@ window.addEventListener('resize',function(){
       </div>
 
       <div class="sc-field">
-        <div class="sc-label">Đạt KPI từ 70 điểm?</div>
+        <div class="sc-label">Đạt KPI từ 80 điểm?</div>
         <div class="sc-toggle">
           <div class="sc-toggle-btn active" id="sc-kpi-yes" onclick="scSetKPI(true)">✅ Có — +500.000đ</div>
           <div class="sc-toggle-btn" id="sc-kpi-no" onclick="scSetKPI(false)">❌ Không — 0đ</div>
@@ -12528,7 +12602,7 @@ window.addEventListener('resize',function(){
       h+=row('P2B - Tien luong ca dem',p2b,p2Sub);
       h+=row('P2C - Phu cap nang luc',p2c,'Level '+lvl);
       h+=row('P3B - Thuong chuyen can',p3b,_scChuyen?'Dung gio du thang':'Khong dat');
-      h+=row('P3C - Thuong KPI',p3c,_scKPI?'>=70 diem':'Chua dat');
+      h+=row('P3C - Thuong KPI',p3c,_scKPI?'>=80 diem':'Chua dat');
       // P3A breakdown
       var hasPb=dt>0||hs>0||tn>0||chenhVal>0;
       if(hasPb){
@@ -14672,6 +14746,30 @@ html[data-mode='light'] #ai-input::placeholder,html[data-theme='light'] #ai-inpu
   .pz-img img,.pz-img>div:first-child{width:min(260px,70vw) !important;height:min(260px,70vw) !important}
   .pz-body>div:last-child{padding:14px !important;min-width:0}
 }
+
+.st-ins{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:12px;margin-top:12px}
+@media(max-width:1000px){.st-ins{grid-template-columns:1fr}}
+.st-ins-c .st-sec-h span i{margin-right:4px}
+.st-ins-sub{font-size:11px;color:var(--text3);margin:-4px 0 10px}
+.st-ins-note{margin-top:10px;font-size:10px;color:var(--text3)}.st-ins-note em{font-style:normal}
+.st-hb{display:grid;grid-template-columns:minmax(90px,1.1fr) 1.4fr auto;gap:8px;align-items:center;padding:5px 0;cursor:pointer;font-size:12px}
+.st-hb:hover .n{color:var(--brand2)}
+.st-hb .n{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.st-hb .n strong{color:var(--warn);margin-right:3px}
+.st-hb i{position:relative;display:block;height:10px;border-radius:6px;background:color-mix(in srgb,var(--border) 55%,transparent);overflow:hidden}
+.st-hb i u{position:absolute;left:0;top:0;bottom:0;border-radius:6px;opacity:.85}
+.st-hb i s{position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:var(--accent);opacity:1}
+.st-hb b{font-size:12px;color:var(--text);text-align:right;white-space:nowrap}.st-hb b em{font-style:normal;font-weight:500;color:var(--text3);margin-left:5px;font-size:10px}
+.st-more{font-size:10px;color:var(--text3);margin-top:4px}.st-empty{font-size:12px;color:var(--text3);padding:14px 0}
+.st-tcols .st-col-t{position:relative;max-width:46px;height:120px}
+.st-tcols .st-col-t s{position:absolute;left:0;bottom:0;width:100%;background:var(--accent);border-radius:8px 8px 0 0}
+.st-lg{display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--accent);vertical-align:middle;margin:0 2px}
+.st-panel.st-full{position:fixed !important;inset:0;z-index:9000;margin:0 !important;border-radius:0 !important;overflow:auto;padding:18px 22px !important;background:var(--bg2,#fff) !important;max-width:none !important}
+.st-full .st-title{font-size:20px}
+.st-full .st-grid{grid-template-columns:minmax(0,1.7fr) minmax(340px,1fr)}
+.st-full .st-map svg{max-height:calc(100vh - 300px);min-height:360px}
+.st-full .st-hb{font-size:14px;padding:7px 0}.st-full .st-hb i{height:12px}.st-full .st-ins-sub,.st-full .st-ins-note{font-size:12px}
+.st-full .kh-big b{font-size:52px}
+body.st-full-on{overflow:hidden}
 </style>
 <script>
 (function(){
