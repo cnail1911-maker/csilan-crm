@@ -6425,6 +6425,7 @@ window._campAssignRun=async function(name){
   }catch(e){showLoading(false);alert('Could not load unassigned data: '+(e.message||e));return;}
   if(!pool.length){showLoading(false);ov.remove();alert('No unassigned data in this campaign.');return;}
   if(!confirm('Assign '+pool.length.toLocaleString()+' unassigned customers to '+sales.length+' sale(s)?')){showLoading(false);return;}
+  try{var _ps=new Set(pool);await window._campLogHistory(CUSTOMERS.filter(function(x){return _ps.has(x.id);}),name,true);}catch(e){}
   var groups={};
   pool.forEach(function(id,i){var sl=sales[i%sales.length];(groups[sl.id]||(groups[sl.id]={sale:sl,ids:[]})).ids.push(id);});
   try{
@@ -6433,10 +6434,10 @@ window._campAssignRun=async function(name){
       var g=groups[keys[k]];
       for(var c=0;c<g.ids.length;c+=500){
         var chunk=g.ids.slice(c,c+500);
-        var u=await sb.from('customers').update({assigned_to:g.sale.id,is_recalled:false}).in('id',chunk);
+        var u=await sb.from('customers').update({assigned_to:g.sale.id,is_recalled:false,potential:null,status:'New',sub_status:'New Lead',lead_status:null,last_contacted:null}).in('id',chunk);
         if(u.error)throw u.error;
         var set=new Set(chunk);
-        CUSTOMERS.forEach(function(x){if(set.has(x.id)){x.assigned_to=g.sale.id;x.is_recalled=false;x.assigned_profile={id:g.sale.id,full_name:g.sale.full_name,role:g.sale.role};}});
+        CUSTOMERS.forEach(function(x){if(set.has(x.id)){x.assigned_to=g.sale.id;x.is_recalled=false;x.potential=null;x.status='New';x.sub_status='New Lead';x.lead_status=null;x.last_contacted=null;x.assigned_profile={id:g.sale.id,full_name:g.sale.full_name,role:g.sale.role};}});
       }
     }
   }catch(e){showLoading(false);alert('Assign failed part-way: '+(e.message||e)+'\nRun Assign sale again to finish the rest.');return;}
@@ -6806,9 +6807,10 @@ window._campReengUi=function(){
   if(w)w.style.display=(rp&&rp.value==='missed')?'block':'none';
 };
 // Lưu vết campaign trước khi chuyển khách sang campaign mới
-window._campLogHistory=async function(pool,newName){
+window._clq=function(q){var r=currentProfile&&currentProfile.role;if(r==='manager'||r==='admin'||r==='leader'||!currentUser)return q;return q.eq('sale_id',currentUser.id);};
+window._campLogHistory=async function(pool,newName,force){
   var mgr=currentProfile?currentProfile.full_name:'';
-  var rows=pool.filter(function(c){return c.campaign_name&&c.campaign_name!==newName&&c.campaign_name!=='__active_pool__';}).map(function(c){
+  var rows=pool.filter(function(c){return c.campaign_name&&(force||c.campaign_name!==newName)&&c.campaign_name!=='__active_pool__';}).map(function(c){
     var os=c.assigned_to?PROFILES.find(function(p){return p.id===c.assigned_to;}):null;
     return {customer_id:c.id,campaign_name:c.campaign_name,assigned_to:c.assigned_to||null,assigned_to_name:os?os.full_name:null,status:c.status||null,sub_status:c.sub_status||null,lead_status:c.lead_status||null,potential:c.potential||null,last_contacted:c.last_contacted||null,assigned_deadline:c.assigned_deadline||null,moved_to_campaign:newName,moved_by_name:mgr};
   });
@@ -7047,10 +7049,10 @@ async function addToCampaign(campName){
     var grp=saleGroups[saleIds[s]];
     for(var c=0;c<grp.ids.length;c+=500){
       var chunk=grp.ids.slice(c,c+500);
-      await sb.from('customers').update({assigned_to:grp.sale?grp.sale.id:null,campaign_name:campName,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'}).in('id',chunk);
+      await sb.from('customers').update({assigned_to:grp.sale?grp.sale.id:null,campaign_name:campName,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead',lead_status:null,last_contacted:null}).in('id',chunk);
       chunk.forEach(function(cid){
         var idx=CUSTOMERS.findIndex(function(x){return x.id===cid;});
-        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale?grp.sale.id:null,campaign_name:campName,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile=grp.sale?{id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role}:null;}
+        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale?grp.sale.id:null,campaign_name:campName,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead',lead_status:null,last_contacted:null});CUSTOMERS[idx].assigned_profile=grp.sale?{id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role}:null;}
       });
     }
   }
@@ -7111,10 +7113,10 @@ async function createCampaign(){
     var grp=saleGroups[saleIds[s]];
     for(var c=0;c<grp.ids.length;c+=500){
       var chunk=grp.ids.slice(c,c+500);
-      await sb.from('customers').update({assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'}).in('id',chunk);
+      await sb.from('customers').update({assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead',lead_status:null,last_contacted:null}).in('id',chunk);
       chunk.forEach(function(cid){
         var idx=CUSTOMERS.findIndex(function(x){return x.id===cid;});
-        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile=grp.sale?{id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role}:null;}
+        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead',lead_status:null,last_contacted:null});CUSTOMERS[idx].assigned_profile=grp.sale?{id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role}:null;}
       });
     }
   }
@@ -8892,7 +8894,7 @@ async function renderDetailModal(customerId,navCtx){
   // Fetch logs async — CHỈ update sidebar logs, không re-render toàn modal
   // Tránh reset các input đang nhập dở
   try{
-    const logsRes=await sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId).order('called_at',{ascending:false}).limit(25);
+    const logsRes=await window._clq(sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId)).order('called_at',{ascending:false}).limit(25);
     const logs=logsRes.data||[];
     // Chỉ update phần sidebar history, không đụng vào form bên trái
     var logContainer=modal.querySelector('#detail-log-container');
@@ -9261,7 +9263,7 @@ async function saveDetail(customerId){
       document.getElementById('d-reason')&&document.getElementById('d-reason').focus();
       return;
     }
-    const {count:logCount}=await sb.from('call_logs').select('id',{count:'exact',head:true}).eq('customer_id',customerId);
+    const {count:logCount}=await window._clq(sb.from('call_logs').select('id',{count:'exact',head:true}).eq('customer_id',customerId));
     if((logCount||0)<3){
       showLoading(false);
       alert('⛔ Bắt buộc có ít nhất 3 lần tương tác trước khi đóng Completed!\nHiện có: '+(logCount||0)+' lần.');
@@ -9386,7 +9388,7 @@ async function saveDetail(customerId){
       var _isM=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
       _renderDetailShell(_modal,_cust,_isM,[]);
       // Fetch logs async để cập nhật sidebar
-      sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId).order('called_at',{ascending:false}).limit(25).then(function(res){
+      window._clq(sb.from('call_logs').select('*,sale:profiles!sale_id(full_name)').eq('customer_id',customerId)).order('called_at',{ascending:false}).limit(25).then(function(res){
         if(res.data)_renderDetailShell(_modal,_cust,_isM,res.data);
       });
     }
@@ -11049,11 +11051,11 @@ async function campAssignSelected(){
     var grp=saleGroups[saleIds[s]];
     for(var c=0;c<grp.ids.length;c+=500){
       var chunk=grp.ids.slice(c,c+500);
-      await sb.from('customers').update({assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'}).in('id',chunk);
+      await sb.from('customers').update({assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead',lead_status:null,last_contacted:null}).in('id',chunk);
       // Update local
       chunk.forEach(function(cid){
         var idx=CUSTOMERS.findIndex(function(x){return x.id===cid;});
-        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile=grp.sale?{id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role}:null;}
+        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead',lead_status:null,last_contacted:null});CUSTOMERS[idx].assigned_profile=grp.sale?{id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role}:null;}
       });
     }
   }
@@ -11828,13 +11830,13 @@ function _cwDetail(){
     +'<div class="panel" style="margin-top:12px"><div class="panel-header"><h2>Ghi chú gần đây<\/h2><\/div><div id="cw-notes" style="padding:6px 16px 12px"><div style="color:var(--text3);padding:8px 0">Đang tải…<\/div><\/div><\/div>';
   var want=c.id;
   // Thanh tiến độ: số lần đã gọi (có kết quả) trên 6 lần; xanh = đã gọi, trắng = lần kế tiếp
-  sb.from('call_logs').select('id',{count:'exact',head:true}).eq('customer_id',want).not('call_result','is',null).then(function(r){
+  window._clq(sb.from('call_logs').select('id',{count:'exact',head:true}).eq('customer_id',want)).not('call_result','is',null).then(function(r){
     var s=document.getElementById('cw-steps'),l=document.getElementById('cw-steps-lbl');if(!s||_cw.cust!==want)return;
     var n=Math.max(0,parseInt(r&&r.count,10)||0),bars=s.children;
     for(var i=0;i<bars.length;i++)bars[i].className=i<n?'done':(i===n?'cur':'');
     l.textContent=n?('Đã gọi '+n+' lần'+(n>=6?' · hết chuỗi 6 lần':' · kế tiếp: lần '+(n+1))):'Chưa gọi lần nào · kế tiếp: lần 1';
   },function(){var l=document.getElementById('cw-steps-lbl');if(l)l.textContent='';});
-  sb.from('call_logs').select('note,call_result,called_at,sale:profiles!sale_id(full_name)').eq('customer_id',want).order('called_at',{ascending:false}).limit(5).then(function(r){
+  window._clq(sb.from('call_logs').select('note,call_result,called_at,sale:profiles!sale_id(full_name)').eq('customer_id',want)).order('called_at',{ascending:false}).limit(5).then(function(r){
     var n=document.getElementById('cw-notes');if(!n||_cw.cust!==want)return;
     var logs=(r&&r.data||[]).filter(function(l){return (l.note&&l.note!=='null'&&l.note.trim())||(l.call_result&&l.call_result!=='null');});
     n.innerHTML=logs.length?logs.map(function(l){
