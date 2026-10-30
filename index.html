@@ -6146,7 +6146,7 @@ window._campOpenCreate=function(prefillName){
     +'<input type="date" id="camp-deadline" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box"><\/div>'
     +'<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:6px">Sale tham gia<\/div>'
     +'<div id="camp-sale-chips" style="display:flex;flex-wrap:wrap;gap:5px;min-height:34px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:6px 8px;align-items:center;margin-bottom:6px">'
-    +'<span style="color:var(--text3);font-size:11px;font-style:italic" id="camp-no-sale-msg">Chưa chọn (chia đều cho tất cả sale)<\/span>'
+    +'<span style="color:var(--text3);font-size:11px;font-style:italic" id="camp-no-sale-msg">No sale selected (data stays unassigned)<\/span>'
     +'<\/div>'
     +'<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);cursor:pointer;margin-bottom:6px"><input type="checkbox" id="camp-no-sale" style="accent-color:var(--brand2)"> Create without sale (assign later)<\/label>'
     +'<div style="position:relative">'
@@ -6389,6 +6389,31 @@ window._campAssignOpen=function(name){
   document.getElementById('caa-cancel').onclick=function(){ov.remove();};
   document.getElementById('caa-run').onclick=function(){window._campAssignRun(name);};
 };
+window._campUnassignRun=async function(name){
+  function untouched(c){
+    var ss=String(c.sub_status||'').replace(/\s/g,'').toLowerCase();
+    return (!c.status||c.status==='New')&&!(c.potential&&String(c.potential).trim())&&!c.lead_status&&!c.timeline_follow&&(ss===''||ss==='newlead')&&!INVOICES.some(function(i){return i.customer_id===c.id;});
+  }
+  var all=CUSTOMERS.filter(function(c){return c.campaign_name===name&&c.assigned_to;});
+  if(!all.length){alert('No assigned data in this campaign.');return;}
+  var safe=all.filter(untouched),kept=all.length-safe.length;
+  if(!safe.length){alert('All '+all.length+' assigned customers already have activity (status / potential / invoice). Nothing to unassign.');return;}
+  if(!confirm('Unassign sale from '+safe.length.toLocaleString()+' customers in "'+name+'"?\n\n- They stay in this campaign (deadline kept)\n- Only untouched data (status New, no potential, no invoice)'+(kept?'\n- '+kept.toLocaleString()+' customers with activity are KEPT with their sale':'')+'\n\nYou can use "Assign sale" afterwards.'))return;
+  showLoading(true);
+  var ids=safe.map(function(c){return c.id;});
+  try{
+    for(var i=0;i<ids.length;i+=500){
+      var r=await sb.from('customers').update({assigned_to:null}).in('id',ids.slice(i,i+500));
+      if(r.error)throw r.error;
+    }
+  }catch(e){showLoading(false);alert('Unassign failed part-way: '+(e.message||e)+'\nRun Unassign sale again to finish.');return;}
+  var set=new Set(ids);
+  CUSTOMERS.forEach(function(c){if(set.has(c.id)){c.assigned_to=null;c.assigned_profile=null;}});
+  showLoading(false);
+  alert('Unassigned '+ids.length.toLocaleString()+' customers. They are still in "'+name+'".');
+  render();
+  setTimeout(function(){if(window._campShowDetail)window._campShowDetail(encodeURIComponent(name));},50);
+};
 window._campAssignRun=async function(name){
   var ov=document.getElementById('camp-assign-ov');if(!ov)return;
   var ids=[].slice.call(ov.querySelectorAll('.caa-sale:checked')).map(function(x){return x.value;});
@@ -6514,7 +6539,7 @@ window._campShowDetail=function(campName){
   box.innerHTML='<div id="cdh" style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0">'
     +'<div><div style="font-size:15px;font-weight:700">'+(isPool?'🌱 Active Pool':decoded)+'<\/div>'
     +'<div style="font-size:11px;color:var(--text3)">'+total+' khách'+(_un?' · <span style="color:var(--danger)">'+_un+' unassigned<\/span>':'')+'<\/div><\/div>'
-    +'<div id="cdh-btns" style="display:flex;gap:8px">'+((isPool||decoded==='Invalid')?'':'<button class="btn" onclick="window._campRecallOpen(decodeURIComponent(\''+encodeURIComponent(decoded)+'\'))" style="font-size:11px;border-color:rgba(255,118,117,0.5);color:var(--danger)"><i class="ti ti-arrow-back-up"><\/i> Recall<\/button><button class="btn btn-primary" onclick="window._campAddData(decodeURIComponent(\''+encodeURIComponent(decoded)+'\'))" style="font-size:11px"><i class="ti ti-database-plus"><\/i> Add data<\/button>'+(_un?'<button class="btn btn-primary" onclick="window._campAssignOpen(decodeURIComponent(\''+encodeURIComponent(decoded)+'\'))" style="font-size:11px;background:var(--danger);border-color:var(--danger)"><i class="ti ti-user-plus"><\/i> Assign sale ('+_un+')<\/button>':''))+'<button class="btn" onclick="window._campExportExcel(encodeURIComponent(\''+campName+'\'))" style="font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"></i> Export Excel<\/button>'
+    +'<div id="cdh-btns" style="display:flex;gap:8px">'+((isPool||decoded==='Invalid')?'':'<button class="btn" onclick="window._campRecallOpen(decodeURIComponent(\''+encodeURIComponent(decoded)+'\'))" style="font-size:11px;border-color:rgba(255,118,117,0.5);color:var(--danger)"><i class="ti ti-arrow-back-up"><\/i> Recall<\/button><button class="btn" onclick="window._campUnassignRun(decodeURIComponent(\''+encodeURIComponent(decoded)+'\'))" style="font-size:11px;border-color:rgba(253,203,110,0.6);color:#e6a700"><i class="ti ti-user-off"><\/i> Unassign sale<\/button><button class="btn btn-primary" onclick="window._campAddData(decodeURIComponent(\''+encodeURIComponent(decoded)+'\'))" style="font-size:11px"><i class="ti ti-database-plus"><\/i> Add data<\/button>'+(_un?'<button class="btn btn-primary" onclick="window._campAssignOpen(decodeURIComponent(\''+encodeURIComponent(decoded)+'\'))" style="font-size:11px;background:var(--danger);border-color:var(--danger)"><i class="ti ti-user-plus"><\/i> Assign sale ('+_un+')<\/button>':''))+'<button class="btn" onclick="window._campExportExcel(encodeURIComponent(\''+campName+'\'))" style="font-size:11px;border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"></i> Export Excel<\/button>'
     +'<button onclick="document.getElementById(\'camp-detail-modal\').style.display=\'none\'" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:5px 10px">×<\/button><\/div><\/div>'
     // Stat cards — clickable as filters
     +'<div id="camp-stat-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;padding:12px;flex-shrink:0">'
@@ -6985,10 +7010,8 @@ async function addToCampaign(campName){
   // Đọc sale từ chip UI (giống createCampaign) thay vì checkbox cũ không còn tồn tại
   var _chipSales=window._campSelectedSales&&window._campSelectedSales.size>0
     ?[...window._campSelectedSales]:null;
-  var _noSaleA=!!(document.getElementById('camp-no-sale')&&document.getElementById('camp-no-sale').checked);
-  var salesList=_noSaleA?[]:(_chipSales
-    ?PROFILES.filter(function(p){return _chipSales.includes(p.id);})
-    :PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}));
+  var _noSaleA=!!(document.getElementById('camp-no-sale')&&document.getElementById('camp-no-sale').checked)||!_chipSales;
+  var salesList=_noSaleA?[]:PROFILES.filter(function(p){return _chipSales.includes(p.id);});
   // Dùng KH đã tick checkbox, nếu không có thì dùng filter
   var _selIds=window._campCreateSelected&&window._campCreateSelected.size>0?window._campCreateSelected:null;
   const dataPool=_selIds?CUSTOMERS.filter(function(c){return _selIds.has(c.id);}):campGetFiltered();
@@ -7051,10 +7074,8 @@ async function createCampaign(){
   var _chipSales=window._campSelectedSales&&window._campSelectedSales.size>0
     ?[...window._campSelectedSales]
     :null;
-  var _noSale=!!(document.getElementById('camp-no-sale')&&document.getElementById('camp-no-sale').checked);
-  let salesList=_noSale?[]:(_chipSales
-    ?PROFILES.filter(function(p){return _chipSales.includes(p.id);})
-    :PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}));
+  var _noSale=!!(document.getElementById('camp-no-sale')&&document.getElementById('camp-no-sale').checked)||!_chipSales;
+  let salesList=_noSale?[]:PROFILES.filter(function(p){return _chipSales.includes(p.id);});
   // Agent optional - cho phép tạo campaign không có sale
   var _selIds=window._campCreateSelected&&window._campCreateSelected.size>0?window._campCreateSelected:null;
   const dataPool=_selIds?CUSTOMERS.filter(function(c){return _selIds.has(c.id);}):campGetFiltered();
