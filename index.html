@@ -6014,6 +6014,8 @@ window._detailNavTo=function(dir){
     list=window._alertNavList;
   } else if(src==='cw'){
     list=window._cwNavList;
+  } else if(src==='kpi-list'){
+    list=window._kpiNavList;
   }
   if(!list||!list.length)return;
   var newIdx=(typeof idx==='number'?idx:0)+dir;
@@ -6173,10 +6175,20 @@ window._campOpenCreate=function(prefillName){
     +fO(TIMES_OPTS,'cf-timeuse','Time of Use')+fO(REASON_OPTS,'cf-reason','Reason')
     +'<\/div>'
     +'<div style="margin-top:6px"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;text-transform:uppercase">Thuộc chiến dịch<\/div>'
-    +'<select id="cf-campaign" onchange="campSyncFilters();window._campPg=1;_campRefreshList()" style="width:100%;background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;color:#e0deff;outline:none">'
+    +'<select id="cf-campaign" onchange="campSyncFilters();window._campReengUi();window._campPg=1;_campRefreshList()" style="width:100%;background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;color:#e0deff;outline:none">'
     +'<option value="all" style="background:#1e1550;color:#e0deff">Tất cả</option>'
     +'<option value="none" style="background:#1e1550;color:#e0deff">Chưa thuộc chiến dịch</option>'
+    +'<option value="__incamp__" style="background:#1e1550;color:#e0deff">In a campaign (re-engage)</option>'
     +campNames.map(function(n){return '<option value="'+n+'" style="background:#1e1550;color:#e0deff">'+n+'</option>';}).join('')+'</select><\/div>'
+    +'<div id="camp-reeng" style="display:none;margin-top:8px;padding:8px;border:1px dashed rgba(108,92,231,.5);border-radius:8px;font-size:11px;color:var(--text2)">'
+    +'<div style="font-weight:700;color:var(--brand2);margin-bottom:6px"><i class="ti ti-refresh"></i> Re-engage<\/div>'
+    +'<select id="cf-src" onchange="window._campPg=1;_campRefreshList()" style="width:100%;background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;margin-bottom:6px"><option value="all">Any source campaign<\/option>'+campNames.map(function(n){return '<option value="'+n+'">'+n+'<\/option>';}).join('')+'<\/select>'
+    +'<label style="display:flex;gap:6px;align-items:center;margin-bottom:4px;cursor:pointer"><input type="checkbox" id="cf-rexp" checked onchange="_campRefreshList()"> Finished campaigns only (deadline passed)<\/label>'
+    +'<label style="display:flex;gap:6px;align-items:center;margin-bottom:6px;cursor:pointer"><input type="checkbox" id="cf-rcd" checked onchange="_campRefreshList()"> Exclude Closedeal &amp; Invalid<\/label>'
+    +'<div style="margin-bottom:3px">Potential customers<\/div>'
+    +'<select id="cf-rpot" onchange="window._campReengUi();_campRefreshList()" style="width:100%;background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff"><option value="exclude">Exclude (default)<\/option><option value="include">Include<\/option><option value="only">Only potential<\/option><option value="missed">Only potential NOT followed up<\/option><\/select>'
+    +'<div id="cf-rdays-wrap" style="display:none;margin-top:5px">No contact for <input type="number" id="cf-rdays" value="14" min="1" style="width:54px;background:#1e1550;border:1px solid var(--border);border-radius:6px;color:#e0deff;padding:2px 6px" onchange="_campRefreshList()"> days or more (or never contacted)<\/div>'
+    +'<\/div>'
     +'<div style="display:flex;gap:6px;margin-top:8px;align-items:center">'
     +'<button class="btn" onclick="campResetFilters();_campRefreshList()" style="font-size:11px"><i class="ti ti-refresh"></i> Reset<\/button>'
     +'<div id="camp-preview-count" style="font-size:12px;color:var(--accent2);font-weight:700"><\/div>'
@@ -6345,6 +6357,19 @@ window._campRecallRun=async function(name){
   render();
 };
 
+
+window._loadPrevCamp=async function(cid){
+  var el=document.getElementById('d-prevcamp');if(!el||String(el.getAttribute('data-cid'))!==String(cid))return;
+  function e(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  try{
+    var r=await sb.from('customer_campaign_history').select('*').eq('customer_id',cid).order('created_at',{ascending:false}).limit(20);
+    if(r.error)throw r.error;
+    var d=r.data||[];
+    if(!d.length){el.innerHTML='<i class="ti ti-history"></i> Previous campaigns: none';return;}
+    el.innerHTML='<div style="font-weight:700;color:var(--text2);margin-bottom:4px"><i class="ti ti-history"></i> Previous campaigns ('+d.length+')<\/div>'
+      +d.map(function(h){return '<div style="padding:4px 0;border-top:1px solid var(--border)"><b style="color:var(--text)">'+e(h.campaign_name)+'</b> · '+e(h.assigned_to_name||'unassigned')+' · '+e(h.status||'—')+(h.sub_status?' / '+e(h.sub_status):'')+(h.potential?' · Potential: '+e(h.potential):'')+' · moved to <b>'+e(h.moved_to_campaign||'—')+'</b> on '+e(String(h.created_at||'').slice(0,10))+(h.moved_by_name?' by '+e(h.moved_by_name):'')+'<\/div>';}).join('');
+  }catch(err){el.innerHTML='<i class="ti ti-history"></i> Previous campaigns: unavailable (run customer_campaign_history.sql)';}
+};
 window._campAssignOpen=function(name){
   var ex=document.getElementById('camp-assign-ov');if(ex)ex.remove();
   var un=CUSTOMERS.filter(function(c){return c.campaign_name===name&&!c.assigned_to;}).length;
@@ -6736,10 +6761,53 @@ function campGetFiltered(){
     if(f.sale&&f.sale==='__none__'){if(c.assigned_to)return false;}
     else if(f.sale&&f.sale!=='all'&&c.assigned_to!==f.sale)return false;
     if(f.campaign&&f.campaign==='none'&&c.campaign_name)return false;
-    if(f.campaign&&f.campaign!=='all'&&f.campaign!=='none'&&c.campaign_name!==f.campaign)return false;
+    if(f.campaign==='__incamp__'){
+      if(!c.campaign_name||c.campaign_name==='__active_pool__')return false;
+      var _rv=function(id,d){var e=document.getElementById(id);return e?e.value:d;},_rc=function(id,d){var e=document.getElementById(id);return e?e.checked:d;};
+      var src=_rv('cf-src','all');if(src!=='all'&&c.campaign_name!==src)return false;
+      if(_rc('cf-rexp',true)){var _t=new Date();_t.setHours(0,0,0,0);if(c.assigned_deadline&&new Date(c.assigned_deadline+'T00:00:00')>=_t)return false;}
+      if(_rc('cf-rcd',true)&&(c.lead_status==='Closedeal'||c.lead_status==='Invalid Lead'||c.campaign_name==='Invalid'))return false;
+      var hasP=!!(c.potential&&String(c.potential).trim()),pm=_rv('cf-rpot','exclude');
+      if(pm==='exclude'&&hasP)return false;
+      if(pm==='only'&&!hasP)return false;
+      if(pm==='missed'){
+        if(!hasP)return false;
+        var dd=parseInt(_rv('cf-rdays','14'))||14;
+        if(c.last_contacted&&(Date.now()-new Date(c.last_contacted).getTime())<dd*86400000)return false;
+      }
+    } else if(f.campaign&&f.campaign!=='all'&&f.campaign!=='none'&&c.campaign_name!==f.campaign)return false;
     return true;
   });
 }
+window._campReengUi=function(){
+  var cf=document.getElementById('cf-campaign'),pn=document.getElementById('camp-reeng');
+  if(pn)pn.style.display=(cf&&cf.value==='__incamp__')?'block':'none';
+  var rp=document.getElementById('cf-rpot'),w=document.getElementById('cf-rdays-wrap');
+  if(w)w.style.display=(rp&&rp.value==='missed')?'block':'none';
+};
+// Lưu vết campaign trước khi chuyển khách sang campaign mới
+window._campLogHistory=async function(pool,newName){
+  var mgr=currentProfile?currentProfile.full_name:'';
+  var rows=pool.filter(function(c){return c.campaign_name&&c.campaign_name!==newName&&c.campaign_name!=='__active_pool__';}).map(function(c){
+    var os=c.assigned_to?PROFILES.find(function(p){return p.id===c.assigned_to;}):null;
+    return {customer_id:c.id,campaign_name:c.campaign_name,assigned_to:c.assigned_to||null,assigned_to_name:os?os.full_name:null,status:c.status||null,sub_status:c.sub_status||null,lead_status:c.lead_status||null,potential:c.potential||null,last_contacted:c.last_contacted||null,assigned_deadline:c.assigned_deadline||null,moved_to_campaign:newName,moved_by_name:mgr};
+  });
+  if(!rows.length)return {n:0,ok:true};
+  try{
+    for(var i=0;i<rows.length;i+=200){
+      var r=await sb.from('customer_campaign_history').insert(rows.slice(i,i+200));
+      if(r.error)throw r.error;
+    }
+    return {n:rows.length,ok:true};
+  }catch(e){console.error('[campaign history]',e);return {n:rows.length,ok:false,err:(e&&e.message)||String(e)};}
+};
+window._campSourceNote=function(pool,newName){
+  var by={},pot=0,cd=0;
+  pool.forEach(function(c){if(c.campaign_name&&c.campaign_name!==newName&&c.campaign_name!=='__active_pool__'){by[c.campaign_name]=(by[c.campaign_name]||0)+1;if(c.potential&&String(c.potential).trim())pot++;if(c.lead_status==='Closedeal')cd++;}});
+  var ks=Object.keys(by);if(!ks.length)return '';
+  var tot=ks.reduce(function(a,k){return a+by[k];},0);
+  return '\n\n⚠ '+tot+' khách đang thuộc campaign khác sẽ được CHUYỂN sang campaign này: '+ks.map(function(k){return k+' ('+by[k]+')';}).join(', ')+'.\nPotential của họ sẽ được xoá (đã lưu lịch sử)'+(pot?' — '+pot+' khách đang có Potential':'')+(cd?', gồm '+cd+' khách Closedeal':'')+'. Campaign trước của từng khách được lưu lại để manager xem.';
+};
 function campPreview(){
   const filtered=campGetFiltered();
   const el=document.getElementById('camp-preview-count');
@@ -6916,15 +6984,18 @@ async function addToCampaign(campName){
   // Đọc sale từ chip UI (giống createCampaign) thay vì checkbox cũ không còn tồn tại
   var _chipSales=window._campSelectedSales&&window._campSelectedSales.size>0
     ?[...window._campSelectedSales]:null;
-  var salesList=_chipSales
+  var _noSaleA=!!(document.getElementById('camp-no-sale')&&document.getElementById('camp-no-sale').checked);
+  var salesList=_noSaleA?[]:(_chipSales
     ?PROFILES.filter(function(p){return _chipSales.includes(p.id);})
-    :PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';});
+    :PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';}));
   // Dùng KH đã tick checkbox, nếu không có thì dùng filter
   var _selIds=window._campCreateSelected&&window._campCreateSelected.size>0?window._campCreateSelected:null;
   const dataPool=_selIds?CUSTOMERS.filter(function(c){return _selIds.has(c.id);}):campGetFiltered();
   if(dataPool.length===0){alert('Không có KH nào được chọn!');return;}
-  if(!confirm('Thêm '+dataPool.length+' khách vào Campaign "'+campName+'" cho '+salesList.length+' sale với deadline '+deadline+'?'))return;
+  if(!confirm((_noSaleA?'Thêm '+dataPool.length+' khách vào Campaign "'+campName+'" CHƯA giao sale (deadline '+deadline+')?':'Thêm '+dataPool.length+' khách vào Campaign "'+campName+'" cho '+salesList.length+' sale với deadline '+deadline+'?')+window._campSourceNote(dataPool,campName)))return;
   showLoading(true);
+  var _hist=await window._campLogHistory(dataPool,campName);
+  if(_hist&&!_hist.ok)alert('Lưu vết campaign trước KHÔNG thành công ('+_hist.err+'). Hãy chạy file SQL customer_campaign_history.sql. Việc thêm khách vẫn tiếp tục.');
   var mgrName=currentProfile?currentProfile.full_name:'';
   // Gom nhóm theo sale
   var saleGroups={};
@@ -6987,8 +7058,10 @@ async function createCampaign(){
   var _selIds=window._campCreateSelected&&window._campCreateSelected.size>0?window._campCreateSelected:null;
   const dataPool=_selIds?CUSTOMERS.filter(function(c){return _selIds.has(c.id);}):campGetFiltered();
   if(dataPool.length===0){alert('Không có KH nào được chọn!');return;}
-  if(!confirm(_noSale?('Tạo '+dataPool.length+' khách vào Campaign "'+name+'" CHƯA giao sale (deadline '+deadline+'). Giao sale sau trong chi tiết campaign?'):('Phân công '+dataPool.length+' khách cho Campaign "'+name+'" cho '+salesList.length+' sale với deadline '+deadline+'?')))return;
+  if(!confirm((_noSale?('Tạo '+dataPool.length+' khách vào Campaign "'+name+'" CHƯA giao sale (deadline '+deadline+'). Giao sale sau trong chi tiết campaign?'):('Phân công '+dataPool.length+' khách cho Campaign "'+name+'" cho '+salesList.length+' sale với deadline '+deadline+'?'))+window._campSourceNote(dataPool,name)))return;
   showLoading(true);
+  var _hist=await window._campLogHistory(dataPool,name);
+  if(_hist&&!_hist.ok)alert('Lưu vết campaign trước KHÔNG thành công ('+_hist.err+'). Hãy chạy file SQL customer_campaign_history.sql. Việc thêm khách vẫn tiếp tục.');
   var mgrName=currentProfile?currentProfile.full_name:'';
   // Gom nhóm từng sale để batch update
   var saleGroups={};
@@ -8558,6 +8631,7 @@ function _kpiOpenListModal(label,customers,type,saleId,page,subtitle,keepFilter)
     var bd=b.last_contacted?new Date(b.last_contacted):new Date(0);
     return bd-ad;
   });
+  window._kpiNavList=sorted;
 
   // Filter chips: Potential + State (build từ danh sách đầy đủ)
   var potCnt={},stCnt={};
@@ -8641,7 +8715,8 @@ window._kpiListFilter=function(k,v){var d=window._kpiListData;if(!d)return;(wind
 
 // ── Open customer from KPI modal — opens detail modal alongside ──
 window._kpiOpenCust=function(custId){
-  renderDetailModal(custId);
+  var L=window._kpiNavList||[],i=L.findIndex(function(x){return x.id===custId;});
+  if(i>=0)renderDetailModal(custId,{source:'kpi-list',idx:i});else renderDetailModal(custId);
 };
 
 // ── Sale detail modal ──
@@ -8782,6 +8857,7 @@ async function renderDetailModal(customerId,navCtx){
   modal.className='modal-overlay';modal.id='detail-modal';
   modal.style.zIndex='10020'; // above report modal (10010), campaign modal (10002)
   document.body.appendChild(modal);
+  if(window._loadPrevCamp)window._loadPrevCamp(c.id);
   // Store nav context for ◀ ▶ buttons
   if(navCtx){
     window._detailNavSource=navCtx.source||'campaign';
@@ -8939,6 +9015,9 @@ function _renderDetailShell(modal,c,isManager,logs){
     'deadline-row'
   );
 
+  if(currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin')){
+    html+='<div id="d-prevcamp" data-cid="'+c.id+'" style="margin-top:10px;font-size:11px;color:var(--text3)"><i class="ti ti-history"></i> Previous campaigns…<\/div>';
+  }
   html+='<\/div>'; // end left main
 
   // ── RIGHT SIDEBAR: Lịch sử liên hệ ──
@@ -8995,6 +9074,8 @@ function _renderDetailShell(modal,c,isManager,logs){
       list=window._alertNavList;
     } else if(src==='cw'){
       list=window._cwNavList;
+    } else if(src==='kpi-list'){
+      list=window._kpiNavList;
     }
     if(!list||!list.length){navWrap.style.display='none';return;}
     navWrap.style.display='flex';
