@@ -6134,9 +6134,10 @@ window._campOpenCreate=function(prefillName){
     // Wrapper flex column - content đã là flex:1 nên không cần height:100%
     +'<div style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">'
     // Body: 2 cột (left filter + right list)
-    +'<div style="display:flex;flex-direction:row;flex:1;min-height:0;overflow:hidden" id="camp-create-grid">'
+    +'<div style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden" id="camp-create-grid">'
     // LEFT: Campaign info + filters - fixed width
-    +'<div style="width:260px;min-width:260px;border-right:1px solid var(--border);overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px">'
+    +'<div id="camp-create-top" style="flex-shrink:0;max-height:48vh;overflow-y:auto;border-bottom:1px solid var(--border);padding:12px 16px;display:flex;flex-direction:column;gap:12px">'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:start">'
     +'<div><label style="font-size:10px;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:3px">Tên Campaign *<\/label>'
     +'<input id="camp-name" value="'+(prefillName||'')+'" placeholder="2026_Campaign_T06" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">'
     +'<div id="camp-added-total" style="font-size:10px;color:var(--accent2);margin-top:4px;min-height:14px"><\/div>'
@@ -6159,7 +6160,15 @@ window._campOpenCreate=function(prefillName){
         +'<\/div>';
     }).join('')
     +'<\/div><\/div><\/div>'
-    +'<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Sale phụ trách<\/div>'
+    +'<div style="">'
+    +'<label style="font-size:10px;color:gold;text-transform:uppercase;display:block;margin-bottom:3px">🎫 Lucky Ticket cho đợt này<\/label>'
+    +'<input id="camp-golden-count" type="number" min="0" value="0" placeholder="Số lượng" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">'
+    +'<div style="font-size:10px;color:var(--text3);margin-top:3px">Random gắn cờ đúng số này trong danh sách vừa thêm — sale chốt trúng sẽ được thưởng ở tab Game.<\/div>'
+    +'<\/div>'
+    +'<\/div>'
+    +'<div><div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:6px">Bộ lọc KH<\/div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px">'
+    +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Sale phụ trách<\/div>'
     +'<select id="cf-sale" onchange="campSyncFilters();window._campPg=1;_campRefreshList()" style="width:100%;background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;color:#e0deff;outline:none">'
     +'<option value="all" style="background:#1e1550;color:#e0deff">Tất cả</option>'
     +'<option value="__none__" style="background:#1e1550;color:#e0deff">— Chưa assign</option>'
@@ -6167,20 +6176,18 @@ window._campOpenCreate=function(prefillName){
       return '<option value="'+p.id+'" style="background:#1e1550;color:#e0deff">'+p.full_name.split(' ').pop()+'</option>';
     }).join('')
     +'</select><\/div>'
-    +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Bộ lọc KH<\/div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
     +fO(states,'cf-state','State')+fO(STATUS_OPTS,'cf-status','Status')
     +fO(SUBSTATUS_OPTS,'cf-substatus','Sub Status')+fO(LEAD_OPTS,'cf-leadstatus','Lead Status')
     +fO(BRAND_OPTS,'cf-brand','Brand')+fO(POTENTIAL_OPTS,'cf-potential','Potential')
     +fO(TIMES_OPTS,'cf-timeuse','Time of Use')+fO(REASON_OPTS,'cf-reason','Reason')
-    +'<\/div>'
-    +'<div style="margin-top:6px"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;text-transform:uppercase">Thuộc chiến dịch<\/div>'
+    +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px;text-transform:uppercase">Thuộc chiến dịch<\/div>'
     +'<select id="cf-campaign" onchange="campSyncFilters();window._campReengUi();window._campPg=1;_campRefreshList()" style="width:100%;background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;color:#e0deff;outline:none">'
     +'<option value="all" style="background:#1e1550;color:#e0deff">Tất cả</option>'
     +'<option value="none" style="background:#1e1550;color:#e0deff">Chưa thuộc chiến dịch</option>'
     +'<option value="__incamp__" style="background:#1e1550;color:#e0deff">In a campaign (re-engage)</option>'
     +campNames.map(function(n){return '<option value="'+n+'" style="background:#1e1550;color:#e0deff">'+n+'</option>';}).join('')+'</select><\/div>'
-    +'<div id="camp-reeng" style="display:none;margin-top:8px;padding:8px;border:1px dashed rgba(108,92,231,.5);border-radius:8px;font-size:11px;color:var(--text2)">'
+    +'<\/div><\/div>'
+    +'<div id="camp-reeng" style="display:none;margin-top:-4px;padding:8px;border:1px dashed rgba(108,92,231,.5);border-radius:8px;font-size:11px;color:var(--text2)">'
     +'<div style="font-weight:700;color:var(--brand2);margin-bottom:6px"><i class="ti ti-refresh"></i> Re-engage<\/div>'
     +'<select id="cf-src" onchange="window._campPg=1;_campRefreshList()" style="width:100%;background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff;margin-bottom:6px"><option value="all">Any source campaign<\/option>'+campNames.map(function(n){return '<option value="'+n+'">'+n+'<\/option>';}).join('')+'<\/select>'
     +'<label style="display:flex;gap:6px;align-items:center;margin-bottom:4px;cursor:pointer"><input type="checkbox" id="cf-rexp" checked onchange="_campRefreshList()"> Finished campaigns only (deadline passed)<\/label>'
@@ -6189,15 +6196,9 @@ window._campOpenCreate=function(prefillName){
     +'<select id="cf-rpot" onchange="window._campReengUi();_campRefreshList()" style="width:100%;background:#1e1550;border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;color:#e0deff"><option value="exclude">Exclude (default)<\/option><option value="include">Include<\/option><option value="only">Only potential<\/option><option value="missed">Only potential NOT followed up<\/option><\/select>'
     +'<div id="cf-rdays-wrap" style="display:none;margin-top:5px">No contact for <input type="number" id="cf-rdays" value="14" min="1" style="width:54px;background:#1e1550;border:1px solid var(--border);border-radius:6px;color:#e0deff;padding:2px 6px" onchange="_campRefreshList()"> days or more (or never contacted)<\/div>'
     +'<\/div>'
-    +'<div style="display:flex;gap:6px;margin-top:8px;align-items:center">'
+    +'<div style="display:flex;gap:6px;align-items:center">'
     +'<button class="btn" onclick="campResetFilters();_campRefreshList()" style="font-size:11px"><i class="ti ti-refresh"></i> Reset<\/button>'
     +'<div id="camp-preview-count" style="font-size:12px;color:var(--accent2);font-weight:700"><\/div>'
-    +'<\/div>'
-    +'<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">'
-    +'<label style="font-size:10px;color:gold;text-transform:uppercase;display:block;margin-bottom:3px">🎫 Lucky Ticket cho đợt này<\/label>'
-    +'<input id="camp-golden-count" type="number" min="0" value="0" placeholder="Số lượng" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">'
-    +'<div style="font-size:10px;color:var(--text3);margin-top:3px">Random gắn cờ đúng số này trong danh sách vừa thêm — sale chốt trúng sẽ được thưởng ở tab Game.<\/div>'
-    +'<\/div>'
     +'<\/div>'
     +'<\/div>'
     // RIGHT: Customer list - takes remaining space
@@ -6206,12 +6207,12 @@ window._campOpenCreate=function(prefillName){
     +'<input id="camp-list-search" placeholder="Tìm tên, mã KH, phone..." oninput="_campRefreshList()" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">'
     +'<\/div>'
     +'<div style="padding:6px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;background:rgba(108,92,231,0.05)">'
+    +'<button onclick="var t=document.getElementById(\'camp-create-top\');var h=t.style.display===\'none\';t.style.display=h?\'flex\':\'none\';this.innerHTML=h?\'<i class=&quot;ti ti-filter&quot;></i> Hide filters\':\'<i class=&quot;ti ti-filter&quot;></i> Show filters\'" style="background:none;border:1px solid var(--border);border-radius:7px;color:var(--text2);cursor:pointer;padding:4px 12px;font-size:11px"><i class="ti ti-filter"></i> Hide filters<\/button>'
     +'<button onclick="_campSelectAllList(true)" style="background:rgba(108,92,231,0.2);border:1px solid rgba(108,92,231,0.4);border-radius:7px;color:var(--brand2);cursor:pointer;padding:4px 12px;font-size:11px;font-weight:600"><i class="ti ti-check-all"></i> Chọn tất cả<\/button>'
     +'<button onclick="_campSelectAllList(false)" style="background:none;border:1px solid var(--border);border-radius:7px;color:var(--text3);cursor:pointer;padding:4px 12px;font-size:11px">Bỏ chọn<\/button>'
     +'<span id="camp-sel-count" style="font-size:11px;color:var(--text2);margin-left:auto"><\/span>'
     +'<\/div>'
     +'<div id="camp-cust-list" style="flex:1;overflow-y:auto;overflow-x:hidden"><\/div>'
-    +'<\/div>'
     +'<\/div>'
     // Đóng camp-create-grid
     +'<\/div>'
