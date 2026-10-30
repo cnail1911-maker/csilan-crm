@@ -6390,15 +6390,23 @@ window._campAssignOpen=function(name){
   document.getElementById('caa-run').onclick=function(){window._campAssignRun(name);};
 };
 window._campUnassignRun=async function(name){
+  var invSet=new Set(INVOICES.map(function(i){return i.customer_id;}));
+  var why={status:0,potential:0,invoice:0,sub:0,won:0};
   function untouched(c){
-    var ss=String(c.sub_status||'').replace(/\s/g,'').toLowerCase();
-    return (!c.status||c.status==='New')&&!(c.potential&&String(c.potential).trim())&&!c.lead_status&&!c.timeline_follow&&(ss===''||ss==='newlead')&&!INVOICES.some(function(i){return i.customer_id===c.id;});
+    var ok=true,ss=String(c.sub_status||'').replace(/\s/g,'').toLowerCase();
+    if(c.status&&c.status!=='New'){why.status++;ok=false;}
+    if(c.potential&&String(c.potential).trim()){why.potential++;ok=false;}
+    if(invSet.has(c.id)){why.invoice++;ok=false;}
+    if(c.lead_status==='Closedeal'){why.won++;ok=false;}
+    if(ss!==''&&ss!=='newlead'){why.sub++;ok=false;}
+    return ok;
   }
   var all=CUSTOMERS.filter(function(c){return c.campaign_name===name&&c.assigned_to;});
   if(!all.length){alert('No assigned data in this campaign.');return;}
   var safe=all.filter(untouched),kept=all.length-safe.length;
-  if(!safe.length){alert('All '+all.length+' assigned customers already have activity (status / potential / invoice). Nothing to unassign.');return;}
-  if(!confirm('Unassign sale from '+safe.length.toLocaleString()+' customers in "'+name+'"?\n\n- They stay in this campaign (deadline kept)\n- Only untouched data (status New, no potential, no invoice)'+(kept?'\n- '+kept.toLocaleString()+' customers with activity are KEPT with their sale':'')+'\n\nYou can use "Assign sale" afterwards.'))return;
+  var detail='Status not New: '+why.status+'\nHas potential: '+why.potential+'\nHas invoice: '+why.invoice+'\nClosedeal: '+why.won+'\nSub-status changed: '+why.sub;
+  if(!safe.length){alert('All '+all.length+' assigned customers have activity. Nothing to unassign.\n\n'+detail);return;}
+  if(!confirm('Unassign sale from '+safe.length.toLocaleString()+' customers in "'+name+'"?\n\n- They stay in this campaign (deadline kept)\n- Only untouched data is unassigned'+(kept?'\n- '+kept.toLocaleString()+' customers with activity are KEPT with their sale\n\n'+detail:'')+'\n\nYou can use "Assign sale" afterwards.'))return;
   showLoading(true);
   var ids=safe.map(function(c){return c.id;});
   try{
