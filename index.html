@@ -7025,7 +7025,7 @@ async function createCampaign(){
       await sb.from('customers').update({assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'}).in('id',chunk);
       chunk.forEach(function(cid){
         var idx=CUSTOMERS.findIndex(function(x){return x.id===cid;});
-        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile={id:grp.sale.id,full_name:grp.sale?grp.sale.full_name:null,role:grp.sale.role};}
+        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile=grp.sale?{id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role}:null;}
       });
     }
   }
@@ -10956,7 +10956,7 @@ async function campAssignSelected(){
       // Update local
       chunk.forEach(function(cid){
         var idx=CUSTOMERS.findIndex(function(x){return x.id===cid;});
-        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile={id:grp.sale.id,full_name:grp.sale?grp.sale.full_name:null,role:grp.sale.role};}
+        if(idx>=0){Object.assign(CUSTOMERS[idx],{assigned_to:grp.sale?grp.sale.id:null,campaign_name:name,assigned_deadline:deadline,is_recalled:false,potential:null,status:'New',sub_status:'New Lead'});CUSTOMERS[idx].assigned_profile=grp.sale?{id:grp.sale.id,full_name:grp.sale.full_name,role:grp.sale.role}:null;}
       });
     }
   }
