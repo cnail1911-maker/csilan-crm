@@ -11175,6 +11175,20 @@ window._dailyOpenCustList=async function(saleId,type){
   _kpiOpenListModal(label,customers,type,saleId,1);
 };
 
+// Page through a PostgREST query (server caps each response at 1000 rows). build() must return a fresh query each call.
+window._sbPaged=async function(build,SZ){
+  SZ=SZ||1000;var out=[],from=0,ordered=true;
+  while(true){
+    var q=build();if(ordered)q=q.order('id',{ascending:true});
+    var r=await q.range(from,from+SZ-1);
+    if(r.error&&ordered&&from===0){ordered=false;continue;}
+    if(r.error)return {data:out,error:r.error};
+    var d=r.data||[];out=out.concat(d);
+    if(d.length<SZ||from>500000)break;
+    from+=SZ;
+  }
+  return {data:out,error:null};
+};
 async function renderDailyData(){
   const isManager=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
   const today=new Date();
@@ -11215,23 +11229,23 @@ async function renderDailyData(){
   }
 
   // Parallel fetch: potHist + invoices + per-sale call_logs
-  const potHistQ=sb.from('potential_history')
-    .select('customer_id,assigned_to_id,potential,recalled_at')
+  const potHistQ=window._sbPaged(function(){return sb.from('potential_history')
+    .select('id,customer_id,assigned_to_id,potential,recalled_at')
     .gte('recalled_at',fromDt.slice(0,7)+'-01')
-    .lte('recalled_at',toDt).limit(20000);
+    .lte('recalled_at',toDt);});
 
-  const invQ=sb.from('invoices')
-    .select('sale_id,customer_id,invoice_no,created_at,date,total,type,approval_status')
+  const invQ=window._sbPaged(function(){return sb.from('invoices')
+    .select('id,sale_id,customer_id,invoice_no,created_at,date,total,type,approval_status')
     .eq('type','invoice')
-    .gte('created_at',fromDt).lte('created_at',toDt).limit(5000);
+    .gte('created_at',fromDt).lte('created_at',toDt);});
 
   const [potHistRes,invsRes,...logResults]=await Promise.all([
     potHistQ, invQ,
     ...salesToShow.map(function(sale){
-      return sb.from('call_logs')
-        .select('customer_id,sale_id,called_at')
+      return window._sbPaged(function(){return sb.from('call_logs')
+        .select('id,customer_id,sale_id,called_at')
         .eq('sale_id',sale.id)
-        .gte('called_at',fromDt).lte('called_at',toDt).limit(100000);
+        .gte('called_at',fromDt).lte('called_at',toDt);});
     })
   ]);
 
@@ -11616,8 +11630,7 @@ function _cwLoadShift(){
   if(sh.key===key&&Date.now()-sh.t<45000)return;
   sh.key=key;sh.t=Date.now();
   var st=_cwShiftStart(),en=new Date(st.getTime()+8*3600000);
-  var q=sb.from('call_logs').select('customer_id,call_result,called_at').gte('called_at',st.toISOString()).lt('called_at',en.toISOString()).limit(1000);
-  if(s!==null)q=q.eq('sale_id',s);
+  var q=window._sbPaged(function(){var qq=sb.from('call_logs').select('id,customer_id,call_result,called_at').gte('called_at',st.toISOString()).lt('called_at',en.toISOString());if(s!==null)qq=qq.eq('sale_id',s);return qq;});
   q.then(function(r){
     var rows=(r&&r.data||[]).filter(function(l){return l.call_result&&l.call_result!=='null';});
     sh.ids=new Set(rows.map(function(l){return l.customer_id;}));sh.calls=rows.length;
