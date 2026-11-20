@@ -6440,8 +6440,83 @@ window._campRecallOpen=function(name){
     Array.prototype.slice.call(bar.querySelectorAll('div[style*="position:relative"]')).forEach(function(x){x.remove();});
     var b=document.getElementById('camp-create-btn');
     if(b){b.className='btn';b.style.cssText='font-size:12px;border-color:rgba(255,118,117,0.6);color:var(--danger)';b.innerHTML='<i class="ti ti-arrow-back-up"></i> Recall selected';b.onclick=function(){window._campRecallRun(name);};}
+    if(b&&!document.getElementById('camp-reassign-btn')){var rb=document.createElement('button');rb.id='camp-reassign-btn';rb.className='btn';rb.style.cssText='font-size:12px;margin-right:6px';rb.innerHTML='<i class="ti ti-users-group"></i> Reassign to…';rb.onclick=function(){window._campReassignOpen(name);};b.parentNode.insertBefore(rb,b);}
   }
   window._campRefreshList();
+};
+window._campReassignOpen=function(name){
+  var sel=window._campCreateSelected;
+  var list=CUSTOMERS.filter(function(c){return sel&&sel.has(c.id)&&c.campaign_name===name;});
+  if(!list.length){alert('Select at least one customer to reassign (filter by Sale, then "Select all").');return;}
+  var pend=new Set(INVOICES.filter(function(i){return i.approval_status==='pending';}).map(function(i){return i.customer_id;}));
+  var skip=list.filter(function(c){return c.lead_status==='Closedeal'||pend.has(c.id);});
+  var skipSet=new Set(skip.map(function(c){return c.id;}));
+  var mv=list.filter(function(c){return !skipSet.has(c.id);});
+  if(!mv.length){alert('Nothing to reassign: all selected customers are Closedeal or have a pending invoice.');return;}
+  var srcIds=new Set(mv.map(function(c){return c.assigned_to;}));
+  var pot=mv.filter(function(c){return c.potential&&String(c.potential).trim();}).length;
+  var sales=PROFILES.filter(function(p){return p.role==='sale'||p.role==='leader';});
+  var ex=document.getElementById('camp-reassign-ov');if(ex)ex.remove();
+  var ov=document.createElement('div');ov.id='camp-reassign-ov';
+  ov.style.cssText='position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:12px';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  ov.innerHTML='<div style="background:var(--bg2,#fff);border:1px solid var(--border);border-radius:14px;width:min(420px,100%);max-height:90vh;overflow:auto;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.4)">'
+    +'<div style="font-size:15px;font-weight:700">Reassign to…</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin:2px 0 10px">'+_campEsc(name)+' · <b>'+mv.length.toLocaleString()+'</b> customers will be split evenly'+(skip.length?' · <b style="color:var(--danger)">'+skip.length+' skipped</b> (Closedeal / pending invoice)':'')+'</div>'
+    +'<label style="display:flex;gap:8px;align-items:center;padding:6px 4px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border);cursor:pointer"><input type="checkbox" id="cra-all"> Select all</label>'
+    +sales.map(function(p){var isSrc=srcIds.has(p.id);return '<label style="display:flex;gap:8px;align-items:center;padding:7px 4px;font-size:12px;cursor:pointer"><input type="checkbox" class="cra-sale" value="'+p.id+'"'+(isSrc?'':' checked')+'> '+_campEsc(p.full_name)+(isSrc?' <span style="color:var(--text3);font-size:10px">(current owner)</span>':'')+'</label>';}).join('')
+    +'<label style="display:flex;gap:8px;align-items:flex-start;padding:8px 4px;margin-top:6px;border-top:1px solid var(--border);font-size:12px;cursor:pointer"><input type="checkbox" id="cra-keep" checked style="margin-top:2px"> <span>Keep progress of Potential customers'+(pot?' ('+pot+')':'')+'<br><span style="font-size:10px;color:var(--text3)">Others get a fresh start (status, sub-status, potential reset).</span></span></label>'
+    +'<div id="cra-prev" style="font-size:11px;color:var(--text2);margin-top:8px;line-height:1.5"></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn" id="cra-cancel">Cancel</button><button class="btn btn-primary" id="cra-run">Reassign</button></div></div>';
+  document.body.appendChild(ov);
+  function prev(){
+    var ids=[].slice.call(ov.querySelectorAll('.cra-sale:checked')).map(function(x){return x.value;});
+    var n=ids.length,el=document.getElementById('cra-prev');
+    if(!n){el.innerHTML='<span style="color:var(--danger)">Select at least one sale.</span>';return;}
+    var per=Math.floor(mv.length/n),rem=mv.length%n;
+    var lose={};mv.forEach(function(c){var k=c.assigned_to||'none';lose[k]=(lose[k]||0)+1;});
+    var h=Object.keys(lose).map(function(k){var p=PROFILES.find(function(x){return x.id===k;});return _campEsc(p?p.full_name:'Unassigned')+' <b style="color:var(--danger)">−'+lose[k]+'</b>';}).join(', ');
+    el.innerHTML=h+'<br>Each selected sale gets <b style="color:var(--success,#16a34a)">+'+per+(rem?' to +'+(per+1):'')+'</b>';
+  }
+  ov.addEventListener('change',function(e){if(e.target.id==='cra-all'){var v=e.target.checked;ov.querySelectorAll('.cra-sale').forEach(function(x){x.checked=v;});}prev();});
+  prev();
+  document.getElementById('cra-cancel').onclick=function(){ov.remove();};
+  document.getElementById('cra-run').onclick=function(){window._campReassignRun(name,mv);};
+};
+window._campReassignRun=async function(name,mv){
+  var ov=document.getElementById('camp-reassign-ov');if(!ov)return;
+  var ids=[].slice.call(ov.querySelectorAll('.cra-sale:checked')).map(function(x){return x.value;});
+  var sales=PROFILES.filter(function(p){return ids.indexOf(p.id)>=0;});
+  if(!sales.length){alert('Select at least one sale.');return;}
+  var keep=document.getElementById('cra-keep').checked;
+  if(!confirm('Reassign '+mv.length.toLocaleString()+' customers to '+sales.length+' sale(s)?\n\n- Campaign and deadline are kept\n- '+(keep?'Potential customers keep their progress; others':'ALL')+' get a fresh start\n- Old state is saved to history'))return;
+  showLoading(true);
+  try{await window._campLogHistory(mv,name,true);}catch(e){}
+  var groups={};
+  mv.forEach(function(c,i){var sl=sales[i%sales.length];(groups[sl.id]||(groups[sl.id]={sale:sl,keep:[],fresh:[]}))[(keep&&c.potential&&String(c.potential).trim())?'keep':'fresh'].push(c.id);});
+  var FR={potential:null,status:'New',sub_status:'New Lead',lead_status:null,last_contacted:null};
+  try{
+    var ks=Object.keys(groups);
+    for(var k=0;k<ks.length;k++){
+      var g=groups[ks[k]];
+      var parts=[[g.keep,{assigned_to:g.sale.id,is_recalled:false}],[g.fresh,Object.assign({assigned_to:g.sale.id,is_recalled:false},FR)]];
+      for(var q=0;q<parts.length;q++){
+        var arr=parts[q][0],upd=parts[q][1];
+        for(var c=0;c<arr.length;c+=500){
+          var chunk=arr.slice(c,c+500);
+          var u=await sb.from('customers').update(upd).in('id',chunk);
+          if(u.error)throw u.error;
+          var set=new Set(chunk);
+          CUSTOMERS.forEach(function(x){if(set.has(x.id)){Object.assign(x,upd);x.assigned_profile={id:g.sale.id,full_name:g.sale.full_name,role:g.sale.role};}});
+        }
+      }
+    }
+  }catch(e){showLoading(false);alert('Reassign failed part-way: '+(e.message||e)+'\nRun Reassign again to finish the rest.');return;}
+  showLoading(false);ov.remove();
+  window._campCloseCreate();
+  alert('Reassigned '+mv.length.toLocaleString()+' customers.');
+  render();
+  setTimeout(function(){if(window._campShowDetail)window._campShowDetail(encodeURIComponent(name));},50);
 };
 window._campRecallRun=async function(name){
   var sel=window._campCreateSelected;
