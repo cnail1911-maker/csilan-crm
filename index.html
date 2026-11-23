@@ -7427,6 +7427,7 @@ window._cflowInit=function(id,opts){
   });}
   layout();
 };
+window._cflowLater=function(id,opts,n){n=n||0;if(document.getElementById(id+'-st')){window._cflowInit(id,opts);return;}if(n<40)setTimeout(function(){window._cflowLater(id,opts,n+1);},50);};
 window._cflowCopy=function(txt,btn){
   var done=function(){if(btn){var o=btn.innerHTML;btn.innerHTML='<i class="ti ti-check"></i> Copied';setTimeout(function(){btn.innerHTML=o;},1200);}};
   try{navigator.clipboard.writeText(txt).then(done,function(){throw 0;});}
@@ -8198,7 +8199,7 @@ async function renderKPIAsync(){
   var trendHtml=await _renderStateReport();
 
   // ── PER-SALE CARDS ──
-  var saleCards='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px">'
+  var saleGrid='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px">'
     +salesToShow.map(function(s,si){
       var c=saleStats[s.id].cur;
       var prev=saleStats[s.id].prev;
@@ -8253,6 +8254,45 @@ async function renderKPIAsync(){
         +'<\/div>';
     }).join('')
     +'<\/div>';
+
+  // ── STAFF VIEW TOGGLE (Grid / Carousel) ──
+  var kpiView=sessionStorage.getItem('kpiView')==='carousel'?'carousel':'grid';
+  var saleCards='<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><div style="display:flex">'
+    +'<button class="btn" style="font-size:11px;padding:4px 10px;border-radius:8px 0 0 8px;'+(kpiView==='grid'?'background:var(--brand2);color:#fff':'')+'" onclick="sessionStorage.setItem(\'kpiView\',\'grid\');render()"><i class="ti ti-layout-grid"><\/i> Grid<\/button>'
+    +'<button class="btn" style="font-size:11px;padding:4px 10px;border-radius:0 8px 8px 0;'+(kpiView==='carousel'?'background:var(--brand2);color:#fff':'')+'" onclick="sessionStorage.setItem(\'kpiView\',\'carousel\');render()"><i class="ti ti-carousel-horizontal"><\/i> Carousel<\/button>'
+    +'<\/div><\/div>';
+  if(kpiView==='grid'||salesToShow.length<2){saleCards+=saleGrid;}
+  else{
+    var _rk=salesToShow.slice().sort(function(a,b){var x=saleStats[a.id].cur,y=saleStats[b.id].cur;return (y.rev-x.rev)||(y.orders-x.orders);});
+    var _cnt={};
+    _rk.forEach(function(s){
+      var c=saleStats[s.id].cur,mc;
+      if(s.role==='manager'||s.role==='admin'){var ids=new Set((c.approvedInvs||[]).concat(c.pendingInvs||[]).map(function(i){return i.customer_id;}));mc=CUSTOMERS.filter(function(x){return ids.has(x.id);});}
+      else mc=CUSTOMERS.filter(function(x){return x.assigned_to===s.id;});
+      _cnt[s.id]={n:mc.length,pot:mc.filter(function(x){return x.potential&&x.potential.trim();}).length};
+    });
+    var _items=_rk.map(function(s,i){var c=saleStats[s.id].cur;return {img:s.avatar_url,ph:shortName(s.full_name),tag:'#'+(i+1)+' · '+shortName(s.full_name).split(' ').pop(),tag2:'$'+c.rev.toLocaleString('en-US')};});
+    var _tile=function(label,val,col,kind,id){return '<div style="background:'+col+';border-radius:10px;padding:8px 14px;min-width:96px;cursor:pointer" onclick="window._kpiShowList(\''+kind+'\',\''+id+'\')"><div style="font-size:10px;color:var(--text3)">'+label+'<\/div><div style="font-size:18px;font-weight:700;color:var(--text)">'+val+'<\/div><\/div>';};
+    window._cflowLater('kpi-cf',{items:_items,sig:'kpi'+_rk.length,
+      caption:function(i){
+        var s=_rk[i];if(!s)return '';var c=saleStats[s.id].cur,pr=saleStats[s.id].prev,k=_cnt[s.id];
+        var rp=pct(c.orders,TARGET_ORD),vp=pct(c.rev,TARGET_REV),tp=Math.min(rp,vp);
+        return '<div style="font-size:22px;font-weight:700;color:var(--brand2)">'+(s.full_name||'')+'<\/div>'
+          +'<div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-top:2px">'+(s.role||'')+' · rank #'+(i+1)+' · '+k.n+' KH · '+k.pot+' Potential<\/div>'
+          +'<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">'
+          +_tile('Orders',c.orders+'<span style="font-size:10px;color:var(--text3)"> /'+TARGET_ORD+'<\/span>','rgba(0,184,148,0.12)','orders',s.id)
+          +_tile('Revenue','$'+c.rev.toLocaleString('en-US'),'rgba(108,92,231,0.12)','rev',s.id)
+          +_tile('Est Orders',c.estOrders,'rgba(253,203,110,0.12)','estorders',s.id)
+          +_tile('Est Rev','$'+c.estRev.toLocaleString('en-US'),'rgba(253,203,110,0.08)','estrev',s.id)
+          +'<div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 14px;min-width:96px"><div style="font-size:10px;color:var(--text3)">AOV<\/div><div style="font-size:18px;font-weight:700">$'+c.aov.toLocaleString('en-US')+'<\/div><\/div>'
+          +'<div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 14px;min-width:96px"><div style="font-size:10px;color:var(--text3)">Target<\/div><div style="font-size:18px;font-weight:700;color:'+(tp>=100?'var(--success)':tp>=60?'var(--warn)':'var(--danger)')+'">'+tp+'%<\/div><\/div>'
+          +'<\/div>'
+          +'<div style="margin-top:10px"><button class="btn" onclick="window._kpiShowSaleDetail(\''+s.id+'\')"><i class="ti ti-eye"><\/i> View detail<\/button><\/div>';
+      },
+      onOpen:function(i){var s=_rk[i];if(s)window._kpiShowSaleDetail(s.id);}
+    });
+    saleCards+=window._cflowHtml('kpi-cf');
+  }
 
   // ── DETAIL TABLE ──
   var tableRows=salesToShow.map(function(s,si){
