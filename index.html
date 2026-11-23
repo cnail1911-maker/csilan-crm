@@ -7351,11 +7351,120 @@ async function createCampaign(){
 // RENDER PRODUCTS (Manager only)
 // ============================================================
 const VENDOR_OPTS=['BOLSA','ONS','TSPA'];
+/* ── Coverflow gallery (shared component) ── */
+window._cflow=window._cflow||{};
+window._cflowCss=function(){
+  if(document.getElementById('cflow-css'))return;
+  var s=document.createElement('style');s.id='cflow-css';
+  s.textContent='.cf-wrap{padding:14px 10px 18px;user-select:none;text-align:center}'
+  +'.cf-stage{position:relative;height:340px;perspective:1100px;overflow:hidden;touch-action:pan-y;cursor:grab}'
+  +'.cf-stage.drag{cursor:grabbing}'
+  +'.cf-card{position:absolute;left:50%;top:18px;width:200px;height:280px;margin-left:-100px;border-radius:16px;overflow:hidden;background:var(--surface2,#222);box-shadow:0 14px 34px rgba(0,0,0,.45);transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .4s,filter .4s;will-change:transform;cursor:pointer}'
+  +'.cf-card img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;-webkit-user-drag:none}'
+  +'.cf-card .cf-ph{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#fff;font-weight:700;background:linear-gradient(135deg,#6c5ce7,#a29bfe)}'
+  +'.cf-card .cf-tag{position:absolute;left:8px;bottom:8px;right:8px;display:flex;justify-content:space-between;align-items:center;gap:6px;padding:5px 8px;border-radius:8px;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);color:#fff;font-size:10px;font-family:monospace;letter-spacing:.4px}'
+  +'.cf-card .cf-bdg{position:absolute;top:8px;left:8px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(255,118,117,.9);color:#fff}'
+  +'.cf-card.side{filter:grayscale(1) brightness(.8)}'
+  +'.cf-nav{position:absolute;top:50%;margin-top:-18px;z-index:500;width:36px;height:36px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--brand2,#6c5ce7);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.35)}'
+  +'.cf-nav.r{right:8px;background:#222;border:1px solid rgba(255,255,255,.2)}.cf-nav.l{left:8px}'
+  +'.cf-cap{text-align:center;margin-top:6px;min-height:96px}'
+  +'.cf-bar{height:3px;background:rgba(255,255,255,.08);border-radius:3px;margin:12px auto 0;max-width:420px;overflow:hidden}.cf-bar i{display:block;height:100%;background:var(--brand2,#6c5ce7);transition:width .4s}'
+  +'.cf-hint{font-size:10px;letter-spacing:1.5px;color:var(--text3);margin-top:8px;text-transform:uppercase}'
+  +'@media(max-width:700px){.cf-stage{height:300px}.cf-card{width:160px;height:230px;margin-left:-80px}}';
+  document.head.appendChild(s);
+};
+/* opts: {items:[{img,ph,tag,badge}], caption:function(i)->html, onOpen:function(i)} */
+window._cflowHtml=function(id){
+  return '<div class="cf-wrap" id="'+id+'"><div class="cf-stage" id="'+id+'-st"><button class="cf-nav l" id="'+id+'-l" aria-label="Previous"><i class="ti ti-chevron-left"></i></button><button class="cf-nav r" id="'+id+'-r" aria-label="Next"><i class="ti ti-chevron-right"></i></button></div>'
+    +'<div class="cf-cap" id="'+id+'-cap"></div><div class="cf-bar"><i id="'+id+'-bar"></i></div><div class="cf-hint">Drag or use ← → · click to view · <span id="'+id+'-n"></span></div></div>';
+};
+window._cflowInit=function(id,opts){
+  var wrap=document.getElementById(id),st=document.getElementById(id+'-st');
+  if(!wrap||!st)return;
+  window._cflowCss();
+  var items=opts.items,N=items.length;
+  var saved=window._cflow[id]&&window._cflow[id].sig===opts.sig?window._cflow[id].cur:0;
+  var S=window._cflow[id]={cur:Math.min(saved,Math.max(0,N-1)),sig:opts.sig,opts:opts,go:null};
+  var esc=function(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');};
+  var cards=[];
+  items.forEach(function(it,i){
+    var d=document.createElement('div');d.className='cf-card';d.dataset.i=i;
+    d.innerHTML=(it.img?'<img data-src="'+esc(it.img)+'" alt="" draggable="false">':'<div class="cf-ph"><i class="ti ti-photo" style="font-size:40px;opacity:.8"></i><span style="font-size:13px;padding:0 10px;text-align:center">'+esc(it.ph||'')+'</span></div>')
+      +(it.badge?'<div class="cf-bdg">'+esc(it.badge)+'</div>':'')
+      +(it.tag?'<div class="cf-tag"><span>'+esc(it.tag)+'</span>'+(it.tag2?'<b>'+esc(it.tag2)+'</b>':'')+'</div>':'');
+    st.appendChild(d);cards.push(d);
+  });
+  function layout(){
+    var W=st.clientWidth||900,u=Math.max(.45,Math.min(1,W/900));
+    cards.forEach(function(c,i){
+      var d=i-S.cur,a=Math.abs(d),sg=d>0?1:-1;
+      if(a>4){c.style.opacity=0;c.style.pointerEvents='none';c.style.transform='translateX('+(sg*400*u)+'px) scale(.5)';return;}
+      var img=c.querySelector('img[data-src]');if(img&&a<=5){img.src=img.dataset.src;img.removeAttribute('data-src');}
+      var tx=d===0?0:sg*(150+(a-1)*75)*u,tz=d===0?0:-60-a*40,ry=d===0?0:-sg*38,sc=d===0?1.12:Math.max(.7,.92-a*.06);
+      c.style.transform='translateX('+tx+'px) translateZ('+tz+'px) rotateY('+ry+'deg) scale('+sc+')';
+      c.style.zIndex=100-a*10;c.style.opacity=a===0?1:Math.max(.35,1-a*.2);c.style.pointerEvents='auto';
+      c.classList.toggle('side',d!==0);
+    });
+    var cap=document.getElementById(id+'-cap');if(cap&&N)cap.innerHTML=opts.caption(S.cur);
+    var bar=document.getElementById(id+'-bar');if(bar)bar.style.width=(N?(S.cur+1)/N*100:0)+'%';
+    var n=document.getElementById(id+'-n');if(n)n.textContent=String(S.cur+1).padStart(2,'0')+' / '+String(N).padStart(2,'0');
+  }
+  S.go=function(i){S.cur=Math.max(0,Math.min(N-1,i));layout();};
+  document.getElementById(id+'-l').onclick=function(e){e.stopPropagation();S.go(S.cur-1);};
+  document.getElementById(id+'-r').onclick=function(e){e.stopPropagation();S.go(S.cur+1);};
+  var sx=0,sc0=0,moved=0,down=false;
+  st.addEventListener('pointerdown',function(e){if(e.target.closest('.cf-nav'))return;down=true;moved=0;sx=e.clientX;sc0=S.cur;st.classList.add('drag');});
+  window.addEventListener('pointermove',function(e){if(!down||!document.body.contains(st))return;var dx=e.clientX-sx;moved=Math.max(moved,Math.abs(dx));var step=Math.max(50,80*Math.min(1,(st.clientWidth||900)/900));var ni=Math.max(0,Math.min(N-1,sc0-Math.round(dx/step)));if(ni!==S.cur)S.go(ni);});
+  window.addEventListener('pointerup',function(){if(!down)return;down=false;st.classList.remove('drag');});
+  st.addEventListener('click',function(e){
+    if(moved>6)return;var c=e.target.closest('.cf-card');if(!c)return;
+    var i=parseInt(c.dataset.i,10);if(i===S.cur){if(opts.onOpen)opts.onOpen(i);}else S.go(i);
+  });
+  if(!window._cflowKey){window._cflowKey=true;document.addEventListener('keydown',function(e){
+    if(e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+    if(document.getElementById('prod-zoom-modal'))return;
+    Object.keys(window._cflow).forEach(function(k){var s=window._cflow[k];if(!document.getElementById(k+'-st'))return;if(e.key==='ArrowLeft')s.go(s.cur-1);else if(e.key==='ArrowRight')s.go(s.cur+1);});
+  });}
+  layout();
+};
+window._cflowCopy=function(txt,btn){
+  var done=function(){if(btn){var o=btn.innerHTML;btn.innerHTML='<i class="ti ti-check"></i> Copied';setTimeout(function(){btn.innerHTML=o;},1200);}};
+  try{navigator.clipboard.writeText(txt).then(done,function(){throw 0;});}
+  catch(e){var t=document.createElement('textarea');t.value=txt;document.body.appendChild(t);t.select();try{document.execCommand('copy');}catch(_){}t.remove();done();}
+};
+window._prodGalleryHtml=function(filtered){
+  var items=filtered.map(function(p){return {img:p.image_url,ph:p.name,tag:p.sku||'—',tag2:p.variant||'',badge:p.in_stock?'':'Out of stock'};});
+  window._prodGal=filtered;
+  setTimeout(function(){
+    window._cflowInit('prod-cf',{items:items,sig:filtered.length+'|'+(filtered[0]?filtered[0].id:''),
+      caption:function(i){
+        var p=filtered[i];if(!p)return '';
+        var vc={'BOLSA':'var(--accent2)','ONS':'var(--accent)','TSPA':'var(--warn)'}[p.brand]||'var(--brand2)';
+        var best=p.best_price&&p.best_price>0?' <span style="font-size:12px;color:var(--success)">· Best $'+Number(p.best_price).toLocaleString('en-US')+'</span>':'';
+        var txt=(p.sku||'')+' - '+(p.name||'')+(p.variant?' ('+p.variant+')':'')+' - $'+Number(p.price||0).toLocaleString('en-US');
+        return '<div style="font-size:22px;font-weight:700;color:var(--text);line-height:1.2">'+(p.name||'—')+'</div>'
+          +'<div style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--text2)">'
+          +'<span style="font-family:monospace">'+(p.sku||'—')+'</span>'
+          +(p.brand?'<span style="color:'+vc+';border:1px solid '+vc+';padding:0 8px;border-radius:20px;font-size:11px;font-weight:600">'+p.brand+'</span>':'')
+          +(p.variant?'<span>'+p.variant+'</span>':'')
+          +(p.in_stock?'<span class="badge b-won">In Stock</span>':'<span class="badge b-lost">Out</span>')+'</div>'
+          +'<div style="font-size:24px;font-weight:800;color:var(--accent2);margin-top:6px">$'+Number(p.price||0).toLocaleString('en-US')+best+'</div>'
+          +(p.description?'<div style="font-size:11px;color:var(--text3);max-width:520px;margin:4px auto 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+String(p.description).replace(/</g,'&lt;')+'</div>':'')
+          +'<div style="display:flex;gap:8px;justify-content:center;margin-top:10px">'
+          +'<button class="btn" onclick="window._prodNavList=window._prodGal;window._prodNavIdx='+i+';openProdZoom('+p.id+')"><i class="ti ti-eye"></i> Details</button>'
+          +'<button class="btn" onclick="window._cflowCopy(this.getAttribute(\'data-t\'),this)" data-t="'+txt.replace(/"/g,'&quot;')+'"><i class="ti ti-copy"></i> Copy SKU + price</button></div>';
+      },
+      onOpen:function(i){var p=filtered[i];if(p){window._prodNavList=filtered;window._prodNavIdx=i;openProdZoom(p.id);}}
+    });
+  },0);
+  return window._cflowHtml('prod-cf');
+};
 function renderProducts(){
   const pgProd=Math.max(1,parseInt(sessionStorage.getItem('prodMgPage')||'1'));
   let prodSearch=sessionStorage.getItem('prodMgSearch')||'';
   const fVendor=sessionStorage.getItem('prodVendor')||'all';
   const fSku=sessionStorage.getItem('prodSkuPrefix')||'all';
+  const prodView=sessionStorage.getItem('prodView')==='gallery'?'gallery':'grid';
   const isManagerProd=currentProfile&&(currentProfile.role==='manager'||currentProfile.role==='admin'||currentProfile.role==='leader');
 
   // Extract SKU prefixes (part before first - or digit)
@@ -7480,6 +7589,7 @@ function renderProducts(){
   return '<div class="topbar"><div class="topbar-title">'+(isManagerProd?'Quản lý sản phẩm':'Sản phẩm')+'<\/div>'
     +'<div class="search-wrap"><i class="ti ti-search"></i><input id="prod-mg-search" placeholder="Tìm SKU, tên sản phẩm..." oninput="clearTimeout(_searchTimer);_searchTimer=setTimeout(function(){prodMgFilter(document.getElementById(&quot;prod-mg-search&quot;).value);},120)" value="'+prodSearch+'"><\/div>'
     +vendorFilter
+    +'<div style="display:flex;gap:0"><button class="btn" style="border-radius:8px 0 0 8px;'+(prodView==='grid'?'background:var(--brand2);color:#fff':'')+'" onclick="sessionStorage.setItem(\'prodView\',\'grid\');render()"><i class="ti ti-layout-list"></i> Grid</button><button class="btn" style="border-radius:0 8px 8px 0;'+(prodView==='gallery'?'background:var(--brand2);color:#fff':'')+'" onclick="sessionStorage.setItem(\'prodView\',\'gallery\');render()"><i class="ti ti-carousel-horizontal"></i> Gallery</button></div>'
     +(isManagerProd?'<button class="btn" onclick="exportProducts()" style="border-color:rgba(0,184,148,0.4);color:var(--accent2)"><i class="ti ti-table-export"><\/i> Excel<\/button>':'')+'<\/div>'
     // Row 1: Vendor stat cards
     +'<div class="stats-row" style="grid-template-columns:repeat('+(VENDOR_OPTS.length+1)+',1fr)">'+statsHtml+'<\/div>'
@@ -7491,6 +7601,7 @@ function renderProducts(){
     +(fVendor!=='all'?' <span style="font-size:11px;color:var(--text3)">· '+fVendor+'<\/span>':'')
     +'<\/h2><\/div>'
     +(filtered.length===0?'<div class="empty-state"><i class="ti ti-package"></i>Không tìm thấy sản phẩm<\/div>'
+      :prodView==='gallery'?window._prodGalleryHtml(filtered)
       :'<div class="prod-scroll" style="overflow-x:clip"><table class="prod-tbl" style="min-width:'+(isManagerProd?'1060px':'960px')+';width:100%"><colgroup>'
       +(isManagerProd
         ?'<col width="80"><col width="200"><col width="80"><col width="80"><col width="100"><col width="80"><col width="130"><col width="130"><col width="180">'
